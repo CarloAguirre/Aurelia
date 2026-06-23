@@ -9,3 +9,8 @@ export * from './inspection.interface';
 export * from './incident.interface';
 export * from './evidence.interface';
 export * from './workflow.interface';
+export * from './file.interface';
+export * from './evidence-record.interface';
+export * from './comment.interface';
+export * from './audit-log.interface';
+export * from './workflow-record.interface';

@@ -93,6 +93,85 @@ async function seed(ds: DataSource): Promise<void> {
        ON CONFLICT DO NOTHING`,
     );
 
+    // Entity reference type catalog (Phase 2)
+    const entityRefTypes = [
+      { code: 'inspection',                description: 'Inspección' },
+      { code: 'inspection_finding',        description: 'Hallazgo de inspección' },
+      { code: 'inspection_followup',       description: 'Seguimiento de hallazgo' },
+      { code: 'incident',                  description: 'Incidente ambiental' },
+      { code: 'incident_flash_report',     description: 'Flash report de incidente' },
+      { code: 'incident_investigation',    description: 'Investigación de incidente' },
+      { code: 'incident_action_plan',      description: 'Plan de acción de incidente' },
+      { code: 'mue',                       description: 'Evento no deseado mayor' },
+      { code: 'critical_control',          description: 'Control crítico' },
+      { code: 'control_assessment',        description: 'Autoevaluación de control crítico' },
+      { code: 'control_assessment_answer', description: 'Respuesta de autoevaluación' },
+      { code: 'spr_record',                description: 'Registro mensual SPR' },
+      { code: 'emission_source',           description: 'Fuente de emisión fija' },
+      { code: 'emission_activity_level',   description: 'Nivel de actividad de emisión mensual' },
+    ];
+
+    for (const ert of entityRefTypes) {
+      await qr.query(
+        `INSERT INTO entity_reference_types (code, description)
+         VALUES ($1, $2)
+         ON CONFLICT (code) DO NOTHING`,
+        [ert.code, ert.description],
+      );
+    }
+
+    // Seed workflow definitions: inspection and incident validation flows
+    await qr.query(
+      `INSERT INTO workflow_definitions (code, name, description, entity_type, is_active)
+       VALUES ($1, $2, $3, $4, true)
+       ON CONFLICT (code) DO NOTHING`,
+      ['WF-INSPECTION-VALIDATION', 'Validación de Inspección',
+       'Flujo de revisión y aprobación de inspecciones', 'inspection'],
+    );
+    await qr.query(
+      `INSERT INTO workflow_definitions (code, name, description, entity_type, is_active)
+       VALUES ($1, $2, $3, $4, true)
+       ON CONFLICT (code) DO NOTHING`,
+      ['WF-INCIDENT-VALIDATION', 'Validación de Incidente',
+       'Flujo de revisión y aprobación de incidentes', 'incident'],
+    );
+
+    // Steps for WF-INSPECTION-VALIDATION
+    await qr.query(
+      `INSERT INTO workflow_definition_steps (workflow_definition_id, step_order, code, name, required_role_id, sla_hours)
+       SELECT wd.id, 1, 'SUPERVISOR_REVIEW', 'Revisión Supervisor',
+              (SELECT id FROM roles WHERE code = 'SUPERVISOR'), 48
+       FROM workflow_definitions wd
+       WHERE wd.code = 'WF-INSPECTION-VALIDATION'
+       ON CONFLICT (workflow_definition_id, step_order) DO NOTHING`,
+    );
+    await qr.query(
+      `INSERT INTO workflow_definition_steps (workflow_definition_id, step_order, code, name, required_role_id, sla_hours)
+       SELECT wd.id, 2, 'APPROVER_APPROVAL', 'Aprobación Final',
+              (SELECT id FROM roles WHERE code = 'APPROVER'), 24
+       FROM workflow_definitions wd
+       WHERE wd.code = 'WF-INSPECTION-VALIDATION'
+       ON CONFLICT (workflow_definition_id, step_order) DO NOTHING`,
+    );
+
+    // Steps for WF-INCIDENT-VALIDATION
+    await qr.query(
+      `INSERT INTO workflow_definition_steps (workflow_definition_id, step_order, code, name, required_role_id, sla_hours)
+       SELECT wd.id, 1, 'SUPERVISOR_REVIEW', 'Revisión Supervisor',
+              (SELECT id FROM roles WHERE code = 'SUPERVISOR'), 24
+       FROM workflow_definitions wd
+       WHERE wd.code = 'WF-INCIDENT-VALIDATION'
+       ON CONFLICT (workflow_definition_id, step_order) DO NOTHING`,
+    );
+    await qr.query(
+      `INSERT INTO workflow_definition_steps (workflow_definition_id, step_order, code, name, required_role_id, sla_hours)
+       SELECT wd.id, 2, 'APPROVER_APPROVAL', 'Aprobación Final',
+              (SELECT id FROM roles WHERE code = 'APPROVER'), 12
+       FROM workflow_definitions wd
+       WHERE wd.code = 'WF-INCIDENT-VALIDATION'
+       ON CONFLICT (workflow_definition_id, step_order) DO NOTHING`,
+    );
+
     await qr.commitTransaction();
     console.log('Seed completed successfully.');
   } catch (err) {

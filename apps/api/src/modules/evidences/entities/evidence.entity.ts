@@ -1,44 +1,86 @@
+import { EvidenceStatus } from '@aurelia/contracts';
 import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { EvidenceType, GeoLocation } from '@aurelia/contracts';
+import { FileEntity } from '../../files/entities/file.entity';
+import { UserEntity } from '../../users/entities/user.entity';
+import { EvidenceLinkEntity } from './evidence-link.entity';
 
-/**
- * PLACEHOLDER — entidad provisional, no es el modelo definitivo.
- * El modelo relacional y las reglas de negocio aún no están definidos.
- * No generar migraciones de dominio a partir de esta entidad todavía.
- * Ver docs/DEVELOPMENT_WORKFLOW.md ("Estado del proyecto").
- */
 @Entity('evidences')
 export class EvidenceEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'enum', enum: EvidenceType })
-  type: EvidenceType;
+  @Index('idx_evidences_file')
+  @Column({ name: 'file_id', type: 'uuid', nullable: true })
+  fileId: string | null;
 
-  @Column()
-  url: string;
+  @ManyToOne(() => FileEntity, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'file_id' })
+  file: FileEntity | null;
+
+  @Column({ type: 'varchar', length: 250, nullable: true })
+  title: string | null;
 
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
-  @Column({ type: 'jsonb', nullable: true })
-  location: GeoLocation | null;
+  @Column({ name: 'evidence_type', type: 'varchar', length: 80, nullable: true })
+  evidenceType: string | null;
 
-  @Column({ type: 'uuid', nullable: true })
-  inspectionId: string | null;
+  @Index('idx_evidences_status')
+  @Column({
+    type: 'enum',
+    enum: EvidenceStatus,
+    enumName: 'evidence_status',
+    default: EvidenceStatus.UPLOADED,
+  })
+  status: EvidenceStatus;
 
-  @Column({ type: 'uuid', nullable: true })
-  incidentId: string | null;
+  @Column({ name: 'captured_at', type: 'timestamptz', nullable: true })
+  capturedAt: Date | null;
 
-  @CreateDateColumn({ type: 'timestamptz' })
+  @Column({ type: 'numeric', precision: 10, scale: 7, nullable: true })
+  latitude: number | null;
+
+  @Column({ type: 'numeric', precision: 10, scale: 7, nullable: true })
+  longitude: number | null;
+
+  @Index('idx_evidences_created_by')
+  @Column({ name: 'created_by_user_id', type: 'uuid', nullable: true })
+  createdByUserId: string | null;
+
+  @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'created_by_user_id' })
+  createdByUser: UserEntity | null;
+
+  @Column({ name: 'validated_by_user_id', type: 'uuid', nullable: true })
+  validatedByUserId: string | null;
+
+  @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'validated_by_user_id' })
+  validatedByUser: UserEntity | null;
+
+  @Column({ name: 'validated_at', type: 'timestamptz', nullable: true })
+  validatedAt: Date | null;
+
+  @Column({ name: 'validation_notes', type: 'text', nullable: true })
+  validationNotes: string | null;
+
+  @OneToMany(() => EvidenceLinkEntity, (link) => link.evidence)
+  links: EvidenceLinkEntity[];
+
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ type: 'timestamptz' })
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 }

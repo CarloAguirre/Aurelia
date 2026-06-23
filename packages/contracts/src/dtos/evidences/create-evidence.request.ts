@@ -1,11 +1,25 @@
-import type { EvidenceType } from '../../enums';
-import type { GeoLocation, ID } from '../../types/common';
+import type { EvidenceStatus } from '../../enums';
+import type { ID, ISODateString } from '../../types/common';
 
 export interface CreateEvidenceRequest {
-  type: EvidenceType;
-  url: string;
+  fileId?: ID;
+  title?: string;
   description?: string;
-  location?: GeoLocation;
-  inspectionId?: ID;
-  incidentId?: ID;
+  evidenceType?: string;
+  capturedAt?: ISODateString;
+  latitude?: number;
+  longitude?: number;
+  createdByUserId?: ID;
+}
+
+export interface LinkEvidenceRequest {
+  entityType: string;
+  entityId: ID;
+  relationType?: string;
+}
+
+export interface ValidateEvidenceRequest {
+  status: EvidenceStatus.VALIDATED | EvidenceStatus.REJECTED;
+  validationNotes?: string;
+  validatedByUserId?: ID;
 }

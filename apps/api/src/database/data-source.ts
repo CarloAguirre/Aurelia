@@ -14,6 +14,16 @@ import { UserAreaEntity } from '../modules/users/entities/user-area.entity';
 import { UserCompanyEntity } from '../modules/users/entities/user-company.entity';
 import { UserRoleEntity } from '../modules/users/entities/user-role.entity';
 import { UserEntity } from '../modules/users/entities/user.entity';
+import { FileEntity } from '../modules/files/entities/file.entity';
+import { EntityReferenceTypeEntity } from '../modules/evidences/entities/entity-reference-type.entity';
+import { EvidenceEntity } from '../modules/evidences/entities/evidence.entity';
+import { EvidenceLinkEntity } from '../modules/evidences/entities/evidence-link.entity';
+import { CommentEntity } from '../modules/comments/entities/comment.entity';
+import { AuditLogEntity } from '../modules/audit/entities/audit-log.entity';
+import { WorkflowDefinitionEntity } from '../modules/workflows/entities/workflow-definition.entity';
+import { WorkflowDefinitionStepEntity } from '../modules/workflows/entities/workflow-definition-step.entity';
+import { WorkflowInstanceEntity } from '../modules/workflows/entities/workflow-instance.entity';
+import { WorkflowInstanceStepEntity } from '../modules/workflows/entities/workflow-instance-step.entity';
 
 config();
 
@@ -42,6 +52,16 @@ export const AppDataSource = new DataSource({
     RolePermissionEntity,
     UserCompanyEntity,
     UserAreaEntity,
+    FileEntity,
+    EntityReferenceTypeEntity,
+    EvidenceEntity,
+    EvidenceLinkEntity,
+    CommentEntity,
+    AuditLogEntity,
+    WorkflowDefinitionEntity,
+    WorkflowDefinitionStepEntity,
+    WorkflowInstanceEntity,
+    WorkflowInstanceStepEntity,
   ],
   migrations: ['src/database/migrations/*.ts'],
   synchronize: false,

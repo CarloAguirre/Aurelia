@@ -3,10 +3,15 @@ import { ConfigModule } from '@nestjs/config';
 import configuration from './config/configuration';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { AuditModule } from './modules/audit/audit.module';
+import { CommentsModule } from './modules/comments/comments.module';
+import { EvidencesModule } from './modules/evidences/evidences.module';
+import { FilesModule } from './modules/files/files.module';
 import { HealthModule } from './modules/health/health.module';
 import { OrganizationModule } from './modules/organization/organization.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { UsersModule } from './modules/users/users.module';
+import { WorkflowsModule } from './modules/workflows/workflows.module';
 
 @Module({
   imports: [
@@ -21,6 +26,11 @@ import { UsersModule } from './modules/users/users.module';
     OrganizationModule,
     UsersModule,
     RolesModule,
+    FilesModule,
+    EvidencesModule,
+    CommentsModule,
+    AuditModule,
+    WorkflowsModule,
   ],
 })
 export class AppModule {}

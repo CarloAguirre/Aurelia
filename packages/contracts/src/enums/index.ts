@@ -8,4 +8,7 @@ export * from './incident-status.enum';
 export * from './incident-type.enum';
 export * from './incident-risk-level.enum';
 export * from './evidence-type.enum';
+export * from './evidence-status.enum';
+export * from './file-storage-provider.enum';
 export * from './workflow-status.enum';
+export * from './workflow-step.enum';

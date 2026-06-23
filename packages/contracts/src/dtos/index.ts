@@ -9,3 +9,6 @@ export * from './incidents';
 export * from './evidences';
 export * from './workflows';
 export * from './reports';
+export * from './files';
+export * from './comments';
+export * from './audit';

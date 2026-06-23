@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Param,
@@ -22,6 +23,9 @@ export class FilesController {
     @UploadedFile() file: Express.Multer.File,
     @Query('uploadedByUserId') uploadedByUserId?: string,
   ): Promise<FileResponse> {
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
     return this.filesService.saveUpload(file, uploadedByUserId);
   }
 

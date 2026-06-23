@@ -8,7 +8,7 @@
 # ──────────────────────────────────────────────
 
 ### Health check
-GET {{baseUrl}}/health
+GET {{baseUrl}}/api/health
 
 # ──────────────────────────────────────────────
 # Me (placeholder — no auth in Phase 1)

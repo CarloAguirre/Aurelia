@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PermissionResponse, RoleResponse } from '@aurelia/contracts';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { AssignRolePermissionDto } from './dto/assign-role-permission.dto';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { CreateRoleDto } from './dto/create-role.dto';
@@ -36,7 +36,11 @@ export class RolesService {
       isSystem: dto.isSystem ?? false,
       isActive: dto.isActive ?? true,
     });
-    return this.toRoleResponse(await this.roles.save(entity));
+    try {
+      return this.toRoleResponse(await this.roles.save(entity));
+    } catch (err) {
+      this.rethrowIfDuplicate(err, `Role code '${dto.code}' already exists`);
+    }
   }
 
   async findPermissions(): Promise<PermissionResponse[]> {
@@ -52,7 +56,11 @@ export class RolesService {
       action: dto.action,
       description: dto.description ?? null,
     });
-    return this.toPermissionResponse(await this.permissions.save(entity));
+    try {
+      return this.toPermissionResponse(await this.permissions.save(entity));
+    } catch (err) {
+      this.rethrowIfDuplicate(err, `Permission code '${dto.code}' already exists`);
+    }
   }
 
   async assignPermission(roleId: string, dto: AssignRolePermissionDto): Promise<RoleResponse> {
@@ -111,5 +119,12 @@ export class RolesService {
       createdAt: entity.createdAt.toISOString(),
       updatedAt: entity.updatedAt.toISOString(),
     };
+  }
+
+  private rethrowIfDuplicate(err: unknown, message: string): never {
+    if (err instanceof QueryFailedError && (err as QueryFailedError & { code?: string }).code === '23505') {
+      throw new ConflictException(message);
+    }
+    throw err as Error;
   }
 }

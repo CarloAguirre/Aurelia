@@ -124,6 +124,21 @@ El seed crea:
 Los roles `SUPERVISOR`, `INSPECTOR`, `APPROVER` y `VIEWER` se crean sin permisos —
 se asignarán en fases posteriores cuando se definan los módulos correspondientes.
 
+## Estrategia de `updated_at`
+
+**Estado actual (Fase 1):** todas las tablas tienen `updated_at timestamptz NOT NULL DEFAULT now()`.
+El valor se actualiza mediante `@UpdateDateColumn` de TypeORM, que emite `UPDATE … SET updated_at = now()` en cada `save()`.
+No existe trigger de BD — TypeORM es la única fuente de verdad para este campo.
+
+**Decisión para Fase 2 (endpoints UPDATE):** seguir con `@UpdateDateColumn`.
+
+Razones:
+- La aplicación ya controla todas las escrituras a través del ORM; no hay acceso directo a la BD.
+- Un trigger añadiría infraestructura sin beneficio real en este stack.
+- Si en el futuro se necesitan escrituras directas (scripts de migración, jobs externos), se añade el trigger en ese momento con una migración puntual.
+
+**Consecuencia práctica:** los endpoints `PATCH`/`PUT` de Fase 2 no requieren ningún cambio adicional en la capa de BD; `@UpdateDateColumn` se dispara automáticamente en cualquier `repository.save()`.
+
 ## Build y lint
 
 ```bash
@@ -135,7 +150,7 @@ pnpm lint    # eslint src
 
 | Método | Ruta                          | Descripción                         |
 |--------|-------------------------------|-------------------------------------|
-| GET    | `/health`                     | Estado del servicio                 |
+| GET    | `/api/health`                 | Estado del servicio                 |
 | GET    | `/api/me`                     | Usuario actual (placeholder)        |
 | GET    | `/api/organization/companies` | Listar empresas                     |
 | POST   | `/api/organization/companies` | Crear empresa                       |

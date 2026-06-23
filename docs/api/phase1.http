@@ -248,10 +248,6 @@ Content-Type: application/json
 # Permissions
 # ──────────────────────────────────────────────
 
-# ──────────────────────────────────────────────
-# Permissions
-# ──────────────────────────────────────────────
-
 ### List permissions
 GET {{baseUrl}}/api/permissions
 

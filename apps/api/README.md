@@ -103,9 +103,26 @@ pnpm seed
 El seed crea:
 
 - 5 roles del sistema: `ADMIN`, `SUPERVISOR`, `INSPECTOR`, `APPROVER`, `VIEWER`
+- 8 permisos base (ver tabla abajo) asignados al rol `ADMIN`
 - 1 empresa principal: código `CORP`
 - 1 unidad de negocio: código `BU-001`
 - 1 usuario admin: `admin@aurelia.local` con rol `ADMIN`
+
+### Permisos base
+
+| Código               | Módulo       | Acción |
+|----------------------|--------------|--------|
+| `organization:read`  | organization | read   |
+| `organization:write` | organization | write  |
+| `users:read`         | users        | read   |
+| `users:write`        | users        | write  |
+| `roles:read`         | roles        | read   |
+| `roles:write`        | roles        | write  |
+| `permissions:read`   | permissions  | read   |
+| `permissions:write`  | permissions  | write  |
+
+Los roles `SUPERVISOR`, `INSPECTOR`, `APPROVER` y `VIEWER` se crean sin permisos —
+se asignarán en fases posteriores cuando se definan los módulos correspondientes.
 
 ## Build y lint
 
@@ -139,6 +156,6 @@ pnpm lint    # eslint src
 | POST   | `/api/users/:id/areas`        | Asignar área a usuario              |
 | GET    | `/api/roles`                  | Listar roles                        |
 | POST   | `/api/roles`                  | Crear rol                           |
-| GET    | `/api/roles/permissions`      | Listar permisos                     |
-| POST   | `/api/roles/permissions`      | Crear permiso                       |
+| GET    | `/api/permissions`            | Listar permisos                     |
+| POST   | `/api/permissions`            | Crear permiso                       |
 | POST   | `/api/roles/:id/permissions`  | Asignar permiso a rol               |

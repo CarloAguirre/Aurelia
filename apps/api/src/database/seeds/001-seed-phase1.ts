@@ -63,6 +63,36 @@ async function seed(ds: DataSource): Promise<void> {
        ON CONFLICT DO NOTHING`,
     );
 
+    // Base permissions
+    const permissions = [
+      { code: 'organization:read',  name: 'Ver organización',   module: 'organization', action: 'read'  },
+      { code: 'organization:write', name: 'Editar organización', module: 'organization', action: 'write' },
+      { code: 'users:read',         name: 'Ver usuarios',        module: 'users',        action: 'read'  },
+      { code: 'users:write',        name: 'Editar usuarios',     module: 'users',        action: 'write' },
+      { code: 'roles:read',         name: 'Ver roles',           module: 'roles',        action: 'read'  },
+      { code: 'roles:write',        name: 'Editar roles',        module: 'roles',        action: 'write' },
+      { code: 'permissions:read',   name: 'Ver permisos',        module: 'permissions',  action: 'read'  },
+      { code: 'permissions:write',  name: 'Editar permisos',     module: 'permissions',  action: 'write' },
+    ];
+
+    for (const perm of permissions) {
+      await qr.query(
+        `INSERT INTO permissions (code, name, module, action)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (code) DO NOTHING`,
+        [perm.code, perm.name, perm.module, perm.action],
+      );
+    }
+
+    // Assign all base permissions to ADMIN role
+    await qr.query(
+      `INSERT INTO role_permissions (role_id, permission_id)
+       SELECT r.id, p.id
+       FROM roles r, permissions p
+       WHERE r.code = 'ADMIN'
+       ON CONFLICT DO NOTHING`,
+    );
+
     await qr.commitTransaction();
     console.log('Seed completed successfully.');
   } catch (err) {

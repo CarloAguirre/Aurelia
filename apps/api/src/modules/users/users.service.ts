@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   AreaResponse,
@@ -7,7 +7,7 @@ import {
   RoleResponse,
   UserResponse,
 } from '@aurelia/contracts';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { AreaEntity } from '../organization/entities/area.entity';
 import { CompanyEntity } from '../organization/entities/company.entity';
 import { RoleEntity } from '../roles/entities/role.entity';
@@ -82,8 +82,15 @@ export class UsersService {
       areaId: dto.areaId ?? null,
       isActive: dto.isActive ?? true,
     });
-    const saved = await this.users.save(entity);
-    return this.toUserResponse(await this.findEntity(saved.id));
+    try {
+      const saved = await this.users.save(entity);
+      return this.toUserResponse(await this.findEntity(saved.id));
+    } catch (err) {
+      if (err instanceof QueryFailedError && (err as any).code === '23505') {
+        throw new ConflictException(`Email '${dto.email}' already exists`);
+      }
+      throw err;
+    }
   }
 
   async assignRole(userId: string, dto: AssignUserRoleDto): Promise<UserResponse> {

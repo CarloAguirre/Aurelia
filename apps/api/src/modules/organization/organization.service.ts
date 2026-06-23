@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   AreaResponse,
@@ -9,7 +9,7 @@ import {
   RecordStatus,
   SectorResponse,
 } from '@aurelia/contracts';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { AreaEntity } from './entities/area.entity';
 import { BusinessUnitEntity } from './entities/business-unit.entity';
 import { CompanyEntity } from './entities/company.entity';
@@ -51,7 +51,11 @@ export class OrganizationService {
       description: dto.description ?? null,
       status: dto.status ?? RecordStatus.ACTIVE,
     });
-    return this.toBusinessUnitResponse(await this.businessUnits.save(entity));
+    try {
+      return this.toBusinessUnitResponse(await this.businessUnits.save(entity));
+    } catch (err) {
+      this.rethrowIfDuplicate(err, `Business unit code '${dto.code}' already exists`);
+    }
   }
 
   async findGerencias(): Promise<GerenciaResponse[]> {
@@ -74,7 +78,11 @@ export class OrganizationService {
       description: dto.description ?? null,
       status: dto.status ?? RecordStatus.ACTIVE,
     });
-    return this.toGerenciaResponse(await this.gerencias.save(entity));
+    try {
+      return this.toGerenciaResponse(await this.gerencias.save(entity));
+    } catch (err) {
+      this.rethrowIfDuplicate(err, `Gerencia code '${dto.code}' already exists`);
+    }
   }
 
   async findAreas(): Promise<AreaResponse[]> {
@@ -97,7 +105,11 @@ export class OrganizationService {
       description: dto.description ?? null,
       status: dto.status ?? RecordStatus.ACTIVE,
     });
-    return this.toAreaResponse(await this.areas.save(entity));
+    try {
+      return this.toAreaResponse(await this.areas.save(entity));
+    } catch (err) {
+      this.rethrowIfDuplicate(err, `Area code '${dto.code}' already exists`);
+    }
   }
 
   async findSectors(): Promise<SectorResponse[]> {
@@ -120,7 +132,11 @@ export class OrganizationService {
       description: dto.description ?? null,
       status: dto.status ?? RecordStatus.ACTIVE,
     });
-    return this.toSectorResponse(await this.sectors.save(entity));
+    try {
+      return this.toSectorResponse(await this.sectors.save(entity));
+    } catch (err) {
+      this.rethrowIfDuplicate(err, `Sector code '${dto.code}' already exists`);
+    }
   }
 
   async findLocations(): Promise<LocationResponse[]> {
@@ -147,7 +163,11 @@ export class OrganizationService {
       macrozone: dto.macrozone ?? null,
       status: dto.status ?? RecordStatus.ACTIVE,
     });
-    return this.toLocationResponse(await this.locations.save(entity));
+    try {
+      return this.toLocationResponse(await this.locations.save(entity));
+    } catch (err) {
+      this.rethrowIfDuplicate(err, `Location '${dto.name}' already exists in this sector`);
+    }
   }
 
   async findCompanies(): Promise<CompanyResponse[]> {
@@ -164,7 +184,11 @@ export class OrganizationService {
       isContractor: dto.isContractor ?? true,
       status: dto.status ?? RecordStatus.ACTIVE,
     });
-    return this.toCompanyResponse(await this.companies.save(entity));
+    try {
+      return this.toCompanyResponse(await this.companies.save(entity));
+    } catch (err) {
+      this.rethrowIfDuplicate(err, `Company '${dto.name}' already exists`);
+    }
   }
 
   private toBusinessUnitResponse(entity: BusinessUnitEntity): BusinessUnitResponse {
@@ -251,5 +275,12 @@ export class OrganizationService {
 
   private toNullableNumber(value: number | null): number | null {
     return value === null ? null : Number(value);
+  }
+
+  private rethrowIfDuplicate(err: unknown, message: string): never {
+    if (err instanceof QueryFailedError && (err as any).code === '23505') {
+      throw new ConflictException(message);
+    }
+    throw err as Error;
   }
 }

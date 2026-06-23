@@ -1,8 +1,10 @@
-import type { AreaType } from '../../enums';
+import type { RecordStatus } from '../../enums';
 import type { ID } from '../../types/common';
 
 export interface CreateAreaRequest {
+  gerenciaId?: ID;
+  code: string;
   name: string;
-  type: AreaType;
-  mueId: ID;
+  description?: string;
+  status?: RecordStatus;
 }

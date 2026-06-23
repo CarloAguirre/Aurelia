@@ -1,3 +1,3 @@
-import type { Area } from '../../interfaces/area.interface';
+import type { Area } from '../../interfaces';
 
 export type AreaResponse = Area;

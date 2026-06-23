@@ -2,40 +2,79 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Role } from '@aurelia/contracts';
+import { AreaEntity } from '../../organization/entities/area.entity';
+import { CompanyEntity } from '../../organization/entities/company.entity';
+import { UserAreaEntity } from './user-area.entity';
+import { UserCompanyEntity } from './user-company.entity';
+import { UserRoleEntity } from './user-role.entity';
 
-/**
- * PLACEHOLDER — entidad provisional, no es el modelo definitivo.
- * El modelo relacional y las reglas de negocio aún no están definidos.
- * No generar migraciones de dominio a partir de esta entidad todavía.
- * Ver docs/DEVELOPMENT_WORKFLOW.md ("Estado del proyecto").
- */
 @Entity('users')
 export class UserEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true })
+  @Column({ type: 'citext', unique: true })
   email: string;
 
-  @Column()
-  fullName: string;
+  @Column({ name: 'first_name', length: 120 })
+  firstName: string;
 
-  @Column({ type: 'enum', enum: Role, default: Role.VIEWER })
-  role: Role;
+  @Column({ name: 'last_name', length: 120 })
+  lastName: string;
 
-  @Column({ type: 'uuid', nullable: true })
+  @Column({ type: 'varchar', length: 160, nullable: true })
+  position: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  phone: string | null;
+
+  @Index('idx_users_company')
+  @Column({ name: 'company_id', type: 'uuid', nullable: true })
+  companyId: string | null;
+
+  @ManyToOne(() => CompanyEntity, (company) => company.users, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'company_id' })
+  company: CompanyEntity | null;
+
+  @Index('idx_users_area')
+  @Column({ name: 'area_id', type: 'uuid', nullable: true })
   areaId: string | null;
 
-  @Column({ default: true })
-  active: boolean;
+  @ManyToOne(() => AreaEntity, (area) => area.users, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'area_id' })
+  area: AreaEntity | null;
 
-  @CreateDateColumn({ type: 'timestamptz' })
+  @Column({ name: 'is_active', default: true })
+  isActive: boolean;
+
+  @Column({ name: 'last_login_at', type: 'timestamptz', nullable: true })
+  lastLoginAt: Date | null;
+
+  @OneToMany(() => UserRoleEntity, (userRole) => userRole.user)
+  userRoles: UserRoleEntity[];
+
+  @OneToMany(() => UserCompanyEntity, (userCompany) => userCompany.user)
+  userCompanies: UserCompanyEntity[];
+
+  @OneToMany(() => UserAreaEntity, (userArea) => userArea.user)
+  userAreas: UserAreaEntity[];
+
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ type: 'timestamptz' })
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 }

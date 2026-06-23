@@ -1,4 +1,5 @@
 export * from './role.enum';
+export * from './record-status.enum';
 export * from './mue-type.enum';
 export * from './area-type.enum';
 export * from './inspection-status.enum';

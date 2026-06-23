@@ -1,4 +1,6 @@
 export * from './entity.interface';
+export * from './organization.interface';
+export * from './role.interface';
 export * from './user.interface';
 export * from './mue.interface';
 export * from './area.interface';

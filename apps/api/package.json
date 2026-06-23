@@ -13,7 +13,8 @@
     "migration:generate": "pnpm run typeorm migration:generate ./src/database/migrations/Migration -d ./src/database/data-source.ts",
     "migration:create": "pnpm run typeorm migration:create ./src/database/migrations/Migration",
     "migration:run": "pnpm run typeorm migration:run -d ./src/database/data-source.ts",
-    "migration:revert": "pnpm run typeorm migration:revert -d ./src/database/data-source.ts"
+    "migration:revert": "pnpm run typeorm migration:revert -d ./src/database/data-source.ts",
+    "seed": "ts-node src/database/seeds/001-seed-phase1.ts"
   },
   "dependencies": {
     "@aurelia/contracts": "workspace:*",

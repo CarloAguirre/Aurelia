@@ -4,8 +4,3 @@ build
 .expo
 .turbo
 coverage
-
-# Código generado por Figma Make (UI kit + dashboard) integrado en web
-apps/web/src/app/components/ui
-apps/web/src/app/components/figma
-apps/web/src/imports

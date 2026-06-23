@@ -24,6 +24,19 @@ apps/web/src
   main.tsx
 ```
 
+## UI kit y vista principal
+
+La web integra un **UI kit basado en shadcn/ui + Tailwind CSS v4** (export de Figma Make):
+
+- **Componentes**: `src/app/components/ui` (48 componentes Radix/shadcn) + `src/app/components/figma`. Helper `cn()` en `components/ui/utils.ts`.
+- **Estilos / tema**: `src/styles` (`index.css` → `fonts.css` + `tailwind.css` + `theme.css`). Los tokens (`--primary`, `--sidebar`, charts, radios) están en `theme.css` como variables CSS mapeadas con `@theme inline`.
+- **Vista principal (`/`)**: dashboard de inspecciones generado, en `src/imports/DashboardInspecciones`, renderizado por `modules/dashboard/DashboardInspeccionesPage.tsx`.
+- El scaffold de módulos por rol (sidebar + placeholders) quedó disponible bajo **`/app`**.
+- **Alias `@`** → `src` (configurado en `vite.config.ts` y `tsconfig.json`).
+- Tailwind v4 se integra vía el plugin `@tailwindcss/vite`.
+
+> El UI kit y el dashboard son **código generado**: están excluidos del lint (`ignorePatterns` en `.eslintrc.cjs`) y no se les aplica el estilo de código del resto del repo. Construir los módulos nuevos **con** estos componentes, no editar los generados salvo necesidad. Atribuciones en `apps/web/ATTRIBUTIONS.md`.
+
 ## Principios
 
 - **Organización por módulo de negocio**, no por tipo de archivo. Cada módulo agrupa sus páginas, componentes y hooks.

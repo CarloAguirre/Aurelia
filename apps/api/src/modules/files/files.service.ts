@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FileResponse, FileStorageProvider } from '@aurelia/contracts';
 import { Repository } from 'typeorm';
-import * as crypto from 'crypto';
+import { createHash } from 'crypto';
+import { readFile } from 'fs/promises';
 import { FileEntity } from './entities/file.entity';
 
 @Injectable()
@@ -16,7 +17,7 @@ export class FilesService {
     file: Express.Multer.File,
     uploadedByUserId?: string,
   ): Promise<FileResponse> {
-    const checksum = crypto.createHash('sha256').update(file.buffer).digest('hex');
+    const checksum = await this.calculateChecksum(file);
 
     const entity = this.files.create({
       storageProvider: FileStorageProvider.LOCAL,
@@ -37,6 +38,14 @@ export class FilesService {
       throw new NotFoundException(`File ${id} not found`);
     }
     return this.toResponse(entity);
+  }
+
+  private async calculateChecksum(file: Express.Multer.File): Promise<string> {
+    const content = file.buffer ?? (file.path ? await readFile(file.path) : null);
+    if (!content) {
+      throw new BadRequestException('Uploaded file content is not available');
+    }
+    return createHash('sha256').update(content).digest('hex');
   }
 
   private toResponse(entity: FileEntity): FileResponse {

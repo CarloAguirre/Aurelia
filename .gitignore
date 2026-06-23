@@ -8,6 +8,7 @@ dist
 build
 out
 .turbo
+uploads
 
 # expo / react native
 .expo

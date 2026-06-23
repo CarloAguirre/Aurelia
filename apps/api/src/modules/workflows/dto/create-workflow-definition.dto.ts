@@ -1,4 +1,14 @@
-import { IsString, IsUUID, IsOptional, IsBoolean, IsInt, Min, MaxLength } from 'class-validator';
+import {
+  IsArray,
+  IsString,
+  IsUUID,
+  IsOptional,
+  IsBoolean,
+  IsInt,
+  Min,
+  MaxLength,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateWorkflowStepDto {
@@ -45,6 +55,8 @@ export class CreateWorkflowDefinitionDto {
   @IsBoolean()
   isActive?: boolean;
 
+  @IsArray()
+  @ValidateNested({ each: true })
   @Type(() => CreateWorkflowStepDto)
   steps: CreateWorkflowStepDto[];
 }

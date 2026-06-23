@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Aurelia Inspecciones",
+    "slug": "aurelia-mobile-inspecciones",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.aurelia.inspecciones"
+    },
+    "plugins": ["expo-location", "expo-image-picker"]
+  }
+}

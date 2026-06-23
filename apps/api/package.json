@@ -1,0 +1,41 @@
+{
+  "name": "api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "nest start --watch",
+    "build": "nest build",
+    "start": "node dist/main.js",
+    "start:prod": "node dist/main.js",
+    "lint": "eslint src --ext .ts",
+    "test": "echo \"api: no tests yet\" && exit 0",
+    "typeorm": "typeorm-ts-node-commonjs",
+    "migration:generate": "pnpm run typeorm migration:generate ./src/database/migrations/Migration -d ./src/database/data-source.ts",
+    "migration:create": "pnpm run typeorm migration:create ./src/database/migrations/Migration",
+    "migration:run": "pnpm run typeorm migration:run -d ./src/database/data-source.ts",
+    "migration:revert": "pnpm run typeorm migration:revert -d ./src/database/data-source.ts"
+  },
+  "dependencies": {
+    "@aurelia/contracts": "workspace:*",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/typeorm": "^11.0.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "dotenv": "^16.4.5",
+    "pg": "^8.13.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "typeorm": "^0.3.20"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@nestjs/schematics": "^11.0.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.7.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.2"
+  }
+}

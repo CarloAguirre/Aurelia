@@ -278,7 +278,7 @@ export class OrganizationService {
   }
 
   private rethrowIfDuplicate(err: unknown, message: string): never {
-    if (err instanceof QueryFailedError && (err as any).code === '23505') {
+    if (err instanceof QueryFailedError && (err as QueryFailedError & { code?: string }).code === '23505') {
       throw new ConflictException(message);
     }
     throw err as Error;

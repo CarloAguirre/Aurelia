@@ -86,7 +86,7 @@ export class UsersService {
       const saved = await this.users.save(entity);
       return this.toUserResponse(await this.findEntity(saved.id));
     } catch (err) {
-      if (err instanceof QueryFailedError && (err as any).code === '23505') {
+      if (err instanceof QueryFailedError && (err as QueryFailedError & { code?: string }).code === '23505') {
         throw new ConflictException(`Email '${dto.email}' already exists`);
       }
       throw err;

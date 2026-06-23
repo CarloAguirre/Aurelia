@@ -75,6 +75,11 @@ export class WorkflowsService {
     const definition = await this.findDefinitionEntity(dto.workflowDefinitionId);
     const refType = await this.entityRefTypes.findOneBy({ code: dto.entityType });
     if (!refType) throw new NotFoundException(`Entity type '${dto.entityType}' not registered`);
+    if (definition.entityType !== dto.entityType) {
+      throw new BadRequestException(
+        `Workflow definition '${definition.code}' is for entity type '${definition.entityType}', not '${dto.entityType}'`,
+      );
+    }
 
     const instance = this.instances.create({
       workflowDefinitionId: definition.id,
@@ -116,7 +121,6 @@ export class WorkflowsService {
       throw new BadRequestException(`Step is already ${step.status}`);
     }
 
-    // NOTE: required_role is recorded but not enforced until auth is implemented
     const newStatus = {
       [WorkflowStepAction.APPROVE]: WorkflowStepStatus.APPROVED,
       [WorkflowStepAction.RETURN]: WorkflowStepStatus.RETURNED,

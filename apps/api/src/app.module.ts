@@ -12,6 +12,7 @@ import { IncidentsModule } from './modules/incidents/incidents.module';
 import { InspectionsModule } from './modules/inspections/inspections.module';
 import { OrganizationModule } from './modules/organization/organization.module';
 import { RolesModule } from './modules/roles/roles.module';
+import { SprModule } from './modules/spr/spr.module';
 import { UsersModule } from './modules/users/users.module';
 import { WorkflowsModule } from './modules/workflows/workflows.module';
 
@@ -35,6 +36,7 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
     WorkflowsModule,
     InspectionsModule,
     IncidentsModule,
+    SprModule,
   ],
 })
 export class AppModule {}

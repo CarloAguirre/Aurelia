@@ -1,0 +1,69 @@
+### Aurelia API — Phase 4B inspections collection
+### VS Code REST Client
+
+@baseUrl = http://localhost:3000
+@inspectionTypeId = 00000000-0000-0000-0000-000000000001
+@templateId = 00000000-0000-0000-0000-000000000002
+@inspectionId = 00000000-0000-0000-0000-000000000003
+@checklistItemId = 00000000-0000-0000-0000-000000000004
+
+### List inspection types
+GET {{baseUrl}}/api/inspections/types
+
+### List checklist templates
+GET {{baseUrl}}/api/inspections/templates
+
+### Create inspection
+POST {{baseUrl}}/api/inspections
+Content-Type: application/json
+
+{
+  "inspectionTypeId": "{{inspectionTypeId}}",
+  "templateId": "{{templateId}}",
+  "title": "Inspeccion de prueba",
+  "description": "Registro MVP para validar Fase 4B",
+  "scheduledAt": "2026-06-24T14:00:00.000Z",
+  "latitude": -33.4489,
+  "longitude": -70.6693,
+  "notes": "Creada desde REST Client"
+}
+
+### List inspections
+GET {{baseUrl}}/api/inspections
+
+### List inspections by status
+GET {{baseUrl}}/api/inspections?status=draft
+
+### Get inspection detail
+GET {{baseUrl}}/api/inspections/{{inspectionId}}
+
+### Update inspection
+PATCH {{baseUrl}}/api/inspections/{{inspectionId}}
+Content-Type: application/json
+
+{
+  "status": "in_progress",
+  "startedAt": "2026-06-24T14:10:00.000Z",
+  "reason": "Inicio de ejecucion"
+}
+
+### Update inspection status only
+PATCH {{baseUrl}}/api/inspections/{{inspectionId}}/status
+Content-Type: application/json
+
+{
+  "status": "submitted",
+  "comment": "Inspeccion enviada a revision"
+}
+
+### Upsert checklist answer
+POST {{baseUrl}}/api/inspections/{{inspectionId}}/answers
+Content-Type: application/json
+
+{
+  "checklistItemId": "{{checklistItemId}}",
+  "answerValue": "compliant",
+  "answerText": "Respuesta de prueba",
+  "answeredAt": "2026-06-24T14:20:00.000Z",
+  "notes": "Respuesta registrada desde REST Client"
+}

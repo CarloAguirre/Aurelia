@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { CommentResponse, EvidenceLinkResponse, EvidenceResponse } from '@aurelia/contracts';
 import { CreateInspectionCommentDto } from './dto/create-inspection-comment.dto';
 import { LinkInspectionEvidenceDto } from './dto/link-inspection-evidence.dto';
@@ -38,5 +39,16 @@ export class InspectionTransversalController {
   @Get(':id/export')
   getExportPayload(@Param('id', ParseUUIDPipe) id: string): Promise<Record<string, unknown>> {
     return this.inspectionTransversalService.getExportPayload(id);
+  }
+
+  @Get(':id/export/pdf')
+  async getExportPdf(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res() response: Response,
+  ): Promise<void> {
+    const pdf = await this.inspectionTransversalService.getExportPdf(id);
+    response.setHeader('Content-Type', 'application/pdf');
+    response.setHeader('Content-Disposition', `attachment; filename="inspection-${id}.pdf"`);
+    response.send(pdf);
   }
 }

@@ -1,0 +1,80 @@
+### Aurelia API — Phase 5 incidents
+
+@baseUrl = http://localhost:3000
+@incidentTypeId = replace-with-incident-type-id
+@incidentLevelId = replace-with-incident-level-id
+@incidentId = replace-with-incident-id
+
+# ──────────────────────────────────────────────
+# Catalogs
+# ──────────────────────────────────────────────
+
+### List incident types
+GET {{baseUrl}}/api/incidents/types
+
+### List incident levels
+GET {{baseUrl}}/api/incidents/levels
+
+# ──────────────────────────────────────────────
+# Incidents
+# ──────────────────────────────────────────────
+
+### Create incident
+POST {{baseUrl}}/api/incidents
+Content-Type: application/json
+
+{
+  "incidentTypeId": "{{incidentTypeId}}",
+  "incidentLevelId": "{{incidentLevelId}}",
+  "title": "Derrame menor en área de prueba",
+  "description": "Registro de prueba para validar el flujo de incidentes fase 5B.",
+  "occurredAt": "2026-06-24T01:00:00.000Z",
+  "immediateResponseSummary": "Se aisló el área y se contuvo el evento.",
+  "environmentalImpactSummary": "Sin impacto ambiental observable al momento del reporte."
+}
+
+### List incidents
+GET {{baseUrl}}/api/incidents
+
+### List incidents by status
+GET {{baseUrl}}/api/incidents?status=reported
+
+### Get incident detail
+GET {{baseUrl}}/api/incidents/{{incidentId}}
+
+### Update incident
+PATCH {{baseUrl}}/api/incidents/{{incidentId}}
+Content-Type: application/json
+
+{
+  "title": "Derrame menor en área de prueba actualizado",
+  "environmentalImpactSummary": "Evento controlado y sin impacto ambiental observable."
+}
+
+### Update incident status
+PATCH {{baseUrl}}/api/incidents/{{incidentId}}/status
+Content-Type: application/json
+
+{
+  "status": "under_review",
+  "comment": "Pasa a revisión ambiental."
+}
+
+# ──────────────────────────────────────────────
+# Flash Report
+# ──────────────────────────────────────────────
+
+### Create or update flash report
+POST {{baseUrl}}/api/incidents/{{incidentId}}/flash-report
+Content-Type: application/json
+
+{
+  "summary": "Flash Report de prueba para incidente ambiental controlado.",
+  "immediateCauses": "Falla operacional durante una maniobra de prueba.",
+  "affectedComponents": "Área operacional de prueba.",
+  "potentialImpact": "Potencial afectación localizada si no se contenía oportunamente.",
+  "reporterName": "Usuario de prueba"
+}
+
+### Get flash report
+GET {{baseUrl}}/api/incidents/{{incidentId}}/flash-report

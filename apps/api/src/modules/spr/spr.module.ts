@@ -7,6 +7,8 @@ import { SprParameterAreaAssignmentEntity } from './entities/spr-parameter-area-
 import { SprParameterEntity } from './entities/spr-parameter.entity';
 import { SprRecordApprovalEntity } from './entities/spr-record-approval.entity';
 import { SprUnitEntity } from './entities/spr-unit.entity';
+import { SprController } from './spr.controller';
+import { SprService } from './spr.service';
 
 @Module({
   imports: [
@@ -20,5 +22,8 @@ import { SprUnitEntity } from './entities/spr-unit.entity';
       SprConsolidationRuleEntity,
     ]),
   ],
+  controllers: [SprController],
+  providers: [SprService],
+  exports: [SprService],
 })
 export class SprModule {}

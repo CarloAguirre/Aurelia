@@ -14,6 +14,6 @@ export class IncidentsController {
 
   @Post()
   create(@Body() dto: CreateIncidentDto): Promise<IncidentResponse> {
-    return this.incidentsService.create(dto, 'system');
+    return this.incidentsService.create(dto);
   }
 }

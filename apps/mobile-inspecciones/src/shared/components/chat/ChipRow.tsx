@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
 
 export type ChipVariant = 'default' | 'selected-gold' | 'selected-navy';
@@ -35,11 +35,7 @@ interface ChipRowProps {
 export function ChipRow({ chips, selected, onSelect, variant = 'gold' }: ChipRowProps) {
   return (
     <View style={styles.container}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+      <View style={styles.chipWrap}>
         {chips.map((chip) => {
           const isSelected = selected === chip;
           const chipVariant: ChipVariant = isSelected
@@ -54,7 +50,7 @@ export function ChipRow({ chips, selected, onSelect, variant = 'gold' }: ChipRow
             />
           );
         })}
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -84,11 +80,10 @@ const styles = StyleSheet.create({
   container: {
     marginLeft: 33,
   },
-  scrollContent: {
+  chipWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm - 2,
-    paddingRight: spacing.md,
   },
   chip: {
     paddingHorizontal: spacing.md,

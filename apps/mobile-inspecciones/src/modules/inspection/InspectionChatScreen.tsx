@@ -74,6 +74,24 @@ function calcNivel(p: number, c: number): string {
 
 const SLA_LABEL: Record<string, string> = { Bajo: '14 días', Medio: '7 días', Alto: '3 días', Crítico: '1 día' };
 
+const TIPO_ICON: Record<string, string> = {
+  HALLAZGO: '🔍',
+  CHECKLIST: '📋',
+  ROUTINE: '📋',
+  PREVENTIVE: '🛡',
+  REGULATORY: '📜',
+};
+
+function tipoIcon(code: string, name: string): string {
+  if (TIPO_ICON[code.toUpperCase()]) return TIPO_ICON[code.toUpperCase()];
+  const n = name.toLowerCase();
+  if (n.includes('hallazgo')) return '🔍';
+  if (n.includes('checklist') || n.includes('normativ')) return '📋';
+  if (n.includes('preventiv')) return '🛡';
+  if (n.includes('regulat') || n.includes('normativ')) return '📜';
+  return '📋';
+}
+
 // ── Message types ───────────────────────────────────────────────────────────
 type MessageItem =
   | { id: string; type: 'bot'; text: string }
@@ -643,7 +661,7 @@ export function InspectionChatScreen() {
         return (
           <QuickOpts
             key={msg.id}
-            options={msg.tipos.map((t) => ({ value: t.id, label: t.name }))}
+            options={msg.tipos.map((t) => ({ value: t.id, label: t.name, icon: tipoIcon(t.code, t.name) }))}
             selected={isResolved ? (flow.inspectionTypeId ?? null) : null}
             onSelect={(id) => {
               if (isResolved) return;

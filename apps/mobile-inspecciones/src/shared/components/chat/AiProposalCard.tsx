@@ -28,6 +28,7 @@ export function AiProposalCard({
         <Text style={styles.label}>Medida correctiva</Text>
         <Text style={styles.suggestion}>{suggestion}</Text>
         <View style={styles.meta}>
+          <Text style={styles.metaIcon}>📈</Text>
           <Text style={styles.metaText}>
             Basada en historial 2023–2026 · Gold Fields Salares Norte
           </Text>
@@ -108,7 +109,11 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
+  metaIcon: { fontSize: 9, color: colors.teal },
   metaText: { fontSize: fontSize.xs, color: colors.muted },
   actions: {
     flexDirection: 'row',

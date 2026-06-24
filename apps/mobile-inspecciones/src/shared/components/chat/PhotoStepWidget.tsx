@@ -43,42 +43,46 @@ async function launchGallery(onCapture: (uri: string) => void) {
 }
 
 export function PhotoStepWidget({ onSkip, onCapture, resolved = false }: Props) {
+  if (resolved) {
+    return (
+      <View style={[styles.resolvedCard, styles.marginLeft]}>
+        <Text style={styles.resolvedIcon}>✓</Text>
+        <View>
+          <Text style={styles.resolvedTitle}>Foto procesada ✓</Text>
+          <Text style={styles.resolvedSub}>GPS y hora registrados automáticamente</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, styles.marginLeft]}>
       <View style={styles.iconBox}>
         <Text style={styles.icon}>📷</Text>
       </View>
       <Text style={styles.title}>Adjuntar fotografía del hallazgo</Text>
-      <View style={styles.actions}>
+      <Text style={styles.subtitle}>Fecha, hora y GPS se registran automáticamente</Text>
+      <View style={styles.btnRow}>
         <TouchableOpacity
-          style={[styles.btn, styles.btnPrimary, resolved && styles.btnDisabled]}
-          onPress={resolved ? undefined : () => launchCamera(onCapture)}
+          style={styles.foOpt}
+          onPress={() => launchCamera(onCapture)}
           activeOpacity={0.7}
-          disabled={resolved}
         >
-          <Text style={styles.btnPrimaryText}>📷 Tomar foto</Text>
+          <Text style={styles.foOptIcon}>📷</Text>
+          <Text style={styles.foOptText}>Tomar foto</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.btn, styles.btnOutline, resolved && styles.btnDisabled]}
-          onPress={resolved ? undefined : () => launchGallery(onCapture)}
+          style={styles.foOpt}
+          onPress={() => launchGallery(onCapture)}
           activeOpacity={0.7}
-          disabled={resolved}
         >
-          <Text style={[styles.btnOutlineText, resolved && styles.textDisabled]}>
-            🖼 Abrir galería
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.btn, styles.btnGhost, resolved && styles.btnDisabled]}
-          onPress={resolved ? undefined : onSkip}
-          activeOpacity={0.7}
-          disabled={resolved}
-        >
-          <Text style={[styles.btnGhostText, resolved && styles.textDisabled]}>
-            {resolved ? '✓ Completado' : 'Continuar sin foto'}
-          </Text>
+          <Text style={styles.foOptIcon}>🖼</Text>
+          <Text style={styles.foOptText}>Desde galería</Text>
         </TouchableOpacity>
       </View>
+      <TouchableOpacity onPress={onSkip} activeOpacity={0.7} style={styles.skipBtn}>
+        <Text style={styles.skipText}>Continuar sin foto</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -105,49 +109,57 @@ const styles = StyleSheet.create({
   },
   icon: { fontSize: 18 },
   title: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.body },
-  actions: {
-    flexDirection: 'column',
-    gap: spacing.xs,
+  subtitle: { fontSize: fontSize.xs, color: colors.placeholder, textAlign: 'center' },
+  btnRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
     width: '100%',
   },
-  btn: {
-    borderRadius: radius.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    alignItems: 'center',
+  foOpt: {
+    flex: 1,
+    height: 34,
+    borderRadius: radius.sm + 2,
+    borderWidth: 1.5,
+    borderColor: colors.borderMid,
+    backgroundColor: colors.surface,
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
+    gap: 5,
   },
-  btnPrimary: {
-    backgroundColor: colors.teal,
-  },
-  btnOutline: {
-    borderWidth: 1,
-    borderColor: colors.teal,
-    backgroundColor: 'transparent',
-  },
-  btnGhost: {
-    backgroundColor: 'transparent',
-  },
-  btnDisabled: {
-    opacity: 0.4,
-  },
-  btnPrimaryText: {
+  foOptIcon: { fontSize: fontSize.sm },
+  foOptText: {
     fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+    color: colors.body,
+  },
+  skipBtn: {
+    paddingVertical: spacing.xs,
+  },
+  skipText: {
+    fontSize: fontSize.sm,
+    color: colors.placeholder,
+  },
+  resolvedCard: {
+    backgroundColor: colors.successSurf,
+    borderRadius: radius.md + 2,
+    padding: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  resolvedIcon: {
+    fontSize: fontSize.xl,
+    color: colors.successTxt,
+  },
+  resolvedTitle: {
+    fontSize: fontSize.md,
     fontWeight: fontWeight.bold,
-    color: colors.white,
+    color: colors.successTxt,
   },
-  btnOutlineText: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-    color: colors.teal,
-  },
-  btnGhostText: {
-    fontSize: fontSize.sm,
-    color: colors.placeholder,
-  },
-  textDisabled: {
-    color: colors.placeholder,
+  resolvedSub: {
+    fontSize: fontSize.xs,
+    color: colors.successTxt,
+    marginTop: 1,
   },
 });

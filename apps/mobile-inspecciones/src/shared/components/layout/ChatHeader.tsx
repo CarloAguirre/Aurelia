@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, fontSize, fontWeight } from '../../theme/tokens';
 
@@ -13,7 +13,9 @@ export const STEP_LABELS = [
   'Completado',
 ];
 
-const TOTAL_STEPS = STEP_LABELS.length - 1;
+const STEP_PCT = ['14%', '28%', '42%', '57%', '71%', '86%', '100%'];
+
+const STEP_DOTS = STEP_LABELS.length;
 
 interface Props {
   currentStep: number;
@@ -22,6 +24,7 @@ interface Props {
 
 export function ChatHeader({ currentStep, agentStatus = 'active' }: Props) {
   const insets = useSafeAreaInsets();
+  const safeStep = Math.min(currentStep, STEP_LABELS.length - 1);
 
   return (
     <View style={[styles.wrapper, { paddingTop: insets.top }]}>
@@ -44,29 +47,32 @@ export function ChatHeader({ currentStep, agentStatus = 'active' }: Props) {
             </View>
           </View>
         </View>
+        <TouchableOpacity style={styles.menuBtn} activeOpacity={0.7}>
+          <Text style={styles.menuIcon}>⋮</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Progress bar */}
       <View style={styles.progressWrapper}>
         <View style={styles.stepsRow}>
-          {Array.from({ length: TOTAL_STEPS }, (_, i) => (
+          {Array.from({ length: STEP_DOTS }, (_, i) => (
             <View
               key={i}
               style={[
                 styles.step,
-                i < currentStep && styles.stepDone,
-                i === currentStep && styles.stepActive,
+                i < safeStep && styles.stepDone,
+                i === safeStep && styles.stepActive,
               ]}
             />
           ))}
         </View>
         <View style={styles.progressLabels}>
           <Text style={styles.stepLabel}>
-            <Text style={styles.stepLabelBold}>Paso {currentStep + 1} · {STEP_LABELS[currentStep]}</Text>
+            <Text style={styles.stepLabelBold}>
+              Paso {safeStep + 1} · {STEP_LABELS[safeStep]}
+            </Text>
           </Text>
-          <Text style={styles.stepLabel}>
-            {Math.round(((currentStep + 1) / TOTAL_STEPS) * 100)}%
-          </Text>
+          <Text style={styles.stepLabel}>{STEP_PCT[safeStep]}</Text>
         </View>
       </View>
     </View>
@@ -123,6 +129,15 @@ const styles = StyleSheet.create({
   },
   statusIndicatorThinking: { backgroundColor: colors.gold },
   statusText: { fontSize: fontSize.sm, color: 'rgba(255,255,255,0.55)' },
+  menuBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  menuIcon: { fontSize: 18, color: 'rgba(255,255,255,0.6)' },
   progressWrapper: {
     paddingHorizontal: spacing.lg,
     paddingBottom: 7,

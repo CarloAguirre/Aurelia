@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Animated, StyleSheet } from 'react-native';
-import { colors, radius, spacing } from '../../theme/tokens';
+import { View, Text, Animated, StyleSheet } from 'react-native';
+import { colors, radius, spacing, fontWeight } from '../../theme/tokens';
 
 const DOT_SIZE = 6;
 
@@ -39,7 +39,7 @@ export function TypingIndicator() {
   return (
     <View style={styles.row}>
       <View style={styles.avatar}>
-        <View style={styles.avatarInner} />
+        <Text style={styles.avatarIcon}>✦</Text>
       </View>
       <View style={styles.bubble}>
         <AnimatedDot delay={0} />
@@ -64,11 +64,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarInner: {
-    width: 10,
-    height: 10,
-    borderRadius: radius.full,
-    backgroundColor: colors.navy,
+  avatarIcon: {
+    fontSize: 10,
+    color: colors.navy,
+    fontWeight: fontWeight.bold,
   },
   bubble: {
     flexDirection: 'row',

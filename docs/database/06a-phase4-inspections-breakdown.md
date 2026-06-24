@@ -41,38 +41,77 @@ Criterios de salida:
 - `@aurelia/contracts` expone enums, interfaces y DTOs de inspecciones.
 - No se implementan controllers funcionales todavía.
 
+Estado: cerrada.
+
 ## Fase 4B - API operativa mínima
 
-Objetivo: habilitar CRUD y lectura funcional del módulo.
+Objetivo: habilitar la primera operación real del módulo sin incorporar todavía hallazgos, seguimientos, cierre, workflow ni dashboard.
 
-Endpoints propuestos:
+Endpoints incluidos:
 
 ```txt
 GET    /api/inspections/types
 GET    /api/inspections/templates
-POST   /api/inspections/templates
 POST   /api/inspections
 GET    /api/inspections
 GET    /api/inspections/:id
 PATCH  /api/inspections/:id
+PATCH  /api/inspections/:id/status
 POST   /api/inspections/:id/answers
-POST   /api/inspections/:id/findings
-PATCH  /api/inspections/findings/:findingId
-POST   /api/inspections/findings/:findingId/followups
-POST   /api/inspections/:id/close
-GET    /api/inspections/dashboard/summary
+```
+
+Entregables:
+
+```txt
+apps/api/src/modules/inspections/inspections.controller.ts
+apps/api/src/modules/inspections/inspections.service.ts
+apps/api/src/modules/inspections/dto/update-inspection.dto.ts
+apps/api/src/modules/inspections/dto/upsert-inspection-answer.dto.ts
+packages/contracts/src/dtos/inspections/update-inspection.request.ts
+packages/contracts/src/dtos/inspections/upsert-inspection-answer.request.ts
+docs/api/phase4.http
 ```
 
 Criterios de salida:
 
-- Se puede crear una inspección desde un template.
-- Se pueden registrar respuestas de checklist.
-- Se pueden crear hallazgos.
-- Se pueden crear hasta tres seguimientos por hallazgo.
-- Se puede cerrar una inspección solo si no tiene hallazgos abiertos.
-- Se registra auditoría explícita en acciones relevantes.
+- Se listan tipos de inspección.
+- Se listan templates con secciones e ítems.
+- Se puede crear una inspección desde un tipo y template válidos.
+- Se puede listar y consultar una inspección por ID.
+- Se puede actualizar una inspección y registrar historial cuando cambia el estado.
+- Se pueden registrar/actualizar respuestas de checklist.
+- `pnpm build --force`, `pnpm lint --force` y `pnpm migration:run` pasan.
 
-## Fase 4C - Integración transversal
+Queda fuera de 4B:
+
+- Crear/editar templates por API.
+- Crear hallazgos.
+- Seguimientos de hallazgos.
+- Cierre de inspección.
+- Dashboard de inspecciones.
+- Integración formal con evidencias, comentarios, auditoría y workflow.
+
+## Fase 4C - Hallazgos, seguimientos y cierre
+
+Objetivo: completar el flujo operativo de una inspección con desviaciones, acciones de seguimiento y reglas de cierre.
+
+Endpoints propuestos:
+
+```txt
+POST   /api/inspections/:id/findings
+PATCH  /api/inspections/findings/:findingId
+POST   /api/inspections/findings/:findingId/followups
+POST   /api/inspections/:id/close
+```
+
+Reglas:
+
+- Una inspección puede tener múltiples hallazgos.
+- Un hallazgo puede tener máximo tres seguimientos.
+- Una inspección solo se puede cerrar si no tiene hallazgos abiertos.
+- Al crear/cerrar hallazgos se deben recalcular `findings_count` y `open_findings_count`.
+
+## Fase 4D - Integración transversal
 
 Objetivo: conectar inspecciones con evidencias, comentarios, auditoría y workflow.
 
@@ -80,10 +119,10 @@ Alcance:
 
 - Vincular evidencias vía `evidence_links` usando `inspection`, `inspection_finding` e `inspection_followup`.
 - Listar comentarios por inspección/hallazgo/seguimiento.
+- Registrar auditoría explícita en acciones relevantes.
 - Iniciar workflow de validación cuando una inspección se envía a revisión.
-- Registrar `inspection_status_history` en cambios de estado.
 
-## Fase 4D - Exportación y dashboard inicial
+## Fase 4E - Exportación y dashboard inicial
 
 Objetivo: agregar salidas operativas sin bloquear el flujo base.
 

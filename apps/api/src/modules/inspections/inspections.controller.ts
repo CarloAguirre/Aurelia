@@ -1,22 +1,54 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
-import { InspectionResponse } from '@aurelia/contracts';
-import { InspectionsService } from './inspections.service';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import {
+  InspectionChecklistAnswerResponse,
+  InspectionChecklistTemplateResponse,
+  InspectionResponse,
+  InspectionTypeResponse,
+} from '@aurelia/contracts';
 import { CreateInspectionDto } from './dto/create-inspection.dto';
+import { UpdateInspectionDto } from './dto/update-inspection.dto';
 import { UpdateInspectionStatusDto } from './dto/update-inspection-status.dto';
+import { UpsertInspectionAnswerDto } from './dto/upsert-inspection-answer.dto';
+import { InspectionsService } from './inspections.service';
 
 @Controller('inspections')
 export class InspectionsController {
   constructor(private readonly inspectionsService: InspectionsService) {}
 
+  @Get('types')
+  findTypes(): Promise<InspectionTypeResponse[]> {
+    return this.inspectionsService.findTypes();
+  }
+
+  @Get('templates')
+  findTemplates(): Promise<InspectionChecklistTemplateResponse[]> {
+    return this.inspectionsService.findTemplates();
+  }
+
   @Get()
-  findAll(): Promise<InspectionResponse[]> {
-    return this.inspectionsService.findAll();
+  findAll(
+    @Query('status') status?: string,
+    @Query('inspectionTypeId') inspectionTypeId?: string,
+  ): Promise<InspectionResponse[]> {
+    return this.inspectionsService.findAll({ status, inspectionTypeId });
+  }
+
+  @Get(':id')
+  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<InspectionResponse> {
+    return this.inspectionsService.findOne(id);
   }
 
   @Post()
   create(@Body() dto: CreateInspectionDto): Promise<InspectionResponse> {
-    // inspectorId provendrá del usuario autenticado cuando exista auth real.
-    return this.inspectionsService.create(dto, 'system');
+    return this.inspectionsService.create(dto, null);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateInspectionDto,
+  ): Promise<InspectionResponse> {
+    return this.inspectionsService.update(id, dto, null);
   }
 
   @Patch(':id/status')
@@ -24,6 +56,14 @@ export class InspectionsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateInspectionStatusDto,
   ): Promise<InspectionResponse> {
-    return this.inspectionsService.updateStatus(id, dto);
+    return this.inspectionsService.updateStatus(id, dto, null);
+  }
+
+  @Post(':id/answers')
+  upsertAnswer(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpsertInspectionAnswerDto,
+  ): Promise<InspectionChecklistAnswerResponse> {
+    return this.inspectionsService.upsertAnswer(id, dto, null);
   }
 }

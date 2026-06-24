@@ -177,7 +177,6 @@ export function InspectionChatScreen() {
   useEffect(() => {
     const t = setTimeout(doInit, 500);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Area selected ────────────────────────────────────────────────────────
@@ -404,7 +403,7 @@ export function InspectionChatScreen() {
       addMsg({ type: 'user', text: 'No, pasar a empresa y personal' });
       await delay(300);
 
-      async function fetchAndShowCompanies() {
+      const fetchAndShowCompanies = async () => {
         addMsg({ type: 'typing' });
         let companies: CompanyResponse[];
         try {
@@ -438,7 +437,7 @@ export function InspectionChatScreen() {
         }
         addMsg({ type: 'bot', text: '¿Qué empresa contratista está involucrada en esta inspección?' });
         addMsg({ type: 'company_chips', companies });
-      }
+      };
 
       await fetchAndShowCompanies();
     }

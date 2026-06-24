@@ -1,4 +1,4 @@
-import { IsISO8601, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import { IsISO8601, IsLatitude, IsLongitude, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 import { CreateInspectionRequest, InspectionConstraints } from '@aurelia/contracts';
 
 export class CreateInspectionDto implements CreateInspectionRequest {
@@ -40,9 +40,11 @@ export class CreateInspectionDto implements CreateInspectionRequest {
   scheduledAt?: string | null;
 
   @IsOptional()
+  @IsLatitude()
   latitude?: number | null;
 
   @IsOptional()
+  @IsLongitude()
   longitude?: number | null;
 
   @IsOptional()

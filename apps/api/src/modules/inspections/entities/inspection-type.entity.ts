@@ -1,13 +1,4 @@
-import { InspectionType, RecordStatus } from '@aurelia/contracts';
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  OneToMany,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from 'typeorm';
-import { InspectionFormTemplateEntity } from './inspection-form-template.entity';
+import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('inspection_types')
 export class InspectionTypeEntity {
@@ -15,7 +6,7 @@ export class InspectionTypeEntity {
   id: string;
 
   @Column({ type: 'varchar', length: 80, unique: true })
-  code: InspectionType;
+  code: string;
 
   @Column({ type: 'varchar', length: 200 })
   name: string;
@@ -23,16 +14,8 @@ export class InspectionTypeEntity {
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
-  @Column({
-    type: 'enum',
-    enum: RecordStatus,
-    enumName: 'record_status',
-    default: RecordStatus.ACTIVE,
-  })
-  status: RecordStatus;
-
-  @OneToMany(() => InspectionFormTemplateEntity, (template) => template.inspectionType)
-  templates: InspectionFormTemplateEntity[];
+  @Column({ type: 'varchar', length: 80, default: 'active' })
+  status: string;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

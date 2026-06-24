@@ -8,6 +8,23 @@ interface Props {
   time?: string;
 }
 
+function FormattedText({ text }: { text: string }) {
+  const parts = text.split(/(\*\*.*?\*\*)/g).filter(Boolean);
+  return (
+    <Text style={styles.text}>
+      {parts.map((part, index) => {
+        const strong = part.startsWith('**') && part.endsWith('**');
+        const value = strong ? part.slice(2, -2) : part;
+        return (
+          <Text key={`${index}-${value}`} style={strong ? styles.strong : undefined}>
+            {value}
+          </Text>
+        );
+      })}
+    </Text>
+  );
+}
+
 export function BotBubble({ text, time }: Props) {
   const now = new Date();
   const timeStr = time ?? `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -18,7 +35,7 @@ export function BotBubble({ text, time }: Props) {
         <Text style={styles.avatarIcon}>✦</Text>
       </View>
       <View style={styles.bubble}>
-        <Text style={styles.text}>{text}</Text>
+        <FormattedText text={text} />
         <Text style={styles.time}>{timeStr}</Text>
       </View>
     </View>
@@ -45,6 +62,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: colors.navy,
     fontWeight: fontWeight.bold,
+    lineHeight: 12,
   },
   bubble: {
     maxWidth: '85%',
@@ -64,6 +82,10 @@ const styles = StyleSheet.create({
     fontSize: fontSize.base,
     color: colors.primary,
     lineHeight: fontSize.base * 1.5,
+    fontWeight: fontWeight.regular,
+  },
+  strong: {
+    fontWeight: fontWeight.bold,
   },
   time: {
     fontSize: fontSize.xs,

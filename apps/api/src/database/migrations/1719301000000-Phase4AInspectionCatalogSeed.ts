@@ -7,12 +7,12 @@ export class Phase4AInspectionCatalogSeed1719301000000 implements MigrationInter
     await queryRunner.query(`
       INSERT INTO inspection_types (code, name, description, status)
       VALUES
-        ('planned', 'Inspección planificada', 'Inspección programada'),
-        ('routine', 'Inspección rutinaria', 'Inspección periódica'),
-        ('preventive', 'Inspección preventiva', 'Inspección preventiva'),
-        ('regulatory', 'Inspección normativa', 'Inspección regulatoria'),
-        ('critical_control', 'Inspección de control crítico', 'Verificación de control crítico'),
-        ('environmental', 'Inspección ambiental', 'Inspección ambiental general')
+        ('planned', 'Inspección planificada', 'Inspección programada', 'active'),
+        ('routine', 'Inspección rutinaria', 'Inspección periódica', 'active'),
+        ('preventive', 'Inspección preventiva', 'Inspección preventiva', 'active'),
+        ('regulatory', 'Inspección normativa', 'Inspección regulatoria', 'active'),
+        ('critical_control', 'Inspección de control crítico', 'Verificación de control crítico', 'active'),
+        ('environmental', 'Inspección ambiental', 'Inspección ambiental general', 'active')
       ON CONFLICT (code) DO NOTHING
     `);
 

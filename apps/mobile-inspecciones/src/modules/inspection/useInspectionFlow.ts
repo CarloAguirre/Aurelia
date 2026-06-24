@@ -18,7 +18,9 @@ export type FlowStep =
 
 export interface ObservacionDraft {
   desc: string | null;
-  foto: boolean;       // Mobile D: always false until camera integrated
+  foto: boolean;
+  fotoUri: string | null;  // local camera/gallery URI (Mobile D)
+  fileId: string | null;   // uploaded file ID from /files/upload (Mobile D)
   medida: string | null;
   medidaOrigen: 'ia' | 'manual' | null;
   prob: number | null;
@@ -56,7 +58,9 @@ export interface InspectionFlowState {
   setSector: (id: string, name: string) => void;
   setInspectionType: (id: string, name: string) => void;
   setObsDesc: (desc: string) => void;
-  markFotoSkipped: () => void; // Mobile D placeholder
+  setFotoUri: (uri: string) => void;  // Mobile D: store captured photo URI
+  setFileId: (fileId: string) => void; // Mobile D: store uploaded file ID
+  markFotoSkipped: () => void;
   setAiLoading: (loading: boolean) => void;
   setAiSuggestion: (text: string, fallback: boolean) => void;
   acceptMedida: (medida: string, origen: 'ia' | 'manual') => void;
@@ -75,6 +79,8 @@ function emptyObs(): ObservacionDraft {
   return {
     desc: null,
     foto: false,
+    fotoUri: null,
+    fileId: null,
     medida: null,
     medidaOrigen: null,
     prob: null,
@@ -115,7 +121,13 @@ export const useInspectionFlow = create<InspectionFlowState>((set) => ({
   setObsDesc: (desc) =>
     set((s) => ({ currentObs: { ...s.currentObs, desc }, step: 'obs_foto' })),
 
-  // Mobile D: camera/upload not yet integrated — desc flows directly to AI suggest
+  setFotoUri: (uri) =>
+    set((s) => ({ currentObs: { ...s.currentObs, fotoUri: uri, foto: true } })),
+
+  setFileId: (fileId) =>
+    set((s) => ({ currentObs: { ...s.currentObs, fileId } })),
+
+  // step transitions to obs_ai_suggest, marks aiLoading — fotoUri/fileId already stored above
   markFotoSkipped: () =>
     set((s) => ({ currentObs: { ...s.currentObs, foto: false }, step: 'obs_ai_suggest', aiLoading: true })),
 

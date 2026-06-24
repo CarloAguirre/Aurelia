@@ -40,6 +40,7 @@ import {
   suggestCorrectiveMeasure,
   suggestCompany,
 } from '../../shared/services/api/ai.api';
+import { uploadFile } from '../../shared/services/api/files.api';
 
 // ── Query keys ─────────────────────────────────────────────────────────────
 const AREAS_KEY = ['areas'] as const;
@@ -253,6 +254,30 @@ export function InspectionChatScreen() {
     flow.markFotoSkipped();
     addMsg({ type: 'bot', text: 'Sin foto. Analizando el hallazgo con IA…' });
     await askAiSuggestion(pendingDescRef.current);
+  }
+
+  async function handlePhotoCapture(uri: string, widgetId: string) {
+    resolveWidget(widgetId);
+    flow.setFotoUri(uri);
+    addMsg({ type: 'bot', text: 'Foto capturada. Subiendo…' });
+
+    async function doUpload() {
+      addMsg({ type: 'typing' });
+      try {
+        const res = await uploadFile(uri, `insp-${Date.now()}.jpg`);
+        flow.setFileId(res.id);
+        flow.markFotoSkipped(); // transitions step to obs_ai_suggest
+      } catch {
+        removeTyping();
+        addErrorMsg('Error al subir la foto. Verifica la conexión.', doUpload);
+        return;
+      }
+      removeTyping();
+      addMsg({ type: 'bot', text: '📷 Foto adjuntada ✓. Analizando hallazgo con IA…' });
+      await askAiSuggestion(pendingDescRef.current);
+    }
+
+    await doUpload();
   }
 
   // ── AI suggestion ────────────────────────────────────────────────────────
@@ -488,6 +513,7 @@ export function InspectionChatScreen() {
           <PhotoStepWidget
             key={msg.id}
             onSkip={() => handlePhotoSkip(msg.id)}
+            onCapture={(uri) => handlePhotoCapture(uri, msg.id)}
             resolved={isResolved}
           />
         );

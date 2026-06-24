@@ -1,6 +1,8 @@
 export enum InspectionType {
-  ROUTINE = 'ROUTINE',
-  PREVENTIVE = 'PREVENTIVE',
-  REGULATORY = 'REGULATORY',
-  CRITICAL_CONTROL = 'CRITICAL_CONTROL',
+  PLANNED = 'planned',
+  ROUTINE = 'routine',
+  PREVENTIVE = 'preventive',
+  REGULATORY = 'regulatory',
+  CRITICAL_CONTROL = 'critical_control',
+  ENVIRONMENTAL = 'environmental',
 }

@@ -7,6 +7,7 @@ import {
   InspectionChecklistTemplateResponse,
   InspectionDashboardSummaryResponse,
   InspectionFindingResponse,
+  InspectionFindingSeverity,
   InspectionFindingStatus,
   InspectionFollowupResponse,
   InspectionFollowupStatus,
@@ -140,16 +141,31 @@ export class InspectionsService {
     const findings = await this.findings.find();
     const byStatus = this.createInspectionStatusCounter();
     const findingsByStatus = this.createFindingStatusCounter();
+    const findingsBySeverity = this.createFindingSeverityCounter();
+    const now = new Date();
+    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     for (const inspection of inspections) byStatus[inspection.status] += 1;
-    for (const finding of findings) findingsByStatus[finding.status] += 1;
+    for (const finding of findings) {
+      findingsByStatus[finding.status] += 1;
+      findingsBySeverity[finding.severity] += 1;
+    }
+
+    const openFindings = findings.filter((finding) => [InspectionFindingStatus.OPEN, InspectionFindingStatus.IN_PROGRESS].includes(finding.status));
+    const overdue = openFindings.filter((finding) => finding.dueAt && finding.dueAt < now).length;
+    const dueSoonNext7Days = openFindings.filter((finding) => finding.dueAt && finding.dueAt >= now && finding.dueAt <= sevenDaysFromNow).length;
+    const withOpenFindings = inspections.filter((inspection) => inspection.openFindingsCount > 0).length;
+    const closedRate = inspections.length === 0 ? 0 : Number(((byStatus[InspectionStatus.CLOSED] / inspections.length) * 100).toFixed(2));
 
     return {
-      inspections: { total: inspections.length, byStatus },
+      inspections: { total: inspections.length, byStatus, withOpenFindings, closedRate },
       findings: {
         total: findings.length,
         byStatus: findingsByStatus,
-        open: findingsByStatus[InspectionFindingStatus.OPEN] + findingsByStatus[InspectionFindingStatus.IN_PROGRESS],
+        bySeverity: findingsBySeverity,
+        open: openFindings.length,
+        overdue,
+        dueSoonNext7Days,
       },
     };
   }
@@ -438,6 +454,10 @@ export class InspectionsService {
 
   private createFindingStatusCounter(): Record<InspectionFindingStatus, number> {
     return { [InspectionFindingStatus.OPEN]: 0, [InspectionFindingStatus.IN_PROGRESS]: 0, [InspectionFindingStatus.CLOSED]: 0, [InspectionFindingStatus.CANCELLED]: 0 };
+  }
+
+  private createFindingSeverityCounter(): Record<InspectionFindingSeverity, number> {
+    return { [InspectionFindingSeverity.LOW]: 0, [InspectionFindingSeverity.MEDIUM]: 0, [InspectionFindingSeverity.HIGH]: 0, [InspectionFindingSeverity.CRITICAL]: 0 };
   }
 
   private toNullableIsoString(value: Date | null): string | null { return value ? value.toISOString() : null; }

@@ -2,6 +2,7 @@
   "expo": {
     "name": "Aurelia Inspecciones",
     "slug": "aurelia-mobile-inspecciones",
+    "scheme": "aurelia-inspecciones",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -16,6 +17,10 @@
     "android": {
       "package": "com.aurelia.inspecciones"
     },
-    "plugins": ["expo-location", "expo-image-picker"]
+    "plugins": [
+      "expo-location",
+      "expo-image-picker",
+      "expo-router"
+    ]
   }
 }

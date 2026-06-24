@@ -2,4 +2,8 @@ export * from './create-inspection.request';
 export * from './update-inspection.request';
 export * from './update-inspection-status.request';
 export * from './upsert-inspection-answer.request';
+export * from './create-inspection-finding.request';
+export * from './update-inspection-finding.request';
+export * from './create-inspection-followup.request';
+export * from './update-inspection-followup.request';
 export * from './inspection.response';

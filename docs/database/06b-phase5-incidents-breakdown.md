@@ -69,24 +69,37 @@ Objetivo:
 - Bloquear cierre de incidente si existen planes abiertos o en progreso.
 - Exponer un dashboard summary inicial.
 
+Estado: completada.
+
 ### Fase 5D - Integración transversal y exportables
 
-Pendiente:
+Alcance implementado:
 
+- `GET /api/incidents/:id/evidences`
+- `POST /api/incidents/:id/evidences/:evidenceId/link`
+- `GET /api/incidents/:id/comments`
+- `POST /api/incidents/:id/comments`
+- `GET /api/incidents/:id/export`
+- `GET /api/incidents/:id/export/pdf`
 - Evidencias vinculadas a incidente mediante `evidence_links`.
-- Comentarios de incidente.
-- Auditoría transversal explícita para acciones críticas.
+- Comentarios de incidente mediante el módulo transversal `comments`.
+- Auditoría explícita para vinculación de evidencias, comentarios y acciones críticas.
 - Exportable JSON/PDF básico de incidente.
-- Evidencias específicas de planes de acción mediante `incident_action_evidences`.
+
+Estado: completada.
 
 ### Fase 5E - Estabilización final
 
-Pendiente:
+Alcance ejecutado:
 
-- Auditoría de mapeos entidad/BD.
-- Colección HTTP completa final.
-- Validación de flujos de cierre.
-- Revisión de consistencia de estados.
+- Auditoría de mapeos TypeORM vs migraciones de incidentes.
+- Colección HTTP completa en `docs/api/phase5.http`.
+- Validación de flujo de cierre con bloqueo por planes abiertos.
+- Revisión de consistencia de estados principales.
+- Cobertura smoke/e2e en `apps/api/src/test/api-smoke.ts`.
+- Checklist final de endpoints en `docs/api/phase5-validation-checklist.md`.
+
+Estado: completada.
 
 ## Reglas principales
 
@@ -100,6 +113,26 @@ Pendiente:
 - El incidente no puede cerrarse si tiene planes de acción abiertos o en progreso.
 - Las evidencias se vinculan con `evidence_links`, salvo evidencias específicas de planes de acción, que usan `incident_action_evidences`.
 - El historial de estado debe registrar cada transición relevante.
+
+## Validación obligatoria
+
+Antes de continuar con el siguiente módulo, ejecutar:
+
+```bash
+cd C:\Users\carlo\Desktop\aurelia\Aurelia
+pnpm build --force
+pnpm lint --force
+cd apps/api
+pnpm migration:run
+pnpm test
+```
+
+Resultado esperado:
+
+- Build sin errores.
+- Lint sin errores.
+- `No migrations are pending`.
+- `api smoke tests passed`.
 
 ## Fuera de Fase 5 inicial
 

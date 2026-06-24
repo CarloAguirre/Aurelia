@@ -39,10 +39,9 @@ spr_consolidation_rules
 
 ### Decisiones
 
-- Las evidencias SPR se vinculan mediante `evidence_links` con `entity_type = spr_monthly_record`.
+- Las evidencias SPR se vinculan mediante `evidence_links` con `entity_type = spr_record`.
 - El seed inicial no carga los 51 parámetros definitivos; deja un catálogo mínimo para validar el modelo.
 - Los parámetros SOX se marcan con `is_sox` y `requires_evidence`.
-- La validación de evidencia obligatoria queda para la fase de API avanzada.
 - `period_year` y `period_month` representan el periodo mensual.
 - `numeric_value`, `text_value` y `boolean_value` soportan parámetros de distinto tipo.
 
@@ -58,7 +57,7 @@ spr_consolidation_rules
 
 ### Estado
 
-Implementado.
+Completado.
 
 ### Incluido
 
@@ -97,15 +96,64 @@ docs/api/phase-spr.http
 - `pnpm migration:run` queda sin pendientes.
 - `pnpm test` cubre el happy path SPR.
 
-## SPR-C - Evidencias y validación SOX
+## SPR-C - Evidencias, comentarios y validación SOX
 
-Pendiente.
+### Estado
 
-- Validar respaldo obligatorio antes de envío o aprobación para parámetros que requieren evidencia.
-- Listar evidencias por registro mensual.
-- Vincular evidencias a `spr_monthly_record`.
-- Integrar comentarios y auditoría.
-- Definir revisión por responsable y gerencia.
+Implementado.
+
+### Incluido
+
+```txt
+GET  /api/spr/monthly-records/:id/evidences
+POST /api/spr/monthly-records/:id/evidences/:evidenceId/link
+GET  /api/spr/monthly-records/:id/comments
+POST /api/spr/monthly-records/:id/comments
+GET  /api/spr/monthly-records/:id/approvals
+POST /api/spr/monthly-records/:id/submit
+POST /api/spr/monthly-records/:id/approve
+POST /api/spr/monthly-records/:id/reject
+```
+
+### Reglas
+
+- Los respaldos SPR usan el catálogo transversal con `entity_type = spr_record`.
+- Si el parámetro tiene `is_sox = true` o `requires_evidence = true`, el registro no puede enviarse ni aprobarse sin evidencia vinculada.
+- `submit` solo permite registros en `draft` o `rejected`.
+- `approve` y `reject` solo permiten registros en `submitted` o `under_review`.
+- `submit` crea o reutiliza una aprobación pendiente en `spr_record_approvals`.
+- `approve` cierra la aprobación como `approved` y registra `approvedAt`.
+- `reject` cierra la aprobación como `rejected` y deja el registro en estado `rejected`.
+- Evidencias, comentarios, submit, approve y reject registran auditoría en `audit_logs`.
+- Los registros `approved` o `closed` no pueden editarse por `PATCH /api/spr/monthly-records/:id`.
+
+### Contratos
+
+```txt
+CreateSprRecordCommentRequest
+LinkSprRecordEvidenceRequest
+SprRecordActionRequest
+```
+
+### Smoke test
+
+`pnpm test` cubre:
+
+- creación de registro mensual SPR.
+- bloqueo de envío SOX sin evidencia.
+- creación y vinculación de evidencia.
+- comentarios por registro.
+- envío a revisión.
+- aprobación.
+- rechazo en un segundo registro.
+- consulta de aprobaciones.
+
+### Criterios de salida
+
+- `pnpm build --force` pasa.
+- `pnpm lint --force` pasa.
+- `pnpm migration:run` queda sin pendientes.
+- `pnpm test` cubre el flujo SPR-C.
 
 ## SPR-D - Dashboard y consolidación
 

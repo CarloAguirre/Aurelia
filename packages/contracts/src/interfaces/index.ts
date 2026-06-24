@@ -7,6 +7,7 @@ export * from './area.interface';
 export * from './critical-control.interface';
 export * from './inspection.interface';
 export * from './incident.interface';
+export * from './spr.interface';
 export * from './evidence.interface';
 export * from './workflow.interface';
 export * from './file.interface';

@@ -4,9 +4,13 @@ SPR se adelanta como siguiente módulo por prioridad funcional, aunque en el roa
 
 ## Objetivo
 
-Implementar la base de datos y contratos compartidos para reportabilidad mensual SPR, con parámetros, unidades, asignaciones por área, registros mensuales, revisiones y reglas de consolidación.
+Implementar la base de datos, contratos compartidos y API operativa para reportabilidad mensual SPR, con parámetros, unidades, asignaciones por área, registros mensuales, revisiones y reglas de consolidación.
 
 ## SPR-A - Modelo de datos y contratos
+
+### Estado
+
+Completado.
 
 ### Incluido
 
@@ -38,7 +42,7 @@ spr_consolidation_rules
 - Las evidencias SPR se vinculan mediante `evidence_links` con `entity_type = spr_monthly_record`.
 - El seed inicial no carga los 51 parámetros definitivos; deja un catálogo mínimo para validar el modelo.
 - Los parámetros SOX se marcan con `is_sox` y `requires_evidence`.
-- La validación de evidencia obligatoria queda para la fase de API.
+- La validación de evidencia obligatoria queda para la fase de API avanzada.
 - `period_year` y `period_month` representan el periodo mensual.
 - `numeric_value`, `text_value` y `boolean_value` soportan parámetros de distinto tipo.
 
@@ -50,29 +54,56 @@ spr_consolidation_rules
 - `pnpm migration:run` repetido queda sin migraciones pendientes.
 - El seed de catálogo SPR es idempotente.
 
-## SPR-B - API mínima
+## SPR-B - API mínima de registros mensuales
 
-Pendiente.
+### Estado
+
+Implementado.
+
+### Incluido
 
 ```txt
-GET  /api/spr/measure-groups
-GET  /api/spr/units
-GET  /api/spr/parameters
-GET  /api/spr/assignments
-POST /api/spr/monthly-records
-GET  /api/spr/monthly-records
-GET  /api/spr/monthly-records/:id
+GET   /api/spr/groups
+GET   /api/spr/measure-groups
+GET   /api/spr/units
+GET   /api/spr/parameters
+GET   /api/spr/assignments
+POST  /api/spr/monthly-records
+GET   /api/spr/monthly-records
+GET   /api/spr/monthly-records/:id
 PATCH /api/spr/monthly-records/:id
-POST /api/spr/monthly-records/:id/submit
-POST /api/spr/monthly-records/:id/approve
+PATCH /api/spr/monthly-records/:id/status
 ```
 
-## SPR-C - Evidencias y validación
+### Reglas
+
+- `POST /api/spr/monthly-records` valida que el parámetro exista.
+- Si viene `assignmentId`, valida que la asignación exista y pertenezca al parámetro.
+- Un registro mensual no se puede duplicar por `parameterId + areaId + periodYear + periodMonth`.
+- El listado soporta filtros por `parameterId`, `areaId`, `status`, `periodYear` y `periodMonth`.
+- Al pasar a `submitted`, se registra `submittedAt`.
+- Al pasar a `approved`, se registra `approvedAt`.
+
+### Colección HTTP
+
+```txt
+docs/api/phase-spr.http
+```
+
+### Criterios de salida
+
+- `pnpm build --force` pasa.
+- `pnpm lint --force` pasa.
+- `pnpm migration:run` queda sin pendientes.
+- `pnpm test` cubre el happy path SPR.
+
+## SPR-C - Evidencias y validación SOX
 
 Pendiente.
 
-- Bloquear envío o aprobación si un parámetro que requiere evidencia no tiene respaldo.
+- Validar respaldo obligatorio antes de envío o aprobación para parámetros que requieren evidencia.
 - Listar evidencias por registro mensual.
+- Vincular evidencias a `spr_monthly_record`.
 - Integrar comentarios y auditoría.
 - Definir revisión por responsable y gerencia.
 
@@ -90,6 +121,6 @@ Pendiente.
 
 Pendiente.
 
-- Cubrir flujo happy path en `pnpm test`.
+- Completar cobertura `pnpm test`.
 - Completar `docs/api/phase-spr.http`.
 - Checklist final de validación.

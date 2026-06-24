@@ -1,4 +1,7 @@
 export * from './create-spr-monthly-record.request';
 export * from './update-spr-monthly-record.request';
 export * from './approve-spr-monthly-record.request';
+export * from './create-spr-record-comment.request';
+export * from './link-spr-record-evidence.request';
+export * from './spr-record-action.request';
 export * from './spr.response';

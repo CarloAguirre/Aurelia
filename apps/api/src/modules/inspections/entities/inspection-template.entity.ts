@@ -1,1 +1,3 @@
-export class InspectionTemplateEntity {}
+export class InspectionTemplateEntity {
+  id: string;
+}

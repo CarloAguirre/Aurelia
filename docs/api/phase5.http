@@ -4,6 +4,9 @@
 @incidentTypeId = replace-with-incident-type-id
 @incidentLevelId = replace-with-incident-level-id
 @incidentId = replace-with-incident-id
+@immediateActionId = replace-with-immediate-action-id
+@investigationId = replace-with-investigation-id
+@actionPlanId = replace-with-action-plan-id
 
 # ──────────────────────────────────────────────
 # Catalogs
@@ -14,6 +17,9 @@ GET {{baseUrl}}/api/incidents/types
 
 ### List incident levels
 GET {{baseUrl}}/api/incidents/levels
+
+### Dashboard summary
+GET {{baseUrl}}/api/incidents/dashboard/summary
 
 # ──────────────────────────────────────────────
 # Incidents
@@ -60,6 +66,14 @@ Content-Type: application/json
   "comment": "Pasa a revisión ambiental."
 }
 
+### Close incident
+POST {{baseUrl}}/api/incidents/{{incidentId}}/close
+Content-Type: application/json
+
+{
+  "comment": "Incidente cerrado luego de completar acciones y validación."
+}
+
 # ──────────────────────────────────────────────
 # Flash Report
 # ──────────────────────────────────────────────
@@ -78,3 +92,108 @@ Content-Type: application/json
 
 ### Get flash report
 GET {{baseUrl}}/api/incidents/{{incidentId}}/flash-report
+
+# ──────────────────────────────────────────────
+# Immediate actions
+# ──────────────────────────────────────────────
+
+### List immediate actions
+GET {{baseUrl}}/api/incidents/{{incidentId}}/immediate-actions
+
+### Create immediate action
+POST {{baseUrl}}/api/incidents/{{incidentId}}/immediate-actions
+Content-Type: application/json
+
+{
+  "description": "Aislar el área y contener el derrame.",
+  "status": "completed",
+  "performedAt": "2026-06-24T01:20:00.000Z"
+}
+
+### Update immediate action
+PATCH {{baseUrl}}/api/incidents/immediate-actions/{{immediateActionId}}
+Content-Type: application/json
+
+{
+  "status": "completed"
+}
+
+# ──────────────────────────────────────────────
+# Investigations
+# ──────────────────────────────────────────────
+
+### List investigations
+GET {{baseUrl}}/api/incidents/{{incidentId}}/investigations
+
+### Create investigation
+POST {{baseUrl}}/api/incidents/{{incidentId}}/investigations
+Content-Type: application/json
+
+{
+  "method": "five_why",
+  "title": "Investigación causa raíz derrame menor",
+  "summary": "Investigación inicial para identificar causa raíz."
+}
+
+### Update investigation
+PATCH {{baseUrl}}/api/incidents/investigations/{{investigationId}}
+Content-Type: application/json
+
+{
+  "status": "completed",
+  "summary": "Investigación completada con causa raíz documentada.",
+  "completedAt": "2026-06-24T03:00:00.000Z"
+}
+
+### Upsert five why analysis
+POST {{baseUrl}}/api/incidents/investigations/{{investigationId}}/five-why
+Content-Type: application/json
+
+{
+  "problemStatement": "Se observó material fuera de contención primaria.",
+  "why1": "Porque una maniobra generó pérdida de contención.",
+  "why2": "Porque el acople no quedó completamente asegurado.",
+  "why3": "Porque no se verificó el cierre antes de iniciar la maniobra.",
+  "why4": "Porque el checklist operativo no exigía esa confirmación.",
+  "why5": "Porque el procedimiento no estaba actualizado.",
+  "rootCause": "Procedimiento incompleto para verificación de acoples."
+}
+
+### Upsert PEEPO analysis
+POST {{baseUrl}}/api/incidents/investigations/{{investigationId}}/peepo
+Content-Type: application/json
+
+{
+  "people": "Operador sin recordatorio formal del paso crítico.",
+  "environment": "Área operativa con condiciones normales.",
+  "equipment": "Acople sin daño visible.",
+  "procedures": "Procedimiento requiere actualización.",
+  "organization": "Falta reforzar verificación previa a maniobra."
+}
+
+# ──────────────────────────────────────────────
+# Action plans
+# ──────────────────────────────────────────────
+
+### List action plans
+GET {{baseUrl}}/api/incidents/{{incidentId}}/action-plans
+
+### Create action plan
+POST {{baseUrl}}/api/incidents/{{incidentId}}/action-plans
+Content-Type: application/json
+
+{
+  "investigationId": "{{investigationId}}",
+  "title": "Actualizar procedimiento de maniobra",
+  "description": "Agregar verificación explícita de acoples antes de iniciar la maniobra.",
+  "dueAt": "2026-07-01T12:00:00.000Z"
+}
+
+### Update action plan
+PATCH {{baseUrl}}/api/incidents/action-plans/{{actionPlanId}}
+Content-Type: application/json
+
+{
+  "status": "completed",
+  "completedAt": "2026-06-25T12:00:00.000Z"
+}

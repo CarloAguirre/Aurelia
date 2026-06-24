@@ -1,0 +1,24 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { SprConsolidationRuleEntity } from './entities/spr-consolidation-rule.entity';
+import { SprMeasureGroupEntity } from './entities/spr-measure-group.entity';
+import { SprMonthlyRecordEntity } from './entities/spr-monthly-record.entity';
+import { SprParameterAreaAssignmentEntity } from './entities/spr-parameter-area-assignment.entity';
+import { SprParameterEntity } from './entities/spr-parameter.entity';
+import { SprRecordApprovalEntity } from './entities/spr-record-approval.entity';
+import { SprUnitEntity } from './entities/spr-unit.entity';
+
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([
+      SprMeasureGroupEntity,
+      SprUnitEntity,
+      SprParameterEntity,
+      SprParameterAreaAssignmentEntity,
+      SprMonthlyRecordEntity,
+      SprRecordApprovalEntity,
+      SprConsolidationRuleEntity,
+    ]),
+  ],
+})
+export class SprModule {}

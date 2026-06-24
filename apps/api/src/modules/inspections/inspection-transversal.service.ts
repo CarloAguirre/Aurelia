@@ -117,6 +117,30 @@ export class InspectionTransversalService {
     };
   }
 
+  async getExportPdf(inspectionId: string): Promise<Buffer> {
+    const payload = await this.getExportPayload(inspectionId);
+    const inspection = payload.inspection as Record<string, unknown>;
+    const summary = payload.summary as Record<string, unknown>;
+    const lines = [
+      'Aurelia - Reporte de inspeccion',
+      `Generado: ${String(payload.generatedAt)}`,
+      `ID: ${String(inspection.id)}`,
+      `Titulo: ${String(inspection.title)}`,
+      `Estado: ${String(inspection.status)}`,
+      `Programada: ${String(inspection.scheduledAt ?? 'N/A')}`,
+      `Inicio: ${String(inspection.startedAt ?? 'N/A')}`,
+      `Cierre: ${String(inspection.closedAt ?? 'N/A')}`,
+      `Hallazgos: ${String(summary.findingsCount ?? 0)}`,
+      `Hallazgos abiertos: ${String(summary.openFindingsCount ?? 0)}`,
+      `Evidencias: ${String(summary.evidencesCount ?? 0)}`,
+      `Comentarios: ${String(summary.commentsCount ?? 0)}`,
+      '',
+      'Este PDF es una salida operativa base. El formato visual avanzado queda para frontend/reporting.',
+    ];
+
+    return this.createSimplePdf(lines);
+  }
+
   private async getInspectionOrThrow(id: string): Promise<InspectionEntity> {
     const inspection = await this.inspections.findOneBy({ id });
     if (!inspection) throw new NotFoundException(`Inspection ${id} not found`);
@@ -149,6 +173,40 @@ export class InspectionTransversalService {
       createdAt: entity.createdAt.toISOString(),
       updatedAt: entity.updatedAt.toISOString(),
     };
+  }
+
+  private createSimplePdf(lines: string[]): Buffer {
+    const normalizedLines = lines.flatMap((line) => this.wrapLine(line, 88)).slice(0, 44);
+    const content = ['BT', '/F1 11 Tf', '14 TL', '50 780 Td', ...normalizedLines.flatMap((line) => [`(${this.escapePdfText(line)}) Tj`, 'T*']), 'ET'].join('\n');
+    const objects = [
+      '<< /Type /Catalog /Pages 2 0 R >>',
+      '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+      '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+      '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+      `<< /Length ${Buffer.byteLength(content, 'utf8')} >>\nstream\n${content}\nendstream`,
+    ];
+    let pdf = '%PDF-1.4\n';
+    const offsets = [0];
+    for (let index = 0; index < objects.length; index += 1) {
+      offsets.push(Buffer.byteLength(pdf, 'utf8'));
+      pdf += `${index + 1} 0 obj\n${objects[index]}\nendobj\n`;
+    }
+    const xrefOffset = Buffer.byteLength(pdf, 'utf8');
+    pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+    pdf += offsets.slice(1).map((offset) => `${String(offset).padStart(10, '0')} 00000 n `).join('\n');
+    pdf += `\ntrailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+    return Buffer.from(pdf, 'utf8');
+  }
+
+  private wrapLine(value: string, maxLength: number): string[] {
+    if (value.length <= maxLength) return [value];
+    const chunks: string[] = [];
+    for (let index = 0; index < value.length; index += maxLength) chunks.push(value.slice(index, index + maxLength));
+    return chunks;
+  }
+
+  private escapePdfText(value: string): string {
+    return value.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
   }
 
   private async logAudit(

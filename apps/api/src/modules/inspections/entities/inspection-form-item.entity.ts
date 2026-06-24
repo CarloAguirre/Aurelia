@@ -18,7 +18,7 @@ export class InspectionFormItemEntity {
   @Column({ type: 'text', nullable: true })
   guidance: string | null;
 
-  @Column({ type: 'enum', enum: InspectionItemResponseType, enumName: 'inspection_item_response_type' })
+  @Column({ name: 'response_type', type: 'enum', enum: InspectionItemResponseType, enumName: 'inspection_item_response_type' })
   responseType: InspectionItemResponseType;
 
   @Column({ name: 'is_required', type: 'boolean', default: true })

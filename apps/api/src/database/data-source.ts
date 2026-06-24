@@ -7,6 +7,22 @@ import { EntityReferenceTypeEntity } from '../modules/evidences/entities/entity-
 import { EvidenceLinkEntity } from '../modules/evidences/entities/evidence-link.entity';
 import { EvidenceEntity } from '../modules/evidences/entities/evidence.entity';
 import { FileEntity } from '../modules/files/entities/file.entity';
+import { IncidentActionEvidenceEntity } from '../modules/incidents/entities/incident-action-evidence.entity';
+import { IncidentActionPlanEntity } from '../modules/incidents/entities/incident-action-plan.entity';
+import { IncidentDisseminationEntity } from '../modules/incidents/entities/incident-dissemination.entity';
+import { IncidentFiveWhyAnalysisEntity } from '../modules/incidents/entities/incident-five-why-analysis.entity';
+import { IncidentFlashReportEntity } from '../modules/incidents/entities/incident-flash-report.entity';
+import { IncidentImmediateActionEntity } from '../modules/incidents/entities/incident-immediate-action.entity';
+import { IncidentInvestigationTeamEntity } from '../modules/incidents/entities/incident-investigation-team.entity';
+import { IncidentInvestigationEntity } from '../modules/incidents/entities/incident-investigation.entity';
+import { IncidentInvolvedPersonEntity } from '../modules/incidents/entities/incident-involved-person.entity';
+import { IncidentLevelEntity } from '../modules/incidents/entities/incident-level.entity';
+import { IncidentPeepoAnalysisEntity } from '../modules/incidents/entities/incident-peepo-analysis.entity';
+import { IncidentStatusHistoryEntity } from '../modules/incidents/entities/incident-status-history.entity';
+import { IncidentTimelineEventEntity } from '../modules/incidents/entities/incident-timeline-event.entity';
+import { IncidentTypeEntity } from '../modules/incidents/entities/incident-type.entity';
+import { IncidentValidationEntity } from '../modules/incidents/entities/incident-validation.entity';
+import { IncidentEntity } from '../modules/incidents/entities/incident.entity';
 import { InspectionFindingEntity } from '../modules/inspections/entities/inspection-finding.entity';
 import { InspectionFollowupEntity } from '../modules/inspections/entities/inspection-followup.entity';
 import { InspectionFormItemEntity } from '../modules/inspections/entities/inspection-form-item.entity';
@@ -36,10 +52,6 @@ import { WorkflowInstanceEntity } from '../modules/workflows/entities/workflow-i
 
 config();
 
-/**
- * DataSource usado por el CLI de TypeORM (generación/ejecución de migraciones).
- * En tiempo de aplicación, la conexión se configura en database.module.ts.
- */
 export const AppDataSource = new DataSource({
   type: 'postgres',
   host: process.env.DB_HOST ?? 'localhost',
@@ -80,6 +92,22 @@ export const AppDataSource = new DataSource({
     InspectionFindingEntity,
     InspectionFollowupEntity,
     InspectionStateEntity,
+    IncidentTypeEntity,
+    IncidentLevelEntity,
+    IncidentEntity,
+    IncidentInvolvedPersonEntity,
+    IncidentImmediateActionEntity,
+    IncidentFlashReportEntity,
+    IncidentValidationEntity,
+    IncidentInvestigationEntity,
+    IncidentInvestigationTeamEntity,
+    IncidentPeepoAnalysisEntity,
+    IncidentTimelineEventEntity,
+    IncidentFiveWhyAnalysisEntity,
+    IncidentActionPlanEntity,
+    IncidentActionEvidenceEntity,
+    IncidentStatusHistoryEntity,
+    IncidentDisseminationEntity,
   ],
   migrations: ['src/database/migrations/*.ts'],
   synchronize: false,

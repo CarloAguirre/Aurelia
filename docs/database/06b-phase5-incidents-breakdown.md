@@ -16,7 +16,7 @@ Alcance:
 - Contratos compartidos en `@aurelia/contracts`.
 - Migraciones y seed base.
 
-No incluye API operativa completa.
+Estado: completada.
 
 ### Fase 5B - API operativa mínima + Flash Report base
 
@@ -40,35 +40,53 @@ Objetivo:
 - Registrar historial de estado en cambios relevantes.
 - Crear o actualizar un Flash Report base asociado 1:1 al incidente.
 
-### Fase 5C - Acciones inmediatas
+Estado: completada.
 
-Alcance:
+### Fase 5C - Flujo operativo de investigación y planes de acción
 
+Alcance implementado:
+
+- `GET /api/incidents/dashboard/summary`
 - `POST /api/incidents/:id/immediate-actions`
 - `GET /api/incidents/:id/immediate-actions`
 - `PATCH /api/incidents/immediate-actions/:actionId`
+- `POST /api/incidents/:id/investigations`
+- `GET /api/incidents/:id/investigations`
+- `PATCH /api/incidents/investigations/:investigationId`
+- `POST /api/incidents/investigations/:investigationId/five-why`
+- `POST /api/incidents/investigations/:investigationId/peepo`
+- `POST /api/incidents/:id/action-plans`
+- `GET /api/incidents/:id/action-plans`
+- `PATCH /api/incidents/action-plans/:actionPlanId`
+- `POST /api/incidents/:id/close`
 
-### Fase 5D - Validación, investigación y planes de acción
+Objetivo:
 
-Alcance:
+- Registrar acciones inmediatas.
+- Crear investigación por método ICAM / 5 Por Qué / PEEPO.
+- Registrar análisis 5 Por Qué y PEEPO.
+- Crear y cerrar planes de acción.
+- Bloquear cierre de incidente si existen planes abiertos o en progreso.
+- Exponer un dashboard summary inicial.
 
-- Validación por Medio Ambiente.
-- Investigación ICAM / 5 Por Qué / PEEPO.
-- Línea de tiempo.
-- Equipo investigador.
-- Planes de acción.
-- Evidencias de cierre de acciones.
-- Cierre de incidente.
+### Fase 5D - Integración transversal y exportables
 
-### Fase 5E - Dashboard, exportables y estabilización
+Pendiente:
 
-Alcance:
+- Evidencias vinculadas a incidente mediante `evidence_links`.
+- Comentarios de incidente.
+- Auditoría transversal explícita para acciones críticas.
+- Exportable JSON/PDF básico de incidente.
+- Evidencias específicas de planes de acción mediante `incident_action_evidences`.
 
-- Dashboard summary de incidentes.
-- Exportable básico de incidente y Flash Report.
-- Integración transversal con evidencias, comentarios y auditoría.
-- Colección HTTP completa.
+### Fase 5E - Estabilización final
+
+Pendiente:
+
 - Auditoría de mapeos entidad/BD.
+- Colección HTTP completa final.
+- Validación de flujos de cierre.
+- Revisión de consistencia de estados.
 
 ## Reglas principales
 
@@ -79,7 +97,7 @@ Alcance:
 - Nivel 4: 6 horas.
 - Nivel 5: 2 horas.
 - Nivel >= 3 activa investigación obligatoria.
-- El incidente no puede cerrarse si tiene planes de acción abiertos.
+- El incidente no puede cerrarse si tiene planes de acción abiertos o en progreso.
 - Las evidencias se vinculan con `evidence_links`, salvo evidencias específicas de planes de acción, que usan `incident_action_evidences`.
 - El historial de estado debe registrar cada transición relevante.
 

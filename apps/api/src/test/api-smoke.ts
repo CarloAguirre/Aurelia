@@ -228,6 +228,48 @@ async function runIncidentFlow(baseUrl: string): Promise<void> {
   await request(baseUrl, 'GET', '/incidents/dashboard/summary');
 }
 
+async function runSprFlow(baseUrl: string): Promise<void> {
+  await request(baseUrl, 'GET', '/spr/groups');
+  await request(baseUrl, 'GET', '/spr/measure-groups');
+  await request(baseUrl, 'GET', '/spr/units');
+  const parameters = asArray<CatalogRow>(await request(baseUrl, 'GET', '/spr/parameters'), 'SPR parameters');
+  await request(baseUrl, 'GET', '/spr/assignments');
+
+  const parameterId = parameters[0]?.id;
+  if (!parameterId) throw new Error('SPR parameter seed is missing');
+
+  const unique = Date.now();
+  const periodYear = 2000 + (unique % 100);
+  const periodMonth = 1 + (Math.floor(unique / 1000) % 12);
+
+  const record = asObject<JsonObject>(
+    await request(baseUrl, 'POST', '/spr/monthly-records', {
+      parameterId,
+      periodYear,
+      periodMonth,
+      numericValue: 123.45,
+      notes: 'Smoke SPR monthly record',
+    }, 201),
+    'create SPR monthly record',
+  );
+  const recordId = ensureId(record, 'create SPR monthly record');
+
+  await request(baseUrl, 'GET', `/spr/monthly-records?periodYear=${periodYear}&periodMonth=${periodMonth}`);
+  await request(baseUrl, 'GET', `/spr/monthly-records/${recordId}`);
+  await request(baseUrl, 'PATCH', `/spr/monthly-records/${recordId}`, {
+    numericValue: 150.75,
+    notes: 'Smoke SPR update',
+  });
+  await request(baseUrl, 'PATCH', `/spr/monthly-records/${recordId}/status`, {
+    status: 'submitted',
+    notes: 'Smoke SPR submitted',
+  });
+  await request(baseUrl, 'PATCH', `/spr/monthly-records/${recordId}/status`, {
+    status: 'approved',
+    notes: 'Smoke SPR approved',
+  });
+}
+
 async function main(): Promise<void> {
   const app = await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
   app.setGlobalPrefix('api');
@@ -251,6 +293,7 @@ async function main(): Promise<void> {
     await request(baseUrl, 'GET', '/health');
     await runInspectionFlow(baseUrl);
     await runIncidentFlow(baseUrl);
+    await runSprFlow(baseUrl);
     console.log('api smoke tests passed');
   } finally {
     await app.close();

@@ -8,6 +8,7 @@ import { CommentsModule } from './modules/comments/comments.module';
 import { EvidencesModule } from './modules/evidences/evidences.module';
 import { FilesModule } from './modules/files/files.module';
 import { HealthModule } from './modules/health/health.module';
+import { IncidentsModule } from './modules/incidents/incidents.module';
 import { InspectionsModule } from './modules/inspections/inspections.module';
 import { OrganizationModule } from './modules/organization/organization.module';
 import { RolesModule } from './modules/roles/roles.module';
@@ -33,6 +34,7 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
     AuditModule,
     WorkflowsModule,
     InspectionsModule,
+    IncidentsModule,
   ],
 })
 export class AppModule {}

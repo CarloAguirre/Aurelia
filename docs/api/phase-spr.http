@@ -1,0 +1,73 @@
+### Aurelia API — SPR
+
+@baseUrl = http://localhost:3000
+@parameterId = REPLACE_WITH_PARAMETER_ID
+@recordId = REPLACE_WITH_RECORD_ID
+
+# ──────────────────────────────────────────────
+# Catalogs
+# ──────────────────────────────────────────────
+
+### List SPR measure groups
+GET {{baseUrl}}/api/spr/groups
+
+### List SPR units
+GET {{baseUrl}}/api/spr/units
+
+### List SPR parameters
+GET {{baseUrl}}/api/spr/parameters
+
+### List SPR assignments
+GET {{baseUrl}}/api/spr/assignments
+
+# ──────────────────────────────────────────────
+# Monthly records
+# ──────────────────────────────────────────────
+
+### Create monthly record
+POST {{baseUrl}}/api/spr/monthly-records
+Content-Type: application/json
+
+{
+  "parameterId": "{{parameterId}}",
+  "periodYear": 2026,
+  "periodMonth": 6,
+  "numericValue": 123.45,
+  "notes": "Registro mensual SPR de prueba"
+}
+
+### List monthly records
+GET {{baseUrl}}/api/spr/monthly-records
+
+### List monthly records by period
+GET {{baseUrl}}/api/spr/monthly-records?periodYear=2026&periodMonth=6
+
+### Get monthly record by id
+GET {{baseUrl}}/api/spr/monthly-records/{{recordId}}
+
+### Update monthly record value
+PATCH {{baseUrl}}/api/spr/monthly-records/{{recordId}}
+Content-Type: application/json
+
+{
+  "numericValue": 150.75,
+  "notes": "Valor actualizado"
+}
+
+### Submit monthly record
+PATCH {{baseUrl}}/api/spr/monthly-records/{{recordId}}/status
+Content-Type: application/json
+
+{
+  "status": "submitted",
+  "notes": "Enviado para revisión"
+}
+
+### Approve monthly record
+PATCH {{baseUrl}}/api/spr/monthly-records/{{recordId}}/status
+Content-Type: application/json
+
+{
+  "status": "approved",
+  "notes": "Aprobado"
+}

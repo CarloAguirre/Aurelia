@@ -111,7 +111,7 @@ Estado: cerrada.
 
 ## Fase 4D - Integración transversal liviana
 
-Objetivo: conectar inspecciones con la capa transversal sin bloquear el avance con PDF real, workflow avanzado ni frontend.
+Objetivo: conectar inspecciones con la capa transversal sin bloquear el avance con PDF real avanzado, workflow avanzado ni frontend.
 
 Endpoints incluidos:
 
@@ -131,30 +131,37 @@ Alcance:
 - Registrar auditoría explícita al vincular evidencias y crear comentarios.
 - Entregar payload exportable en JSON con inspección, checklist, respuestas, hallazgos, seguimientos, evidencias y comentarios.
 
-Queda fuera de 4D:
+Estado: cerrada.
 
-- PDF binario real.
-- Workflow automático de revisión.
-- Integración con notificaciones.
-- Integración transversal específica a hallazgos y seguimientos.
+## Fase 4E - Dashboard inicial avanzado y PDF base
 
-## Fase 4E - Exportación PDF y dashboard inicial avanzado
+Objetivo: agregar salidas operativas mínimas para cerrar el MVP API de inspecciones antes de pasar a incidentes.
 
-Objetivo: agregar salidas operativas sin bloquear el flujo base.
+Endpoints incluidos:
+
+```txt
+GET /api/inspections/dashboard/summary
+GET /api/inspections/:id/export/pdf
+```
 
 Alcance:
 
+- Extender el resumen de dashboard con cierre porcentual, inspecciones con hallazgos abiertos, hallazgos por severidad, vencidos y próximos a vencer.
+- Agregar exportación PDF base desde el payload exportable, sin dependencias externas ni formato visual avanzado.
+- Mantener el PDF como salida operacional mínima; el diseño visual queda para frontend/reporting.
+- Mantener `docs/api/phase4.http` actualizado con todos los endpoints de Fase 4.
+
+Estado: implementada, pendiente validación local.
+
+## Pendiente para fases posteriores
+
 ```txt
-GET /api/inspections/:id/export/pdf
-GET /api/inspections/dashboard/summary avanzado
+Mobile offline
+Notificaciones
+Auth real / guards
+Dashboard web avanzado
+PDF visual avanzado
+Incidentes
+SPR
+MUE / controles críticos
 ```
-
-Queda fuera hasta fases posteriores:
-
-- Mobile offline.
-- Notificaciones.
-- Auth real / guards.
-- Dashboard web avanzado.
-- Incidentes.
-- SPR.
-- MUE / controles críticos.

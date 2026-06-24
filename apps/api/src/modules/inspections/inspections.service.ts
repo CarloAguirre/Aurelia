@@ -136,12 +136,12 @@ export class InspectionsService {
     }
 
     if (filters.inspectionTypeId) {
-      query.andWhere('inspection.inspectionTypeId = :inspectionTypeId', {
+      query.andWhere('inspection.inspection_type_id = :inspectionTypeId', {
         inspectionTypeId: filters.inspectionTypeId,
       });
     }
 
-    const rows = await query.orderBy('inspection.createdAt', 'DESC').getMany();
+    const rows = await query.orderBy('inspection.created_at', 'DESC').getMany();
     return rows.map((row) => this.toInspectionResponse(row));
   }
 

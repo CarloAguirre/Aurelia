@@ -1,6 +1,10 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { CommentResponse, EvidenceLinkResponse, EvidenceResponse, SprMonthlyRecordResponse, SprRecordApprovalResponse } from '@aurelia/contracts';
 import { SprService } from './spr.service';
 import { CreateSprMonthlyRecordDto } from './dto/create-spr-monthly-record.dto';
+import { CreateSprRecordCommentDto } from './dto/create-spr-record-comment.dto';
+import { LinkSprRecordEvidenceDto } from './dto/link-spr-record-evidence.dto';
+import { SprRecordActionDto } from './dto/spr-record-action.dto';
 import { UpdateSprMonthlyRecordStatusDto } from './dto/update-spr-monthly-record-status.dto';
 import { UpdateSprMonthlyRecordDto } from './dto/update-spr-monthly-record.dto';
 
@@ -43,18 +47,65 @@ export class SprController {
     return this.sprService.findMonthlyRecords(query);
   }
 
+  @Get('monthly-records/:id/evidences')
+  findRecordEvidences(@Param('id', ParseUUIDPipe) id: string): Promise<EvidenceResponse[]> {
+    return this.sprService.findRecordEvidences(id);
+  }
+
+  @Post('monthly-records/:id/evidences/:evidenceId/link')
+  linkRecordEvidence(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('evidenceId', ParseUUIDPipe) evidenceId: string,
+    @Body() dto: LinkSprRecordEvidenceDto,
+  ): Promise<EvidenceLinkResponse> {
+    return this.sprService.linkRecordEvidence(id, evidenceId, dto, null);
+  }
+
+  @Get('monthly-records/:id/comments')
+  findRecordComments(@Param('id', ParseUUIDPipe) id: string): Promise<CommentResponse[]> {
+    return this.sprService.findRecordComments(id);
+  }
+
+  @Post('monthly-records/:id/comments')
+  createRecordComment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateSprRecordCommentDto,
+  ): Promise<CommentResponse> {
+    return this.sprService.createRecordComment(id, dto, null);
+  }
+
+  @Get('monthly-records/:id/approvals')
+  findRecordApprovals(@Param('id', ParseUUIDPipe) id: string): Promise<SprRecordApprovalResponse[]> {
+    return this.sprService.findRecordApprovals(id);
+  }
+
+  @Post('monthly-records/:id/submit')
+  submitRecord(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SprRecordActionDto): Promise<SprMonthlyRecordResponse> {
+    return this.sprService.submitRecord(id, dto);
+  }
+
+  @Post('monthly-records/:id/approve')
+  approveRecord(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SprRecordActionDto): Promise<SprMonthlyRecordResponse> {
+    return this.sprService.approveRecord(id, dto);
+  }
+
+  @Post('monthly-records/:id/reject')
+  rejectRecord(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SprRecordActionDto): Promise<SprMonthlyRecordResponse> {
+    return this.sprService.rejectRecord(id, dto);
+  }
+
   @Get('monthly-records/:id')
-  findMonthlyRecord(@Param('id') id: string) {
+  findMonthlyRecord(@Param('id', ParseUUIDPipe) id: string) {
     return this.sprService.findMonthlyRecord(id);
   }
 
   @Patch('monthly-records/:id')
-  updateMonthlyRecord(@Param('id') id: string, @Body() dto: UpdateSprMonthlyRecordDto) {
+  updateMonthlyRecord(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateSprMonthlyRecordDto) {
     return this.sprService.updateMonthlyRecord(id, dto);
   }
 
   @Patch('monthly-records/:id/status')
-  updateMonthlyRecordStatus(@Param('id') id: string, @Body() dto: UpdateSprMonthlyRecordStatusDto) {
+  updateMonthlyRecordStatus(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateSprMonthlyRecordStatusDto) {
     return this.sprService.updateMonthlyRecordStatus(id, dto);
   }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import {
   AreaResponse,
   BusinessUnitResponse,
@@ -50,8 +50,8 @@ export class OrganizationController {
   }
 
   @Get('sectors')
-  findSectors(): Promise<SectorResponse[]> {
-    return this.organizationService.findSectors();
+  findSectors(@Query('areaId') areaId?: string): Promise<SectorResponse[]> {
+    return this.organizationService.findSectors(areaId);
   }
 
   @Post('sectors')
@@ -70,8 +70,10 @@ export class OrganizationController {
   }
 
   @Get('companies')
-  findCompanies(): Promise<CompanyResponse[]> {
-    return this.organizationService.findCompanies();
+  findCompanies(@Query('isContractor') isContractor?: string): Promise<CompanyResponse[]> {
+    return this.organizationService.findCompanies(
+      isContractor !== undefined ? isContractor === 'true' : undefined,
+    );
   }
 
   @Post('companies')

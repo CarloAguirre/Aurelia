@@ -40,7 +40,7 @@ export class UsersService {
     private readonly userAreas: Repository<UserAreaEntity>,
   ) {}
 
-  async findAll(): Promise<UserResponse[]> {
+  async findAll(filters?: { companyId?: string; role?: string }): Promise<UserResponse[]> {
     const rows = await this.users.find({
       order: { email: 'ASC' },
       relations: {
@@ -49,7 +49,24 @@ export class UsersService {
         userAreas: { area: true },
       },
     });
-    return rows.map((row) => this.toUserResponse(row));
+
+    let result = rows;
+
+    if (filters?.companyId) {
+      result = result.filter(
+        (u) =>
+          u.companyId === filters.companyId ||
+          u.userCompanies?.some((uc) => uc.company?.id === filters.companyId),
+      );
+    }
+
+    if (filters?.role) {
+      result = result.filter((u) =>
+        u.userRoles?.some((ur) => ur.role?.code === filters.role),
+      );
+    }
+
+    return result.map((row) => this.toUserResponse(row));
   }
 
   async findOne(id: string): Promise<UserResponse> {

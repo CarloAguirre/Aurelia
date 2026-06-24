@@ -18,10 +18,10 @@ export class CreateAuditLogDto {
   action: string;
 
   @IsOptional()
-  oldValue?: Record<string, unknown>;
+  oldValue?: unknown;
 
   @IsOptional()
-  newValue?: Record<string, unknown>;
+  newValue?: unknown;
 
   @IsOptional()
   metadata?: Record<string, unknown>;

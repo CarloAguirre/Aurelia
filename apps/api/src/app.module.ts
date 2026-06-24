@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import configuration from './config/configuration';
 import { DatabaseModule } from './database/database.module';
+import { AiModule } from './modules/ai/ai.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { CommentsModule } from './modules/comments/comments.module';
@@ -37,6 +38,7 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
     InspectionsModule,
     IncidentsModule,
     SprModule,
+    AiModule,
   ],
 })
 export class AppModule {}

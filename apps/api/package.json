@@ -15,9 +15,11 @@
     "migration:create": "pnpm run typeorm migration:create ./src/database/migrations/Migration",
     "migration:run": "pnpm run typeorm migration:run -d ./src/database/data-source.ts",
     "migration:revert": "pnpm run typeorm migration:revert -d ./src/database/data-source.ts",
-    "seed": "ts-node src/database/seeds/001-seed-phase1.ts"
+    "seed": "ts-node src/database/seeds/001-seed-phase1.ts",
+    "seed:demo": "ts-node src/database/seeds/002-seed-demo-data.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.105.0",
     "@aurelia/contracts": "workspace:*",
     "@nestjs/common": "^11.0.0",
     "@nestjs/config": "^4.0.0",

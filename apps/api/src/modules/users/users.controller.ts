@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { UserResponse } from '@aurelia/contracts';
 import { AssignUserAreaDto } from './dto/assign-user-area.dto';
 import { AssignUserCompanyDto } from './dto/assign-user-company.dto';
@@ -11,8 +11,11 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
-  findAll(): Promise<UserResponse[]> {
-    return this.usersService.findAll();
+  findAll(
+    @Query('companyId') companyId?: string,
+    @Query('role') role?: string,
+  ): Promise<UserResponse[]> {
+    return this.usersService.findAll({ companyId, role });
   }
 
   @Get(':id')

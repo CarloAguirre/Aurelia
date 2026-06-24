@@ -112,8 +112,11 @@ export class OrganizationService {
     }
   }
 
-  async findSectors(): Promise<SectorResponse[]> {
-    const rows = await this.sectors.find({ order: { name: 'ASC' } });
+  async findSectors(areaId?: string): Promise<SectorResponse[]> {
+    const rows = await this.sectors.find({
+      where: areaId ? { areaId } : undefined,
+      order: { name: 'ASC' },
+    });
     return rows.map((row) => this.toSectorResponse(row));
   }
 
@@ -170,8 +173,11 @@ export class OrganizationService {
     }
   }
 
-  async findCompanies(): Promise<CompanyResponse[]> {
-    const rows = await this.companies.find({ order: { name: 'ASC' } });
+  async findCompanies(isContractor?: boolean): Promise<CompanyResponse[]> {
+    const rows = await this.companies.find({
+      where: isContractor !== undefined ? { isContractor } : undefined,
+      order: { name: 'ASC' },
+    });
     return rows.map((row) => this.toCompanyResponse(row));
   }
 

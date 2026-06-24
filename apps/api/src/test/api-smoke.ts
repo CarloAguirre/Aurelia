@@ -19,6 +19,11 @@ type CatalogRow = {
   id: string;
 };
 
+type SprParameterRow = CatalogRow & {
+  isSox?: boolean;
+  requiresEvidence?: boolean;
+};
+
 const asArray = <T>(value: unknown, label: string): T[] => {
   if (!Array.isArray(value)) throw new Error(`${label} did not return an array`);
   return value as T[];
@@ -228,31 +233,56 @@ async function runIncidentFlow(baseUrl: string): Promise<void> {
   await request(baseUrl, 'GET', '/incidents/dashboard/summary');
 }
 
-async function runSprFlow(baseUrl: string): Promise<void> {
-  await request(baseUrl, 'GET', '/spr/groups');
-  await request(baseUrl, 'GET', '/spr/measure-groups');
-  await request(baseUrl, 'GET', '/spr/units');
-  const parameters = asArray<CatalogRow>(await request(baseUrl, 'GET', '/spr/parameters'), 'SPR parameters');
-  await request(baseUrl, 'GET', '/spr/assignments');
-
-  const parameterId = parameters[0]?.id;
-  if (!parameterId) throw new Error('SPR parameter seed is missing');
-
-  const unique = Date.now();
-  const periodYear = 2000 + (unique % 100);
-  const periodMonth = 1 + (Math.floor(unique / 1000) % 12);
-
+async function createSprRecord(
+  baseUrl: string,
+  parameterId: string,
+  periodYear: number,
+  periodMonth: number,
+  label: string,
+): Promise<string> {
   const record = asObject<JsonObject>(
     await request(baseUrl, 'POST', '/spr/monthly-records', {
       parameterId,
       periodYear,
       periodMonth,
       numericValue: 123.45,
-      notes: 'Smoke SPR monthly record',
+      notes: label,
     }, 201),
     'create SPR monthly record',
   );
-  const recordId = ensureId(record, 'create SPR monthly record');
+  return ensureId(record, 'create SPR monthly record');
+}
+
+async function createAndLinkSprEvidence(baseUrl: string, recordId: string, unique: number): Promise<void> {
+  const evidence = asObject<JsonObject>(
+    await request(baseUrl, 'POST', '/evidences', {
+      title: `Smoke SPR evidence ${unique}`,
+      description: 'Smoke evidence linked to SPR record',
+      evidenceType: 'supporting_document',
+      capturedAt: new Date().toISOString(),
+    }, 201),
+    'create SPR evidence',
+  );
+  const evidenceId = ensureId(evidence, 'create SPR evidence');
+  await request(baseUrl, 'POST', `/spr/monthly-records/${recordId}/evidences/${evidenceId}/link`, { relationType: 'sox_support' }, 201);
+}
+
+async function runSprFlow(baseUrl: string): Promise<void> {
+  await request(baseUrl, 'GET', '/spr/groups');
+  await request(baseUrl, 'GET', '/spr/measure-groups');
+  await request(baseUrl, 'GET', '/spr/units');
+  const parameters = asArray<SprParameterRow>(await request(baseUrl, 'GET', '/spr/parameters'), 'SPR parameters');
+  await request(baseUrl, 'GET', '/spr/assignments');
+
+  const parameter = parameters.find((row) => row.isSox || row.requiresEvidence) ?? parameters[0];
+  const parameterId = parameter?.id;
+  if (!parameterId) throw new Error('SPR parameter seed is missing');
+
+  const unique = Date.now();
+  const periodYear = 2000 + (unique % 100);
+  const periodMonth = 1 + (Math.floor(unique / 1000) % 10);
+
+  const recordId = await createSprRecord(baseUrl, parameterId, periodYear, periodMonth, 'Smoke SPR monthly record');
 
   await request(baseUrl, 'GET', `/spr/monthly-records?periodYear=${periodYear}&periodMonth=${periodMonth}`);
   await request(baseUrl, 'GET', `/spr/monthly-records/${recordId}`);
@@ -260,14 +290,32 @@ async function runSprFlow(baseUrl: string): Promise<void> {
     numericValue: 150.75,
     notes: 'Smoke SPR update',
   });
-  await request(baseUrl, 'PATCH', `/spr/monthly-records/${recordId}/status`, {
-    status: 'submitted',
+
+  if (parameter.isSox || parameter.requiresEvidence) {
+    await request(baseUrl, 'POST', `/spr/monthly-records/${recordId}/submit`, { notes: 'Should fail without evidence' }, 400);
+  }
+
+  await createAndLinkSprEvidence(baseUrl, recordId, unique);
+  await request(baseUrl, 'GET', `/spr/monthly-records/${recordId}/evidences`);
+  await request(baseUrl, 'POST', `/spr/monthly-records/${recordId}/comments`, {
+    body: 'Smoke SPR comment',
+    isInternal: false,
+  }, 201);
+  await request(baseUrl, 'GET', `/spr/monthly-records/${recordId}/comments`);
+  await request(baseUrl, 'POST', `/spr/monthly-records/${recordId}/submit`, {
     notes: 'Smoke SPR submitted',
+    comments: 'Smoke pending approval',
   });
-  await request(baseUrl, 'PATCH', `/spr/monthly-records/${recordId}/status`, {
-    status: 'approved',
-    notes: 'Smoke SPR approved',
+  await request(baseUrl, 'GET', `/spr/monthly-records/${recordId}/approvals`);
+  await request(baseUrl, 'POST', `/spr/monthly-records/${recordId}/approve`, {
+    comments: 'Smoke SPR approved',
   });
+  await request(baseUrl, 'GET', `/spr/monthly-records/${recordId}/approvals`);
+
+  const rejectedRecordId = await createSprRecord(baseUrl, parameterId, periodYear, periodMonth + 1, 'Smoke SPR rejected record');
+  await createAndLinkSprEvidence(baseUrl, rejectedRecordId, unique + 1);
+  await request(baseUrl, 'POST', `/spr/monthly-records/${rejectedRecordId}/submit`, { notes: 'Smoke submit before reject' });
+  await request(baseUrl, 'POST', `/spr/monthly-records/${rejectedRecordId}/reject`, { comments: 'Smoke SPR rejected' });
 }
 
 async function main(): Promise<void> {

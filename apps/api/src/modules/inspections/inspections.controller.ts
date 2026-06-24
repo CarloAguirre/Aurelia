@@ -74,7 +74,11 @@ export class InspectionsController {
     if (inspection.openFindingsCount > 0) {
       throw new BadRequestException('Inspection has open findings');
     }
-    return this.inspectionsService.updateStatus(id, { status: InspectionStatus.CLOSED, comment: dto.reason }, null);
+    return this.inspectionsService.updateStatus(
+      id,
+      { status: InspectionStatus.CLOSED, comment: dto.reason ?? undefined },
+      null,
+    );
   }
 
   @Post(':id/answers')

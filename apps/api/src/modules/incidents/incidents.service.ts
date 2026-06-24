@@ -1,19 +1,41 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, Repository } from 'typeorm';
+import { FindOptionsWhere, In, Repository } from 'typeorm';
 import {
+  IncidentActionPlanResponse,
+  IncidentActionPlanStatus,
+  IncidentDashboardSummaryResponse,
+  IncidentFiveWhyAnalysisResponse,
   IncidentFlashReportResponse,
+  IncidentImmediateActionResponse,
+  IncidentInvestigationResponse,
   IncidentLevelResponse,
+  IncidentPeepoAnalysisResponse,
   IncidentResponse,
   IncidentStatus,
   IncidentTypeResponse,
 } from '@aurelia/contracts';
+import { IncidentActionPlanEntity } from './entities/incident-action-plan.entity';
+import { IncidentFiveWhyAnalysisEntity } from './entities/incident-five-why-analysis.entity';
 import { IncidentFlashReportEntity } from './entities/incident-flash-report.entity';
+import { IncidentImmediateActionEntity } from './entities/incident-immediate-action.entity';
+import { IncidentInvestigationEntity } from './entities/incident-investigation.entity';
 import { IncidentLevelEntity } from './entities/incident-level.entity';
+import { IncidentPeepoAnalysisEntity } from './entities/incident-peepo-analysis.entity';
 import { IncidentStatusHistoryEntity } from './entities/incident-status-history.entity';
 import { IncidentTypeEntity } from './entities/incident-type.entity';
 import { IncidentEntity } from './entities/incident.entity';
 import { CreateIncidentFlashReportDto } from './dto/create-incident-flash-report.dto';
+import { CreateIncidentImmediateActionDto, UpdateIncidentImmediateActionDto } from './dto/create-incident-immediate-action.dto';
+import {
+  CloseIncidentDto,
+  CreateIncidentActionPlanDto,
+  CreateIncidentInvestigationDto,
+  UpdateIncidentActionPlanDto,
+  UpdateIncidentInvestigationDto,
+  UpsertIncidentFiveWhyAnalysisDto,
+  UpsertIncidentPeepoAnalysisDto,
+} from './dto/create-incident-investigation.dto';
 import { CreateIncidentDto } from './dto/create-incident.dto';
 import { UpdateIncidentDto } from './dto/update-incident.dto';
 import { UpdateIncidentStatusDto } from './dto/update-incident-status.dto';
@@ -29,6 +51,16 @@ export class IncidentsService {
     private readonly incidentLevels: Repository<IncidentLevelEntity>,
     @InjectRepository(IncidentFlashReportEntity)
     private readonly flashReports: Repository<IncidentFlashReportEntity>,
+    @InjectRepository(IncidentImmediateActionEntity)
+    private readonly immediateActions: Repository<IncidentImmediateActionEntity>,
+    @InjectRepository(IncidentInvestigationEntity)
+    private readonly investigations: Repository<IncidentInvestigationEntity>,
+    @InjectRepository(IncidentFiveWhyAnalysisEntity)
+    private readonly fiveWhyAnalyses: Repository<IncidentFiveWhyAnalysisEntity>,
+    @InjectRepository(IncidentPeepoAnalysisEntity)
+    private readonly peepoAnalyses: Repository<IncidentPeepoAnalysisEntity>,
+    @InjectRepository(IncidentActionPlanEntity)
+    private readonly actionPlans: Repository<IncidentActionPlanEntity>,
     @InjectRepository(IncidentStatusHistoryEntity)
     private readonly statusHistory: Repository<IncidentStatusHistoryEntity>,
   ) {}
@@ -118,12 +150,8 @@ export class IncidentsService {
     if (dto.reportedAt !== undefined) entity.reportedAt = dto.reportedAt ? new Date(dto.reportedAt) : new Date();
     if (dto.latitude !== undefined) entity.latitude = dto.latitude;
     if (dto.longitude !== undefined) entity.longitude = dto.longitude;
-    if (dto.immediateResponseSummary !== undefined) {
-      entity.immediateResponseSummary = dto.immediateResponseSummary;
-    }
-    if (dto.environmentalImpactSummary !== undefined) {
-      entity.environmentalImpactSummary = dto.environmentalImpactSummary;
-    }
+    if (dto.immediateResponseSummary !== undefined) entity.immediateResponseSummary = dto.immediateResponseSummary;
+    if (dto.environmentalImpactSummary !== undefined) entity.environmentalImpactSummary = dto.environmentalImpactSummary;
     if (shouldRecalculateSla) {
       const level = await this.getLevelOrFail(entity.incidentLevelId);
       entity.slaDueAt = this.calculateSlaDueAt(entity.occurredAt, level.slaHours);
@@ -152,6 +180,18 @@ export class IncidentsService {
     return this.toResponse(saved);
   }
 
+  async close(id: string, dto: CloseIncidentDto): Promise<IncidentResponse> {
+    const blockingActions = await this.actionPlans.count({
+      where: { incidentId: id, status: In([IncidentActionPlanStatus.OPEN, IncidentActionPlanStatus.IN_PROGRESS]) },
+    });
+    if (blockingActions > 0) throw new BadRequestException('Incident has open or in-progress action plans');
+    return this.updateStatus(id, {
+      status: IncidentStatus.CLOSED,
+      changedByUserId: dto.closedByUserId ?? undefined,
+      comment: dto.comment ?? undefined,
+    });
+  }
+
   async upsertFlashReport(id: string, dto: CreateIncidentFlashReportDto): Promise<IncidentFlashReportResponse> {
     await this.getIncidentOrFail(id);
     const existing = await this.flashReports.findOne({ where: { incidentId: id } });
@@ -175,6 +215,175 @@ export class IncidentsService {
     return this.toFlashReportResponse(entity);
   }
 
+  async findImmediateActions(id: string): Promise<IncidentImmediateActionResponse[]> {
+    await this.getIncidentOrFail(id);
+    const rows = await this.immediateActions.find({ where: { incidentId: id }, order: { createdAt: 'ASC' } });
+    return rows.map((row) => this.toImmediateActionResponse(row));
+  }
+
+  async createImmediateAction(id: string, dto: CreateIncidentImmediateActionDto): Promise<IncidentImmediateActionResponse> {
+    await this.getIncidentOrFail(id);
+    const saved = await this.immediateActions.save(
+      this.immediateActions.create({
+        incidentId: id,
+        description: dto.description,
+        status: dto.status ?? IncidentActionPlanStatus.OPEN,
+        performedByUserId: dto.performedByUserId ?? null,
+        performedAt: dto.performedAt ? new Date(dto.performedAt) : null,
+      }),
+    );
+    return this.toImmediateActionResponse(saved);
+  }
+
+  async updateImmediateAction(actionId: string, dto: UpdateIncidentImmediateActionDto): Promise<IncidentImmediateActionResponse> {
+    const entity = await this.getImmediateActionOrFail(actionId);
+    if (dto.description !== undefined) entity.description = dto.description;
+    if (dto.status !== undefined) entity.status = dto.status;
+    if (dto.performedByUserId !== undefined) entity.performedByUserId = dto.performedByUserId;
+    if (dto.performedAt !== undefined) entity.performedAt = dto.performedAt ? new Date(dto.performedAt) : null;
+    const saved = await this.immediateActions.save(entity);
+    return this.toImmediateActionResponse(saved);
+  }
+
+  async findInvestigations(id: string): Promise<IncidentInvestigationResponse[]> {
+    await this.getIncidentOrFail(id);
+    const rows = await this.investigations.find({ where: { incidentId: id }, order: { createdAt: 'ASC' } });
+    return rows.map((row) => this.toInvestigationResponse(row));
+  }
+
+  async createInvestigation(id: string, dto: CreateIncidentInvestigationDto): Promise<IncidentInvestigationResponse> {
+    await this.getIncidentOrFail(id);
+    const saved = await this.investigations.save(
+      this.investigations.create({
+        incidentId: id,
+        method: dto.method,
+        title: dto.title,
+        summary: dto.summary ?? null,
+        status: 'open',
+        leadUserId: dto.leadUserId ?? null,
+        startedAt: dto.startedAt ? new Date(dto.startedAt) : new Date(),
+        completedAt: null,
+      }),
+    );
+    return this.toInvestigationResponse(saved);
+  }
+
+  async updateInvestigation(investigationId: string, dto: UpdateIncidentInvestigationDto): Promise<IncidentInvestigationResponse> {
+    const entity = await this.getInvestigationOrFail(investigationId);
+    if (dto.title !== undefined) entity.title = dto.title;
+    if (dto.summary !== undefined) entity.summary = dto.summary;
+    if (dto.status !== undefined) entity.status = dto.status;
+    if (dto.leadUserId !== undefined) entity.leadUserId = dto.leadUserId;
+    if (dto.startedAt !== undefined) entity.startedAt = dto.startedAt ? new Date(dto.startedAt) : null;
+    if (dto.completedAt !== undefined) entity.completedAt = dto.completedAt ? new Date(dto.completedAt) : null;
+    const saved = await this.investigations.save(entity);
+    return this.toInvestigationResponse(saved);
+  }
+
+  async upsertFiveWhy(investigationId: string, dto: UpsertIncidentFiveWhyAnalysisDto): Promise<IncidentFiveWhyAnalysisResponse> {
+    await this.getInvestigationOrFail(investigationId);
+    const entity = (await this.fiveWhyAnalyses.findOne({ where: { investigationId } })) ?? this.fiveWhyAnalyses.create({ investigationId });
+    entity.problemStatement = dto.problemStatement;
+    entity.why1 = dto.why1 ?? null;
+    entity.why2 = dto.why2 ?? null;
+    entity.why3 = dto.why3 ?? null;
+    entity.why4 = dto.why4 ?? null;
+    entity.why5 = dto.why5 ?? null;
+    entity.rootCause = dto.rootCause ?? null;
+    const saved = await this.fiveWhyAnalyses.save(entity);
+    return this.toFiveWhyResponse(saved);
+  }
+
+  async upsertPeepo(investigationId: string, dto: UpsertIncidentPeepoAnalysisDto): Promise<IncidentPeepoAnalysisResponse> {
+    await this.getInvestigationOrFail(investigationId);
+    const entity = (await this.peepoAnalyses.findOne({ where: { investigationId } })) ?? this.peepoAnalyses.create({ investigationId });
+    entity.people = dto.people ?? null;
+    entity.environment = dto.environment ?? null;
+    entity.equipment = dto.equipment ?? null;
+    entity.procedures = dto.procedures ?? null;
+    entity.organization = dto.organization ?? null;
+    const saved = await this.peepoAnalyses.save(entity);
+    return this.toPeepoResponse(saved);
+  }
+
+  async findActionPlans(id: string): Promise<IncidentActionPlanResponse[]> {
+    await this.getIncidentOrFail(id);
+    const rows = await this.actionPlans.find({ where: { incidentId: id }, order: { createdAt: 'ASC' } });
+    return rows.map((row) => this.toActionPlanResponse(row));
+  }
+
+  async createActionPlan(id: string, dto: CreateIncidentActionPlanDto): Promise<IncidentActionPlanResponse> {
+    await this.getIncidentOrFail(id);
+    if (dto.investigationId) {
+      const investigation = await this.getInvestigationOrFail(dto.investigationId);
+      if (investigation.incidentId !== id) throw new BadRequestException('Investigation does not belong to incident');
+    }
+    const saved = await this.actionPlans.save(
+      this.actionPlans.create({
+        incidentId: id,
+        investigationId: dto.investigationId ?? null,
+        title: dto.title,
+        description: dto.description,
+        ownerUserId: dto.ownerUserId ?? null,
+        dueAt: dto.dueAt ? new Date(dto.dueAt) : null,
+        status: dto.status ?? IncidentActionPlanStatus.OPEN,
+        completedAt: null,
+        closedByUserId: null,
+      }),
+    );
+    return this.toActionPlanResponse(saved);
+  }
+
+  async updateActionPlan(actionPlanId: string, dto: UpdateIncidentActionPlanDto): Promise<IncidentActionPlanResponse> {
+    const entity = await this.getActionPlanOrFail(actionPlanId);
+    if (dto.investigationId !== undefined) entity.investigationId = dto.investigationId;
+    if (dto.title !== undefined) entity.title = dto.title;
+    if (dto.description !== undefined) entity.description = dto.description;
+    if (dto.ownerUserId !== undefined) entity.ownerUserId = dto.ownerUserId;
+    if (dto.dueAt !== undefined) entity.dueAt = dto.dueAt ? new Date(dto.dueAt) : null;
+    if (dto.status !== undefined) entity.status = dto.status;
+    if (dto.completedAt !== undefined) entity.completedAt = dto.completedAt ? new Date(dto.completedAt) : null;
+    if (dto.closedByUserId !== undefined) entity.closedByUserId = dto.closedByUserId;
+    if (entity.status === IncidentActionPlanStatus.COMPLETED && !entity.completedAt) entity.completedAt = new Date();
+    const saved = await this.actionPlans.save(entity);
+    return this.toActionPlanResponse(saved);
+  }
+
+  async dashboardSummary(): Promise<IncidentDashboardSummaryResponse> {
+    const now = new Date();
+    const next24 = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const incidents = await this.incidents.find();
+    const actionPlans = await this.actionPlans.find();
+    const investigations = await this.investigations.find();
+    const byStatus = this.countBy(incidents.map((incident) => incident.status));
+    const actionByStatus = this.countBy(actionPlans.map((action) => action.status));
+    const closed = byStatus[IncidentStatus.CLOSED] ?? 0;
+
+    return {
+      incidents: {
+        total: incidents.length,
+        byStatus,
+        overdueSla: incidents.filter((incident) => incident.slaDueAt && incident.slaDueAt < now && incident.status !== IncidentStatus.CLOSED).length,
+        dueSoonNext24Hours: incidents.filter(
+          (incident) => incident.slaDueAt && incident.slaDueAt >= now && incident.slaDueAt <= next24 && incident.status !== IncidentStatus.CLOSED,
+        ).length,
+        closedRate: incidents.length === 0 ? 0 : Number(((closed / incidents.length) * 100).toFixed(2)),
+      },
+      actions: {
+        total: actionPlans.length,
+        byStatus: actionByStatus,
+        overdue: actionPlans.filter(
+          (action) => action.dueAt && action.dueAt < now && ![IncidentActionPlanStatus.COMPLETED, IncidentActionPlanStatus.CANCELLED].includes(action.status),
+        ).length,
+      },
+      investigations: {
+        total: investigations.length,
+        open: investigations.filter((investigation) => investigation.status !== 'completed').length,
+        completed: investigations.filter((investigation) => investigation.status === 'completed').length,
+      },
+    };
+  }
+
   private async getIncidentOrFail(id: string): Promise<IncidentEntity> {
     const entity = await this.incidents.findOne({ where: { id } });
     if (!entity) throw new NotFoundException('Incident not found');
@@ -193,8 +402,33 @@ export class IncidentsService {
     return level;
   }
 
+  private async getImmediateActionOrFail(id: string): Promise<IncidentImmediateActionEntity> {
+    const entity = await this.immediateActions.findOne({ where: { id } });
+    if (!entity) throw new NotFoundException('Incident immediate action not found');
+    return entity;
+  }
+
+  private async getInvestigationOrFail(id: string): Promise<IncidentInvestigationEntity> {
+    const entity = await this.investigations.findOne({ where: { id } });
+    if (!entity) throw new NotFoundException('Incident investigation not found');
+    return entity;
+  }
+
+  private async getActionPlanOrFail(id: string): Promise<IncidentActionPlanEntity> {
+    const entity = await this.actionPlans.findOne({ where: { id } });
+    if (!entity) throw new NotFoundException('Incident action plan not found');
+    return entity;
+  }
+
   private calculateSlaDueAt(baseDate: Date, slaHours: number): Date {
     return new Date(baseDate.getTime() + slaHours * 60 * 60 * 1000);
+  }
+
+  private countBy(values: string[]): Record<string, number> {
+    return values.reduce<Record<string, number>>((acc, value) => {
+      acc[value] = (acc[value] ?? 0) + 1;
+      return acc;
+    }, {});
   }
 
   private async appendStatusHistory(
@@ -281,6 +515,82 @@ export class IncidentsService {
       potentialImpact: entity.potentialImpact,
       reporterName: entity.reporterName,
       generatedAt: entity.generatedAt?.toISOString() ?? null,
+      createdAt: entity.createdAt.toISOString(),
+      updatedAt: entity.updatedAt.toISOString(),
+    };
+  }
+
+  private toImmediateActionResponse(entity: IncidentImmediateActionEntity): IncidentImmediateActionResponse {
+    return {
+      id: entity.id,
+      incidentId: entity.incidentId,
+      description: entity.description,
+      status: entity.status,
+      performedByUserId: entity.performedByUserId,
+      performedAt: entity.performedAt?.toISOString() ?? null,
+      createdAt: entity.createdAt.toISOString(),
+      updatedAt: entity.updatedAt.toISOString(),
+    };
+  }
+
+  private toInvestigationResponse(entity: IncidentInvestigationEntity): IncidentInvestigationResponse {
+    return {
+      id: entity.id,
+      incidentId: entity.incidentId,
+      method: entity.method,
+      title: entity.title,
+      summary: entity.summary,
+      status: entity.status,
+      leadUserId: entity.leadUserId,
+      startedAt: entity.startedAt?.toISOString() ?? null,
+      completedAt: entity.completedAt?.toISOString() ?? null,
+      createdAt: entity.createdAt.toISOString(),
+      updatedAt: entity.updatedAt.toISOString(),
+    };
+  }
+
+  private toFiveWhyResponse(entity: IncidentFiveWhyAnalysisEntity): IncidentFiveWhyAnalysisResponse {
+    return {
+      id: entity.id,
+      investigationId: entity.investigationId,
+      problemStatement: entity.problemStatement,
+      why1: entity.why1,
+      why2: entity.why2,
+      why3: entity.why3,
+      why4: entity.why4,
+      why5: entity.why5,
+      rootCause: entity.rootCause,
+      createdAt: entity.createdAt.toISOString(),
+      updatedAt: entity.updatedAt.toISOString(),
+    };
+  }
+
+  private toPeepoResponse(entity: IncidentPeepoAnalysisEntity): IncidentPeepoAnalysisResponse {
+    return {
+      id: entity.id,
+      investigationId: entity.investigationId,
+      people: entity.people,
+      environment: entity.environment,
+      equipment: entity.equipment,
+      procedures: entity.procedures,
+      organization: entity.organization,
+      createdAt: entity.createdAt.toISOString(),
+      updatedAt: entity.updatedAt.toISOString(),
+    };
+  }
+
+  private toActionPlanResponse(entity: IncidentActionPlanEntity): IncidentActionPlanResponse {
+    return {
+      id: entity.id,
+      incidentId: entity.incidentId,
+      investigationId: entity.investigationId,
+      title: entity.title,
+      description: entity.description,
+      ownerUserId: entity.ownerUserId,
+      dueAt: entity.dueAt?.toISOString() ?? null,
+      status: entity.status,
+      completedAt: entity.completedAt?.toISOString() ?? null,
+      closedByUserId: entity.closedByUserId,
       createdAt: entity.createdAt.toISOString(),
       updatedAt: entity.updatedAt.toISOString(),
     };

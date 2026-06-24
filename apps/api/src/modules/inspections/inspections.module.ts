@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuditModule } from '../audit/audit.module';
+import { CommentsModule } from '../comments/comments.module';
+import { EvidencesModule } from '../evidences/evidences.module';
 import { InspectionFindingEntity } from './entities/inspection-finding.entity';
 import { InspectionFollowupEntity } from './entities/inspection-followup.entity';
 import { InspectionFormItemEntity } from './entities/inspection-form-item.entity';
@@ -10,12 +12,16 @@ import { InspectionItemResponseEntity } from './entities/inspection-item-respons
 import { InspectionStateEntity } from './entities/inspection-state.entity';
 import { InspectionTypeEntity } from './entities/inspection-type.entity';
 import { InspectionEntity } from './entities/inspection.entity';
+import { InspectionTransversalController } from './inspection-transversal.controller';
+import { InspectionTransversalService } from './inspection-transversal.service';
 import { InspectionsController } from './inspections.controller';
 import { InspectionsService } from './inspections.service';
 
 @Module({
   imports: [
     AuditModule,
+    CommentsModule,
+    EvidencesModule,
     TypeOrmModule.forFeature([
       InspectionTypeEntity,
       InspectionFormTemplateEntity,
@@ -28,8 +34,8 @@ import { InspectionsService } from './inspections.service';
       InspectionStateEntity,
     ]),
   ],
-  controllers: [InspectionsController],
-  providers: [InspectionsService],
+  controllers: [InspectionsController, InspectionTransversalController],
+  providers: [InspectionsService, InspectionTransversalService],
   exports: [InspectionsService],
 })
 export class InspectionsModule {}

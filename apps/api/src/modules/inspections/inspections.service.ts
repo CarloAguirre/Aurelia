@@ -5,16 +5,27 @@ import {
   InspectionChecklistAnswerResponse,
   InspectionChecklistSectionResponse,
   InspectionChecklistTemplateResponse,
+  InspectionDashboardSummaryResponse,
+  InspectionFindingResponse,
+  InspectionFindingStatus,
+  InspectionFollowupResponse,
+  InspectionFollowupStatus,
   InspectionResponse,
   InspectionStatus,
   InspectionType,
   InspectionTypeResponse,
 } from '@aurelia/contracts';
 import { In, QueryFailedError, Repository } from 'typeorm';
+import { CreateInspectionFindingDto } from './dto/create-inspection-finding.dto';
+import { CreateInspectionFollowupDto } from './dto/create-inspection-followup.dto';
 import { CreateInspectionDto } from './dto/create-inspection.dto';
+import { UpdateInspectionFindingDto } from './dto/update-inspection-finding.dto';
+import { UpdateInspectionFollowupDto } from './dto/update-inspection-followup.dto';
 import { UpdateInspectionDto } from './dto/update-inspection.dto';
 import { UpdateInspectionStatusDto } from './dto/update-inspection-status.dto';
 import { UpsertInspectionAnswerDto } from './dto/upsert-inspection-answer.dto';
+import { InspectionFindingEntity } from './entities/inspection-finding.entity';
+import { InspectionFollowupEntity } from './entities/inspection-followup.entity';
 import { InspectionFormItemEntity } from './entities/inspection-form-item.entity';
 import { InspectionFormSectionEntity } from './entities/inspection-form-section.entity';
 import { InspectionFormTemplateEntity } from './entities/inspection-form-template.entity';
@@ -43,6 +54,10 @@ export class InspectionsService {
     private readonly inspections: Repository<InspectionEntity>,
     @InjectRepository(InspectionItemResponseEntity)
     private readonly answers: Repository<InspectionItemResponseEntity>,
+    @InjectRepository(InspectionFindingEntity)
+    private readonly findings: Repository<InspectionFindingEntity>,
+    @InjectRepository(InspectionFollowupEntity)
+    private readonly followups: Repository<InspectionFollowupEntity>,
     @InjectRepository(InspectionStateEntity)
     private readonly statusHistory: Repository<InspectionStateEntity>,
   ) {}
@@ -56,9 +71,7 @@ export class InspectionsService {
     const templates = await this.templates.find({ where: { isActive: true }, order: { code: 'ASC' } });
     const templateIds = templates.map((template) => template.id);
 
-    if (templateIds.length === 0) {
-      return [];
-    }
+    if (templateIds.length === 0) return [];
 
     const sections = await this.sections.find({
       where: { templateId: In(templateIds), isActive: true },
@@ -66,10 +79,7 @@ export class InspectionsService {
     });
     const sectionIds = sections.map((section) => section.id);
     const items = sectionIds.length
-      ? await this.items.find({
-          where: { sectionId: In(sectionIds), isActive: true },
-          order: { sortOrder: 'ASC' },
-        })
+      ? await this.items.find({ where: { sectionId: In(sectionIds), isActive: true }, order: { sortOrder: 'ASC' } })
       : [];
 
     const itemsBySection = new Map<string, InspectionFormItemEntity[]>();
@@ -125,6 +135,25 @@ export class InspectionsService {
     }));
   }
 
+  async getDashboardSummary(): Promise<InspectionDashboardSummaryResponse> {
+    const inspections = await this.inspections.find();
+    const findings = await this.findings.find();
+    const byStatus = this.createInspectionStatusCounter();
+    const findingsByStatus = this.createFindingStatusCounter();
+
+    for (const inspection of inspections) byStatus[inspection.status] += 1;
+    for (const finding of findings) findingsByStatus[finding.status] += 1;
+
+    return {
+      inspections: { total: inspections.length, byStatus },
+      findings: {
+        total: findings.length,
+        byStatus: findingsByStatus,
+        open: findingsByStatus[InspectionFindingStatus.OPEN] + findingsByStatus[InspectionFindingStatus.IN_PROGRESS],
+      },
+    };
+  }
+
   async findAll(filters: InspectionListFilters = {}): Promise<InspectionResponse[]> {
     const query = this.inspections.createQueryBuilder('inspection');
 
@@ -136,13 +165,10 @@ export class InspectionsService {
     }
 
     if (filters.inspectionTypeId) {
-      query.andWhere('inspection.inspection_type_id = :inspectionTypeId', {
-        inspectionTypeId: filters.inspectionTypeId,
-      });
+      query.andWhere('inspection.inspection_type_id = :inspectionTypeId', { inspectionTypeId: filters.inspectionTypeId });
     }
 
-    const rows = await query.orderBy('inspection.created_at', 'DESC').getMany();
-    return rows.map((row) => this.toInspectionResponse(row));
+    return (await query.orderBy('inspection.created_at', 'DESC').getMany()).map((row) => this.toInspectionResponse(row));
   }
 
   async findOne(id: string): Promise<InspectionResponse> {
@@ -151,7 +177,6 @@ export class InspectionsService {
 
   async create(dto: CreateInspectionDto, inspectorId: string | null): Promise<InspectionResponse> {
     await this.assertTypeAndTemplate(dto.inspectionTypeId, dto.templateId ?? null);
-
     const entity = this.inspections.create({
       inspectionTypeId: dto.inspectionTypeId,
       templateId: dto.templateId ?? null,
@@ -164,12 +189,8 @@ export class InspectionsService {
       description: dto.description ?? null,
       status: InspectionStatus.DRAFT,
       scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
-      startedAt: null,
-      completedAt: null,
-      closedAt: null,
       latitude: this.toNullableNumericString(dto.latitude),
       longitude: this.toNullableNumericString(dto.longitude),
-      score: null,
       findingsCount: 0,
       openFindingsCount: 0,
       notes: dto.notes ?? null,
@@ -190,10 +211,7 @@ export class InspectionsService {
     const nextTypeId = dto.inspectionTypeId ?? entity.inspectionTypeId;
     const nextTemplateId = dto.templateId === undefined ? entity.templateId : dto.templateId;
 
-    if (dto.inspectionTypeId !== undefined || dto.templateId !== undefined) {
-      await this.assertTypeAndTemplate(nextTypeId, nextTemplateId ?? null);
-    }
-
+    if (dto.inspectionTypeId !== undefined || dto.templateId !== undefined) await this.assertTypeAndTemplate(nextTypeId, nextTemplateId ?? null);
     if (dto.inspectionTypeId !== undefined) entity.inspectionTypeId = dto.inspectionTypeId;
     if (dto.templateId !== undefined) entity.templateId = dto.templateId;
     if (dto.companyId !== undefined) entity.companyId = dto.companyId;
@@ -214,45 +232,28 @@ export class InspectionsService {
 
     try {
       const saved = await this.inspections.save(entity);
-      if (saved.status !== previousStatus) {
-        await this.createStatusHistory(saved.id, previousStatus, saved.status, actorId, dto.reason ?? null);
-      }
+      if (saved.status !== previousStatus) await this.createStatusHistory(saved.id, previousStatus, saved.status, actorId, dto.reason ?? null);
       return this.toInspectionResponse(saved);
     } catch (err) {
       this.rethrowDatabaseReferenceError(err);
     }
   }
 
-  async updateStatus(
-    id: string,
-    dto: UpdateInspectionStatusDto,
-    actorId: string | null,
-  ): Promise<InspectionResponse> {
+  async updateStatus(id: string, dto: UpdateInspectionStatusDto, actorId: string | null): Promise<InspectionResponse> {
     return this.update(id, { status: dto.status, reason: dto.comment ?? null }, actorId);
   }
 
-  async upsertAnswer(
-    inspectionId: string,
-    dto: UpsertInspectionAnswerDto,
-    actorId: string | null,
-  ): Promise<InspectionChecklistAnswerResponse> {
+  async upsertAnswer(inspectionId: string, dto: UpsertInspectionAnswerDto, actorId: string | null): Promise<InspectionChecklistAnswerResponse> {
     const inspection = await this.getInspectionOrThrow(inspectionId);
     const item = await this.items.findOneBy({ id: dto.checklistItemId });
-
-    if (!item) {
-      throw new NotFoundException(`Checklist item ${dto.checklistItemId} not found`);
-    }
-
+    if (!item) throw new NotFoundException(`Checklist item ${dto.checklistItemId} not found`);
     if (inspection.templateId) {
       const section = await this.sections.findOneBy({ id: item.sectionId });
-      if (!section || section.templateId !== inspection.templateId) {
-        throw new BadRequestException('Checklist item does not belong to the inspection template');
-      }
+      if (!section || section.templateId !== inspection.templateId) throw new BadRequestException('Checklist item does not belong to the inspection template');
     }
 
     const existing = await this.answers.findOneBy({ inspectionId, checklistItemId: dto.checklistItemId });
     const answer = existing ?? this.answers.create({ inspectionId, checklistItemId: dto.checklistItemId });
-
     answer.answerValue = dto.answerValue ?? null;
     answer.answerText = dto.answerText ?? null;
     answer.numericValue = this.toNullableNumericString(dto.numericValue);
@@ -267,127 +268,188 @@ export class InspectionsService {
     }
   }
 
+  async findFindings(inspectionId: string): Promise<InspectionFindingResponse[]> {
+    await this.getInspectionOrThrow(inspectionId);
+    const rows = await this.findings.find({ where: { inspectionId }, order: { createdAt: 'DESC' } });
+    return rows.map((row) => this.toFindingResponse(row));
+  }
+
+  async createFinding(inspectionId: string, dto: CreateInspectionFindingDto, actorId: string | null): Promise<InspectionFindingResponse> {
+    const inspection = await this.getInspectionOrThrow(inspectionId);
+    await this.assertChecklistItemBelongsToInspection(inspection, dto.checklistItemId ?? null);
+
+    const entity = this.findings.create({
+      inspectionId,
+      checklistItemId: dto.checklistItemId ?? null,
+      title: dto.title,
+      description: dto.description ?? null,
+      severity: dto.severity,
+      status: InspectionFindingStatus.OPEN,
+      ownerUserId: dto.ownerUserId ?? null,
+      createdByUserId: actorId,
+      dueAt: this.toNullableDate(dto.dueAt ?? null),
+      closedAt: null,
+      closedByUserId: null,
+    });
+
+    try {
+      const saved = await this.findings.save(entity);
+      await this.refreshFindingCounters(inspectionId);
+      return this.toFindingResponse(saved);
+    } catch (err) {
+      this.rethrowDatabaseReferenceError(err);
+    }
+  }
+
+  async updateFinding(findingId: string, dto: UpdateInspectionFindingDto, actorId: string | null): Promise<InspectionFindingResponse> {
+    const entity = await this.getFindingOrThrow(findingId);
+    if (dto.title !== undefined) entity.title = dto.title;
+    if (dto.description !== undefined) entity.description = dto.description;
+    if (dto.severity !== undefined) entity.severity = dto.severity;
+    if (dto.ownerUserId !== undefined) entity.ownerUserId = dto.ownerUserId;
+    if (dto.dueAt !== undefined) entity.dueAt = this.toNullableDate(dto.dueAt);
+    if (dto.status !== undefined) {
+      entity.status = dto.status;
+      if (dto.status === InspectionFindingStatus.CLOSED) {
+        entity.closedAt = entity.closedAt ?? new Date();
+        entity.closedByUserId = actorId;
+      } else {
+        entity.closedAt = null;
+        entity.closedByUserId = null;
+      }
+    }
+
+    try {
+      const saved = await this.findings.save(entity);
+      await this.refreshFindingCounters(saved.inspectionId);
+      return this.toFindingResponse(saved);
+    } catch (err) {
+      this.rethrowDatabaseReferenceError(err);
+    }
+  }
+
+  async createFollowup(findingId: string, dto: CreateInspectionFollowupDto, actorId: string | null): Promise<InspectionFollowupResponse> {
+    await this.getFindingOrThrow(findingId);
+    const existingCount = await this.followups.count({ where: { findingId } });
+    if (existingCount >= 3) throw new BadRequestException('A finding can have a maximum of 3 followups');
+    const status = dto.status ?? InspectionFollowupStatus.PENDING;
+    const entity = this.followups.create({
+      findingId,
+      sequenceNumber: existingCount + 1,
+      status,
+      description: dto.description,
+      performedByUserId: dto.performedByUserId ?? actorId,
+      performedAt: dto.performedAt ? new Date(dto.performedAt) : status === InspectionFollowupStatus.COMPLETED ? new Date() : null,
+      nextDueAt: this.toNullableDate(dto.nextDueAt ?? null),
+    });
+
+    try {
+      return this.toFollowupResponse(await this.followups.save(entity));
+    } catch (err) {
+      this.rethrowDatabaseReferenceError(err);
+    }
+  }
+
+  async updateFollowup(followupId: string, dto: UpdateInspectionFollowupDto): Promise<InspectionFollowupResponse> {
+    const entity = await this.getFollowupOrThrow(followupId);
+    if (dto.status !== undefined) entity.status = dto.status;
+    if (dto.description !== undefined) entity.description = dto.description;
+    if (dto.performedByUserId !== undefined) entity.performedByUserId = dto.performedByUserId;
+    if (dto.performedAt !== undefined) entity.performedAt = this.toNullableDate(dto.performedAt);
+    if (dto.nextDueAt !== undefined) entity.nextDueAt = this.toNullableDate(dto.nextDueAt);
+    if (entity.status === InspectionFollowupStatus.COMPLETED && !entity.performedAt) entity.performedAt = new Date();
+
+    try {
+      return this.toFollowupResponse(await this.followups.save(entity));
+    } catch (err) {
+      this.rethrowDatabaseReferenceError(err);
+    }
+  }
+
   private async getInspectionOrThrow(id: string): Promise<InspectionEntity> {
     const inspection = await this.inspections.findOneBy({ id });
-    if (!inspection) {
-      throw new NotFoundException(`Inspection ${id} not found`);
-    }
+    if (!inspection) throw new NotFoundException(`Inspection ${id} not found`);
     return inspection;
+  }
+
+  private async getFindingOrThrow(id: string): Promise<InspectionFindingEntity> {
+    const finding = await this.findings.findOneBy({ id });
+    if (!finding) throw new NotFoundException(`Inspection finding ${id} not found`);
+    return finding;
+  }
+
+  private async getFollowupOrThrow(id: string): Promise<InspectionFollowupEntity> {
+    const followup = await this.followups.findOneBy({ id });
+    if (!followup) throw new NotFoundException(`Inspection followup ${id} not found`);
+    return followup;
   }
 
   private async assertTypeAndTemplate(inspectionTypeId: string, templateId: string | null): Promise<void> {
     const type = await this.inspectionTypes.findOneBy({ id: inspectionTypeId });
-    if (!type) {
-      throw new NotFoundException(`Inspection type ${inspectionTypeId} not found`);
-    }
-
-    if (!templateId) {
-      return;
-    }
-
+    if (!type) throw new NotFoundException(`Inspection type ${inspectionTypeId} not found`);
+    if (!templateId) return;
     const template = await this.templates.findOneBy({ id: templateId });
-    if (!template) {
-      throw new NotFoundException(`Inspection template ${templateId} not found`);
-    }
-
-    if (template.inspectionTypeId !== inspectionTypeId) {
-      throw new BadRequestException('Inspection template does not belong to the selected inspection type');
-    }
+    if (!template) throw new NotFoundException(`Inspection template ${templateId} not found`);
+    if (template.inspectionTypeId !== inspectionTypeId) throw new BadRequestException('Inspection template does not belong to the selected inspection type');
   }
 
-  private async createStatusHistory(
-    inspectionId: string,
-    fromStatus: InspectionStatus | null,
-    toStatus: InspectionStatus,
-    actorId: string | null,
-    reason: string | null,
-  ): Promise<void> {
-    await this.statusHistory.save(
-      this.statusHistory.create({
-        inspectionId,
-        previousStatus: fromStatus,
-        nextStatus: toStatus,
-        changedByUserId: actorId,
-        reason,
-        metadata: null,
-      }),
-    );
+  private async assertChecklistItemBelongsToInspection(inspection: InspectionEntity, checklistItemId: string | null): Promise<void> {
+    if (!checklistItemId) return;
+    const item = await this.items.findOneBy({ id: checklistItemId });
+    if (!item) throw new NotFoundException(`Checklist item ${checklistItemId} not found`);
+    if (!inspection.templateId) return;
+    const section = await this.sections.findOneBy({ id: item.sectionId });
+    if (!section || section.templateId !== inspection.templateId) throw new BadRequestException('Checklist item does not belong to the inspection template');
+  }
+
+  private async createStatusHistory(inspectionId: string, fromStatus: InspectionStatus | null, toStatus: InspectionStatus, actorId: string | null, reason: string | null): Promise<void> {
+    await this.statusHistory.save(this.statusHistory.create({ inspectionId, previousStatus: fromStatus, nextStatus: toStatus, changedByUserId: actorId, reason, metadata: null }));
+  }
+
+  private async refreshFindingCounters(inspectionId: string): Promise<void> {
+    const findingsCount = await this.findings.count({ where: { inspectionId } });
+    const openFindingsCount = await this.findings.count({ where: { inspectionId, status: In([InspectionFindingStatus.OPEN, InspectionFindingStatus.IN_PROGRESS]) } });
+    await this.inspections.update({ id: inspectionId }, { findingsCount, openFindingsCount });
   }
 
   private toTypeResponse(entity: InspectionTypeEntity): InspectionTypeResponse {
-    return {
-      id: entity.id,
-      code: entity.code as InspectionType,
-      name: entity.name,
-      description: entity.description,
-      status: entity.status,
-      createdAt: entity.createdAt.toISOString(),
-      updatedAt: entity.updatedAt.toISOString(),
-    };
+    return { id: entity.id, code: entity.code as InspectionType, name: entity.name, description: entity.description, status: entity.status, createdAt: entity.createdAt.toISOString(), updatedAt: entity.updatedAt.toISOString() };
   }
 
   private toInspectionResponse(entity: InspectionEntity): InspectionResponse {
-    return {
-      id: entity.id,
-      inspectionTypeId: entity.inspectionTypeId,
-      templateId: entity.templateId,
-      companyId: entity.companyId,
-      areaId: entity.areaId,
-      sectorId: entity.sectorId,
-      locationId: entity.locationId,
-      inspectorId: entity.inspectorId,
-      title: entity.title,
-      description: entity.description,
-      status: entity.status,
-      scheduledAt: this.toNullableIsoString(entity.scheduledAt),
-      startedAt: this.toNullableIsoString(entity.startedAt),
-      completedAt: this.toNullableIsoString(entity.completedAt),
-      closedAt: this.toNullableIsoString(entity.closedAt),
-      latitude: entity.latitude,
-      longitude: entity.longitude,
-      score: entity.score,
-      findingsCount: entity.findingsCount,
-      openFindingsCount: entity.openFindingsCount,
-      notes: entity.notes,
-      createdAt: entity.createdAt.toISOString(),
-      updatedAt: entity.updatedAt.toISOString(),
-    };
+    return { id: entity.id, inspectionTypeId: entity.inspectionTypeId, templateId: entity.templateId, companyId: entity.companyId, areaId: entity.areaId, sectorId: entity.sectorId, locationId: entity.locationId, inspectorId: entity.inspectorId, title: entity.title, description: entity.description, status: entity.status, scheduledAt: this.toNullableIsoString(entity.scheduledAt), startedAt: this.toNullableIsoString(entity.startedAt), completedAt: this.toNullableIsoString(entity.completedAt), closedAt: this.toNullableIsoString(entity.closedAt), latitude: entity.latitude, longitude: entity.longitude, score: entity.score, findingsCount: entity.findingsCount, openFindingsCount: entity.openFindingsCount, notes: entity.notes, createdAt: entity.createdAt.toISOString(), updatedAt: entity.updatedAt.toISOString() };
   }
 
   private toAnswerResponse(entity: InspectionItemResponseEntity): InspectionChecklistAnswerResponse {
-    return {
-      id: entity.id,
-      inspectionId: entity.inspectionId,
-      checklistItemId: entity.checklistItemId,
-      answerValue: entity.answerValue as InspectionAnswerValue | null,
-      answerText: entity.answerText,
-      numericValue: entity.numericValue,
-      answeredByUserId: entity.answeredByUserId,
-      answeredAt: this.toNullableIsoString(entity.answeredAt),
-      notes: entity.notes,
-      createdAt: entity.createdAt.toISOString(),
-      updatedAt: entity.updatedAt.toISOString(),
-    };
+    return { id: entity.id, inspectionId: entity.inspectionId, checklistItemId: entity.checklistItemId, answerValue: entity.answerValue as InspectionAnswerValue | null, answerText: entity.answerText, numericValue: entity.numericValue, answeredByUserId: entity.answeredByUserId, answeredAt: this.toNullableIsoString(entity.answeredAt), notes: entity.notes, createdAt: entity.createdAt.toISOString(), updatedAt: entity.updatedAt.toISOString() };
   }
 
-  private toNullableIsoString(value: Date | null): string | null {
-    return value ? value.toISOString() : null;
+  private toFindingResponse(entity: InspectionFindingEntity): InspectionFindingResponse {
+    return { id: entity.id, inspectionId: entity.inspectionId, checklistItemId: entity.checklistItemId, title: entity.title, description: entity.description, severity: entity.severity, status: entity.status, ownerUserId: entity.ownerUserId, createdByUserId: entity.createdByUserId, dueAt: this.toNullableIsoString(entity.dueAt), closedAt: this.toNullableIsoString(entity.closedAt), closedByUserId: entity.closedByUserId, createdAt: entity.createdAt.toISOString(), updatedAt: entity.updatedAt.toISOString() };
   }
 
-  private toNullableDate(value: string | null): Date | null {
-    return value ? new Date(value) : null;
+  private toFollowupResponse(entity: InspectionFollowupEntity): InspectionFollowupResponse {
+    return { id: entity.id, findingId: entity.findingId, sequenceNumber: entity.sequenceNumber, status: entity.status, description: entity.description, performedByUserId: entity.performedByUserId, performedAt: this.toNullableIsoString(entity.performedAt), nextDueAt: this.toNullableIsoString(entity.nextDueAt), createdAt: entity.createdAt.toISOString(), updatedAt: entity.updatedAt.toISOString() };
   }
 
-  private toNullableNumericString(value: number | null | undefined): string | null {
-    return value === null || value === undefined ? null : String(value);
+  private createInspectionStatusCounter(): Record<InspectionStatus, number> {
+    return { [InspectionStatus.DRAFT]: 0, [InspectionStatus.SCHEDULED]: 0, [InspectionStatus.IN_PROGRESS]: 0, [InspectionStatus.SUBMITTED]: 0, [InspectionStatus.UNDER_REVIEW]: 0, [InspectionStatus.RETURNED]: 0, [InspectionStatus.CLOSED]: 0, [InspectionStatus.CANCELLED]: 0 };
   }
+
+  private createFindingStatusCounter(): Record<InspectionFindingStatus, number> {
+    return { [InspectionFindingStatus.OPEN]: 0, [InspectionFindingStatus.IN_PROGRESS]: 0, [InspectionFindingStatus.CLOSED]: 0, [InspectionFindingStatus.CANCELLED]: 0 };
+  }
+
+  private toNullableIsoString(value: Date | null): string | null { return value ? value.toISOString() : null; }
+
+  private toNullableDate(value: string | null): Date | null { return value ? new Date(value) : null; }
+
+  private toNullableNumericString(value: number | null | undefined): string | null { return value === null || value === undefined ? null : String(value); }
 
   private rethrowDatabaseReferenceError(err: unknown): never {
     if (err instanceof QueryFailedError) {
       const code = (err as QueryFailedError & { code?: string }).code;
-      if (code === '23503') {
-        throw new BadRequestException('Referenced entity does not exist');
-      }
+      if (code === '23503') throw new BadRequestException('Referenced entity does not exist');
     }
     throw err as Error;
   }

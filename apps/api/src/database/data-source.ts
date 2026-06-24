@@ -41,6 +41,13 @@ import { SectorEntity } from '../modules/organization/entities/sector.entity';
 import { PermissionEntity } from '../modules/roles/entities/permission.entity';
 import { RolePermissionEntity } from '../modules/roles/entities/role-permission.entity';
 import { RoleEntity } from '../modules/roles/entities/role.entity';
+import { SprConsolidationRuleEntity } from '../modules/spr/entities/spr-consolidation-rule.entity';
+import { SprMeasureGroupEntity } from '../modules/spr/entities/spr-measure-group.entity';
+import { SprMonthlyRecordEntity } from '../modules/spr/entities/spr-monthly-record.entity';
+import { SprParameterAreaAssignmentEntity } from '../modules/spr/entities/spr-parameter-area-assignment.entity';
+import { SprParameterEntity } from '../modules/spr/entities/spr-parameter.entity';
+import { SprRecordApprovalEntity } from '../modules/spr/entities/spr-record-approval.entity';
+import { SprUnitEntity } from '../modules/spr/entities/spr-unit.entity';
 import { UserAreaEntity } from '../modules/users/entities/user-area.entity';
 import { UserCompanyEntity } from '../modules/users/entities/user-company.entity';
 import { UserRoleEntity } from '../modules/users/entities/user-role.entity';
@@ -108,6 +115,13 @@ export const AppDataSource = new DataSource({
     IncidentActionEvidenceEntity,
     IncidentStatusHistoryEntity,
     IncidentDisseminationEntity,
+    SprMeasureGroupEntity,
+    SprUnitEntity,
+    SprParameterEntity,
+    SprParameterAreaAssignmentEntity,
+    SprMonthlyRecordEntity,
+    SprRecordApprovalEntity,
+    SprConsolidationRuleEntity,
   ],
   migrations: ['src/database/migrations/*.ts'],
   synchronize: false,

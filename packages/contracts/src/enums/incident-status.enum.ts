@@ -1,7 +1,10 @@
 export enum IncidentStatus {
-  REPORTED = 'REPORTED',
-  UNDER_INVESTIGATION = 'UNDER_INVESTIGATION',
-  IN_REVIEW = 'IN_REVIEW',
-  RETURNED = 'RETURNED',
-  CLOSED = 'CLOSED',
+  DRAFT = 'draft',
+  REPORTED = 'reported',
+  UNDER_REVIEW = 'under_review',
+  VALIDATED = 'validated',
+  UNDER_INVESTIGATION = 'under_investigation',
+  ACTION_PLAN = 'action_plan',
+  CLOSED = 'closed',
+  CANCELLED = 'cancelled',
 }

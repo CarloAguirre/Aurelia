@@ -34,10 +34,10 @@ export function ChatInput({ onSend, placeholder = 'Escribe aquí o usa los contr
   }
 
   return (
-    <View style={[styles.wrapper, { paddingBottom: insets.bottom + spacing.xs }]}>
+    <View style={[styles.wrapper, { paddingBottom: insets.bottom + spacing.xs }]}> 
       <View style={styles.row}>
         <TouchableOpacity style={styles.voiceBtn} activeOpacity={0.7}>
-          <Text style={styles.voiceIcon}>🎙</Text>
+          <Text style={styles.voiceIcon}>♩</Text>
         </TouchableOpacity>
         <TextInput
           ref={inputRef}
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  voiceIcon: { fontSize: 16 },
+  voiceIcon: { fontSize: 16, color: colors.muted, lineHeight: 18 },
   input: {
     flex: 1,
     minHeight: 40,
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   sendBtnDisabled: { opacity: 0.5 },
-  sendIcon: { fontSize: 15, color: colors.navy },
+  sendIcon: { fontSize: 15, color: colors.navy, lineHeight: 17 },
   homeIndicatorBar: {
     height: 18,
     alignItems: 'center',

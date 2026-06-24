@@ -7,6 +7,7 @@
 @immediateActionId = replace-with-immediate-action-id
 @investigationId = replace-with-investigation-id
 @actionPlanId = replace-with-action-plan-id
+@evidenceId = replace-with-evidence-id
 
 # ──────────────────────────────────────────────
 # Catalogs
@@ -197,3 +198,47 @@ Content-Type: application/json
   "status": "completed",
   "completedAt": "2026-06-25T12:00:00.000Z"
 }
+
+# ──────────────────────────────────────────────
+# Evidences, comments and export
+# ──────────────────────────────────────────────
+
+### Create evidence for incident
+POST {{baseUrl}}/api/evidences
+Content-Type: application/json
+
+{
+  "title": "Evidencia incidente prueba",
+  "description": "Evidencia creada para vincular a un incidente.",
+  "evidenceType": "photo",
+  "capturedAt": "2026-06-24T01:30:00.000Z"
+}
+
+### Link evidence to incident
+POST {{baseUrl}}/api/incidents/{{incidentId}}/evidences/{{evidenceId}}/link
+Content-Type: application/json
+
+{
+  "relationType": "incident_evidence"
+}
+
+### List incident evidences
+GET {{baseUrl}}/api/incidents/{{incidentId}}/evidences
+
+### Create incident comment
+POST {{baseUrl}}/api/incidents/{{incidentId}}/comments
+Content-Type: application/json
+
+{
+  "body": "Comentario de seguimiento del incidente.",
+  "isInternal": false
+}
+
+### List incident comments
+GET {{baseUrl}}/api/incidents/{{incidentId}}/comments
+
+### Export incident payload
+GET {{baseUrl}}/api/incidents/{{incidentId}}/export
+
+### Export incident PDF base
+GET {{baseUrl}}/api/incidents/{{incidentId}}/export/pdf

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { CommentResponse, EvidenceLinkResponse, EvidenceResponse, InspectionFindingStatus, InspectionStatus } from '@aurelia/contracts';
+import { CommentResponse, EvidenceLinkResponse, EvidenceResponse, InspectionFindingStatus } from '@aurelia/contracts';
 import { In, Repository } from 'typeorm';
 import { AuditService } from '../audit/audit.service';
 import { CommentsService } from '../comments/comments.service';

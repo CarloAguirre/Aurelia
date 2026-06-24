@@ -18,7 +18,7 @@ Alcance:
 
 No incluye API operativa completa.
 
-### Fase 5B - API operativa mínima
+### Fase 5B - API operativa mínima + Flash Report base
 
 Alcance:
 
@@ -29,14 +29,21 @@ Alcance:
 - `GET /api/incidents/:id`
 - `PATCH /api/incidents/:id`
 - `PATCH /api/incidents/:id/status`
+- `POST /api/incidents/:id/flash-report`
+- `GET /api/incidents/:id/flash-report`
 
-### Fase 5C - Flash Report y acciones inmediatas
+Objetivo:
+
+- Crear y consultar incidentes.
+- Exponer catálogos base para formularios.
+- Calcular `sla_due_at` según nivel.
+- Registrar historial de estado en cambios relevantes.
+- Crear o actualizar un Flash Report base asociado 1:1 al incidente.
+
+### Fase 5C - Acciones inmediatas
 
 Alcance:
 
-- `POST /api/incidents/:id/flash-report`
-- `GET /api/incidents/:id/flash-report`
-- `GET /api/incidents/:id/export/flash-report`
 - `POST /api/incidents/:id/immediate-actions`
 - `GET /api/incidents/:id/immediate-actions`
 - `PATCH /api/incidents/immediate-actions/:actionId`

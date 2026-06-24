@@ -43,13 +43,15 @@ async function request(baseUrl: string, method: string, path: string, body?: Jso
   });
 
   const text = await response.text();
-  const payload = text ? JSON.parse(text) : null;
 
   if (response.status !== expectedStatus) {
     throw new Error(`${method} ${path} expected ${expectedStatus} but got ${response.status}: ${text}`);
   }
 
-  return payload;
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!text) return null;
+  if (contentType.includes('application/json')) return JSON.parse(text);
+  return text;
 }
 
 async function runInspectionFlow(baseUrl: string): Promise<void> {

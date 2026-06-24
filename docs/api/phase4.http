@@ -150,3 +150,6 @@ Content-Type: application/json
 
 ### Export inspection payload
 GET {{baseUrl}}/api/inspections/{{inspectionId}}/export
+
+### Export inspection PDF
+GET {{baseUrl}}/api/inspections/{{inspectionId}}/export/pdf

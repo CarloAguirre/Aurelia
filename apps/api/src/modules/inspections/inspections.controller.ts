@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import {
   InspectionChecklistAnswerResponse,
   InspectionChecklistTemplateResponse,
@@ -6,8 +6,10 @@ import {
   InspectionFindingResponse,
   InspectionFollowupResponse,
   InspectionResponse,
+  InspectionStatus,
   InspectionTypeResponse,
 } from '@aurelia/contracts';
+import { CloseInspectionDto } from './dto/close-inspection.dto';
 import { CreateInspectionFindingDto } from './dto/create-inspection-finding.dto';
 import { CreateInspectionFollowupDto } from './dto/create-inspection-followup.dto';
 import { CreateInspectionDto } from './dto/create-inspection.dto';
@@ -61,6 +63,18 @@ export class InspectionsController {
     @Body() dto: CreateInspectionFindingDto,
   ): Promise<InspectionFindingResponse> {
     return this.inspectionsService.createFinding(id, dto, null);
+  }
+
+  @Post(':id/close')
+  async closeInspection(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CloseInspectionDto,
+  ): Promise<InspectionResponse> {
+    const inspection = await this.inspectionsService.findOne(id);
+    if (inspection.openFindingsCount > 0) {
+      throw new BadRequestException('Inspection has open findings');
+    }
+    return this.inspectionsService.updateStatus(id, { status: InspectionStatus.CLOSED, comment: dto.reason ?? null }, null);
   }
 
   @Post(':id/answers')

@@ -23,3 +23,14 @@ export function suggestCorrectiveMeasure(params: {
     context: params,
   });
 }
+
+export function suggestCompany(params: {
+  area: string;
+  sector: string;
+  availableCompanies: string[];
+}): Promise<AiSuggestResponse> {
+  return httpPost<AiSuggestRequest, AiSuggestResponse>('/ai/suggest', {
+    type: 'company_suggestion',
+    context: params,
+  });
+}

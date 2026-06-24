@@ -16,7 +16,7 @@ import { ChipRow } from '../../shared/components/chat/ChipRow';
 import { QuickOpts } from '../../shared/components/chat/QuickOpts';
 import { AiProposalCard } from '../../shared/components/chat/AiProposalCard';
 import { PersonnelPicker } from '../../shared/components/chat/PersonnelPicker';
-import { PhotoStepPlaceholder } from '../../shared/components/chat/PhotoStepPlaceholder';
+import { PhotoStepWidget } from '../../shared/components/chat/PhotoStepWidget';
 import { ErrorBubble } from '../../shared/components/chat/ErrorBubble';
 import { ChatHeader } from '../../shared/components/layout/ChatHeader';
 import { ChatInput } from '../../shared/components/layout/ChatInput';
@@ -36,7 +36,10 @@ import {
   type InspectionTypeResponse,
 } from '../../shared/services/api/inspection-types.api';
 import { fetchUsers, type UserResponse } from '../../shared/services/api/users.api';
-import { suggestCorrectiveMeasure } from '../../shared/services/api/ai.api';
+import {
+  suggestCorrectiveMeasure,
+  suggestCompany,
+} from '../../shared/services/api/ai.api';
 
 // ── Query keys ─────────────────────────────────────────────────────────────
 const AREAS_KEY = ['areas'] as const;
@@ -64,7 +67,7 @@ type MessageItem =
   | { id: string; type: 'bot'; text: string }
   | { id: string; type: 'user'; text: string }
   | { id: string; type: 'typing' }
-  | { id: string; type: 'error'; message: string; retryKey?: string }
+  | { id: string; type: 'error'; message: string }
   | { id: string; type: 'area_chips'; areas: AreaResponse[] }
   | { id: string; type: 'sector_chips'; sectors: SectorResponse[] }
   | { id: string; type: 'tipo_opts'; tipos: InspectionTypeResponse[] }
@@ -74,13 +77,13 @@ type MessageItem =
   | { id: string; type: 'company_chips'; companies: CompanyResponse[] }
   | { id: string; type: 'personnel_picker'; users: UserResponse[] }
   | { id: string; type: 'ai_proposal' }
-  | { id: string; type: 'photo_placeholder' };
+  | { id: string; type: 'photo_widget' };
 
 type MessageInput =
   | { type: 'bot'; text: string }
   | { type: 'user'; text: string }
   | { type: 'typing' }
-  | { type: 'error'; message: string; retryKey?: string }
+  | { type: 'error'; message: string }
   | { type: 'area_chips'; areas: AreaResponse[] }
   | { type: 'sector_chips'; sectors: SectorResponse[] }
   | { type: 'tipo_opts'; tipos: InspectionTypeResponse[] }
@@ -90,7 +93,7 @@ type MessageInput =
   | { type: 'company_chips'; companies: CompanyResponse[] }
   | { type: 'personnel_picker'; users: UserResponse[] }
   | { type: 'ai_proposal' }
-  | { type: 'photo_placeholder' };
+  | { type: 'photo_widget' };
 
 let _msgId = 0;
 const nextId = () => String(++_msgId);
@@ -110,12 +113,23 @@ export function InspectionChatScreen() {
   const [waitingInput, setWaitingInput] = useState<'obs_desc' | 'medida_manual' | null>(null);
   const [aiAccepted, setAiAccepted] = useState(false);
 
+  // Retry callbacks keyed by error message id
+  const retryCallbacks = useRef<Map<string, () => void>>(new Map());
+  // Holds current obs description so photo skip can pass it to AI
+  const pendingDescRef = useRef<string>('');
+
   // ── Helpers ─────────────────────────────────────────────────────────────
   function addMsg(input: MessageInput): string {
     const id = nextId();
     const item = { ...input, id } as MessageItem;
     setMessages((prev) => [...prev, item]);
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
+    return id;
+  }
+
+  function addErrorMsg(message: string, onRetry?: () => void): string {
+    const id = addMsg({ type: 'error', message });
+    if (onRetry) retryCallbacks.current.set(id, onRetry);
     return id;
   }
 
@@ -130,33 +144,25 @@ export function InspectionChatScreen() {
   const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
   // ── Init: load areas ────────────────────────────────────────────────────
-  useEffect(() => {
-    let cancelled = false;
-
-    async function init() {
-      await delay(500);
-      if (cancelled) return;
-
-      addMsg({ type: 'typing' });
-      let areas: AreaResponse[];
-
-      try {
-        areas = await qc.fetchQuery({ queryKey: AREAS_KEY, queryFn: fetchAreas, staleTime: 5 * 60 * 1000 });
-      } catch {
-        removeTyping();
-        addMsg({ type: 'bot', text: '¡Hola! Soy AurelIA. Tuve un problema al cargar las áreas.' });
-        addMsg({ type: 'error', message: 'No se pudieron cargar las áreas. ¿Está el servidor activo?', retryKey: 'init' });
-        return;
-      }
-
-      if (cancelled) return;
+  async function doInit() {
+    addMsg({ type: 'typing' });
+    let areas: AreaResponse[];
+    try {
+      areas = await qc.fetchQuery({ queryKey: AREAS_KEY, queryFn: fetchAreas, staleTime: 5 * 60 * 1000 });
+    } catch {
       removeTyping();
-      addMsg({ type: 'bot', text: '¡Hola, Karen Opazo! Soy AurelIA. Voy a ayudarte a registrar esta inspección. ¿En qué área estás hoy?' });
-      addMsg({ type: 'area_chips', areas });
+      addMsg({ type: 'bot', text: '¡Hola! Soy AurelIA. Tuve un problema al cargar las áreas.' });
+      addErrorMsg('No se pudieron cargar las áreas. ¿Está el servidor activo?', doInit);
+      return;
     }
+    removeTyping();
+    addMsg({ type: 'bot', text: '¡Hola, Karen Opazo! Soy AurelIA. Voy a ayudarte a registrar esta inspección. ¿En qué área estás hoy?' });
+    addMsg({ type: 'area_chips', areas });
+  }
 
-    init();
-    return () => { cancelled = true; };
+  useEffect(() => {
+    const t = setTimeout(doInit, 500);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -165,28 +171,28 @@ export function InspectionChatScreen() {
     resolveWidget(widgetId);
     flow.setArea(area.id, area.name);
     addMsg({ type: 'user', text: area.name });
-    addMsg({ type: 'typing' });
 
-    // Preload sectors + inspection types in parallel
-    let sectors: SectorResponse[];
-    let tipos: InspectionTypeResponse[];
-    try {
-      [sectors, tipos] = await Promise.all([
-        qc.fetchQuery({ queryKey: sectorsKey(area.id), queryFn: () => fetchSectors(area.id), staleTime: 5 * 60 * 1000 }),
-        qc.fetchQuery({ queryKey: TYPES_KEY, queryFn: fetchInspectionTypes, staleTime: 5 * 60 * 1000 }),
-      ]);
-    } catch {
+    async function fetchAreaDeps() {
+      addMsg({ type: 'typing' });
+      let sectors: SectorResponse[];
+      let tipos: InspectionTypeResponse[];
+      try {
+        [sectors, tipos] = await Promise.all([
+          qc.fetchQuery({ queryKey: sectorsKey(area.id), queryFn: () => fetchSectors(area.id), staleTime: 5 * 60 * 1000 }),
+          qc.fetchQuery({ queryKey: TYPES_KEY, queryFn: fetchInspectionTypes, staleTime: 5 * 60 * 1000 }),
+        ]);
+      } catch {
+        removeTyping();
+        addErrorMsg('Error al cargar sectores. Verifica la conexión.', fetchAreaDeps);
+        return;
+      }
       removeTyping();
-      addMsg({ type: 'error', message: 'Error al cargar sectores. Verifica la conexión.' });
-      return;
+      addMsg({ type: 'bot', text: `${area.name} ✓ — ¿En qué sector?` });
+      addMsg({ type: 'sector_chips', sectors });
+      qc.setQueryData(TYPES_KEY, tipos);
     }
 
-    removeTyping();
-    addMsg({ type: 'bot', text: `${area.name} ✓ — ¿En qué sector?` });
-    addMsg({ type: 'sector_chips', sectors });
-
-    // Cache tipos for later
-    qc.setQueryData(TYPES_KEY, tipos);
+    await fetchAreaDeps();
   }
 
   // ── Sector selected ──────────────────────────────────────────────────────
@@ -194,22 +200,24 @@ export function InspectionChatScreen() {
     resolveWidget(widgetId);
     flow.setSector(sector.id, sector.name);
     addMsg({ type: 'user', text: sector.name });
-    addMsg({ type: 'typing' });
-    await delay(700);
 
-    // Tipos are already cached from the area step
-    let tipos: InspectionTypeResponse[];
-    try {
-      tipos = await qc.fetchQuery({ queryKey: TYPES_KEY, queryFn: fetchInspectionTypes, staleTime: 5 * 60 * 1000 });
-    } catch {
+    async function fetchSectorDeps() {
+      addMsg({ type: 'typing' });
+      await delay(700);
+      let tipos: InspectionTypeResponse[];
+      try {
+        tipos = await qc.fetchQuery({ queryKey: TYPES_KEY, queryFn: fetchInspectionTypes, staleTime: 5 * 60 * 1000 });
+      } catch {
+        removeTyping();
+        addErrorMsg('Error al cargar tipos de inspección.', fetchSectorDeps);
+        return;
+      }
       removeTyping();
-      addMsg({ type: 'error', message: 'Error al cargar tipos de inspección.' });
-      return;
+      addMsg({ type: 'bot', text: `${flow.areaName} · ${sector.name} ✓ — ¿Tipo de inspección?` });
+      addMsg({ type: 'tipo_opts', tipos });
     }
 
-    removeTyping();
-    addMsg({ type: 'bot', text: `${flow.areaName} · ${sector.name} ✓ — ¿Tipo de inspección?` });
-    addMsg({ type: 'tipo_opts', tipos });
+    await fetchSectorDeps();
   }
 
   // ── Tipo selected ────────────────────────────────────────────────────────
@@ -229,20 +237,22 @@ export function InspectionChatScreen() {
     setWaitingInput(null);
     addMsg({ type: 'user', text: desc });
     flow.setObsDesc(desc);
+    pendingDescRef.current = desc;
     await delay(200);
     addMsg({ type: 'typing' });
     await delay(600);
     removeTyping();
+    addMsg({ type: 'bot', text: 'Adjunta una foto del hallazgo o continúa sin foto:' });
+    addMsg({ type: 'photo_widget' });
+    // Flow waits for explicit user decision via handlePhotoSkip
+  }
 
-    // Photo step — Mobile D placeholder
-    addMsg({ type: 'bot', text: 'Adjunta una foto del hallazgo:' });
-    addMsg({ type: 'photo_placeholder' });
-
-    // Auto-continue after 1.5s (since no real camera yet)
-    await delay(1500);
+  // ── Photo step — explicit user choice ────────────────────────────────────
+  async function handlePhotoSkip(widgetId: string) {
+    resolveWidget(widgetId);
     flow.markFotoSkipped();
-    addMsg({ type: 'bot', text: 'Continuando sin foto. Analizando el hallazgo con IA…' });
-    await askAiSuggestion(desc);
+    addMsg({ type: 'bot', text: 'Sin foto. Analizando el hallazgo con IA…' });
+    await askAiSuggestion(pendingDescRef.current);
   }
 
   // ── AI suggestion ────────────────────────────────────────────────────────
@@ -267,7 +277,7 @@ export function InspectionChatScreen() {
 
     removeTyping();
     flow.setAiSuggestion(suggestion, fallback);
-    addMsg({ type: 'bot', text: `Foto omitida. Analicé el historial de ${flow.areaName} — te propongo:` });
+    addMsg({ type: 'bot', text: `Analicé el historial de ${flow.areaName} — te propongo:` });
     addMsg({ type: 'ai_proposal' });
     addMsg({ type: 'bot', text: 'O escribe tu propia medida en el campo de texto.' });
     setWaitingInput('medida_manual');
@@ -355,24 +365,44 @@ export function InspectionChatScreen() {
       flow.finishObs();
       addMsg({ type: 'user', text: 'No, pasar a empresa y personal' });
       await delay(300);
-      addMsg({ type: 'typing' });
 
-      let companies: CompanyResponse[];
-      try {
-        companies = await qc.fetchQuery({
-          queryKey: COMPANIES_KEY,
-          queryFn: () => fetchCompanies(true),
-          staleTime: 5 * 60 * 1000,
-        });
-      } catch {
+      async function fetchAndShowCompanies() {
+        addMsg({ type: 'typing' });
+        let companies: CompanyResponse[];
+        try {
+          companies = await qc.fetchQuery({
+            queryKey: COMPANIES_KEY,
+            queryFn: () => fetchCompanies(true),
+            staleTime: 5 * 60 * 1000,
+          });
+        } catch {
+          removeTyping();
+          addErrorMsg('Error al cargar empresas contratistas.', fetchAndShowCompanies);
+          return;
+        }
+
+        // Ask AI to suggest a company (non-blocking — silently skip on failure)
+        let aiHint = '';
+        try {
+          const res = await suggestCompany({
+            area: flow.areaName ?? '',
+            sector: flow.sectorName ?? '',
+            availableCompanies: companies.map((c) => c.name),
+          });
+          if (!res.fallback) aiHint = res.suggestion;
+        } catch {
+          // ignore
+        }
+
         removeTyping();
-        addMsg({ type: 'error', message: 'Error al cargar empresas contratistas.' });
-        return;
+        if (aiHint) {
+          addMsg({ type: 'bot', text: `✦ ${aiHint}` });
+        }
+        addMsg({ type: 'bot', text: '¿Qué empresa contratista está involucrada en esta inspección?' });
+        addMsg({ type: 'company_chips', companies });
       }
 
-      removeTyping();
-      addMsg({ type: 'bot', text: '¿Qué empresa contratista está involucrada en esta inspección?' });
-      addMsg({ type: 'company_chips', companies });
+      await fetchAndShowCompanies();
     }
   }
 
@@ -381,31 +411,34 @@ export function InspectionChatScreen() {
     resolveWidget(widgetId);
     flow.setCompany(company.id, company.name);
     addMsg({ type: 'user', text: company.name });
-    addMsg({ type: 'typing' });
 
-    let users: UserResponse[];
-    try {
-      users = await qc.fetchQuery({
-        queryKey: personnelKey(company.id),
-        queryFn: () => fetchUsers({ companyId: company.id }),
-        staleTime: 5 * 60 * 1000,
-      });
-    } catch {
+    async function fetchPersonnel() {
+      addMsg({ type: 'typing' });
+      let users: UserResponse[];
+      try {
+        users = await qc.fetchQuery({
+          queryKey: personnelKey(company.id),
+          queryFn: () => fetchUsers({ companyId: company.id }),
+          staleTime: 5 * 60 * 1000,
+        });
+      } catch {
+        removeTyping();
+        addErrorMsg(`Error al cargar personal de ${company.name}.`, fetchPersonnel);
+        return;
+      }
       removeTyping();
-      addMsg({ type: 'error', message: `Error al cargar personal de ${company.name}.` });
-      return;
+      if (users.length > 0) {
+        addMsg({ type: 'bot', text: `Selecciona el personal de ${company.name} presente en la inspección:` });
+        addMsg({ type: 'personnel_picker', users });
+      } else {
+        addMsg({ type: 'bot', text: `No hay personal registrado para ${company.name}. Continuando al resumen.` });
+        await delay(800);
+        flow.goToResumen();
+        addMsg({ type: 'bot', text: 'Resumen listo. El envío final de la inspección estará disponible en Mobile D.' });
+      }
     }
 
-    removeTyping();
-    if (users.length > 0) {
-      addMsg({ type: 'bot', text: `Selecciona el personal de ${company.name} presente en la inspección:` });
-      addMsg({ type: 'personnel_picker', users });
-    } else {
-      addMsg({ type: 'bot', text: `No hay personal registrado para ${company.name}. Continuando al resumen.` });
-      await delay(800);
-      flow.goToResumen();
-      addMsg({ type: 'bot', text: 'Resumen listo. El envío final de la inspección estará disponible en Mobile D.' });
-    }
+    await fetchPersonnel();
   }
 
   // ── Personnel confirmed ──────────────────────────────────────────────────
@@ -442,7 +475,22 @@ export function InspectionChatScreen() {
       case 'typing':
         return <TypingIndicator key={msg.id} />;
       case 'error':
-        return <ErrorBubble key={msg.id} message={msg.message} />;
+        return (
+          <ErrorBubble
+            key={msg.id}
+            message={msg.message}
+            onRetry={retryCallbacks.current.get(msg.id)}
+          />
+        );
+
+      case 'photo_widget':
+        return (
+          <PhotoStepWidget
+            key={msg.id}
+            onSkip={() => handlePhotoSkip(msg.id)}
+            resolved={isResolved}
+          />
+        );
 
       case 'area_chips':
         return (
@@ -485,9 +533,6 @@ export function InspectionChatScreen() {
             }}
           />
         );
-
-      case 'photo_placeholder':
-        return <PhotoStepPlaceholder key={msg.id} />;
 
       case 'ai_proposal':
         return (

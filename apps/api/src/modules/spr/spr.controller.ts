@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { CommentResponse, EvidenceLinkResponse, EvidenceResponse, SprMonthlyRecordResponse, SprRecordApprovalResponse } from '@aurelia/contracts';
 import { SprService } from './spr.service';
 import { CreateSprMonthlyRecordDto } from './dto/create-spr-monthly-record.dto';
@@ -80,16 +80,19 @@ export class SprController {
   }
 
   @Post('monthly-records/:id/submit')
+  @HttpCode(200)
   submitRecord(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SprRecordActionDto): Promise<SprMonthlyRecordResponse> {
     return this.sprService.submitRecord(id, dto);
   }
 
   @Post('monthly-records/:id/approve')
+  @HttpCode(200)
   approveRecord(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SprRecordActionDto): Promise<SprMonthlyRecordResponse> {
     return this.sprService.approveRecord(id, dto);
   }
 
   @Post('monthly-records/:id/reject')
+  @HttpCode(200)
   rejectRecord(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SprRecordActionDto): Promise<SprMonthlyRecordResponse> {
     return this.sprService.rejectRecord(id, dto);
   }

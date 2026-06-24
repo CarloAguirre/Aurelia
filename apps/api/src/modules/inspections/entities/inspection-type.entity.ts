@@ -1,3 +1,4 @@
+import { RecordStatus } from '@aurelia/contracts';
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('inspection_types')
@@ -14,8 +15,13 @@ export class InspectionTypeEntity {
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
-  @Column({ type: 'varchar', length: 80, default: 'active' })
-  status: string;
+  @Column({
+    type: 'enum',
+    enum: RecordStatus,
+    enumName: 'record_status',
+    default: RecordStatus.ACTIVE,
+  })
+  status: RecordStatus;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

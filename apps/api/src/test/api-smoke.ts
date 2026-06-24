@@ -150,6 +150,26 @@ async function runIncidentFlow(baseUrl: string): Promise<void> {
   }, 201);
   await request(baseUrl, 'GET', `/incidents/${incidentId}/flash-report`);
 
+  const incidentEvidence = asObject<JsonObject>(
+    await request(baseUrl, 'POST', '/evidences', {
+      title: `Smoke incident evidence ${unique}`,
+      description: 'Smoke evidence linked to incident',
+      evidenceType: 'photo',
+      capturedAt: new Date().toISOString(),
+    }, 201),
+    'create incident evidence',
+  );
+  const incidentEvidenceId = ensureId(incidentEvidence, 'create incident evidence');
+  await request(baseUrl, 'POST', `/incidents/${incidentId}/evidences/${incidentEvidenceId}/link`, { relationType: 'smoke_evidence' }, 201);
+  await request(baseUrl, 'GET', `/incidents/${incidentId}/evidences`);
+  await request(baseUrl, 'POST', `/incidents/${incidentId}/comments`, {
+    body: 'Smoke incident comment',
+    isInternal: false,
+  }, 201);
+  await request(baseUrl, 'GET', `/incidents/${incidentId}/comments`);
+  await request(baseUrl, 'GET', `/incidents/${incidentId}/export`);
+  await request(baseUrl, 'GET', `/incidents/${incidentId}/export/pdf`);
+
   const immediateAction = asObject<JsonObject>(
     await request(baseUrl, 'POST', `/incidents/${incidentId}/immediate-actions`, {
       description: 'Smoke immediate action',

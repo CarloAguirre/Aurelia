@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuditModule } from '../audit/audit.module';
+import { InspectionFindingEntity } from './entities/inspection-finding.entity';
+import { InspectionFollowupEntity } from './entities/inspection-followup.entity';
 import { InspectionFormItemEntity } from './entities/inspection-form-item.entity';
 import { InspectionFormSectionEntity } from './entities/inspection-form-section.entity';
 import { InspectionFormTemplateEntity } from './entities/inspection-form-template.entity';
@@ -12,6 +15,7 @@ import { InspectionsService } from './inspections.service';
 
 @Module({
   imports: [
+    AuditModule,
     TypeOrmModule.forFeature([
       InspectionTypeEntity,
       InspectionFormTemplateEntity,
@@ -19,6 +23,8 @@ import { InspectionsService } from './inspections.service';
       InspectionFormItemEntity,
       InspectionEntity,
       InspectionItemResponseEntity,
+      InspectionFindingEntity,
+      InspectionFollowupEntity,
       InspectionStateEntity,
     ]),
   ],

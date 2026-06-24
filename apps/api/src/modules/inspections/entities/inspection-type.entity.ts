@@ -7,8 +7,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { InspectionChecklistTemplateEntity } from './inspection-checklist-template.entity';
-import { InspectionEntity } from './inspection.entity';
+import { InspectionFormTemplateEntity } from './inspection-form-template.entity';
 
 @Entity('inspection_types')
 export class InspectionTypeEntity {
@@ -32,11 +31,8 @@ export class InspectionTypeEntity {
   })
   status: RecordStatus;
 
-  @OneToMany(() => InspectionChecklistTemplateEntity, (template) => template.inspectionType)
-  templates: InspectionChecklistTemplateEntity[];
-
-  @OneToMany(() => InspectionEntity, (inspection) => inspection.inspectionType)
-  inspections: InspectionEntity[];
+  @OneToMany(() => InspectionFormTemplateEntity, (template) => template.inspectionType)
+  templates: InspectionFormTemplateEntity[];
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

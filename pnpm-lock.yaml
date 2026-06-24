@@ -133,6 +133,9 @@ importers:
       '@aurelia/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@tanstack/react-query':
+        specifier: ^5.101.1
+        version: 5.101.1(react@18.3.1)
       expo:
         specifier: ~52.0.0
         version: 52.0.49(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@expo/dom-webview@56.0.5)(@expo/metro-runtime@56.0.15)(react-native@0.76.5(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
@@ -1904,6 +1907,14 @@ packages:
 
   '@stablelib/base64@1.0.1':
     resolution: {integrity: sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ==}
+
+  '@tanstack/query-core@5.101.1':
+    resolution: {integrity: sha512-Y6Y92dkXtNqx67m2pMSxUsA3zOCwv862JexZRP8/EPwvKXMPu9m8rv43spiXWzOUIggQ3SQApttALStzhA8B4g==}
+
+  '@tanstack/react-query@5.101.1':
+    resolution: {integrity: sha512-ZnONUuQKJe1bJMStXUL1s5uKN9FcfC28j5cK+iDZcdSHtUv1wtin1cGc/Oewhf2Oc4eKY7lggtpvT/AbMmhHew==}
+    peerDependencies:
+      react: ^18 || ^19
 
   '@tokenizer/inflate@0.4.1':
     resolution: {integrity: sha512-2mAv+8pkG6GIZiF1kNg1jAjh27IDxEPKwdGul3snfztFerfPGI1LjDezZp3i7BElXompqEtPmoPx6c2wgtWsOA==}
@@ -7988,6 +7999,13 @@ snapshots:
   '@sqltools/formatter@1.2.5': {}
 
   '@stablelib/base64@1.0.1': {}
+
+  '@tanstack/query-core@5.101.1': {}
+
+  '@tanstack/react-query@5.101.1(react@18.3.1)':
+    dependencies:
+      '@tanstack/query-core': 5.101.1
+      react: 18.3.1
 
   '@tokenizer/inflate@0.4.1':
     dependencies:

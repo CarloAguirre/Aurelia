@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@aurelia/contracts": "workspace:*",
+    "@tanstack/react-query": "^5.101.1",
     "expo": "~52.0.0",
     "expo-image-picker": "~16.0.0",
     "expo-location": "~18.0.0",

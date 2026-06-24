@@ -5,7 +5,7 @@ export type FlowStep =
   | 'sector'
   | 'tipo'
   | 'obs_desc'
-  | 'obs_foto'
+  | 'obs_foto'       // Mobile D: camera + upload
   | 'obs_ai_suggest'
   | 'obs_medida'
   | 'criticidad'
@@ -18,7 +18,7 @@ export type FlowStep =
 
 export interface ObservacionDraft {
   desc: string | null;
-  foto: boolean;
+  foto: boolean;       // Mobile D: always false until camera integrated
   medida: string | null;
   medidaOrigen: 'ia' | 'manual' | null;
   prob: number | null;
@@ -31,90 +31,129 @@ export interface InspectionFlowState {
   step: FlowStep;
   progressStep: number;
 
-  area: string | null;
-  sector: string | null;
-  tipo: string | null;
+  // Identifiers (IDs for backend) + display names
+  areaId: string | null;
+  areaName: string | null;
+  sectorId: string | null;
+  sectorName: string | null;
+  inspectionTypeId: string | null;
+  inspectionTypeName: string | null;
+
+  companyId: string | null;
+  companyName: string | null;
+  personnelIds: string[];
+  personnelNames: string[];
 
   observaciones: ObservacionDraft[];
   currentObs: ObservacionDraft;
 
-  empresa: string | null;
-  personalSel: string[];
-
   aiSuggestion: string | null;
   aiLoading: boolean;
+  aiFallback: boolean;
 
   // Actions
-  setArea: (area: string) => void;
-  setSector: (sector: string) => void;
-  setTipo: (tipo: string) => void;
+  setArea: (id: string, name: string) => void;
+  setSector: (id: string, name: string) => void;
+  setInspectionType: (id: string, name: string) => void;
   setObsDesc: (desc: string) => void;
-  setObsFoto: () => void;
-  setAiSuggestion: (text: string | null, loading?: boolean) => void;
+  markFotoSkipped: () => void; // Mobile D placeholder
+  setAiLoading: (loading: boolean) => void;
+  setAiSuggestion: (text: string, fallback: boolean) => void;
   acceptMedida: (medida: string, origen: 'ia' | 'manual') => void;
   setProb: (prob: number) => void;
   setCons: (cons: number) => void;
   setSla: (sla: number) => void;
   addMoreObs: () => void;
   finishObs: () => void;
-  setEmpresa: (empresa: string) => void;
-  togglePersonal: (name: string) => void;
+  setCompany: (id: string, name: string) => void;
+  setPersonnel: (ids: string[], names: string[]) => void;
   goToResumen: () => void;
   reset: () => void;
 }
 
 function emptyObs(): ObservacionDraft {
-  return { desc: null, foto: false, medida: null, medidaOrigen: null, prob: null, cons: null, nivel: null, sla: 7 };
+  return {
+    desc: null,
+    foto: false,
+    medida: null,
+    medidaOrigen: null,
+    prob: null,
+    cons: null,
+    nivel: null,
+    sla: 7,
+  };
 }
 
 export const useInspectionFlow = create<InspectionFlowState>((set) => ({
   step: 'area',
   progressStep: 0,
 
-  area: null,
-  sector: null,
-  tipo: null,
+  areaId: null,
+  areaName: null,
+  sectorId: null,
+  sectorName: null,
+  inspectionTypeId: null,
+  inspectionTypeName: null,
+
+  companyId: null,
+  companyName: null,
+  personnelIds: [],
+  personnelNames: [],
 
   observaciones: [],
   currentObs: emptyObs(),
 
-  empresa: null,
-  personalSel: [],
-
   aiSuggestion: null,
   aiLoading: false,
+  aiFallback: false,
 
-  setArea: (area) => set({ area, step: 'sector' }),
-  setSector: (sector) => set({ sector, step: 'tipo' }),
-  setTipo: (tipo) => set({ tipo, step: 'obs_desc', progressStep: 1 }),
+  setArea: (id, name) => set({ areaId: id, areaName: name, step: 'sector' }),
+  setSector: (id, name) => set({ sectorId: id, sectorName: name, step: 'tipo' }),
+  setInspectionType: (id, name) =>
+    set({ inspectionTypeId: id, inspectionTypeName: name, step: 'obs_desc', progressStep: 1 }),
+
   setObsDesc: (desc) =>
     set((s) => ({ currentObs: { ...s.currentObs, desc }, step: 'obs_foto' })),
-  setObsFoto: () =>
-    set((s) => ({ currentObs: { ...s.currentObs, foto: true }, step: 'obs_ai_suggest', aiLoading: true })),
-  setAiSuggestion: (text, loading = false) =>
-    set({ aiSuggestion: text, aiLoading: loading, step: loading ? 'obs_ai_suggest' : 'obs_medida' }),
+
+  // Mobile D: camera/upload not yet integrated — desc flows directly to AI suggest
+  markFotoSkipped: () =>
+    set((s) => ({ currentObs: { ...s.currentObs, foto: false }, step: 'obs_ai_suggest', aiLoading: true })),
+
+  setAiLoading: (loading) => set({ aiLoading: loading }),
+
+  setAiSuggestion: (text, fallback) =>
+    set({ aiSuggestion: text, aiLoading: false, aiFallback: fallback, step: 'obs_medida' }),
+
   acceptMedida: (medida, origen) =>
     set((s) => ({
       currentObs: { ...s.currentObs, medida, medidaOrigen: origen },
       step: 'criticidad',
       progressStep: 2,
     })),
+
   setProb: (prob) => set((s) => ({ currentObs: { ...s.currentObs, prob } })),
-  setCons: (cons, ) =>
+
+  setCons: (cons) =>
     set((s) => {
       const p = s.currentObs.prob ?? 1;
       const nivel = calcNivel(p, cons);
       const sla = defaultSla(nivel);
       return { currentObs: { ...s.currentObs, cons, nivel, sla }, step: 'sla' };
     }),
+
   setSla: (sla) => set((s) => ({ currentObs: { ...s.currentObs, sla } })),
+
   addMoreObs: () =>
     set((s) => ({
       observaciones: [...s.observaciones, s.currentObs],
       currentObs: emptyObs(),
       step: 'obs_desc',
       progressStep: 3,
+      aiSuggestion: null,
+      aiLoading: false,
+      aiFallback: false,
     })),
+
   finishObs: () =>
     set((s) => ({
       observaciones: [...s.observaciones, s.currentObs],
@@ -122,27 +161,33 @@ export const useInspectionFlow = create<InspectionFlowState>((set) => ({
       step: 'empresa',
       progressStep: 4,
     })),
-  setEmpresa: (empresa) => set({ empresa, step: 'personal' }),
-  togglePersonal: (name) =>
-    set((s) => ({
-      personalSel: s.personalSel.includes(name)
-        ? s.personalSel.filter((n) => n !== name)
-        : [...s.personalSel, name],
-    })),
+
+  setCompany: (id, name) => set({ companyId: id, companyName: name, step: 'personal' }),
+
+  setPersonnel: (ids, names) =>
+    set({ personnelIds: ids, personnelNames: names }),
+
   goToResumen: () => set({ step: 'resumen', progressStep: 5 }),
+
   reset: () =>
     set({
       step: 'area',
       progressStep: 0,
-      area: null,
-      sector: null,
-      tipo: null,
+      areaId: null,
+      areaName: null,
+      sectorId: null,
+      sectorName: null,
+      inspectionTypeId: null,
+      inspectionTypeName: null,
+      companyId: null,
+      companyName: null,
+      personnelIds: [],
+      personnelNames: [],
       observaciones: [],
       currentObs: emptyObs(),
-      empresa: null,
-      personalSel: [],
       aiSuggestion: null,
       aiLoading: false,
+      aiFallback: false,
     }),
 }));
 

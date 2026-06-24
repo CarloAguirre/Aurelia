@@ -1,12 +1,19 @@
-import type { IncidentRiskLevel, IncidentType } from '../../enums';
 import type { ID, ISODateString } from '../../types/common';
 
 export interface CreateIncidentRequest {
+  incidentTypeId: ID;
+  incidentLevelId: ID;
+  companyId?: ID | null;
+  areaId?: ID | null;
+  sectorId?: ID | null;
+  locationId?: ID | null;
+  reportedByUserId?: ID | null;
   title: string;
   description: string;
-  type: IncidentType;
-  riskLevel: IncidentRiskLevel;
-  areaId: ID;
-  mueId: ID;
   occurredAt: ISODateString;
+  reportedAt?: ISODateString | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  immediateResponseSummary?: string | null;
+  environmentalImpactSummary?: string | null;
 }

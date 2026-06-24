@@ -63,6 +63,7 @@ export class IncidentsService {
   }
 
   async create(dto: CreateIncidentDto): Promise<IncidentResponse> {
+    await this.getTypeOrFail(dto.incidentTypeId);
     const level = await this.getLevelOrFail(dto.incidentLevelId);
     const reportedAt = dto.reportedAt ? new Date(dto.reportedAt) : new Date();
     const occurredAt = new Date(dto.occurredAt);
@@ -96,12 +97,15 @@ export class IncidentsService {
 
   async update(id: string, dto: UpdateIncidentDto): Promise<IncidentResponse> {
     const entity = await this.getIncidentOrFail(id);
+    const shouldRecalculateSla = dto.incidentLevelId !== undefined || dto.occurredAt !== undefined;
 
-    if (dto.incidentTypeId !== undefined) entity.incidentTypeId = dto.incidentTypeId;
+    if (dto.incidentTypeId !== undefined) {
+      await this.getTypeOrFail(dto.incidentTypeId);
+      entity.incidentTypeId = dto.incidentTypeId;
+    }
     if (dto.incidentLevelId !== undefined) {
-      const level = await this.getLevelOrFail(dto.incidentLevelId);
+      await this.getLevelOrFail(dto.incidentLevelId);
       entity.incidentLevelId = dto.incidentLevelId;
-      entity.slaDueAt = this.calculateSlaDueAt(entity.occurredAt, level.slaHours);
     }
     if (dto.companyId !== undefined) entity.companyId = dto.companyId;
     if (dto.areaId !== undefined) entity.areaId = dto.areaId;
@@ -119,6 +123,10 @@ export class IncidentsService {
     }
     if (dto.environmentalImpactSummary !== undefined) {
       entity.environmentalImpactSummary = dto.environmentalImpactSummary;
+    }
+    if (shouldRecalculateSla) {
+      const level = await this.getLevelOrFail(entity.incidentLevelId);
+      entity.slaDueAt = this.calculateSlaDueAt(entity.occurredAt, level.slaHours);
     }
 
     const saved = await this.incidents.save(entity);
@@ -171,6 +179,12 @@ export class IncidentsService {
     const entity = await this.incidents.findOne({ where: { id } });
     if (!entity) throw new NotFoundException('Incident not found');
     return entity;
+  }
+
+  private async getTypeOrFail(id: string): Promise<IncidentTypeEntity> {
+    const type = await this.incidentTypes.findOne({ where: { id } });
+    if (!type) throw new NotFoundException('Incident type not found');
+    return type;
   }
 
   private async getLevelOrFail(id: string): Promise<IncidentLevelEntity> {

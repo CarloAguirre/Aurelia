@@ -382,16 +382,16 @@ export class SprService {
     action: string,
     recordId: string,
     actorId: string | null,
-    oldValue?: Record<string, unknown>,
-    newValue?: Record<string, unknown>,
+    oldValue?: object,
+    newValue?: object,
   ): Promise<void> {
     await this.auditService.log({
       action,
       entityType: SPR_RECORD_ENTITY_TYPE,
       entityId: recordId,
       actorUserId: actorId ?? undefined,
-      oldValue,
-      newValue,
+      oldValue: oldValue as Record<string, unknown> | undefined,
+      newValue: newValue as Record<string, unknown> | undefined,
     });
   }
 }

@@ -170,19 +170,35 @@ export class SprService {
   }
 
   private toMeasureGroupResponse(group: SprMeasureGroupEntity): SprMeasureGroupResponse {
-    return { ...group };
+    return {
+      ...group,
+      createdAt: group.createdAt.toISOString(),
+      updatedAt: group.updatedAt.toISOString(),
+    };
   }
 
   private toUnitResponse(unit: SprUnitEntity): SprUnitResponse {
-    return { ...unit };
+    return {
+      ...unit,
+      createdAt: unit.createdAt.toISOString(),
+      updatedAt: unit.updatedAt.toISOString(),
+    };
   }
 
   private toParameterResponse(parameter: SprParameterEntity): SprParameterResponse {
-    return { ...parameter };
+    return {
+      ...parameter,
+      createdAt: parameter.createdAt.toISOString(),
+      updatedAt: parameter.updatedAt.toISOString(),
+    };
   }
 
   private toAssignmentResponse(assignment: SprParameterAreaAssignmentEntity): SprParameterAreaAssignmentResponse {
-    return { ...assignment };
+    return {
+      ...assignment,
+      createdAt: assignment.createdAt.toISOString(),
+      updatedAt: assignment.updatedAt.toISOString(),
+    };
   }
 
   private toMonthlyRecordResponse(record: SprMonthlyRecordEntity): SprMonthlyRecordResponse {

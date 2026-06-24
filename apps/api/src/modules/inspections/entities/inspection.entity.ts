@@ -1,27 +1,12 @@
-import {
-  InspectionStatus,
-} from '@aurelia/contracts';
+import { InspectionStatus } from '@aurelia/contracts';
 import {
   Column,
   CreateDateColumn,
   Entity,
   Index,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { AreaEntity } from '../../organization/entities/area.entity';
-import { CompanyEntity } from '../../organization/entities/company.entity';
-import { LocationEntity } from '../../organization/entities/location.entity';
-import { SectorEntity } from '../../organization/entities/sector.entity';
-import { UserEntity } from '../../users/entities/user.entity';
-import { InspectionChecklistAnswerEntity } from './inspection-checklist-answer.entity';
-import { InspectionChecklistTemplateEntity } from './inspection-checklist-template.entity';
-import { InspectionFindingEntity } from './inspection-finding.entity';
-import { InspectionStatusHistoryEntity } from './inspection-status-history.entity';
-import { InspectionTypeEntity } from './inspection-type.entity';
 
 @Entity('inspections')
 export class InspectionEntity {
@@ -32,58 +17,27 @@ export class InspectionEntity {
   @Column({ name: 'inspection_type_id', type: 'uuid' })
   inspectionTypeId: string;
 
-  @ManyToOne(() => InspectionTypeEntity, (type) => type.inspections, { onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'inspection_type_id' })
-  inspectionType: InspectionTypeEntity;
-
   @Index('idx_inspections_template')
   @Column({ name: 'template_id', type: 'uuid', nullable: true })
   templateId: string | null;
-
-  @ManyToOne(() => InspectionChecklistTemplateEntity, (template) => template.inspections, {
-    nullable: true,
-    onDelete: 'SET NULL',
-  })
-  @JoinColumn({ name: 'template_id' })
-  template: InspectionChecklistTemplateEntity | null;
 
   @Index('idx_inspections_company')
   @Column({ name: 'company_id', type: 'uuid', nullable: true })
   companyId: string | null;
 
-  @ManyToOne(() => CompanyEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'company_id' })
-  company: CompanyEntity | null;
-
   @Index('idx_inspections_area')
   @Column({ name: 'area_id', type: 'uuid', nullable: true })
   areaId: string | null;
 
-  @ManyToOne(() => AreaEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'area_id' })
-  area: AreaEntity | null;
-
   @Column({ name: 'sector_id', type: 'uuid', nullable: true })
   sectorId: string | null;
-
-  @ManyToOne(() => SectorEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'sector_id' })
-  sector: SectorEntity | null;
 
   @Column({ name: 'location_id', type: 'uuid', nullable: true })
   locationId: string | null;
 
-  @ManyToOne(() => LocationEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'location_id' })
-  location: LocationEntity | null;
-
   @Index('idx_inspections_inspector')
   @Column({ name: 'inspector_user_id', type: 'uuid', nullable: true })
   inspectorId: string | null;
-
-  @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'inspector_user_id' })
-  inspector: UserEntity | null;
 
   @Column({ type: 'varchar', length: 180 })
   title: string;
@@ -129,15 +83,6 @@ export class InspectionEntity {
 
   @Column({ type: 'text', nullable: true })
   notes: string | null;
-
-  @OneToMany(() => InspectionChecklistAnswerEntity, (answer) => answer.inspection)
-  answers: InspectionChecklistAnswerEntity[];
-
-  @OneToMany(() => InspectionFindingEntity, (finding) => finding.inspection)
-  findings: InspectionFindingEntity[];
-
-  @OneToMany(() => InspectionStatusHistoryEntity, (history) => history.inspection)
-  statusHistory: InspectionStatusHistoryEntity[];
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

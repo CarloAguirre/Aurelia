@@ -45,7 +45,7 @@ Estado: cerrada.
 
 ## Fase 4B - API operativa mínima
 
-Objetivo: habilitar la primera operación real del módulo sin incorporar todavía hallazgos, seguimientos, cierre, workflow ni dashboard.
+Objetivo: habilitar la primera operación real del módulo sin incorporar todavía hallazgos, seguimientos, cierre, workflow ni dashboard avanzado.
 
 Endpoints incluidos:
 
@@ -82,25 +82,21 @@ Criterios de salida:
 - Se pueden registrar/actualizar respuestas de checklist.
 - `pnpm build --force`, `pnpm lint --force` y `pnpm migration:run` pasan.
 
-Queda fuera de 4B:
-
-- Crear/editar templates por API.
-- Crear hallazgos.
-- Seguimientos de hallazgos.
-- Cierre de inspección.
-- Dashboard de inspecciones.
-- Integración formal con evidencias, comentarios, auditoría y workflow.
+Estado: cerrada.
 
 ## Fase 4C - Hallazgos, seguimientos y cierre
 
 Objetivo: completar el flujo operativo de una inspección con desviaciones, acciones de seguimiento y reglas de cierre.
 
-Endpoints propuestos:
+Endpoints incluidos:
 
 ```txt
+GET    /api/inspections/dashboard/summary
+GET    /api/inspections/:id/findings
 POST   /api/inspections/:id/findings
 PATCH  /api/inspections/findings/:findingId
 POST   /api/inspections/findings/:findingId/followups
+PATCH  /api/inspections/followups/:followupId
 POST   /api/inspections/:id/close
 ```
 
@@ -109,29 +105,48 @@ Reglas:
 - Una inspección puede tener múltiples hallazgos.
 - Un hallazgo puede tener máximo tres seguimientos.
 - Una inspección solo se puede cerrar si no tiene hallazgos abiertos.
-- Al crear/cerrar hallazgos se deben recalcular `findings_count` y `open_findings_count`.
+- Al crear/cerrar hallazgos se recalculan `findings_count` y `open_findings_count`.
 
-## Fase 4D - Integración transversal
+Estado: cerrada.
 
-Objetivo: conectar inspecciones con evidencias, comentarios, auditoría y workflow.
+## Fase 4D - Integración transversal liviana
+
+Objetivo: conectar inspecciones con la capa transversal sin bloquear el avance con PDF real, workflow avanzado ni frontend.
+
+Endpoints incluidos:
+
+```txt
+GET    /api/inspections/:id/evidences
+POST   /api/inspections/:id/evidences/:evidenceId/link
+GET    /api/inspections/:id/comments
+POST   /api/inspections/:id/comments
+GET    /api/inspections/:id/export
+```
 
 Alcance:
 
-- Vincular evidencias vía `evidence_links` usando `inspection`, `inspection_finding` e `inspection_followup`.
-- Listar comentarios por inspección/hallazgo/seguimiento.
-- Registrar auditoría explícita en acciones relevantes.
-- Iniciar workflow de validación cuando una inspección se envía a revisión.
+- Vincular evidencias existentes vía `evidence_links` usando `entity_type = inspection`.
+- Listar evidencias asociadas a una inspección.
+- Crear y listar comentarios asociados a una inspección.
+- Registrar auditoría explícita al vincular evidencias y crear comentarios.
+- Entregar payload exportable en JSON con inspección, checklist, respuestas, hallazgos, seguimientos, evidencias y comentarios.
 
-## Fase 4E - Exportación y dashboard inicial
+Queda fuera de 4D:
+
+- PDF binario real.
+- Workflow automático de revisión.
+- Integración con notificaciones.
+- Integración transversal específica a hallazgos y seguimientos.
+
+## Fase 4E - Exportación PDF y dashboard inicial avanzado
 
 Objetivo: agregar salidas operativas sin bloquear el flujo base.
 
 Alcance:
 
 ```txt
-inspection_exports
 GET /api/inspections/:id/export/pdf
-GET /api/inspections/dashboard/summary
+GET /api/inspections/dashboard/summary avanzado
 ```
 
 Queda fuera hasta fases posteriores:

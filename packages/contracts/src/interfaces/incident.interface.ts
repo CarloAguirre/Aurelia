@@ -75,6 +75,26 @@ export interface IncidentInvestigation extends BaseEntity {
   completedAt: ISODateString | null;
 }
 
+export interface IncidentFiveWhyAnalysis extends BaseEntity {
+  investigationId: ID;
+  problemStatement: string;
+  why1: string | null;
+  why2: string | null;
+  why3: string | null;
+  why4: string | null;
+  why5: string | null;
+  rootCause: string | null;
+}
+
+export interface IncidentPeepoAnalysis extends BaseEntity {
+  investigationId: ID;
+  people: string | null;
+  environment: string | null;
+  equipment: string | null;
+  procedures: string | null;
+  organization: string | null;
+}
+
 export interface IncidentActionPlan extends BaseEntity {
   incidentId: ID;
   investigationId: ID | null;
@@ -85,4 +105,24 @@ export interface IncidentActionPlan extends BaseEntity {
   status: IncidentActionPlanStatus;
   completedAt: ISODateString | null;
   closedByUserId: ID | null;
+}
+
+export interface IncidentDashboardSummary {
+  incidents: {
+    total: number;
+    byStatus: Record<string, number>;
+    overdueSla: number;
+    dueSoonNext24Hours: number;
+    closedRate: number;
+  };
+  actions: {
+    total: number;
+    byStatus: Record<string, number>;
+    overdue: number;
+  };
+  investigations: {
+    total: number;
+    open: number;
+    completed: number;
+  };
 }

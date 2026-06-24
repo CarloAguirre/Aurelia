@@ -8,6 +8,7 @@
 @checklistItemId = 00000000-0000-0000-0000-000000000004
 @findingId = 00000000-0000-0000-0000-000000000005
 @followupId = 00000000-0000-0000-0000-000000000006
+@evidenceId = 00000000-0000-0000-0000-000000000007
 
 ### List inspection types
 GET {{baseUrl}}/api/inspections/types
@@ -115,3 +116,37 @@ Content-Type: application/json
   "status": "completed",
   "description": "Seguimiento actualizado desde REST Client"
 }
+
+### Close inspection
+POST {{baseUrl}}/api/inspections/{{inspectionId}}/close
+Content-Type: application/json
+
+{
+  "reason": "Todos los hallazgos fueron cerrados"
+}
+
+### List inspection evidences
+GET {{baseUrl}}/api/inspections/{{inspectionId}}/evidences
+
+### Link existing evidence to inspection
+POST {{baseUrl}}/api/inspections/{{inspectionId}}/evidences/{{evidenceId}}/link
+Content-Type: application/json
+
+{
+  "relationType": "inspection_evidence"
+}
+
+### List inspection comments
+GET {{baseUrl}}/api/inspections/{{inspectionId}}/comments
+
+### Create inspection comment
+POST {{baseUrl}}/api/inspections/{{inspectionId}}/comments
+Content-Type: application/json
+
+{
+  "body": "Comentario de prueba asociado a la inspeccion",
+  "isInternal": false
+}
+
+### Export inspection payload
+GET {{baseUrl}}/api/inspections/{{inspectionId}}/export

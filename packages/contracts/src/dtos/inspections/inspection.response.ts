@@ -8,7 +8,7 @@ import type {
   InspectionFollowup,
   InspectionTypeRecord,
 } from '../../interfaces/inspection.interface';
-import type { InspectionFindingStatus, InspectionStatus } from '../../enums';
+import type { InspectionFindingSeverity, InspectionFindingStatus, InspectionStatus } from '../../enums';
 
 export type InspectionResponse = Inspection;
 export type InspectionTypeResponse = InspectionTypeRecord;
@@ -28,10 +28,15 @@ export interface InspectionDashboardSummaryResponse {
   inspections: {
     total: number;
     byStatus: Record<InspectionStatus, number>;
+    withOpenFindings: number;
+    closedRate: number;
   };
   findings: {
     total: number;
     byStatus: Record<InspectionFindingStatus, number>;
+    bySeverity: Record<InspectionFindingSeverity, number>;
     open: number;
+    overdue: number;
+    dueSoonNext7Days: number;
   };
 }

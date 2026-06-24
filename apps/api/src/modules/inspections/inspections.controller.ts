@@ -113,6 +113,6 @@ export class InspectionsController {
     @Param('followupId', ParseUUIDPipe) followupId: string,
     @Body() dto: UpdateInspectionFollowupDto,
   ): Promise<InspectionFollowupResponse> {
-    return this.inspectionsService.updateFollowup(followupId, dto, null);
+    return this.inspectionsService.updateFollowup(followupId, dto);
   }
 }

@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
+import { router } from 'expo-router';
 
 import { BotBubble } from '../../shared/components/chat/BotBubble';
 import { UserBubble } from '../../shared/components/chat/UserBubble';
@@ -18,6 +19,7 @@ import { AiProposalCard } from '../../shared/components/chat/AiProposalCard';
 import { PersonnelPicker } from '../../shared/components/chat/PersonnelPicker';
 import { PhotoStepWidget } from '../../shared/components/chat/PhotoStepWidget';
 import { ErrorBubble } from '../../shared/components/chat/ErrorBubble';
+import { SubmitWidget } from '../../shared/components/chat/SubmitWidget';
 import { ChatHeader } from '../../shared/components/layout/ChatHeader';
 import { ChatInput } from '../../shared/components/layout/ChatInput';
 import { colors, spacing } from '../../shared/theme/tokens';
@@ -41,6 +43,15 @@ import {
   suggestCompany,
 } from '../../shared/services/api/ai.api';
 import { uploadFile } from '../../shared/services/api/files.api';
+import {
+  createInspection,
+  createFinding,
+  mapSeverity,
+  slaToIso,
+  type InspectionResponse,
+  type FindingResponse,
+} from '../../shared/services/api/inspections-submit.api';
+import { createEvidence, linkEvidence } from '../../shared/services/api/evidences.api';
 
 // ── Query keys ─────────────────────────────────────────────────────────────
 const AREAS_KEY = ['areas'] as const;
@@ -78,7 +89,8 @@ type MessageItem =
   | { id: string; type: 'company_chips'; companies: CompanyResponse[] }
   | { id: string; type: 'personnel_picker'; users: UserResponse[] }
   | { id: string; type: 'ai_proposal' }
-  | { id: string; type: 'photo_widget' };
+  | { id: string; type: 'photo_widget' }
+  | { id: string; type: 'submit_btn'; obsCount: number; photoCount: number };
 
 type MessageInput =
   | { type: 'bot'; text: string }
@@ -94,7 +106,8 @@ type MessageInput =
   | { type: 'company_chips'; companies: CompanyResponse[] }
   | { type: 'personnel_picker'; users: UserResponse[] }
   | { type: 'ai_proposal' }
-  | { type: 'photo_widget' };
+  | { type: 'photo_widget' }
+  | { type: 'submit_btn'; obsCount: number; photoCount: number };
 
 let _msgId = 0;
 const nextId = () => String(++_msgId);
@@ -476,7 +489,88 @@ export function InspectionChatScreen() {
     addMsg({ type: 'user', text: `Personal: ${label}` });
     await delay(400);
     flow.goToResumen();
-    addMsg({ type: 'bot', text: 'Inspección registrada. El envío y creación de hallazgos formales estarán disponibles en Mobile D.' });
+
+    const obsCount = flow.observaciones.length;
+    const photoCount = flow.observaciones.filter((o) => !!o.fileId).length;
+    addMsg({ type: 'bot', text: '¿Todo listo? Revisa el resumen y envía la inspección.' });
+    addMsg({ type: 'submit_btn', obsCount, photoCount });
+  }
+
+  // ── Submit inspection ────────────────────────────────────────────────────
+  async function handleSubmit(widgetId: string) {
+    resolveWidget(widgetId);
+
+    async function doSubmit() {
+      addMsg({ type: 'typing' });
+      let inspection: InspectionResponse;
+      try {
+        inspection = await createInspection({
+          inspectionTypeId: flow.inspectionTypeId!,
+          companyId: flow.companyId,
+          areaId: flow.areaId,
+          sectorId: flow.sectorId,
+          title: `${flow.inspectionTypeName} — ${flow.areaName} · ${flow.sectorName}`,
+        });
+      } catch {
+        removeTyping();
+        addErrorMsg('Error al crear la inspección. Verifica la conexión.', doSubmit);
+        return;
+      }
+
+      removeTyping();
+      addMsg({ type: 'bot', text: `Inspección creada ✓. Guardando hallazgos…` });
+      addMsg({ type: 'typing' });
+
+      const allObs = flow.observaciones;
+      let findingsCreated = 0;
+      let evidencesCreated = 0;
+
+      for (const obs of allObs) {
+        let finding: FindingResponse | null = null;
+        try {
+          finding = await createFinding(inspection.id, {
+            title: (obs.desc ?? 'Hallazgo').slice(0, 200),
+            description: obs.medida ? `Medida correctiva: ${obs.medida}` : null,
+            severity: mapSeverity(obs.nivel),
+            ownerUserId: flow.personnelIds[0] ?? null,
+            dueAt: slaToIso(obs.sla),
+          });
+          findingsCreated++;
+        } catch {
+          continue;
+        }
+
+        if (obs.fileId && finding) {
+          try {
+            const evidence = await createEvidence({
+              fileId: obs.fileId,
+              title: `Foto: ${(obs.desc ?? '').slice(0, 80)}`,
+              evidenceType: 'photo',
+              capturedAt: new Date().toISOString(),
+            });
+            await linkEvidence(evidence.id, {
+              entityType: 'finding',
+              entityId: finding.id,
+            });
+            evidencesCreated++;
+          } catch {
+            // non-fatal — finding was created without evidence
+          }
+        }
+      }
+
+      removeTyping();
+      router.replace({
+        pathname: '/inspection/success',
+        params: {
+          inspectionId: inspection.id,
+          findingsCount: String(findingsCreated),
+          evidencesCount: String(evidencesCreated),
+        },
+      });
+    }
+
+    await doSubmit();
   }
 
   // ── Chat input ───────────────────────────────────────────────────────────
@@ -639,6 +733,17 @@ export function InspectionChatScreen() {
           />
         );
       }
+
+      case 'submit_btn':
+        return (
+          <SubmitWidget
+            key={msg.id}
+            obsCount={msg.obsCount}
+            photoCount={msg.photoCount}
+            submitted={isResolved}
+            onSubmit={() => handleSubmit(msg.id)}
+          />
+        );
 
       default:
         return null;

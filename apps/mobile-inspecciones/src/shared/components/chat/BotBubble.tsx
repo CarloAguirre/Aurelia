@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { FontAwesome6 } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
+import { SparklesMark } from '../icons/SparklesMark';
 
 interface Props {
   text: string;
@@ -33,7 +33,7 @@ export function BotBubble({ text, time }: Props) {
   return (
     <View style={styles.row}>
       <View style={styles.avatar}>
-        <FontAwesome6 name="sparkles" size={10} color={colors.navy} />
+        <SparklesMark size={10} color={colors.navy} />
       </View>
       <View style={styles.bubble}>
         <FormattedText text={text} />

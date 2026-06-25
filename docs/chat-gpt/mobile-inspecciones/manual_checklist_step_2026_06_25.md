@@ -1,27 +1,13 @@
-# Manual checklist template step - 2026-06-25
+# Manual checklist step - 2026-06-25
 
-## Figma reference
+## Figma references
 
-```txt
-https://www.figma.com/design/DymqBWIjfxvuU6UK9wNI3p/Medio-Ambiente-Core?node-id=633-15088&m=dev
-```
+- Selector de plantilla: `633:15088`
+- Plantilla seleccionada con ítems: `633:15370`
 
-Nodo:
+Ambos nodos entregaron `get_design_context`.
 
-```txt
-633:15088
-```
-
-`get_design_context` funcionó para este nodo y entregó el body de la vista:
-
-- título `Checklist normativo`, 18px;
-- subtítulo, 12px;
-- card blanca con borde `#e3e3e3`, radio 12px;
-- label `Seleccione la plantilla *`, 13px;
-- selector `#f6faff`, borde `#d1d1d1`, radio 10px;
-- metadata inferior con código e ítems en 11px.
-
-## Ruta creada
+## Ruta
 
 ```txt
 /inspection/manual/observations
@@ -39,24 +25,12 @@ Pantalla:
 apps/mobile-inspecciones/src/modules/inspection/ManualChecklistTemplateScreen.tsx
 ```
 
-## Catálogo de plantillas
+## Datos reales usados
 
-Se confirmó que las plantillas no son un mock aislado del Figma. El backend ya tiene endpoint real:
+El catálogo de plantillas se carga desde el backend:
 
 ```txt
 GET /api/inspections/templates
-```
-
-Y contrato compartido:
-
-```txt
-InspectionChecklistTemplateResponse
-```
-
-Importado desde:
-
-```txt
-@aurelia/contracts
 ```
 
 Servicio mobile:
@@ -71,93 +45,78 @@ Hook TanStack Query:
 apps/mobile-inspecciones/src/modules/inspection/hooks/useInspectionChecklistTemplates.ts
 ```
 
-## Qué son estas plantillas
+Contrato compartido:
 
-Desde documentación funcional y de base de datos, los checklists específicos corresponden a formularios normativos ambientales reutilizables. Las fuentes mencionan:
+```txt
+InspectionChecklistTemplateResponse
+```
 
-- Almacenamiento SUSPEL General y Bodegas.
-- Cianuro.
-- Mercurio.
-- Equipos Nucleares.
-- RESPEL.
-- PTAS.
+## Cambios implementados
 
-La documentación indica que estos deben modelarse como catálogos/tablas administrables, no enums rígidos.
+- El texto de `/inspection/manual/type` ya no usa `8 plantillas disponibles` en duro.
+- Ahora muestra el conteo real desde `useInspectionChecklistTemplates()`.
+- Al seleccionar una plantilla en paso 3 se despliega:
+  - progreso `respondidos / total`;
+  - placeholder de foto referencial;
+  - lista real de ítems de la plantilla;
+  - botones `SÍ`, `NO`, `N/A` por ítem.
+- Las respuestas quedan temporalmente en Zustand usando `answersByItemId`.
+- El botón continuar queda deshabilitado hasta responder todos los ítems.
 
-## Cambios de estado
+## Estado local agregado
 
-Se extendió:
+Archivo:
 
 ```txt
 apps/mobile-inspecciones/src/modules/inspection/manualInspection.store.ts
 ```
 
-Nuevos campos:
+Campos:
 
 ```txt
 templateId
 templateName
 templateCode
 templateItemsCount
+answersByItemId
 ```
 
-Nueva acción:
+Acciones:
 
 ```txt
 setTemplate()
+setAnswer()
 ```
 
-Se extendió:
+Enum usado desde contracts:
 
 ```txt
-apps/mobile-inspecciones/src/modules/inspection/manualInspectionFlow.store.ts
+InspectionAnswerValue
 ```
 
-El picker activo ahora acepta:
+Mapeo UI:
 
 ```txt
-template
+SÍ  -> COMPLIANT
+NO  -> NOT_COMPLIANT
+N/A -> NOT_APPLICABLE
 ```
 
-## Fixes relacionados
+## Evaluación API vs flujo
 
-### Mapa NaN
+La API soporta bien la lectura de plantillas, secciones e ítems.
 
-Se corrigió el cálculo de coordenadas para evitar `NaN` cuando React Native Web no entrega `locationX/locationY`.
-
-Archivos:
-
-```txt
-apps/mobile-inspecciones/src/shared/utils/geo.utils.ts
-apps/mobile-inspecciones/src/shared/components/form/ManualFormUi.tsx
-```
-
-Ahora:
-
-- valida lat/lon finitos;
-- valida dimensiones del mapa;
-- ignora taps sin coordenada local válida;
-- no construye tile URL si lat/lon no son válidos.
-
-### Selector de fecha
-
-El selector ahora muestra:
-
-- hoy;
-- ayer;
-- días previos.
-
-Antes mostraba días futuros, lo que no calzaba con una inspección que ocurre u ocurrió.
+Para guardar respuestas, la API ya tiene un endpoint por inspección. La parte pendiente es que el flujo mobile todavía no crea la inspección antes de responder; por eso las respuestas quedan primero como borrador local y deben sincronizarse cuando se implemente creación/resumen.
 
 ## Pendientes
 
-1. Validar si los seeds actuales del backend contienen las plantillas completas esperadas por Gold Fields.
-2. Definir códigos oficiales: ejemplo Figma `FR-00007`.
-3. Crear pantalla siguiente para responder ítems del checklist.
-4. Decidir si el paso 3 debe listar primero plantilla y después ítems, o si al seleccionar plantilla debe expandirse automáticamente.
-5. Evaluar arrastre continuo del pin si tap-to-adjust no es suficiente.
+1. Confirmar que los seeds tengan todas las plantillas esperadas por Gold Fields.
+2. Implementar captura real de foto referencial.
+3. Crear/sincronizar inspección antes de persistir respuestas.
+4. Crear paso 4 / resumen.
+5. Evaluar arrastre continuo del pin si tap-to-adjust no basta.
 
-## Comandos de prueba
+## Prueba local
 
 ```powershell
 cd C:\Users\carlo\Desktop\aurelia\Aurelia
@@ -175,10 +134,8 @@ pnpm web -- --clear
 
 Validar:
 
-1. En `/inspection/manual/identification`, capturar ubicación y tocar el mapa; no debe aparecer `NaN`.
-2. Tocar fecha; debe mostrar hoy y días anteriores.
-3. Completar paso 1 y continuar.
-4. En paso 2, elegir `Checklist normativo`.
-5. Continuar a `/inspection/manual/observations`.
-6. Confirmar loading/success/error/empty del selector de plantilla.
-7. Seleccionar una plantilla; debe habilitarse `Continuar`.
+1. Paso 2 muestra conteo real de plantillas.
+2. Paso 3 carga plantillas desde API.
+3. Al seleccionar plantilla aparecen progreso, foto e ítems.
+4. Al responder ítems sube el progreso.
+5. Continuar se habilita al responder todo.

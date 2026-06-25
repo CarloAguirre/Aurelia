@@ -144,18 +144,19 @@ export function SelectBox({ value, onPress, loading = false, disabled = false }:
 interface FooterProps {
   onCancel: () => void;
   onNext: () => void;
+  nextDisabled?: boolean;
 }
 
-export function ManualFooter({ onCancel, onNext }: FooterProps) {
+export function ManualFooter({ onCancel, onNext, nextDisabled = false }: FooterProps) {
   return (
     <View style={styles.footer}>
       <View style={styles.footerButtons}>
         <TouchableOpacity style={styles.cancelButton} activeOpacity={0.75} onPress={onCancel}>
           <Text style={styles.cancelText}>Cancelar</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.nextButton} activeOpacity={0.82} onPress={onNext}>
-          <Text style={styles.nextText}>Continuar</Text>
-          <FontAwesome5 name="arrow-right" size={14} color={colors.white} />
+        <TouchableOpacity style={[styles.nextButton, nextDisabled && styles.nextButtonDisabled]} activeOpacity={0.82} onPress={onNext} disabled={nextDisabled}>
+          <Text style={[styles.nextText, nextDisabled && styles.nextTextDisabled]}>Continuar</Text>
+          <FontAwesome5 name="arrow-right" size={14} color={nextDisabled ? colors.placeholder : colors.white} />
         </TouchableOpacity>
       </View>
       <View style={styles.homeIndicator} />
@@ -235,7 +236,9 @@ const styles = StyleSheet.create({
   cancelButton: { height: 50, borderRadius: 14, borderWidth: 2, borderColor: colors.gold, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center' },
   cancelText: { fontSize: 14, fontWeight: fontWeight.bold, color: colors.gold },
   nextButton: { flex: 1, height: 50, borderRadius: 14, backgroundColor: colors.gold, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, shadowColor: colors.gold, shadowOpacity: 0.25, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
+  nextButtonDisabled: { backgroundColor: '#E3E3E3', shadowOpacity: 0 },
   nextText: { fontSize: 14, fontWeight: fontWeight.bold, color: colors.white },
+  nextTextDisabled: { color: colors.placeholder },
   homeIndicator: { width: 120, height: 4, borderRadius: 2, backgroundColor: colors.borderMid, marginTop: 14, marginBottom: 8 },
   mapBox: { height: 120, borderRadius: 10, borderWidth: 1.5, borderColor: colors.borderMid, backgroundColor: '#1E3A2E', overflow: 'hidden', position: 'relative' },
   mapImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },

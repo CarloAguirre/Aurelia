@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { FontAwesome5, FontAwesome6 } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
 
 interface AiProposalCardProps {
@@ -21,7 +21,7 @@ export function AiProposalCard({
   return (
     <View style={[styles.container, styles.marginLeft]}>
       <View style={styles.header}>
-        <FontAwesome5 name="magic" size={11} color={colors.goldDark} />
+        <FontAwesome6 name="sparkles" size={11} color={colors.goldDark} />
         <Text style={styles.headerTitle}>Medida sugerida por AurelIA</Text>
         {fallback && <Text style={styles.fallbackBadge}>fallback</Text>}
       </View>

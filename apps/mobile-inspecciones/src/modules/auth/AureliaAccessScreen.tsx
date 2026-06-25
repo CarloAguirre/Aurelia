@@ -6,7 +6,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, fontWeight } from '../../shared/theme/tokens';
 import { login } from '../../shared/services/api/auth.api';
 import { useMobileSession } from './mobileSession.store';
-import LogoMobile from '../../../assets/icons/logo_mobile.svg';
+import LogoMobile from '../../../assets/icons/logo_mobile_white.svg';
 
 export function AureliaAccessScreen() {
   const setMobileSession = useMobileSession((state) => state.setMobileSession);
@@ -37,7 +37,7 @@ export function AureliaAccessScreen() {
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.screen}>
           <View style={styles.body}>
-            <View style={styles.logoWrap}>
+            <View style={styles.logoWrapWhite}>
               <LogoMobile width={137} height={45} />
             </View>
             <Text style={styles.title}>Le damos la bienvenida a <Text style={styles.titleBlue}>AurelIA</Text></Text>
@@ -72,6 +72,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#fff' },
   body: { flex: 1, paddingHorizontal: 24, paddingTop: 69, alignItems: 'center' },
   logoWrap: { width: 154, height: 56, borderRadius: 14, backgroundColor: colors.navyDark, alignItems: 'center', justifyContent: 'center' },
+  logoWrapWhite: { width: 154, height: 56, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   title: { marginTop: 37, fontSize: 22, lineHeight: 28, color: colors.primary, fontWeight: fontWeight.bold, textAlign: 'center' },
   titleBlue: { color: colors.blueLink },
   subtitle: { marginTop: 13, fontSize: 16, color: colors.primary, textAlign: 'center' },

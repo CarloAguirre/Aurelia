@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { FontAwesome5, FontAwesome6 } from '@expo/vector-icons';
+import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, fontSize, fontWeight } from '../../theme/tokens';
+import { SparklesMark } from '../icons/SparklesMark';
 
 export const STEP_LABELS = [
   'Identificación',
@@ -32,7 +33,7 @@ export function ChatHeader({ currentStep, agentStatus = 'active' }: Props) {
         <View style={styles.agentLeft}>
           <View style={styles.avatarWrapper}>
             <View style={styles.avatar}>
-              <FontAwesome6 name="sparkles" size={14} color={colors.navy} />
+              <SparklesMark size={14} color={colors.navy} />
             </View>
             <View style={[styles.statusDot, agentStatus === 'thinking' && styles.statusDotThinking]} />
           </View>

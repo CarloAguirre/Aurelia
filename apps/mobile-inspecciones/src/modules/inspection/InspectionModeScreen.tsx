@@ -11,8 +11,11 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
-import { colors, fontSize, fontWeight, radius, spacing } from '../../shared/theme/tokens';
-import { SparklesMark } from '../../shared/components/icons/SparklesMark';
+import { colors, fontSize, fontWeight, spacing } from '../../shared/theme/tokens';
+import BackArrowIcon from '../../../assets/icons/back-arrow.svg';
+import FigmaAiChipIcon from '../../../assets/icons/figma-ai-chip.svg';
+import FigmaSparklesSmallIcon from '../../../assets/icons/figma-sparkles-small.svg';
+import FigmaClipboardIcon from '../../../assets/icons/figma-clipboard.svg';
 
 function FeatureRow({ children }: { children: string }) {
   return (
@@ -46,7 +49,7 @@ export function InspectionModeScreen() {
         <View style={styles.screen}>
           <View style={styles.appHeader}>
             <TouchableOpacity style={styles.backButton} activeOpacity={0.7} onPress={cancelInspection}>
-              <FontAwesome5 name="arrow-left" size={16} color={colors.white} />
+              <BackArrowIcon width={18} height={14} />
             </TouchableOpacity>
             <View style={styles.headerTextBlock}>
               <Text style={styles.headerTitle}>Nueva inspección</Text>
@@ -68,7 +71,7 @@ export function InspectionModeScreen() {
             <View style={styles.assistantCard}>
               <View style={styles.cardHeaderRow}>
                 <View style={styles.assistantIconBox}>
-                  <SparklesMark size={22} color={colors.white} />
+                  <FigmaAiChipIcon width={28} height={22} />
                 </View>
                 <View style={styles.cardTitleBlock}>
                   <Text style={styles.assistantTitle}>Asistente AurelIA</Text>
@@ -91,7 +94,7 @@ export function InspectionModeScreen() {
 
               <TouchableOpacity style={styles.assistantButton} activeOpacity={0.82} onPress={startAssistant}>
                 <View style={styles.assistantButtonContent}>
-                  <SparklesMark size={14} color={colors.navy} />
+                  <FigmaSparklesSmallIcon width={18} height={16} />
                   <Text style={styles.assistantButtonText}>Iniciar con asistente</Text>
                 </View>
               </TouchableOpacity>
@@ -100,7 +103,7 @@ export function InspectionModeScreen() {
             <View style={styles.manualCard}>
               <View style={styles.cardHeaderRow}>
                 <View style={styles.manualIconBox}>
-                  <FontAwesome5 name="clipboard-list" size={20} color={colors.muted} />
+                  <FigmaClipboardIcon width={25} height={20} />
                 </View>
                 <View style={styles.manualTitleBlock}>
                   <Text style={styles.manualTitle}>Formulario manual</Text>

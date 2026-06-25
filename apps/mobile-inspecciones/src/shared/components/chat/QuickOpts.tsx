@@ -1,14 +1,22 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
 
 export type QuickOptVariant = 'default' | 'selected' | 'teal' | 'disabled';
+export type QuickIcon = 'search' | 'clipboard-check' | 'plus' | 'arrow-right' | 'list' | 'check' | 'pen';
 
 interface QuickOptProps {
   label: string;
-  icon?: string;
+  icon?: QuickIcon;
   variant?: QuickOptVariant;
   onPress?: () => void;
+}
+
+function getIconColor(variant: QuickOptVariant) {
+  if (variant === 'selected' || variant === 'teal') return colors.white;
+  if (variant === 'disabled') return colors.muted;
+  return colors.blueLink;
 }
 
 export function QuickOpt({ label, icon, variant = 'default', onPress }: QuickOptProps) {
@@ -19,14 +27,14 @@ export function QuickOpt({ label, icon, variant = 'default', onPress }: QuickOpt
       style={[styles.opt, optVariantStyle[variant]]}
       activeOpacity={0.7}
     >
-      {icon ? <Text style={[styles.icon, optTextVariantStyle[variant]]}>{icon}</Text> : null}
+      {icon ? <FontAwesome5 name={icon} size={10} color={getIconColor(variant)} /> : null}
       <Text style={[styles.label, optTextVariantStyle[variant]]}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
 interface QuickOptsProps {
-  options: Array<{ label: string; icon?: string; value: string }>;
+  options: Array<{ label: string; icon?: QuickIcon; value: string }>;
   selected?: string | null;
   onSelect?: (value: string) => void;
 }
@@ -78,13 +86,6 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: radius.full,
     borderWidth: 1.5,
-  },
-  icon: {
-    width: 10,
-    textAlign: 'center',
-    fontSize: fontSize.xs,
-    lineHeight: fontSize.xs + 2,
-    fontWeight: fontWeight.bold,
   },
   label: {
     fontSize: fontSize.md,

@@ -3,6 +3,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import type { InspectionResponse } from '@aurelia/contracts';
 import { InspectionStatus } from '@aurelia/contracts';
 import { colors, fontWeight } from '../../shared/theme/tokens';
@@ -31,6 +32,20 @@ function Metric({ value, label, color }: { value: string; label: string; color: 
       <Text style={[styles.metricValue, { color }]}>{value}</Text>
       <Text style={styles.metricLabel}>{label}</Text>
     </View>
+  );
+}
+
+function FooterGradient() {
+  return (
+    <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" preserveAspectRatio="none">
+      <Defs>
+        <LinearGradient id="footerGradient" x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="2.24%" stopColor="#002659" />
+          <Stop offset="100%" stopColor="#004a3a" />
+        </LinearGradient>
+      </Defs>
+      <Rect width="100%" height="100%" fill="url(#footerGradient)" />
+    </Svg>
   );
 }
 
@@ -179,9 +194,9 @@ export function InspectionsHomeFigmaScreen() {
   const openInspections = summary ? getOpenInspections(summary.inspections.byStatus) : 0;
   const closedRate = summary ? `${summary.inspections.closedRate}%` : '0%';
   const roleLabel = user?.roles?.[0] ?? 'Inspector';
-  const draftTitle = `${draftTypeName ?? 'Hallazgo'} · ${draftAreaName ?? 'Planta Procesos'}`;
-  const draftDetail = [draftAreaName, draftSectorName, draftCompanyName].filter(Boolean).join(' · ') || 'Datos parciales guardados en este dispositivo';
-  const draftProgress = Math.max(20, draftProgressStep * 20);
+  const draftTitle = hasDraft ? `${draftTypeName ?? 'Hallazgo'} · ${draftAreaName ?? 'Planta Procesos'}` : 'Hallazgo · Planta Procesos';
+  const draftDetail = hasDraft ? [draftAreaName, draftSectorName, draftCompanyName].filter(Boolean).join(' · ') : 'Planta Procesos · Módulo C · STRACON · Ayer 16:54';
+  const draftProgress = hasDraft ? Math.max(20, draftProgressStep * 20) : 40;
 
   function refetch() {
     summaryQuery.refetch();
@@ -226,7 +241,7 @@ export function InspectionsHomeFigmaScreen() {
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.list} contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
-            {hasDraft ? <DraftBox title={draftTitle} detail={draftDetail} progress={draftProgress} /> : null}
+            <DraftBox title={draftTitle} detail={draftDetail} progress={draftProgress} />
             {isLoading ? (
               <StateCard loading title="Cargando inspecciones" detail="Obteniendo resumen y listado desde la API." />
             ) : isError ? (
@@ -238,6 +253,7 @@ export function InspectionsHomeFigmaScreen() {
             )}
           </ScrollView>
           <View style={styles.tabs}>
+            <FooterGradient />
             <View style={styles.tabActive}>
               <View style={styles.tabCount}>
                 <Text style={styles.tabCountText}>{summary?.findings.open ?? 0}</Text>
@@ -345,25 +361,25 @@ const styles = StyleSheet.create({
   typeChip: { flexDirection: 'row', gap: 4, alignItems: 'center', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
   typeChipBlue: { backgroundColor: '#e6f3ff' },
   typeChipTeal: { backgroundColor: '#c5fff6' },
-  typeChipText: { fontSize: 10, fontWeight: fontWeight.bold },
+  typeChipText: { fontSize: 10, lineHeight: 10, fontWeight: fontWeight.bold, includeFontPadding: false, textAlignVertical: 'center' },
   typeChipTextBlue: { color: '#0d3862' },
   typeChipTextTeal: { color: '#006153' },
-  statusChip: { flexDirection: 'row', gap: 4, alignItems: 'center', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-  statusChipText: { fontSize: 10, fontWeight: fontWeight.bold },
+  statusChip: { flexDirection: 'row', gap: 4, alignItems: 'center', borderRadius: 6, paddingHorizontal: 8, paddingTop: 3, paddingBottom: 2 },
+  statusChipText: { fontSize: 10, lineHeight: 10, fontWeight: fontWeight.bold, includeFontPadding: false, textAlignVertical: 'center' },
   cardTitle: { color: colors.primary, fontSize: 13, fontWeight: fontWeight.bold, marginTop: 8 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 3 },
   metaText: { color: colors.muted, fontSize: 11 },
   cardRow: { marginTop: 5, borderRadius: 7, minHeight: 23, paddingHorizontal: 8, paddingVertical: 5, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   cardRowText: { fontSize: 11, fontWeight: fontWeight.semibold },
-  severityBadge: { minWidth: 30, height: 13, borderRadius: 4, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
-  severityText: { fontSize: 9, fontWeight: fontWeight.bold },
+  severityBadge: { minWidth: 30, height: 13, borderRadius: 4, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6, paddingTop: 1, paddingBottom: 0 },
+  severityText: { fontSize: 9, lineHeight: 9, fontWeight: fontWeight.bold, includeFontPadding: false, textAlignVertical: 'center' },
   stateCard: { backgroundColor: colors.white, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 18, alignItems: 'center', gap: 8 },
   stateTitle: { color: colors.primary, fontSize: 15, fontWeight: fontWeight.bold, textAlign: 'center' },
   stateDetail: { color: colors.muted, fontSize: 12, textAlign: 'center', lineHeight: 18 },
   stateButton: { marginTop: 6, minHeight: 40, paddingHorizontal: 16, borderRadius: 10, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
   stateButtonText: { color: colors.white, fontSize: 13, fontWeight: fontWeight.bold },
-  tabs: { height: 84, backgroundColor: colors.navyDark, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 28 },
+  tabs: { height: 84, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 28, overflow: 'hidden' },
   tabActive: { flex: 1, alignItems: 'center', gap: 7, borderRadius: 6, backgroundColor: 'rgba(0,179,152,0.09)', paddingHorizontal: 10, paddingVertical: 6 },
   tabInactive: { flex: 1, alignItems: 'center', gap: 7, paddingHorizontal: 10, paddingVertical: 6 },
   tabCount: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#c4365a', alignItems: 'center', justifyContent: 'center' },

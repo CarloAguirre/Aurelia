@@ -11,13 +11,25 @@ export interface ManualInspectionDraft {
   locationLabel: string;
   locationAccuracyLabel: string;
   locationCaptured: boolean;
+  latitude: number | null;
+  longitude: number | null;
+  altitude: number | null;
+  locationCapturedAt: string | null;
+}
+
+interface ManualInspectionLocationInput {
+  label: string;
+  accuracy: string;
+  latitude: number;
+  longitude: number;
+  altitude: number | null;
 }
 
 interface ManualInspectionState extends ManualInspectionDraft {
   setArea: (id: string, name: string) => void;
   setSector: (id: string, name: string) => void;
   setInspectionDate: (value: string) => void;
-  setLocation: (label: string, accuracy: string) => void;
+  setLocation: (input: ManualInspectionLocationInput) => void;
   reset: () => void;
 }
 
@@ -28,10 +40,14 @@ const initialDraft: ManualInspectionDraft = {
   areaName: null,
   sectorId: null,
   sectorName: null,
-  inspectionDate: '10/06/2026',
-  locationLabel: '19H 351376E 6295754N ± 12.4 m',
-  locationAccuracyLabel: '± 12.4 m',
-  locationCaptured: true,
+  inspectionDate: new Intl.DateTimeFormat('es-CL').format(new Date()),
+  locationLabel: 'Ubicación no capturada',
+  locationAccuracyLabel: 'Sin precisión',
+  locationCaptured: false,
+  latitude: null,
+  longitude: null,
+  altitude: null,
+  locationCapturedAt: null,
 };
 
 export const useManualInspectionDraft = create<ManualInspectionState>((set) => ({
@@ -39,7 +55,15 @@ export const useManualInspectionDraft = create<ManualInspectionState>((set) => (
   setArea: (id, name) => set({ areaId: id, areaName: name, sectorId: null, sectorName: null }),
   setSector: (id, name) => set({ sectorId: id, sectorName: name }),
   setInspectionDate: (inspectionDate) => set({ inspectionDate }),
-  setLocation: (locationLabel, locationAccuracyLabel) =>
-    set({ locationLabel, locationAccuracyLabel, locationCaptured: true }),
+  setLocation: ({ label, accuracy, latitude, longitude, altitude }) =>
+    set({
+      locationLabel: label,
+      locationAccuracyLabel: accuracy,
+      locationCaptured: true,
+      latitude,
+      longitude,
+      altitude,
+      locationCapturedAt: new Date().toISOString(),
+    }),
   reset: () => set(initialDraft),
 }));

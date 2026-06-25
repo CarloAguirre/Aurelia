@@ -10,6 +10,7 @@ import {
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, radius, fontSize } from '../../theme/tokens';
+import { PaperPlaneMark } from '../icons/PaperPlaneMark';
 
 interface Props {
   onSend: (text: string) => void;
@@ -57,7 +58,7 @@ export function ChatInput({ onSend, placeholder = 'Escribe aquí o usa los contr
           style={[styles.sendBtn, (!text.trim() || disabled) && styles.sendBtnDisabled]}
           activeOpacity={0.8}
         >
-          <FontAwesome5 name="paper-plane" size={15} color={colors.navy} />
+          <PaperPlaneMark size={15} color={colors.navy} />
         </TouchableOpacity>
       </View>
       <View style={styles.homeIndicatorBar}>

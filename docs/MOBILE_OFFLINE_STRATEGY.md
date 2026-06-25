@@ -2,11 +2,26 @@
 
 Estrategia offline-first para las apps móviles (`mobile-inspecciones`, `mobile-incidentes`). React Native + Expo + TypeScript.
 
-> **Estado: previsión, no implementado.** Hoy existen solo carpetas y placeholders. No se implementa todavía offline-first completo. Este documento define el rumbo para cuando se construya.
+> **Estado:** arquitectura inicial versionada. Existen contratos base y un puerto de mensajería API para preparar el flujo offline + sincronización. La persistencia local completa y el worker de sincronización siguen pendientes.
 
 ## Objetivo
 
 Permitir el **registro en terreno sin conexión** y sincronizar con la API cuando haya red, sin pérdida de datos y con manejo explícito de conflictos.
+
+## Alcance
+
+Aplica solo a:
+
+- `apps/mobile-inspecciones`
+- `apps/mobile-incidentes`
+
+No aplica a la web como flujo offline-first. La web puede seguir usando TanStack Query y API directa.
+
+## Documentos relacionados
+
+- [mobile-offline-service-bus-architecture.md](mobile-offline-service-bus-architecture.md)
+- [STATE_MANAGEMENT.md](STATE_MANAGEMENT.md)
+- [CONTRACTS_GUIDELINES.md](CONTRACTS_GUIDELINES.md)
 
 ## Capas previstas
 
@@ -14,69 +29,125 @@ Permitir el **registro en terreno sin conexión** y sincronizar con la API cuand
 apps/mobile-*/src/shared
   /storage   Almacenamiento local persistente
   /sync      Cola de sincronización + estados de sync
-  /services  Acceso HTTP (ya existe http-client + *.api.ts)
+  /services  Acceso HTTP
 ```
 
 ### 1. Storage local
 
-- Persistencia en el dispositivo (candidatos: AsyncStorage para datos simples, SQLite/MMKV para volumen/consultas).
-- Interfaz prevista en [local-storage.ts](../apps/mobile-inspecciones/src/shared/storage/local-storage.ts) (placeholder).
-- Guarda registros creados en terreno (inspecciones/incidentes) y sus evidencias antes de sincronizar.
+- Persistencia en el dispositivo.
+- Candidatos:
+  - secure storage para sesión offline y device session.
+  - SQLite/MMKV para formularios, catálogos, cola y auditoría.
+  - filesystem local para evidencias grandes.
+- La interfaz base existe en `apps/mobile-inspecciones/src/shared/storage/local-storage.ts`.
 
 ### 2. Cola de sincronización
 
-- Cada registro creado offline entra en una **cola** con un estado de sincronización.
-- `SyncStatus` ya está definido como placeholder ([sync-status.ts](../apps/mobile-inspecciones/src/shared/sync/sync-status.ts)):
+Cada registro creado offline entra en una cola con estado explícito. La cola actual es placeholder; debe evolucionar a persistencia real.
 
-```ts
-export enum SyncStatus {
-  PENDING = 'PENDING',  // creado local, aún no enviado
-  SYNCED  = 'SYNCED',   // confirmado por la API
-  ERROR   = 'ERROR',    // falló el envío; requiere reintento/resolución
-}
+Estados contractuales nuevos:
+
+```txt
+LOCAL_DRAFT
+PENDING
+PROCESSING
+SYNCED
+ERROR
+CONFLICT
+CANCELLED
 ```
 
-- Estructura prevista de un item de cola (`SyncQueueItem<TPayload>`): `id`, `payload` (tipado con `@aurelia/contracts`), `status`, `createdAt`, `lastError?`.
-- Funciones placeholder de encolado ya existen (`enqueueInspection` / `enqueueIncident`).
+Operaciones contractuales nuevas:
+
+```txt
+CREATE_INSPECTION
+UPSERT_INSPECTION_ANSWER
+CREATE_INSPECTION_FINDING
+CLOSE_INSPECTION
+CREATE_INCIDENT
+UPLOAD_ATTACHMENT
+```
 
 ### 3. Proceso de sincronización
 
-Flujo objetivo (a implementar):
+Flujo objetivo:
 
 1. Detectar conectividad.
-2. Tomar items `PENDING` (y `ERROR` elegibles para reintento) en orden.
-3. Enviar a la API con los request types de `@aurelia/contracts`.
-4. Marcar `SYNCED` o `ERROR` según resultado; backoff en reintentos.
-5. Reflejar el estado en la UI por registro.
+2. Tomar items `PENDING` y `ERROR` elegibles para reintento.
+3. Construir `MobileSyncBatchRequest`.
+4. Enviar `POST /api/mobile/sync`.
+5. La API valida usuario, permisos, device session, offline grant y versión de catálogo.
+6. La API publica el batch a un broker mediante `MobileSyncMessageBroker`.
+7. En producción el broker será Service Bus.
+8. En dev se valida con in-memory broker o database outbox.
+9. El worker procesa y responde resultados por batch.
+10. La app marca `SYNCED`, `ERROR` o `CONFLICT`.
 
-### 4. Resolución de conflictos
+### 4. Service Bus en producción
 
-A definir junto con las reglas de negocio. Opciones a evaluar:
+Topología objetivo:
 
-- **Last-write-wins** por timestamp (simple, riesgo de pérdida).
-- **Detección por versión/updatedAt** con resolución manual cuando el servidor cambió.
-- **Append-only** para evidencias (no se sobrescriben, se agregan).
+```txt
+topic: aurelia.mobile.sync
+  subscription: mobile-inspecciones
+  subscription: mobile-incidentes
+```
 
-La estrategia elegida dependerá de qué entidades pueden editarse desde más de un origen.
+La API no debe acoplar el dominio a Azure. Debe usar un puerto:
+
+```txt
+MobileSyncMessageBroker
+```
+
+Implementaciones previstas:
+
+```txt
+InMemoryMobileSyncBroker
+DatabaseOutboxMobileSyncBroker
+AzureServiceBusMobileSyncBroker
+```
+
+### 5. Validación en dev
+
+Niveles recomendados:
+
+1. `in-memory`: rápido para TDD/manual local.
+2. `database-outbox`: permite replay y revisión de batches en Postgres.
+3. `service-bus`: integración con emulator o namespace cloud de desarrollo.
+
+### 6. Resolución de conflictos
+
+A definir por entidad. Base recomendada:
+
+- Inspecciones nuevas: idempotencia por `localId` + `idempotencyKey`.
+- Evidencias: append-only.
+- Catálogos cambiados: bloquear sync con `CONFLICT` si `bootstrapVersion` está obsoleta.
+- Cambios de permisos: la API revalida permisos actuales antes de aceptar.
 
 ## Evidencias en terreno
 
-- **Foto:** captura con `expo-image-picker` (ya declarado en `app.json`); guardar referencia local y subir en la sincronización.
-- **GPS:** `expo-location` (ya declarado); el tipo `GeoLocation` vive en `@aurelia/contracts`.
-- **Formularios:** validación local con las `schemas` de contracts.
-- Las evidencias siguen el mismo ciclo de cola/estado que los registros.
+- Foto: captura con `expo-image-picker`; guardar metadata y archivo local.
+- GPS: `expo-location`; el tipo `GeoLocation` vive en `@aurelia/contracts`.
+- Formularios: validación local con contratos/schemas compartidos.
+- Evidencias deben sincronizarse como operaciones o assets asociados al batch.
 
-## Relación con el manejo de estado
+## Relación con estado
 
-- **Server state** sigue gestionándose con TanStack Query (funciona en RN); puede combinarse con persistencia de cache.
-- **UI/cliente** con Zustand.
-- La **cola offline** es una preocupación aparte (storage + sync), no se mezcla con el cache de server state.
+- **Server state:** TanStack Query.
+- **UI/client state:** Zustand.
+- **Offline durable state:** storage/sync propio, no TanStack cache ni Zustand puro.
 
-Ver [STATE_MANAGEMENT.md](STATE_MANAGEMENT.md).
+La cola offline no se mezcla con el cache de server state.
 
-## Pendiente de definir
+## Pendientes de implementación
 
-- [ ] Motor de persistencia local (AsyncStorage vs SQLite vs MMKV).
-- [ ] Estrategia de resolución de conflictos por entidad.
-- [ ] Política de reintentos/backoff.
-- [ ] Manejo de archivos de evidencia grandes (subida diferida).
+- [ ] Implementar storage local real en móviles.
+- [ ] Crear módulo `mobile-auth` en API.
+- [ ] Crear módulo `mobile-bootstrap` en API.
+- [ ] Crear módulo `mobile-sync` en API.
+- [ ] Crear tablas de device sessions/offline grants.
+- [ ] Crear tablas outbox/sync batch/sync operation.
+- [ ] Implementar worker de sync.
+- [ ] Implementar adaptador Service Bus.
+- [ ] Migrar `Guardar inspección` para que encole primero y sincronice después.
+- [ ] Definir subida binaria de evidencias.

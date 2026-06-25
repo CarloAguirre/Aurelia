@@ -9,6 +9,7 @@ interface ManualInspectionFlowState {
   goToIdentification: () => void;
   goToType: () => void;
   goToObservations: () => void;
+  goToSummary: () => void;
   openPicker: (picker: Exclude<ManualInspectionPicker, null>) => void;
   closePicker: () => void;
   resetFlow: () => void;
@@ -21,6 +22,7 @@ export const useManualInspectionFlowStore = create<ManualInspectionFlowState>((s
   goToIdentification: () => set({ currentStep: 1, activePicker: null }),
   goToType: () => set({ currentStep: 2, activePicker: null }),
   goToObservations: () => set({ currentStep: 3, activePicker: null }),
+  goToSummary: () => set({ currentStep: 4, activePicker: null }),
   openPicker: (activePicker) => set({ activePicker }),
   closePicker: () => set({ activePicker: null }),
   resetFlow: () => set({ currentStep: 1, activePicker: null }),

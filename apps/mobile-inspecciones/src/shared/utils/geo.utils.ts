@@ -1,11 +1,17 @@
 const utmBands = 'CDEFGHJKLMNPQRSTUVWX';
 
+export function isFiniteCoordinate(latitude: number | null | undefined, longitude: number | null | undefined): latitude is number {
+  return typeof latitude === 'number' && typeof longitude === 'number' && Number.isFinite(latitude) && Number.isFinite(longitude) && latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180;
+}
+
 function latitudeBand(latitude: number): string {
   const index = Math.max(0, Math.min(utmBands.length - 1, Math.floor((latitude + 80) / 8)));
   return utmBands[index];
 }
 
 export function toUtmLabel(latitude: number, longitude: number): string {
+  if (!isFiniteCoordinate(latitude, longitude)) return 'Coordenada no válida';
+
   const a = 6378137;
   const f = 1 / 298.257223563;
   const k0 = 0.9996;
@@ -67,8 +73,17 @@ export function moveLatLngFromViewportPoint(params: {
   zoom?: number;
 }) {
   const zoom = params.zoom ?? 14;
+
+  if (!isFiniteCoordinate(params.latitude, params.longitude)) return null;
+  if (![params.mapWidth, params.mapHeight, params.locationX, params.locationY].every(Number.isFinite)) return null;
+  if (params.mapWidth <= 0 || params.mapHeight <= 0) return null;
+
   const center = latLngToWorldPixel(params.latitude, params.longitude, zoom);
   const nextX = center.x + params.locationX - params.mapWidth / 2;
   const nextY = center.y + params.locationY - params.mapHeight / 2;
-  return worldPixelToLatLng(nextX, nextY, zoom);
+  const next = worldPixelToLatLng(nextX, nextY, zoom);
+
+  if (!isFiniteCoordinate(next.latitude, next.longitude)) return null;
+
+  return next;
 }

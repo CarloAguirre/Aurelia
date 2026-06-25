@@ -51,6 +51,7 @@ export function ManualIdentificationConnected() {
   const areaOptions = useMemo<SelectSheetOption[]>(() => areas.map((area) => ({ id: area.id, label: area.name, description: area.code })), [areas]);
   const sectorOptions = useMemo<SelectSheetOption[]>(() => sectors.map((sector) => ({ id: sector.id, label: sector.name, description: sector.code })), [sectors]);
   const dateOptions = useMemo<SelectSheetOption[]>(buildDateOptions, []);
+  const canContinue = Boolean(draft.areaId && draft.sectorId && draft.inspectionDate && draft.locationCaptured);
 
   React.useEffect(() => {
     goToIdentification();
@@ -82,16 +83,8 @@ export function ManualIdentificationConnected() {
   }
 
   function next() {
-    if (!hasSession) {
-      Alert.alert('Sesión requerida', 'Inicia sesión antes de enviar una inspección. Puedes seguir completando el borrador localmente.');
-      return;
-    }
-    if (!draft.areaId || !draft.sectorId) {
-      Alert.alert('Faltan datos', 'Selecciona área y sector antes de continuar.');
-      return;
-    }
-    if (!draft.locationCaptured) {
-      Alert.alert('Falta ubicación', 'Captura la ubicación real antes de continuar.');
+    if (!canContinue) {
+      Alert.alert('Faltan datos', 'Completa área, sector, fecha y ubicación antes de continuar.');
       return;
     }
     goToType();
@@ -128,7 +121,7 @@ export function ManualIdentificationConnected() {
               <View style={styles.hintRow}><FontAwesome5 name="hand-point-up" size={11} color={colors.blueLink} /><Text style={styles.hintText}>Captura GPS real; el ajuste manual del pin queda para la siguiente iteración</Text></View>
             </FormCard>
           </ScrollView>
-          <ManualFooter onCancel={cancel} onNext={next} />
+          <ManualFooter onCancel={cancel} onNext={next} nextDisabled={!canContinue} />
           <SelectSheet visible={activePicker === 'area'} title="Seleccionar área" subtitle="Catálogo cargado desde la API" options={areaOptions} selectedId={draft.areaId} loading={loadingAreas} onClose={closePicker} onSelect={selectArea} />
           <SelectSheet visible={activePicker === 'sector'} title="Seleccionar sector" subtitle={draft.areaName ?? 'Selecciona un área primero'} options={sectorOptions} selectedId={draft.sectorId} loading={loadingSectors} emptyText="No hay sectores para el área seleccionada" onClose={closePicker} onSelect={selectSector} />
           <SelectSheet visible={activePicker === 'date'} title="Fecha de inspección" subtitle="Selecciona la fecha del registro" options={dateOptions} selectedId={draft.inspectionDate} onClose={closePicker} onSelect={selectDate} />

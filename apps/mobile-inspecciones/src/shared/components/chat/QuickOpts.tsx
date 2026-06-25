@@ -80,8 +80,11 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   icon: {
+    width: 10,
+    textAlign: 'center',
     fontSize: fontSize.xs,
     lineHeight: fontSize.xs + 2,
+    fontWeight: fontWeight.bold,
   },
   label: {
     fontSize: fontSize.md,

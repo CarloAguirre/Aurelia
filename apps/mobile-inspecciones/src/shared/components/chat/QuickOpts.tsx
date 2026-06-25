@@ -81,6 +81,7 @@ const styles = StyleSheet.create({
   },
   icon: {
     fontSize: fontSize.xs,
+    lineHeight: fontSize.xs + 2,
   },
   label: {
     fontSize: fontSize.md,

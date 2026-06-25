@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { InspectionType } from '@aurelia/contracts';
 
 export interface ManualInspectionDraft {
   inspectorName: string;
@@ -15,6 +16,8 @@ export interface ManualInspectionDraft {
   longitude: number | null;
   altitude: number | null;
   locationCapturedAt: string | null;
+  inspectionType: InspectionType;
+  inspectionTypeLabel: string;
 }
 
 interface ManualInspectionLocationInput {
@@ -30,6 +33,7 @@ interface ManualInspectionState extends ManualInspectionDraft {
   setSector: (id: string, name: string) => void;
   setInspectionDate: (value: string) => void;
   setLocation: (input: ManualInspectionLocationInput) => void;
+  setInspectionType: (type: InspectionType, label: string) => void;
   reset: () => void;
 }
 
@@ -48,6 +52,8 @@ const initialDraft: ManualInspectionDraft = {
   longitude: null,
   altitude: null,
   locationCapturedAt: null,
+  inspectionType: InspectionType.REGULATORY,
+  inspectionTypeLabel: 'Checklist normativo',
 };
 
 export const useManualInspectionDraft = create<ManualInspectionState>((set) => ({
@@ -65,5 +71,6 @@ export const useManualInspectionDraft = create<ManualInspectionState>((set) => (
       altitude,
       locationCapturedAt: new Date().toISOString(),
     }),
+  setInspectionType: (inspectionType, inspectionTypeLabel) => set({ inspectionType, inspectionTypeLabel }),
   reset: () => set(initialDraft),
 }));

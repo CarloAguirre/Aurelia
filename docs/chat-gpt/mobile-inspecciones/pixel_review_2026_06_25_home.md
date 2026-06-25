@@ -20,7 +20,19 @@ Nodo:
 - Se agregaron íconos dentro de chips superiores de las cards.
 - Se agregaron íconos dentro de filas de estado de las cards.
 - Se ajustó el tab inferior para que use punto visual como Figma, no texto de punto grande.
+- Se dejó visible `Formularios inconclusos` aunque no exista draft real, con fallback visual del diseño.
+- Se implementó el footer con degradado Figma usando `react-native-svg`, sin agregar dependencias nuevas.
+- Se ajustó la alineación óptica de los textos de badges `Alto`, `Crítico`, `Medio` con `lineHeight`, `paddingTop` e `includeFontPadding`.
 - Se mantuvo la conexión real con API y contracts; no se volvió a mocks permanentes.
+
+## Estilos Figma usados en footer
+
+```txt
+border-top: #e3e3e3
+from: #002659
+to: #004a3a
+direction: vertical
+```
 
 ## Checklist pixel-to-pixel obligatorio por iteración
 

@@ -6,17 +6,19 @@
 https://www.figma.com/design/DymqBWIjfxvuU6UK9wNI3p/Medio-Ambiente-Core?node-id=633-14601&m=dev
 ```
 
-Nodo:
+Nodo pantalla:
 
 ```txt
 633:14601
 ```
 
-`get_design_context` fue bloqueado por controles de seguridad, por lo que la implementación se basó en:
+Nodo body usado para ajuste fino:
 
-- metadata del nodo Figma;
-- screenshot adjunto por el usuario;
-- componentes y estilos ya integrados en el flujo manual.
+```txt
+633:14944
+```
+
+El nodo body sí entregó `get_design_context`, por lo que el ajuste de tipografía y espaciado del cuerpo se basó en ese contexto.
 
 ## Ruta creada
 
@@ -103,6 +105,14 @@ La separación sigue vigente:
 - Stepper reutilizado con soporte para pasos completados.
 - Card `Hallazgo` y card `Checklist normativo` seleccionable.
 - Footer con `Atrás` y `Continuar`.
+- Se ajustó body con nodo `633:14944`: título 18px, subtítulo 12px, card title 14px y descripción 11px.
+- Se redujo tipografía de header/footer que había quedado sobredimensionada.
+
+## Correcciones de navegación
+
+- El botón `Continuar` del paso 1 queda deshabilitado mientras falte área, sector, fecha o ubicación.
+- Cuando los campos requeridos están completos, navega a `/inspection/manual/type`.
+- Se mantiene validación defensiva en `next()` por si se invoca manualmente.
 
 ## Pendientes
 
@@ -131,8 +141,9 @@ pnpm web -- --clear
 Validación:
 
 1. Entrar a `/inspection/manual/identification`.
-2. Completar área, sector y ubicación.
-3. Presionar `Continuar`.
-4. Confirmar navegación a `/inspection/manual/type`.
-5. Seleccionar `Hallazgo` o `Checklist normativo`.
-6. Confirmar que cambia el texto: `Para esta inspección se ha seleccionado ...`.
+2. Confirmar que `Continuar` está deshabilitado si falta área, sector, fecha o ubicación.
+3. Completar área, sector, fecha y ubicación.
+4. Presionar `Continuar`.
+5. Confirmar navegación a `/inspection/manual/type`.
+6. Seleccionar `Hallazgo` o `Checklist normativo`.
+7. Confirmar que cambia el texto: `Para esta inspección se ha seleccionado ...`.

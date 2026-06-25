@@ -19,19 +19,20 @@ function getIconColor(variant: QuickOptVariant) {
   return colors.blueLink;
 }
 
-function iconName(icon?: string): QuickIcon | null {
-  if (!icon) return null;
-  if (icon === 'clipboard-check') return 'clipboard-check';
-  if (icon === 'plus') return 'plus';
-  if (icon === 'arrow-right') return 'arrow-right';
-  if (icon === 'list') return 'list';
-  if (icon === 'check') return 'check';
-  if (icon === 'pen') return 'pen';
-  return 'search';
+function iconName(icon: string | undefined, label: string): QuickIcon | null {
+  const normalizedLabel = label.toLowerCase();
+  if (icon === 'clipboard-check' || normalizedLabel.includes('checklist')) return 'clipboard-check';
+  if (icon === 'plus' || normalizedLabel.includes('agregar')) return 'plus';
+  if (icon === 'arrow-right' || normalizedLabel.includes('continuar') || normalizedLabel.includes('pasar')) return 'arrow-right';
+  if (icon === 'list' || normalizedLabel.includes('otra')) return 'list';
+  if (icon === 'check' || normalizedLabel.includes('confirmar') || normalizedLabel.includes('aceptar')) return 'check';
+  if (icon === 'pen' || normalizedLabel.includes('editar') || normalizedLabel.includes('modificar')) return 'pen';
+  if (icon || normalizedLabel.includes('hallazgo') || normalizedLabel.includes('condición')) return 'search';
+  return null;
 }
 
 export function QuickOpt({ label, icon, variant = 'default', onPress }: QuickOptProps) {
-  const name = iconName(icon);
+  const name = iconName(icon, label);
 
   return (
     <TouchableOpacity

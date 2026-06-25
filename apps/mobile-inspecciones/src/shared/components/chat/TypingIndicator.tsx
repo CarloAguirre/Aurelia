@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, Animated, StyleSheet } from 'react-native';
-import { colors, radius, spacing, fontWeight } from '../../theme/tokens';
+import { View, Animated, StyleSheet } from 'react-native';
+import { FontAwesome6 } from '@expo/vector-icons';
+import { colors, radius, spacing } from '../../theme/tokens';
 
 const DOT_SIZE = 6;
 
@@ -39,7 +40,7 @@ export function TypingIndicator() {
   return (
     <View style={styles.row}>
       <View style={styles.avatar}>
-        <Text style={styles.avatarIcon}>✦</Text>
+        <FontAwesome6 name="sparkles" size={10} color={colors.navy} />
       </View>
       <View style={styles.bubble}>
         <AnimatedDot delay={0} />
@@ -63,11 +64,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  avatarIcon: {
-    fontSize: 10,
-    color: colors.navy,
-    fontWeight: fontWeight.bold,
   },
   bubble: {
     flexDirection: 'row',

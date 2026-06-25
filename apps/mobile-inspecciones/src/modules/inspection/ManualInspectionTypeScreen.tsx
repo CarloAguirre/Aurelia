@@ -8,6 +8,7 @@ import { colors, fontWeight } from '../../shared/theme/tokens';
 import { ManualFlowFooter, ManualFlowHeader } from '../../shared/components/form/ManualFlowScaffold';
 import { OfflineBanner } from '../../shared/components/form/ManualFormUi';
 import { ManualFormStepper } from './ManualSelectionUi';
+import { useInspectionChecklistTemplates } from './hooks/useInspectionChecklistTemplates';
 import { useManualConnectivityStatus } from './useManualConnectivityStatus';
 import { useManualInspectionDraft } from './manualInspection.store';
 import { useManualInspectionFlowStore } from './manualInspectionFlow.store';
@@ -19,20 +20,26 @@ type ManualTypeOption = {
   icon: string;
 };
 
-const typeOptions: ManualTypeOption[] = [
-  {
-    type: InspectionType.ENVIRONMENTAL,
-    title: 'Hallazgo',
-    description: 'Condición subestándar detectada · registro libre con foto',
-    icon: 'search',
-  },
-  {
-    type: InspectionType.REGULATORY,
-    title: 'Checklist normativo',
-    description: '8 plantillas disponibles · ítems NO generan hallazgo automático',
-    icon: 'check',
-  },
-];
+function buildTypeOptions(templateCount: number | null, templatesLoading: boolean): ManualTypeOption[] {
+  const templateText = templatesLoading
+    ? 'Cargando plantillas · ítems NO generan hallazgo automático'
+    : `${templateCount ?? 0} plantillas disponibles · ítems NO generan hallazgo automático`;
+
+  return [
+    {
+      type: InspectionType.ENVIRONMENTAL,
+      title: 'Hallazgo',
+      description: 'Condición subestándar detectada · registro libre con foto',
+      icon: 'search',
+    },
+    {
+      type: InspectionType.REGULATORY,
+      title: 'Checklist normativo',
+      description: templateText,
+      icon: 'check',
+    },
+  ];
+}
 
 function TypeOptionCard({ option, selected, onPress }: { option: ManualTypeOption; selected: boolean; onPress: () => void }) {
   return (
@@ -55,6 +62,9 @@ export function ManualInspectionTypeScreen() {
   const goToIdentification = useManualInspectionFlowStore((state) => state.goToIdentification);
   const goToObservations = useManualInspectionFlowStore((state) => state.goToObservations);
   const goToType = useManualInspectionFlowStore((state) => state.goToType);
+  const templatesQuery = useInspectionChecklistTemplates();
+  const templateCount = templatesQuery.data?.length ?? null;
+  const typeOptions = React.useMemo(() => buildTypeOptions(templateCount, templatesQuery.isLoading), [templateCount, templatesQuery.isLoading]);
   const canContinue = draft.inspectionType === InspectionType.REGULATORY;
 
   React.useEffect(() => {

@@ -1,0 +1,24 @@
+import type { AreaResponse, CompanyResponse } from '../organization';
+import type { UserResponse } from '../users';
+import type { InspectionChecklistTemplateResponse, InspectionTypeResponse } from '../inspections';
+import type { ISODateString } from '../../types/common';
+
+export interface MobileBootstrapResponse {
+  bootstrapVersion: string;
+  generatedAt: ISODateString;
+  expiresAt: ISODateString;
+  catalogs: {
+    areas: AreaResponse[];
+    sectors: unknown[];
+    companies: CompanyResponse[];
+    users: UserResponse[];
+    inspectionTypes: InspectionTypeResponse[];
+    inspectionTemplates: InspectionChecklistTemplateResponse[];
+  };
+  offlinePolicy: {
+    maxOfflineDays: number;
+    requiresBiometricOrPin: boolean;
+    maxPendingQueueItems: number;
+    maxAttachmentSizeMb: number;
+  };
+}

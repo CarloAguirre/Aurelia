@@ -42,7 +42,7 @@ function Header() {
   return (
     <View style={styles.header}>
       <TouchableOpacity style={styles.backIconButton} onPress={back} activeOpacity={0.75}>
-        <FontAwesome5 name="arrow-left" size={22} color={colors.white} />
+        <FontAwesome5 name="arrow-left" size={18} color={colors.white} />
       </TouchableOpacity>
       <View style={styles.headerCopy}>
         <Text style={styles.headerTitle}>Tipo de inspección</Text>
@@ -59,7 +59,7 @@ function TypeOptionCard({ option, selected, onPress }: { option: ManualTypeOptio
   return (
     <TouchableOpacity style={[styles.optionCard, selected ? styles.optionCardSelected : styles.optionCardIdle]} activeOpacity={0.82} onPress={onPress}>
       <View style={[styles.optionIcon, selected ? styles.optionIconSelected : styles.optionIconIdle]}>
-        <FontAwesome5 name={option.icon} size={20} color={selected ? colors.white : '#AAAAAA'} />
+        <FontAwesome5 name={option.icon} size={16} color={selected ? colors.white : '#AAAAAA'} />
       </View>
       <View style={styles.optionCopy}>
         <Text style={[styles.optionTitle, selected ? styles.optionTitleSelected : styles.optionTitleIdle]}>{option.title}</Text>
@@ -92,12 +92,12 @@ function FlowFooter() {
     <View style={styles.footer}>
       <View style={styles.footerButtons}>
         <TouchableOpacity style={styles.backButton} activeOpacity={0.75} onPress={back}>
-          <FontAwesome5 name="arrow-left" size={15} color={colors.gold} />
+          <FontAwesome5 name="arrow-left" size={14} color={colors.gold} />
           <Text style={styles.backText}>Atrás</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.nextButton} activeOpacity={0.82} onPress={next}>
           <Text style={styles.nextText}>Continuar</Text>
-          <FontAwesome5 name="arrow-right" size={15} color={colors.white} />
+          <FontAwesome5 name="arrow-right" size={14} color={colors.white} />
         </TouchableOpacity>
       </View>
       <View style={styles.homeIndicator} />
@@ -150,32 +150,32 @@ const styles = StyleSheet.create({
   header: { minHeight: 56, backgroundColor: colors.navyDark, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4 },
   backIconButton: { width: 52, height: 48, alignItems: 'center', justifyContent: 'center' },
   headerCopy: { flex: 1, justifyContent: 'center', paddingHorizontal: 4 },
-  headerTitle: { fontSize: 20, lineHeight: 24, fontWeight: fontWeight.bold, color: colors.white },
-  headerSubtitle: { marginTop: 1, fontSize: 16, lineHeight: 19, color: 'rgba(255,255,255,0.55)' },
-  headerBadge: { minHeight: 32, borderRadius: 18, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, marginRight: 8 },
-  headerBadgeText: { fontSize: 14, fontWeight: fontWeight.bold, color: colors.navy },
+  headerTitle: { fontSize: 16, lineHeight: 19.2, fontWeight: fontWeight.bold, color: colors.white },
+  headerSubtitle: { marginTop: 1, fontSize: 14, lineHeight: 16.8, color: 'rgba(255,255,255,0.55)' },
+  headerBadge: { minHeight: 24, borderRadius: 16, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12, marginRight: 8 },
+  headerBadgeText: { fontSize: 11, lineHeight: 13, fontWeight: fontWeight.bold, color: colors.navy },
   content: { flex: 1 },
-  contentInner: { paddingHorizontal: 14, paddingTop: 27, paddingBottom: 24 },
-  copyBlock: { gap: 10 },
-  title: { fontSize: 28, lineHeight: 34, fontWeight: fontWeight.bold, color: colors.primary },
-  subtitle: { fontSize: 20, lineHeight: 27, color: colors.body },
-  options: { marginTop: 24, gap: 23 },
-  optionCard: { minHeight: 79, borderRadius: 12, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15.5, paddingVertical: 15.5, gap: 12, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
-  optionCardIdle: { backgroundColor: colors.white, borderWidth: 1, borderColor: '#F2F2F2' },
-  optionCardSelected: { backgroundColor: '#FFFAF2', borderWidth: 2, borderColor: colors.gold },
-  optionIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  optionIconIdle: { backgroundColor: '#FAFAFA' },
-  optionIconSelected: { backgroundColor: '#F7E7C8' },
+  contentInner: { paddingHorizontal: 14, paddingTop: 14, paddingBottom: 24 },
+  copyBlock: { gap: 4 },
+  title: { fontSize: 18, lineHeight: 21.6, fontWeight: fontWeight.bold, color: colors.primary },
+  subtitle: { fontSize: 12, lineHeight: 16.8, color: colors.muted },
+  options: { marginTop: 12, gap: 12 },
+  optionCard: { minHeight: 68, borderRadius: 12, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15.5, paddingVertical: 15.5, gap: 12, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 1.5, shadowOffset: { width: 0, height: 1 } },
+  optionCardIdle: { backgroundColor: colors.white, borderWidth: 1.5, borderColor: '#E3E3E3', opacity: 0.5 },
+  optionCardSelected: { backgroundColor: '#FDF8F1', borderWidth: 1.5, borderColor: colors.gold },
+  optionIcon: { width: 40, height: 40, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  optionIconIdle: { backgroundColor: '#F7F7F7' },
+  optionIconSelected: { backgroundColor: '#FDF0DC' },
   optionCopy: { flex: 1, gap: 2 },
-  optionTitle: { fontSize: 20, lineHeight: 24, fontWeight: fontWeight.bold },
-  optionTitleIdle: { color: '#7E7E7E' },
-  optionTitleSelected: { color: colors.goldDark },
-  optionDescription: { fontSize: 16, lineHeight: 22, color: colors.muted },
+  optionTitle: { fontSize: 14, lineHeight: 18, fontWeight: fontWeight.bold },
+  optionTitleIdle: { color: colors.primary },
+  optionTitleSelected: { color: '#8E6E3E' },
+  optionDescription: { fontSize: 11, lineHeight: 14.3, color: colors.muted },
   footer: { backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.border, paddingHorizontal: 14, paddingTop: 10, alignItems: 'center' },
   footerButtons: { width: '100%', flexDirection: 'row', gap: 10 },
-  backButton: { minHeight: 50, borderRadius: 14, borderWidth: 2, borderColor: colors.gold, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: 22, flexBasis: '32%' },
-  backText: { fontSize: 20, lineHeight: 24, fontWeight: fontWeight.bold, color: colors.gold },
-  nextButton: { flex: 1, minHeight: 50, borderRadius: 14, backgroundColor: colors.gold, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, shadowColor: colors.gold, shadowOpacity: 0.25, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
-  nextText: { fontSize: 20, lineHeight: 24, fontWeight: fontWeight.bold, color: colors.white },
+  backButton: { minHeight: 50, borderRadius: 14, borderWidth: 2, borderColor: colors.gold, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 20, flexBasis: '32%' },
+  backText: { fontSize: 16, lineHeight: 19.2, fontWeight: fontWeight.bold, color: colors.gold },
+  nextButton: { flex: 1, minHeight: 50, borderRadius: 14, backgroundColor: colors.gold, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, shadowColor: colors.gold, shadowOpacity: 0.25, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
+  nextText: { fontSize: 16, lineHeight: 19.2, fontWeight: fontWeight.bold, color: colors.white },
   homeIndicator: { width: 120, height: 4, borderRadius: 2, backgroundColor: colors.borderMid, marginTop: 14, marginBottom: 8 },
 });

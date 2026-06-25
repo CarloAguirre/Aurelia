@@ -1,3 +1,3 @@
-import { InspectionManualIdentificationScreen } from '../../../src/modules/inspection/InspectionManualIdentificationScreen';
+import { ManualIdentificationConnected } from '../../../src/modules/inspection/ManualIdentificationConnected';
 
-export default InspectionManualIdentificationScreen;
+export default ManualIdentificationConnected;

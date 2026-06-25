@@ -1,19 +1,23 @@
 import React, { useMemo } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { InspectionAnswerValue, type InspectionChecklistItem, type InspectionChecklistTemplateResponse } from '@aurelia/contracts';
 import { colors, fontWeight } from '../../shared/theme/tokens';
 import { FieldLabel, OfflineBanner, SelectBox } from '../../shared/components/form/ManualFormUi';
 import { ManualFlowFooter, ManualFlowHeader } from '../../shared/components/form/ManualFlowScaffold';
 import { ManualFormStepper, SelectSheet, type SelectSheetOption } from './ManualSelectionUi';
 import { useInspectionChecklistTemplates } from './hooks/useInspectionChecklistTemplates';
+import { useManualInspectionCompanies } from './hooks/useManualInspectionCompanies';
 import { useManualConnectivityStatus } from './useManualConnectivityStatus';
-import { useManualInspectionDraft } from './manualInspection.store';
+import { useManualInspectionDraft, type ManualChecklistItemDetail, type ManualPickedAsset } from './manualInspection.store';
 import { useManualInspectionFlowStore } from './manualInspectionFlow.store';
 
 type ChecklistItemRow = InspectionChecklistItem & { sectionTitle: string };
+
+type PickerKind = 'template' | 'company';
 
 const answerOptions = [
   { label: 'SÍ', value: InspectionAnswerValue.COMPLIANT },
@@ -37,12 +41,36 @@ function getTemplateItems(template: InspectionChecklistTemplateResponse | undefi
 }
 
 function templateToOption(template: InspectionChecklistTemplateResponse): SelectSheetOption {
-  const itemsCount = getItemsCount(template);
   return {
     id: template.id,
     label: template.name,
-    description: `${template.code} · ${itemsCount} ítems`,
+    description: `${template.code} · ${getItemsCount(template)} ítems`,
   };
+}
+
+function getAssetName(asset: ImagePicker.ImagePickerAsset, fallback: string): string {
+  if (asset.fileName) return asset.fileName;
+  const uriName = asset.uri.split('/').pop();
+  return uriName && uriName.includes('.') ? uriName : fallback;
+}
+
+async function pickImageAsset(fallbackName: string): Promise<ManualPickedAsset | null> {
+  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!permission.granted) {
+    Alert.alert('Permiso requerido', 'Activa el permiso de galería para adjuntar imágenes.');
+    return null;
+  }
+
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsEditing: false,
+    quality: 0.75,
+  });
+
+  if (result.canceled || result.assets.length === 0) return null;
+
+  const asset = result.assets[0];
+  return { uri: asset.uri, name: getAssetName(asset, fallbackName) };
 }
 
 function TemplateMeta({ code, itemsCount }: { code: string | null; itemsCount: number | null }) {
@@ -114,15 +142,40 @@ function ProgressCard({ answeredCount, totalCount, answers }: { answeredCount: n
   );
 }
 
+function AttachmentButton({ asset, emptyTitle, onPick, compact = false }: { asset: ManualPickedAsset | null | undefined; emptyTitle: string; onPick: () => void; compact?: boolean }) {
+  if (asset) {
+    return (
+      <TouchableOpacity style={[styles.attachmentDone, compact && styles.attachmentDoneCompact]} activeOpacity={0.75} onPress={onPick}>
+        <View style={styles.attachmentIconBox}>
+          <FontAwesome5 name="camera" size={14} color={colors.white} />
+        </View>
+        <Text style={styles.attachmentText} numberOfLines={1}>{asset.name}</Text>
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <TouchableOpacity style={styles.photoBox} activeOpacity={0.75} onPress={onPick}>
+      <Text style={styles.photoIcon}>📷</Text>
+      <Text style={styles.photoTitle}>{emptyTitle}</Text>
+      <Text style={styles.photoSubtitle}>Fecha, hora y GPS automáticos</Text>
+    </TouchableOpacity>
+  );
+}
+
 function ReferencePhotoBox() {
+  const generalPhoto = useManualInspectionDraft((state) => state.generalPhoto);
+  const setGeneralPhoto = useManualInspectionDraft((state) => state.setGeneralPhoto);
+
+  async function pick() {
+    const asset = await pickImageAsset('foto_general_de_inspeccion.jpg');
+    if (asset) setGeneralPhoto(asset);
+  }
+
   return (
     <View style={styles.photoWrap}>
-      <Text style={styles.photoLabel}>Foto referencial general para la inspección *</Text>
-      <TouchableOpacity style={styles.photoBox} activeOpacity={0.75}>
-        <Text style={styles.photoIcon}>📷</Text>
-        <Text style={styles.photoTitle}>Tomar foto o galería</Text>
-        <Text style={styles.photoSubtitle}>Fecha, hora y GPS automáticos</Text>
-      </TouchableOpacity>
+      {!generalPhoto ? <Text style={styles.photoLabel}>Foto referencial general para la inspección *</Text> : null}
+      <AttachmentButton asset={generalPhoto} emptyTitle="Tomar foto o galería" onPick={pick} />
     </View>
   );
 }
@@ -141,9 +194,79 @@ function ChecklistAnswerButton({ label, value, selected, onPress }: { label: str
   );
 }
 
-function ChecklistItem({ item, index, answer, onAnswer }: { item: ChecklistItemRow; index: number; answer?: InspectionAnswerValue; onAnswer: (value: InspectionAnswerValue) => void }) {
+function OptionalCommentBox({ detail, onChange }: { detail: ManualChecklistItemDetail; onChange: (detail: Partial<ManualChecklistItemDetail>) => void }) {
   return (
-    <View style={styles.itemWrap}>
+    <View style={styles.optionalCommentWrap}>
+      <Text style={styles.conditionalLabel}>Comentario (Opcional)</Text>
+      <TextInput
+        style={styles.textArea}
+        multiline
+        value={detail.comment ?? ''}
+        placeholder="Describa una condición o comentario de mejora a modo de consideración si lo desea."
+        placeholderTextColor="#757575"
+        onChangeText={(comment) => onChange({ comment })}
+      />
+    </View>
+  );
+}
+
+function FindingDetailBox({ index, detail, onChange }: { index: number; detail: ManualChecklistItemDetail; onChange: (detail: Partial<ManualChecklistItemDetail>) => void }) {
+  async function pick() {
+    const asset = await pickImageAsset(`foto_obs${index + 1}.jpg`);
+    if (asset) onChange({ evidence: asset });
+  }
+
+  return (
+    <View style={styles.findingBox}>
+      <View style={styles.findingHeader}>
+        <View style={styles.findingBadges}>
+          <View style={styles.obsBadge}><Text style={styles.obsBadgeText}>Obs. {index + 1}</Text></View>
+          <View style={styles.highBadge}><Text style={styles.highBadgeText}>Alto</Text></View>
+        </View>
+        <View style={styles.deleteBadge}>
+          <FontAwesome5 name="trash" size={12} color="#C4365A" />
+        </View>
+      </View>
+      <View style={styles.inputGroupWhite}>
+        <Text style={styles.upperLabel}>Condición detectada *</Text>
+        <TextInput
+          style={styles.detailTextArea}
+          multiline
+          value={detail.detectedCondition ?? ''}
+          placeholder="Describa la condición detectada."
+          placeholderTextColor="#757575"
+          onChangeText={(detectedCondition) => onChange({ detectedCondition })}
+        />
+      </View>
+      <View style={styles.inputGroupGray}>
+        <Text style={styles.upperLabel}>Medida correctiva propuesta *</Text>
+        <TextInput
+          style={styles.detailTextArea}
+          multiline
+          value={detail.correctiveAction ?? ''}
+          placeholder="Indique la medida correctiva propuesta."
+          placeholderTextColor="#757575"
+          onChangeText={(correctiveAction) => onChange({ correctiveAction })}
+        />
+      </View>
+      <View style={styles.evidenceWrap}>
+        <AttachmentButton asset={detail.evidence} emptyTitle="Adjuntar foto" onPick={pick} compact />
+      </View>
+      <View style={styles.slaRow}>
+        <Text style={styles.slaLabel}>SLA calculado</Text>
+        <Text style={styles.slaValue}>xx días hábiles</Text>
+      </View>
+    </View>
+  );
+}
+
+function ChecklistItem({ item, index, answer, detail, onAnswer, onDetailChange }: { item: ChecklistItemRow; index: number; answer?: InspectionAnswerValue; detail: ManualChecklistItemDetail; onAnswer: (value: InspectionAnswerValue) => void; onDetailChange: (detail: Partial<ManualChecklistItemDetail>) => void }) {
+  const isCompliant = answer === InspectionAnswerValue.COMPLIANT;
+  const isNotCompliant = answer === InspectionAnswerValue.NOT_COMPLIANT;
+  const isNotApplicable = answer === InspectionAnswerValue.NOT_APPLICABLE;
+
+  return (
+    <View style={[styles.itemWrap, isCompliant && styles.itemWrapYes, isNotCompliant && styles.itemWrapNo, isNotApplicable && styles.itemWrapNa]}>
       <View style={styles.questionRow}>
         <Text style={styles.itemIndex}>{index + 1}</Text>
         <Text style={styles.questionText}>{item.question}</Text>
@@ -153,6 +276,8 @@ function ChecklistItem({ item, index, answer, onAnswer }: { item: ChecklistItemR
           <ChecklistAnswerButton key={option.value} label={option.label} value={option.value} selected={answer === option.value} onPress={() => onAnswer(option.value)} />
         ))}
       </View>
+      {isNotCompliant ? <FindingDetailBox index={index} detail={detail} onChange={onDetailChange} /> : null}
+      {isCompliant ? <OptionalCommentBox detail={detail} onChange={onDetailChange} /> : null}
     </View>
   );
 }
@@ -160,6 +285,7 @@ function ChecklistItem({ item, index, answer, onAnswer }: { item: ChecklistItemR
 function ChecklistItemsCard({ template, items }: { template: InspectionChecklistTemplateResponse; items: ChecklistItemRow[] }) {
   const draft = useManualInspectionDraft();
   const setAnswer = useManualInspectionDraft((state) => state.setAnswer);
+  const setItemDetail = useManualInspectionDraft((state) => state.setItemDetail);
   const headerTitle = template.sections[0]?.title ?? template.name;
 
   return (
@@ -173,28 +299,67 @@ function ChecklistItemsCard({ template, items }: { template: InspectionChecklist
           <Text style={styles.stateText}>Esta plantilla no tiene ítems activos.</Text>
         </View>
       ) : items.map((item, index) => (
-        <ChecklistItem key={item.id} item={item} index={index} answer={draft.answersByItemId[item.id]} onAnswer={(value) => setAnswer(item.id, value)} />
+        <ChecklistItem
+          key={item.id}
+          item={item}
+          index={index}
+          answer={draft.answersByItemId[item.id]}
+          detail={draft.detailsByItemId[item.id] ?? {}}
+          onAnswer={(value) => setAnswer(item.id, value)}
+          onDetailChange={(detail) => setItemDetail(item.id, detail)}
+        />
       ))}
     </View>
   );
+}
+
+function ResponsibleBlock({ onOpenCompany, companiesLoading }: { onOpenCompany: () => void; companiesLoading: boolean }) {
+  const draft = useManualInspectionDraft();
+  const responsibleText = draft.findingResponsibleIds.length > 0
+    ? `${draft.findingResponsibleIds.length} responsables seleccionados`
+    : 'Pendiente endpoint de responsables';
+
+  return (
+    <View style={styles.responsibleCard}>
+      <Text style={styles.responsibleTitle}>Responsables</Text>
+      <View style={styles.fieldGroup}>
+        <FieldLabel>Empresa encargada de los hallazgos</FieldLabel>
+        <SelectBox value={draft.findingCompanyName ?? 'Seleccione empresa'} loading={companiesLoading} onPress={onOpenCompany} />
+      </View>
+      <View style={styles.fieldGroup}>
+        <FieldLabel>Personal encargado de los hallazgos</FieldLabel>
+        <SelectBox value={responsibleText} disabled />
+      </View>
+    </View>
+  );
+}
+
+function hasRequiredFindingDetail(detail: ManualChecklistItemDetail | undefined) {
+  return Boolean(detail?.detectedCondition?.trim() && detail.correctiveAction?.trim() && detail.evidence);
 }
 
 export function ManualChecklistTemplateScreen() {
   const { online, hasSession } = useManualConnectivityStatus();
   const draft = useManualInspectionDraft();
   const setTemplate = useManualInspectionDraft((state) => state.setTemplate);
-  const activePicker = useManualInspectionFlowStore((state) => state.activePicker);
+  const setFindingCompany = useManualInspectionDraft((state) => state.setFindingCompany);
+  const activePicker = useManualInspectionFlowStore((state) => state.activePicker) as PickerKind | null;
   const openPicker = useManualInspectionFlowStore((state) => state.openPicker);
   const closePicker = useManualInspectionFlowStore((state) => state.closePicker);
   const goToType = useManualInspectionFlowStore((state) => state.goToType);
   const goToObservations = useManualInspectionFlowStore((state) => state.goToObservations);
   const templatesQuery = useInspectionChecklistTemplates();
+  const companiesQuery = useManualInspectionCompanies();
   const templates = templatesQuery.data ?? [];
+  const companies = companiesQuery.data ?? [];
   const selectedTemplate = templates.find((template) => template.id === draft.templateId);
   const items = useMemo(() => getTemplateItems(selectedTemplate), [selectedTemplate]);
-  const options = useMemo<SelectSheetOption[]>(() => templates.map(templateToOption), [templates]);
+  const templateOptions = useMemo<SelectSheetOption[]>(() => templates.map(templateToOption), [templates]);
+  const companyOptions = useMemo<SelectSheetOption[]>(() => companies.map((company) => ({ id: company.id, label: company.name, description: company.code ?? undefined })), [companies]);
   const answeredCount = items.filter((item) => Boolean(draft.answersByItemId[item.id])).length;
-  const canContinue = Boolean(selectedTemplate && items.length > 0 && answeredCount === items.length);
+  const hasFindings = items.some((item) => draft.answersByItemId[item.id] === InspectionAnswerValue.NOT_COMPLIANT);
+  const missingFindingDetails = items.some((item) => draft.answersByItemId[item.id] === InspectionAnswerValue.NOT_COMPLIANT && !hasRequiredFindingDetail(draft.detailsByItemId[item.id]));
+  const canContinue = Boolean(selectedTemplate && draft.generalPhoto && items.length > 0 && answeredCount === items.length && !missingFindingDetails && (!hasFindings || draft.findingCompanyId));
 
   React.useEffect(() => {
     goToObservations();
@@ -213,9 +378,26 @@ export function ManualChecklistTemplateScreen() {
     closePicker();
   }
 
+  function selectCompany(option: SelectSheetOption) {
+    setFindingCompany(option.id, option.label);
+    closePicker();
+  }
+
   function next() {
-    if (!canContinue) {
+    if (!draft.generalPhoto) {
+      Alert.alert('Foto requerida', 'Adjunta la foto referencial general antes de continuar.');
+      return;
+    }
+    if (answeredCount !== items.length) {
       Alert.alert('Ítems pendientes', 'Responde todos los ítems antes de continuar.');
+      return;
+    }
+    if (missingFindingDetails) {
+      Alert.alert('Hallazgos incompletos', 'Cada ítem marcado como NO requiere condición detectada, medida correctiva y foto.');
+      return;
+    }
+    if (hasFindings && !draft.findingCompanyId) {
+      Alert.alert('Responsable requerido', 'Selecciona la empresa encargada de los hallazgos.');
       return;
     }
     Alert.alert('Siguiente paso', 'El resumen de la inspección se integrará en la siguiente iteración.');
@@ -239,11 +421,13 @@ export function ManualChecklistTemplateScreen() {
                 <ProgressCard answeredCount={answeredCount} totalCount={items.length} answers={draft.answersByItemId} />
                 <ReferencePhotoBox />
                 <ChecklistItemsCard template={selectedTemplate} items={items} />
+                {hasFindings ? <ResponsibleBlock onOpenCompany={() => openPicker('company')} companiesLoading={companiesQuery.isLoading} /> : null}
               </>
             ) : null}
           </ScrollView>
           <ManualFlowFooter secondaryLabel="Atrás" secondaryIcon="arrow-left" onSecondary={back} onPrimary={next} primaryDisabled={!canContinue} />
-          <SelectSheet visible={activePicker === 'template'} title="Seleccione la plantilla" subtitle="Plantillas normativas disponibles" options={options} selectedId={draft.templateId} loading={templatesQuery.isLoading} emptyText="No hay plantillas activas" onClose={closePicker} onSelect={selectTemplate} />
+          <SelectSheet visible={activePicker === 'template'} title="Seleccione la plantilla" subtitle="Plantillas normativas disponibles" options={templateOptions} selectedId={draft.templateId} loading={templatesQuery.isLoading} emptyText="No hay plantillas activas" onClose={closePicker} onSelect={selectTemplate} />
+          <SelectSheet visible={activePicker === 'company'} title="Empresa encargada" subtitle="Empresas contratistas disponibles" options={companyOptions} selectedId={draft.findingCompanyId} loading={companiesQuery.isLoading} emptyText="No hay empresas disponibles" onClose={closePicker} onSelect={selectCompany} />
         </View>
       </SafeAreaView>
     </SafeAreaProvider>
@@ -278,20 +462,48 @@ const styles = StyleSheet.create({
   photoIcon: { fontSize: 28, lineHeight: 34 },
   photoTitle: { marginTop: 6, fontSize: 13, lineHeight: 16, fontWeight: fontWeight.semibold, color: colors.muted, textAlign: 'center' },
   photoSubtitle: { marginTop: 3, fontSize: 11, lineHeight: 14, color: colors.placeholder, textAlign: 'center' },
+  attachmentDone: { minHeight: 56, borderRadius: 8, backgroundColor: '#3A9B3A', flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 10 },
+  attachmentDoneCompact: { minHeight: 54 },
+  attachmentIconBox: { width: 40, height: 40, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' },
+  attachmentText: { flex: 1, fontSize: 12, lineHeight: 15, fontWeight: fontWeight.bold, color: colors.white },
   itemsCard: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 12, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
   itemsHeader: { minHeight: 36, backgroundColor: colors.navy, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 10 },
   itemsHeaderTitle: { fontSize: 12, lineHeight: 15, fontWeight: fontWeight.bold, color: colors.white },
   itemsHeaderCode: { fontSize: 10, lineHeight: 12, color: 'rgba(255,255,255,0.45)' },
-  itemWrap: { borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 10 },
+  itemWrap: { borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 10, borderLeftWidth: 3, borderLeftColor: 'transparent' },
+  itemWrapYes: { borderLeftColor: '#3A9B3A' },
+  itemWrapNo: { borderLeftColor: '#C4365A' },
+  itemWrapNa: { borderLeftColor: colors.borderMid },
   questionRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 2, paddingHorizontal: 12, paddingTop: 11, paddingBottom: 6 },
   itemIndex: { minWidth: 14, paddingTop: 1, fontSize: 10, lineHeight: 13, fontWeight: fontWeight.bold, color: colors.placeholder },
   questionText: { flex: 1, fontSize: 12, lineHeight: 18, color: colors.primary },
   answerRow: { flexDirection: 'row', gap: 6, paddingLeft: 32, paddingRight: 12 },
   answerButton: { flex: 1, height: 40, borderRadius: 8, borderWidth: 1.5, borderColor: colors.borderMid, backgroundColor: '#F6FAFF', alignItems: 'center', justifyContent: 'center' },
-  answerButtonYes: { backgroundColor: '#EAF7EA', borderColor: '#3A9B3A' },
-  answerButtonNo: { backgroundColor: '#FBE9EF', borderColor: '#C4365A' },
+  answerButtonYes: { backgroundColor: '#3A9B3A', borderColor: '#3A9B3A' },
+  answerButtonNo: { backgroundColor: '#C4365A', borderColor: '#C4365A' },
   answerButtonNa: { backgroundColor: '#EFEFEF', borderColor: colors.placeholder },
   answerButtonText: { fontSize: 12, lineHeight: 15, fontWeight: fontWeight.bold, color: colors.primary, textAlign: 'center' },
-  answerButtonTextSelected: { color: colors.primary },
+  answerButtonTextSelected: { color: colors.white },
+  optionalCommentWrap: { gap: 6, paddingLeft: 32, paddingRight: 12, paddingTop: 8 },
+  conditionalLabel: { fontSize: 13, lineHeight: 16, fontWeight: fontWeight.bold, color: colors.primary },
+  textArea: { minHeight: 80, borderRadius: 10, borderWidth: 1.5, borderColor: colors.borderMid, backgroundColor: '#F6FAFF', paddingHorizontal: 15.5, paddingVertical: 14.5, fontSize: 13, lineHeight: 19.5, color: colors.primary, textAlignVertical: 'top' },
+  findingBox: { marginLeft: 32, marginRight: 12, marginTop: 10, borderRadius: 10, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.white, padding: 13.5, gap: 4, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 1.5, shadowOffset: { width: 0, height: 1 } },
+  findingHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  findingBadges: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  obsBadge: { height: 19, borderRadius: 6, backgroundColor: '#E6F3FF', justifyContent: 'center', paddingHorizontal: 8 },
+  obsBadgeText: { fontSize: 11, fontWeight: fontWeight.bold, color: '#24588B' },
+  highBadge: { height: 20, borderRadius: 8, backgroundColor: '#FFE1CD', justifyContent: 'center', paddingHorizontal: 8 },
+  highBadgeText: { fontSize: 10, fontWeight: fontWeight.bold, color: '#532A0E' },
+  deleteBadge: { width: 28, height: 28, borderRadius: 6, backgroundColor: '#FFD0DB', alignItems: 'center', justifyContent: 'center' },
+  inputGroupWhite: { borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.white, paddingHorizontal: 11, paddingVertical: 9 },
+  inputGroupGray: { borderRadius: 8, backgroundColor: '#F7F7F7', paddingHorizontal: 10, paddingVertical: 8 },
+  upperLabel: { fontSize: 9, lineHeight: 12, fontWeight: fontWeight.bold, color: colors.muted, letterSpacing: 1.5, textTransform: 'uppercase' },
+  detailTextArea: { minHeight: 44, width: '100%', paddingTop: 3, paddingHorizontal: 0, paddingBottom: 0, fontSize: 12, lineHeight: 16.8, color: colors.primary, textAlignVertical: 'top' },
+  evidenceWrap: { borderTopWidth: 1.5, borderTopColor: colors.gold, backgroundColor: '#FFFDF7', paddingTop: 9.5, paddingBottom: 8 },
+  slaRow: { borderTopWidth: 1, borderTopColor: colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingTop: 10, paddingBottom: 9 },
+  slaLabel: { fontSize: 12, lineHeight: 15, fontWeight: fontWeight.medium, color: colors.muted },
+  slaValue: { fontSize: 12, lineHeight: 15, fontWeight: fontWeight.bold, color: colors.primary },
+  responsibleCard: { backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.border, borderRadius: 10, padding: 13.5, gap: 12, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 1.5, shadowOffset: { width: 0, height: 1 } },
+  responsibleTitle: { fontSize: 18, lineHeight: 21.6, fontWeight: fontWeight.bold, color: colors.primary },
   emptyItemsBox: { padding: 14 },
 });

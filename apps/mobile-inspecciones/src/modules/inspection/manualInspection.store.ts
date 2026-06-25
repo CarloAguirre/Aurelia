@@ -15,6 +15,15 @@ export interface ManualChecklistItemDetail {
   evidence?: ManualPickedAsset | null;
 }
 
+export interface ManualSavedInspectionResult {
+  inspectionId: string;
+  totalCount: number;
+  yesCount: number;
+  noCount: number;
+  naCount: number;
+  closed: boolean;
+}
+
 export interface ManualInspectionDraft {
   inspectorName: string;
   inspectorCompanyName: string;
@@ -42,6 +51,7 @@ export interface ManualInspectionDraft {
   findingCompanyId: string | null;
   findingCompanyName: string | null;
   findingResponsibleIds: string[];
+  lastSavedResult: ManualSavedInspectionResult | null;
 }
 
 interface ManualInspectionLocationInput {
@@ -64,6 +74,7 @@ interface ManualInspectionState extends ManualInspectionDraft {
   setGeneralPhoto: (asset: ManualPickedAsset | null) => void;
   setFindingCompany: (id: string | null, name: string | null) => void;
   setFindingResponsibles: (ids: string[]) => void;
+  setLastSavedResult: (result: ManualSavedInspectionResult) => void;
   reset: () => void;
 }
 
@@ -94,6 +105,7 @@ const initialDraft: ManualInspectionDraft = {
   findingCompanyId: null,
   findingCompanyName: null,
   findingResponsibleIds: [],
+  lastSavedResult: null,
 };
 
 export const useManualInspectionDraft = create<ManualInspectionState>((set) => ({
@@ -119,5 +131,6 @@ export const useManualInspectionDraft = create<ManualInspectionState>((set) => (
   setGeneralPhoto: (generalPhoto) => set({ generalPhoto }),
   setFindingCompany: (findingCompanyId, findingCompanyName) => set({ findingCompanyId, findingCompanyName }),
   setFindingResponsibles: (findingResponsibleIds) => set({ findingResponsibleIds }),
+  setLastSavedResult: (lastSavedResult) => set({ lastSavedResult }),
   reset: () => set(initialDraft),
 }));

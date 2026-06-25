@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { FontAwesome5, FontAwesome6 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, fontSize, fontWeight } from '../../theme/tokens';
 
@@ -32,7 +32,7 @@ export function ChatHeader({ currentStep, agentStatus = 'active' }: Props) {
         <View style={styles.agentLeft}>
           <View style={styles.avatarWrapper}>
             <View style={styles.avatar}>
-              <FontAwesome5 name="magic" size={14} color={colors.navy} />
+              <FontAwesome6 name="sparkles" size={14} color={colors.navy} />
             </View>
             <View style={[styles.statusDot, agentStatus === 'thinking' && styles.statusDotThinking]} />
           </View>

@@ -34,9 +34,12 @@ interface ManualFlowFooterProps {
   onPrimary: () => void;
   primaryDisabled?: boolean;
   secondaryIcon?: 'arrow-left';
+  primaryIcon?: 'arrow-right' | 'check';
+  primaryVariant?: 'gold' | 'success';
 }
 
-export function ManualFlowFooter({ secondaryLabel, onSecondary, primaryLabel = 'Continuar', onPrimary, primaryDisabled = false, secondaryIcon }: ManualFlowFooterProps) {
+export function ManualFlowFooter({ secondaryLabel, onSecondary, primaryLabel = 'Continuar', onPrimary, primaryDisabled = false, secondaryIcon, primaryIcon = 'arrow-right', primaryVariant = 'gold' }: ManualFlowFooterProps) {
+  const success = primaryVariant === 'success';
   return (
     <View style={styles.footer}>
       <View style={styles.footerButtons}>
@@ -44,9 +47,10 @@ export function ManualFlowFooter({ secondaryLabel, onSecondary, primaryLabel = '
           {secondaryIcon ? <FontAwesome5 name={secondaryIcon} size={14} color={colors.gold} /> : null}
           <Text style={styles.secondaryText}>{secondaryLabel}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.primaryButton, primaryDisabled && styles.primaryButtonDisabled]} activeOpacity={0.82} onPress={onPrimary} disabled={primaryDisabled}>
+        <TouchableOpacity style={[styles.primaryButton, success && styles.primaryButtonSuccess, primaryDisabled && styles.primaryButtonDisabled]} activeOpacity={0.82} onPress={onPrimary} disabled={primaryDisabled}>
+          {primaryIcon === 'check' ? <FontAwesome5 name="check" size={14} color={primaryDisabled ? colors.placeholder : colors.white} /> : null}
           <Text style={[styles.primaryText, primaryDisabled && styles.primaryTextDisabled]}>{primaryLabel}</Text>
-          <FontAwesome5 name="arrow-right" size={14} color={primaryDisabled ? colors.placeholder : colors.white} />
+          {primaryIcon === 'arrow-right' ? <FontAwesome5 name="arrow-right" size={14} color={primaryDisabled ? colors.placeholder : colors.white} /> : null}
         </TouchableOpacity>
       </View>
       <View style={styles.homeIndicator} />
@@ -67,6 +71,7 @@ const styles = StyleSheet.create({
   secondaryButton: { height: 50, borderRadius: 14, borderWidth: 2, borderColor: colors.gold, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8 },
   secondaryText: { fontSize: 14, fontWeight: fontWeight.bold, color: colors.gold },
   primaryButton: { flex: 1, height: 50, borderRadius: 14, backgroundColor: colors.gold, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, shadowColor: colors.gold, shadowOpacity: 0.25, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
+  primaryButtonSuccess: { backgroundColor: '#3A9B3A', shadowColor: '#3A9B3A' },
   primaryButtonDisabled: { backgroundColor: '#E3E3E3', shadowOpacity: 0 },
   primaryText: { fontSize: 14, fontWeight: fontWeight.bold, color: colors.white },
   primaryTextDisabled: { color: colors.placeholder },

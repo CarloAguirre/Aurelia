@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, fontSize, fontWeight, spacing } from '../../theme/tokens';
 
@@ -21,11 +21,20 @@ export function ManualHeader({ title, subtitle, badge }: HeaderProps) {
   );
 }
 
-export function OfflineBanner() {
+interface OfflineBannerProps {
+  online?: boolean;
+  hasSession?: boolean;
+}
+
+export function OfflineBanner({ online = false, hasSession = false }: OfflineBannerProps) {
+  const connected = online && hasSession;
+  const text = connected ? 'Con red · sesión activa' : !hasSession ? 'Sin sesión · guardando localmente' : 'Sin red · guardando localmente';
+  const icon = connected ? 'cloud-upload-alt' : !hasSession ? 'user-lock' : 'wifi';
+
   return (
-    <View style={styles.offlineBanner}>
-      <FontAwesome5 name="wifi" size={11} color={colors.gold} />
-      <Text style={styles.offlineText}>Sin red · guardando localmente</Text>
+    <View style={[styles.offlineBanner, connected && styles.onlineBanner]}>
+      <FontAwesome5 name={icon} size={11} color={connected ? colors.teal : colors.gold} />
+      <Text style={[styles.offlineText, connected && styles.onlineText]}>{text}</Text>
     </View>
   );
 }
@@ -92,7 +101,7 @@ interface FieldBoxProps {
 export function FieldBox({ value, variant = 'readonly', right, onPress, disabled = false }: FieldBoxProps) {
   const content = (
     <>
-      <Text style={[styles.fieldValue, disabled && styles.disabledText]}>{value}</Text>
+      <Text style={[styles.fieldValue, disabled && styles.disabledText]} numberOfLines={1}>{value}</Text>
       {right}
     </>
   );
@@ -154,16 +163,35 @@ export function ManualFooter({ onCancel, onNext }: FooterProps) {
   );
 }
 
-export function LocationMapPreview() {
+interface LocationMapPreviewProps {
+  latitude: number | null;
+  longitude: number | null;
+  accuracyLabel: string;
+}
+
+function mapTileUrl(latitude: number, longitude: number, zoom = 14): string {
+  const scale = 2 ** zoom;
+  const x = Math.floor(((longitude + 180) / 360) * scale);
+  const latRad = latitude * Math.PI / 180;
+  const y = Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * scale);
+  return `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
+}
+
+export function LocationMapPreview({ latitude, longitude, accuracyLabel }: LocationMapPreviewProps) {
+  const hasLocation = latitude !== null && longitude !== null;
+  const mapLabel = hasLocation ? `${latitude.toFixed(5)}, ${longitude.toFixed(5)}` : 'Ubicación pendiente';
+
   return (
     <View style={styles.mapBox}>
+      {hasLocation ? <Image source={{ uri: mapTileUrl(latitude, longitude) }} style={styles.mapImage} /> : <View style={styles.mapPlaceholder}><Text style={styles.mapPlaceholderText}>Captura la ubicación para ver el mapa real</Text></View>}
+      <View style={styles.mapOverlay} />
       <View style={styles.mapLineOne} />
       <View style={styles.mapLineTwo} />
       <View style={styles.mapPin}>
         <FontAwesome5 name="map-marker-alt" size={24} color="#CC315F" />
       </View>
-      <View style={styles.mapLabel}><Text style={styles.mapLabelText}>Salares Norte · 4.500 msnm</Text></View>
-      <View style={styles.mapAccuracy}><Text style={styles.mapAccuracyText}>± 12.4 m</Text></View>
+      <View style={styles.mapLabel}><Text style={styles.mapLabelText}>{mapLabel}</Text></View>
+      <View style={styles.mapAccuracy}><Text style={styles.mapAccuracyText}>{accuracyLabel}</Text></View>
     </View>
   );
 }
@@ -176,7 +204,9 @@ const styles = StyleSheet.create({
   headerBadge: { height: 20, borderRadius: 16, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10, marginRight: 4 },
   headerBadgeText: { fontSize: 10, fontWeight: fontWeight.bold, color: colors.navy },
   offlineBanner: { height: 23, backgroundColor: '#2A1A04', borderBottomWidth: 1, borderBottomColor: colors.gold, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 16 },
+  onlineBanner: { backgroundColor: '#082D28', borderBottomColor: colors.teal },
   offlineText: { fontSize: 11, fontWeight: fontWeight.semibold, color: colors.gold },
+  onlineText: { color: colors.teal },
   stepperWrap: { backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.border, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 9 },
   stepperRow: { flexDirection: 'row', alignItems: 'flex-start' },
   stepItem: { width: 83, alignItems: 'center', position: 'relative' },
@@ -195,10 +225,10 @@ const styles = StyleSheet.create({
   cardSubtitle: { marginTop: 4, fontSize: 12, lineHeight: 16.8, color: colors.muted },
   cardBody: { marginTop: 10, gap: 10 },
   fieldLabel: { fontSize: 13, fontWeight: fontWeight.bold, color: colors.primary },
-  fieldBox: { height: 50, borderRadius: 10, backgroundColor: '#EEEEEE', paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  fieldBox: { height: 50, borderRadius: 10, backgroundColor: '#EEEEEE', paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   inputBox: { backgroundColor: '#F6FAFF', borderWidth: 1.5, borderColor: colors.borderMid },
   disabledBox: { opacity: 0.65 },
-  fieldValue: { fontSize: 14, fontWeight: fontWeight.medium, color: colors.primary },
+  fieldValue: { flex: 1, fontSize: 14, fontWeight: fontWeight.medium, color: colors.primary },
   disabledText: { color: colors.placeholder },
   footer: { backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 10, paddingHorizontal: 14, alignItems: 'center' },
   footerButtons: { flexDirection: 'row', gap: 10, width: '100%' },
@@ -208,10 +238,14 @@ const styles = StyleSheet.create({
   nextText: { fontSize: 14, fontWeight: fontWeight.bold, color: colors.white },
   homeIndicator: { width: 120, height: 4, borderRadius: 2, backgroundColor: colors.borderMid, marginTop: 14, marginBottom: 8 },
   mapBox: { height: 120, borderRadius: 10, borderWidth: 1.5, borderColor: colors.borderMid, backgroundColor: '#1E3A2E', overflow: 'hidden', position: 'relative' },
+  mapImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
+  mapPlaceholder: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, backgroundColor: '#1E3A2E' },
+  mapPlaceholderText: { fontSize: 11, lineHeight: 15, color: 'rgba(255,255,255,0.75)', textAlign: 'center' },
+  mapOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(6, 46, 33, 0.25)' },
   mapLineOne: { position: 'absolute', top: 35, left: 59, width: 178, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,200,100,0.4)' },
   mapLineTwo: { position: 'absolute', top: 70, left: 30, width: 118, height: 2, borderRadius: 2, backgroundColor: 'rgba(255,200,100,0.3)' },
   mapPin: { position: 'absolute', top: 31, left: 134, width: 28, height: 27, alignItems: 'center' },
-  mapLabel: { position: 'absolute', left: 8, bottom: 11, height: 18, borderRadius: 4, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', paddingHorizontal: 8 },
+  mapLabel: { position: 'absolute', left: 8, bottom: 11, height: 18, borderRadius: 4, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', paddingHorizontal: 8, maxWidth: 160 },
   mapLabelText: { fontSize: 10, fontWeight: fontWeight.semibold, color: colors.white },
   mapAccuracy: { position: 'absolute', right: 8, bottom: 11, height: 18, borderRadius: 4, backgroundColor: 'rgba(0,179,152,0.8)', justifyContent: 'center', paddingHorizontal: 8 },
   mapAccuracyText: { fontSize: 10, fontWeight: fontWeight.semibold, color: colors.white },

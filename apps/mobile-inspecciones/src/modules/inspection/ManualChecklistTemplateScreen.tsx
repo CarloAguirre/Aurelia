@@ -43,6 +43,10 @@ function templateToOption(template: InspectionChecklistTemplateResponse): Select
   return { id: template.id, label: template.name, description: `${template.code} · ${getItemsCount(template)} ítems` };
 }
 
+function getTemplateHeaderTitle(template: InspectionChecklistTemplateResponse): string {
+  return template.name.replace(/^Almacenamiento de\s+/i, '').replace(/\s*-\s*/g, ' – ').trim() || template.name;
+}
+
 function getAssetName(asset: ImagePicker.ImagePickerAsset, fallback: string): string {
   if (asset.fileName) return asset.fileName;
   const uriName = asset.uri.split('/').pop();
@@ -55,13 +59,7 @@ async function pickImageAsset(fallbackName: string): Promise<ManualPickedAsset |
     Alert.alert('Permiso requerido', 'Activa el permiso de galería para adjuntar imágenes.');
     return null;
   }
-
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    allowsEditing: false,
-    quality: 0.75,
-  });
-
+  const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: false, quality: 0.75 });
   if (result.canceled || result.assets.length === 0) return null;
   const asset = result.assets[0];
   return { uri: asset.uri, name: getAssetName(asset, fallbackName) };
@@ -79,7 +77,6 @@ function TemplateMeta({ code, itemsCount }: { code: string | null; itemsCount: n
 function TemplateCard({ loading, error, empty, onOpen, onRetry }: { loading: boolean; error: boolean; empty: boolean; onOpen: () => void; onRetry: () => void }) {
   const draft = useManualInspectionDraft();
   const disabled = loading || error || empty;
-
   return (
     <View style={styles.templateCard}>
       <View style={styles.fieldGroup}>
@@ -96,12 +93,7 @@ function TemplateCard({ loading, error, empty, onOpen, onRetry }: { loading: boo
 
 function ProgressCard({ answeredCount, totalCount }: { answeredCount: number; totalCount: number }) {
   const width = totalCount ? `${(answeredCount / totalCount) * 100}%` : '0%';
-  return (
-    <View style={styles.progressCard}>
-      <Text style={styles.progressText}>{answeredCount} de {totalCount} respondidos</Text>
-      <View style={styles.progressRail}><View style={[styles.progressFill, { width }]} /></View>
-    </View>
-  );
+  return <View style={styles.progressCard}><Text style={styles.progressText}>{answeredCount} de {totalCount} respondidos</Text><View style={styles.progressRail}><View style={[styles.progressFill, { width }]} /></View></View>;
 }
 
 function AttachmentButton({ asset, emptyTitle, onPick, compact = false }: { asset: ManualPickedAsset | null | undefined; emptyTitle: string; onPick: () => void; compact?: boolean }) {
@@ -113,7 +105,6 @@ function AttachmentButton({ asset, emptyTitle, onPick, compact = false }: { asse
       </TouchableOpacity>
     );
   }
-
   return (
     <TouchableOpacity style={styles.photoBox} activeOpacity={0.75} onPress={onPick}>
       <Text style={styles.photoIcon}>📷</Text>
@@ -126,36 +117,20 @@ function AttachmentButton({ asset, emptyTitle, onPick, compact = false }: { asse
 function ReferencePhotoBox() {
   const generalPhoto = useManualInspectionDraft((state) => state.generalPhoto);
   const setGeneralPhoto = useManualInspectionDraft((state) => state.setGeneralPhoto);
-
   async function pick() {
     const asset = await pickImageAsset('foto_general_de_inspeccion.jpg');
     if (asset) setGeneralPhoto(asset);
   }
-
-  return (
-    <View style={styles.photoWrap}>
-      {!generalPhoto ? <Text style={styles.photoLabel}>Foto referencial general para la inspección *</Text> : null}
-      <AttachmentButton asset={generalPhoto} emptyTitle="Tomar foto o galería" onPick={pick} />
-    </View>
-  );
+  return <View style={styles.photoWrap}>{!generalPhoto ? <Text style={styles.photoLabel}>Foto referencial general para la inspección *</Text> : null}<AttachmentButton asset={generalPhoto} emptyTitle="Tomar foto o galería" onPick={pick} /></View>;
 }
 
 function ChecklistAnswerButton({ label, value, selected, onPress }: { label: string; value: InspectionAnswerValue; selected: boolean; onPress: () => void }) {
   const selectedStyle = value === InspectionAnswerValue.COMPLIANT ? styles.answerButtonYes : value === InspectionAnswerValue.NOT_COMPLIANT ? styles.answerButtonNo : styles.answerButtonNa;
-  return (
-    <TouchableOpacity style={[styles.answerButton, selected && selectedStyle]} activeOpacity={0.75} onPress={onPress}>
-      <Text style={[styles.answerButtonText, selected && styles.answerButtonTextSelected]}>{label}</Text>
-    </TouchableOpacity>
-  );
+  return <TouchableOpacity style={[styles.answerButton, selected && selectedStyle]} activeOpacity={0.75} onPress={onPress}><Text style={[styles.answerButtonText, selected && styles.answerButtonTextSelected]}>{label}</Text></TouchableOpacity>;
 }
 
 function OptionalCommentBox({ detail, onChange }: { detail: ManualChecklistItemDetail; onChange: (detail: Partial<ManualChecklistItemDetail>) => void }) {
-  return (
-    <View style={styles.optionalCommentWrap}>
-      <Text style={styles.conditionalLabel}>Comentario (Opcional)</Text>
-      <TextInput style={styles.textArea} multiline value={detail.comment ?? ''} placeholder="Describa una condición o comentario de mejora a modo de consideración si lo desea." placeholderTextColor="#757575" onChangeText={(comment) => onChange({ comment })} />
-    </View>
-  );
+  return <View style={styles.optionalCommentWrap}><Text style={styles.conditionalLabel}>Comentario (Opcional)</Text><TextInput style={styles.textArea} multiline value={detail.comment ?? ''} placeholder="Describa una condición o comentario de mejora a modo de consideración si lo desea." placeholderTextColor="#757575" onChangeText={(comment) => onChange({ comment })} /></View>;
 }
 
 function FindingDetailBox({ index, detail, onChange }: { index: number; detail: ManualChecklistItemDetail; onChange: (detail: Partial<ManualChecklistItemDetail>) => void }) {
@@ -163,13 +138,9 @@ function FindingDetailBox({ index, detail, onChange }: { index: number; detail: 
     const asset = await pickImageAsset(`foto_obs${index + 1}.jpg`);
     if (asset) onChange({ evidence: asset });
   }
-
   return (
     <View style={styles.findingBox}>
-      <View style={styles.findingHeader}>
-        <View style={styles.findingBadges}><View style={styles.obsBadge}><Text style={styles.obsBadgeText}>Obs. {index + 1}</Text></View><View style={styles.highBadge}><Text style={styles.highBadgeText}>Alto</Text></View></View>
-        <View style={styles.deleteBadge}><FontAwesome5 name="trash" size={12} color="#C4365A" /></View>
-      </View>
+      <View style={styles.findingHeader}><View style={styles.findingBadges}><View style={styles.obsBadge}><Text style={styles.obsBadgeText}>Obs. {index + 1}</Text></View><View style={styles.highBadge}><Text style={styles.highBadgeText}>Alto</Text></View></View><View style={styles.deleteBadge}><FontAwesome5 name="trash" size={12} color="#C4365A" /></View></View>
       <View style={styles.inputGroupWhite}><Text style={styles.upperLabel}>Condición detectada *</Text><TextInput style={styles.detailTextArea} multiline value={detail.detectedCondition ?? ''} placeholder="Describa la condición detectada." placeholderTextColor="#757575" onChangeText={(detectedCondition) => onChange({ detectedCondition })} /></View>
       <View style={styles.inputGroupGray}><Text style={styles.upperLabel}>Medida correctiva propuesta *</Text><TextInput style={styles.detailTextArea} multiline value={detail.correctiveAction ?? ''} placeholder="Indique la medida correctiva propuesta." placeholderTextColor="#757575" onChangeText={(correctiveAction) => onChange({ correctiveAction })} /></View>
       <View style={styles.evidenceWrap}><AttachmentButton asset={detail.evidence} emptyTitle="Adjuntar foto" onPick={pick} compact /></View>
@@ -182,7 +153,6 @@ function ChecklistItem({ item, index, answer, detail, onAnswer, onDetailChange }
   const isCompliant = answer === InspectionAnswerValue.COMPLIANT;
   const isNotCompliant = answer === InspectionAnswerValue.NOT_COMPLIANT;
   const isNotApplicable = answer === InspectionAnswerValue.NOT_APPLICABLE;
-
   return (
     <View style={[styles.itemWrap, isCompliant && styles.itemWrapYes, isNotCompliant && styles.itemWrapNo, isNotApplicable && styles.itemWrapNa]}>
       <View style={styles.questionRow}><Text style={styles.itemIndex}>{index + 1}</Text><Text style={styles.questionText}>{item.question}</Text></View>
@@ -197,14 +167,11 @@ function ChecklistItemsCard({ template, items }: { template: InspectionChecklist
   const draft = useManualInspectionDraft();
   const setAnswer = useManualInspectionDraft((state) => state.setAnswer);
   const setItemDetail = useManualInspectionDraft((state) => state.setItemDetail);
-  const headerTitle = template.sections[0]?.title ?? template.name;
-
+  const headerTitle = getTemplateHeaderTitle(template);
   return (
     <View style={styles.itemsCard}>
       <View style={styles.itemsHeader}><Text style={styles.itemsHeaderTitle}>{headerTitle}</Text><Text style={styles.itemsHeaderCode}>{template.code}</Text></View>
-      {items.length === 0 ? <View style={styles.emptyItemsBox}><Text style={styles.stateText}>Esta plantilla no tiene ítems activos.</Text></View> : items.map((item, index) => (
-        <ChecklistItem key={item.id} item={item} index={index} answer={draft.answersByItemId[item.id]} detail={draft.detailsByItemId[item.id] ?? {}} onAnswer={(value) => setAnswer(item.id, value)} onDetailChange={(detail) => setItemDetail(item.id, detail)} />
-      ))}
+      {items.length === 0 ? <View style={styles.emptyItemsBox}><Text style={styles.stateText}>Esta plantilla no tiene ítems activos.</Text></View> : items.map((item, index) => <ChecklistItem key={item.id} item={item} index={index} answer={draft.answersByItemId[item.id]} detail={draft.detailsByItemId[item.id] ?? {}} onAnswer={(value) => setAnswer(item.id, value)} onDetailChange={(detail) => setItemDetail(item.id, detail)} />)}
     </View>
   );
 }
@@ -212,14 +179,7 @@ function ChecklistItemsCard({ template, items }: { template: InspectionChecklist
 function ResponsibleBlock({ onOpenCompany, companiesLoading }: { onOpenCompany: () => void; companiesLoading: boolean }) {
   const draft = useManualInspectionDraft();
   const responsibleText = draft.findingResponsibleIds.length > 0 ? `${draft.findingResponsibleIds.length} responsables seleccionados` : 'Pendiente endpoint de responsables';
-
-  return (
-    <View style={styles.responsibleCard}>
-      <Text style={styles.responsibleTitle}>Responsables</Text>
-      <View style={styles.fieldGroup}><FieldLabel>Empresa encargada de los hallazgos</FieldLabel><SelectBox value={draft.findingCompanyName ?? 'Seleccione empresa'} loading={companiesLoading} onPress={onOpenCompany} /></View>
-      <View style={styles.fieldGroup}><FieldLabel>Personal encargado de los hallazgos</FieldLabel><SelectBox value={responsibleText} disabled /></View>
-    </View>
-  );
+  return <View style={styles.responsibleCard}><Text style={styles.responsibleTitle}>Responsables</Text><View style={styles.fieldGroup}><FieldLabel>Empresa encargada de los hallazgos</FieldLabel><SelectBox value={draft.findingCompanyName ?? 'Seleccione empresa'} loading={companiesLoading} onPress={onOpenCompany} /></View><View style={styles.fieldGroup}><FieldLabel>Personal encargado de los hallazgos</FieldLabel><SelectBox value={responsibleText} disabled /></View></View>;
 }
 
 function hasRequiredFindingDetail(detail: ManualChecklistItemDetail | undefined) {
@@ -250,47 +210,17 @@ export function ManualChecklistTemplateScreen() {
   const missingFindingDetails = items.some((item) => draft.answersByItemId[item.id] === InspectionAnswerValue.NOT_COMPLIANT && !hasRequiredFindingDetail(draft.detailsByItemId[item.id]));
   const canContinue = Boolean(selectedTemplate && draft.generalPhoto && items.length > 0 && answeredCount === items.length && !missingFindingDetails && (!hasFindings || draft.findingCompanyId));
 
-  React.useEffect(() => {
-    goToObservations();
-  }, [goToObservations]);
+  React.useEffect(() => { goToObservations(); }, [goToObservations]);
 
-  function back() {
-    closePicker();
-    goToType();
-    router.replace('/inspection/manual/type');
-  }
-
-  function selectTemplate(option: SelectSheetOption) {
-    const template = templates.find((item) => item.id === option.id);
-    if (!template) return;
-    setTemplate({ id: template.id, name: template.name, code: template.code, itemsCount: getItemsCount(template) });
-    closePicker();
-  }
-
-  function selectCompany(option: SelectSheetOption) {
-    setFindingCompany(option.id, option.label);
-    closePicker();
-  }
-
+  function back() { closePicker(); goToType(); router.replace('/inspection/manual/type'); }
+  function selectTemplate(option: SelectSheetOption) { const template = templates.find((item) => item.id === option.id); if (!template) return; setTemplate({ id: template.id, name: template.name, code: template.code, itemsCount: getItemsCount(template) }); closePicker(); }
+  function selectCompany(option: SelectSheetOption) { setFindingCompany(option.id, option.label); closePicker(); }
   function next() {
-    if (!draft.generalPhoto) {
-      Alert.alert('Foto requerida', 'Adjunta la foto referencial general antes de continuar.');
-      return;
-    }
-    if (answeredCount !== items.length) {
-      Alert.alert('Ítems pendientes', 'Responde todos los ítems antes de continuar.');
-      return;
-    }
-    if (missingFindingDetails) {
-      Alert.alert('Hallazgos incompletos', 'Cada ítem marcado como NO requiere condición detectada, medida correctiva y foto.');
-      return;
-    }
-    if (hasFindings && !draft.findingCompanyId) {
-      Alert.alert('Responsable requerido', 'Selecciona la empresa encargada de los hallazgos.');
-      return;
-    }
-    goToSummary();
-    router.push('/inspection/manual/summary');
+    if (!draft.generalPhoto) { Alert.alert('Foto requerida', 'Adjunta la foto referencial general antes de continuar.'); return; }
+    if (answeredCount !== items.length) { Alert.alert('Ítems pendientes', 'Responde todos los ítems antes de continuar.'); return; }
+    if (missingFindingDetails) { Alert.alert('Hallazgos incompletos', 'Cada ítem marcado como NO requiere condición detectada, medida correctiva y foto.'); return; }
+    if (hasFindings && !draft.findingCompanyId) { Alert.alert('Responsable requerido', 'Selecciona la empresa encargada de los hallazgos.'); return; }
+    goToSummary(); router.push('/inspection/manual/summary');
   }
 
   return (

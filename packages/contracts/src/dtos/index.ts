@@ -13,3 +13,4 @@ export * from './reports';
 export * from './files';
 export * from './comments';
 export * from './audit';
+export * from './mobile-offline';

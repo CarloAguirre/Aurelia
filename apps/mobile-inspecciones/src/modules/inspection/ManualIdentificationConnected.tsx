@@ -29,9 +29,9 @@ function formatDate(value: Date): string {
 function buildDateOptions(): SelectSheetOption[] {
   return Array.from({ length: 21 }, (_, index) => {
     const date = new Date();
-    date.setDate(date.getDate() + index);
+    date.setDate(date.getDate() - index);
     const label = formatDate(date);
-    const description = index === 0 ? 'Hoy' : index === 1 ? 'Mañana' : new Intl.DateTimeFormat('es-CL', { weekday: 'long' }).format(date);
+    const description = index === 0 ? 'Hoy' : index === 1 ? 'Ayer' : new Intl.DateTimeFormat('es-CL', { weekday: 'long' }).format(date);
     return { id: label, label, description };
   });
 }

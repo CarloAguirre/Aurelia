@@ -55,6 +55,7 @@ export function ManualInspectionTypeScreen() {
   const goToIdentification = useManualInspectionFlowStore((state) => state.goToIdentification);
   const goToObservations = useManualInspectionFlowStore((state) => state.goToObservations);
   const goToType = useManualInspectionFlowStore((state) => state.goToType);
+  const canContinue = draft.inspectionType === InspectionType.REGULATORY;
 
   React.useEffect(() => {
     goToType();
@@ -66,6 +67,7 @@ export function ManualInspectionTypeScreen() {
   }
 
   function next() {
+    if (!canContinue) return;
     goToObservations();
     router.push('/inspection/manual/observations');
   }
@@ -92,7 +94,7 @@ export function ManualInspectionTypeScreen() {
               ))}
             </View>
           </ScrollView>
-          <ManualFlowFooter secondaryLabel="Atrás" secondaryIcon="arrow-left" onSecondary={back} onPrimary={next} />
+          <ManualFlowFooter secondaryLabel="Atrás" secondaryIcon="arrow-left" onSecondary={back} onPrimary={next} primaryDisabled={!canContinue} />
         </View>
       </SafeAreaView>
     </SafeAreaProvider>

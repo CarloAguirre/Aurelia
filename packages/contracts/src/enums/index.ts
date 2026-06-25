@@ -23,3 +23,5 @@ export * from './evidence-status.enum';
 export * from './file-storage-provider.enum';
 export * from './workflow-status.enum';
 export * from './workflow-step.enum';
+export * from './mobile-sync-operation.enum';
+export * from './mobile-sync-status.enum';

@@ -75,7 +75,7 @@ pnpm build:contracts   # compila @aurelia/contracts una vez (requerido antes de 
 Levanta PostgreSQL local con Docker:
 
 ```bash
-docker compose up -d        # postgres en localhost:5432
+docker compose up -d        # postgres en localhost:5433
 docker compose down         # detener
 docker compose down -v      # detener y borrar datos
 ```

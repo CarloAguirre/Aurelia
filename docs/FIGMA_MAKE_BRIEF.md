@@ -232,7 +232,7 @@ Sugerencia de intención de color para `IncidentRiskLevel`:
 
 ## 4. UI kit shadcn/ui — componentes disponibles (web)
 
-**Ya están instalados** en `apps/web/src/app/components/ui/`. **Reutilizar, no recrear.**
+**Ya están instalados** en `apps/web/src/app/components/ui/`. **Reutilizar, no recrear. Recrear solo en caso de que esta sea la primera iteracion y no existan**
 
 ```
 accordion, alert, alert-dialog, aspect-ratio, avatar, badge, breadcrumb, button,

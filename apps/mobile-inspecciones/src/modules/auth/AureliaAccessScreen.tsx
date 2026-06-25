@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, fontWeight } from '../../shared/theme/tokens';
 
 export function AureliaAccessScreen() {
@@ -9,18 +10,30 @@ export function AureliaAccessScreen() {
     <SafeAreaProvider>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.screen}>
-          <View style={styles.hero}>
-            <Text style={styles.logo}>AURELIA</Text>
-            <Text style={styles.title}>Le damos la bienvenida a AurelIA</Text>
+          <View style={styles.statusBar}>
+            <Text style={styles.time}>9:41</Text>
+            <View style={styles.statusIcons}><FontAwesome5 name="signal" size={15} color="#111" /><FontAwesome5 name="wifi" size={15} color="#111" /></View>
+          </View>
+          <View style={styles.body}>
+            <View style={styles.logoRow}>
+              <View style={styles.logoCircle}><Text style={styles.lion}>GF</Text></View>
+              <View><Text style={styles.gold}>Gold Fields</Text><Text style={styles.aurelia}>A U R E L I A</Text></View>
+            </View>
+            <Text style={styles.title}>Le damos la bienvenida a <Text style={styles.titleBlue}>AurelIA</Text></Text>
             <Text style={styles.subtitle}>Sistema de gestión ambiental</Text>
+            <View style={styles.form}>
+              <Text style={styles.label}>Nombre de usuario</Text>
+              <View style={styles.input} />
+              <Text style={styles.labelTwo}>Contraseña</Text>
+              <View style={styles.inputWithIcon}><FontAwesome5 name="eye" size={18} color={colors.teal} /></View>
+              <TouchableOpacity style={styles.restore}><Text style={styles.restoreText}>Recuperar contraseña</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.disabledButton} onPress={() => router.replace('/inspection/dashboard')} activeOpacity={0.75}>
+                <Text style={styles.disabledText}>Iniciar sesión</Text>
+              </TouchableOpacity>
+              <View style={styles.lang}><View style={styles.en}><Text style={styles.enText}>EN</Text></View><View style={styles.es}><Text style={styles.esText}>ES</Text></View></View>
+            </View>
           </View>
-          <TouchableOpacity style={styles.button} onPress={() => router.replace('/inspection/dashboard')} activeOpacity={0.82}>
-            <Text style={styles.buttonText}>Ingresar</Text>
-          </TouchableOpacity>
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Diseñado y desarrollado por</Text>
-            <Text style={styles.footerBrand}>KABELI</Text>
-          </View>
+          <View style={styles.footer}><Text style={styles.footerText}>Diseñado y desarrollado por</Text><Text style={styles.footerBrand}>KABELI</Text></View>
         </View>
       </SafeAreaView>
     </SafeAreaProvider>
@@ -28,15 +41,35 @@ export function AureliaAccessScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.navyDark },
-  screen: { flex: 1, backgroundColor: colors.navyDark, paddingHorizontal: 24, justifyContent: 'center' },
-  hero: { alignItems: 'center', marginBottom: 48 },
-  logo: { color: colors.white, fontSize: 22, fontWeight: fontWeight.bold, letterSpacing: 2.4, marginBottom: 42 },
-  title: { color: colors.white, fontSize: 22, lineHeight: 28.6, textAlign: 'center', fontWeight: fontWeight.bold },
-  subtitle: { color: 'rgba(255,255,255,0.62)', fontSize: 15, marginTop: 4 },
-  button: { height: 39, borderRadius: 10, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
-  buttonText: { color: colors.navy, fontSize: 14, fontWeight: fontWeight.bold },
-  footer: { position: 'absolute', bottom: 28, left: 24, right: 24, alignItems: 'center' },
-  footerText: { color: 'rgba(255,255,255,0.42)', fontSize: 11 },
-  footerBrand: { color: colors.white, fontSize: 11, fontWeight: fontWeight.bold, marginTop: 2, letterSpacing: 1.1 },
+  safe: { flex: 1, backgroundColor: '#111' },
+  screen: { flex: 1, backgroundColor: '#fff' },
+  statusBar: { height: 28, backgroundColor: '#111', paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  time: { color: '#fff', fontSize: 14, fontWeight: fontWeight.bold },
+  statusIcons: { flexDirection: 'row', gap: 12 },
+  body: { flex: 1, paddingHorizontal: 24, alignItems: 'center' },
+  logoRow: { marginTop: 115, flexDirection: 'row', alignItems: 'center', gap: 9 },
+  logoCircle: { width: 48, height: 48, borderRadius: 24, borderWidth: 3, borderColor: colors.blueLink, alignItems: 'center', justifyContent: 'center' },
+  lion: { color: colors.blueLink, fontSize: 12, fontWeight: fontWeight.bold },
+  gold: { color: colors.blueLink, fontSize: 14, fontWeight: fontWeight.bold, letterSpacing: 1.8, textTransform: 'uppercase' },
+  aurelia: { color: '#687da1', fontSize: 17, letterSpacing: 6 },
+  title: { marginTop: 48, fontSize: 22, lineHeight: 28, color: colors.primary, fontWeight: fontWeight.bold, textAlign: 'center' },
+  titleBlue: { color: colors.blueLink },
+  subtitle: { marginTop: 14, fontSize: 16, color: colors.primary, textAlign: 'center' },
+  form: { marginTop: 103, width: '100%' },
+  label: { fontSize: 18, color: colors.primary, fontWeight: fontWeight.bold, marginBottom: 10 },
+  labelTwo: { fontSize: 18, color: colors.primary, fontWeight: fontWeight.bold, marginTop: 43, marginBottom: 10 },
+  input: { height: 52, borderRadius: 10, borderWidth: 1.5, borderColor: colors.borderMid, backgroundColor: '#f3f8ff' },
+  inputWithIcon: { height: 52, borderRadius: 10, borderWidth: 1.5, borderColor: colors.borderMid, backgroundColor: '#f3f8ff', alignItems: 'flex-end', justifyContent: 'center', paddingRight: 14 },
+  restore: { alignSelf: 'flex-end', marginTop: 48 },
+  restoreText: { color: colors.gold, fontSize: 15, fontWeight: fontWeight.bold, textDecorationLine: 'underline' },
+  disabledButton: { marginTop: 27, height: 52, borderRadius: 10, backgroundColor: '#d3d3d3', alignItems: 'center', justifyContent: 'center' },
+  disabledText: { color: '#6f6f6f', fontSize: 16, fontWeight: fontWeight.bold },
+  lang: { marginTop: 22, alignSelf: 'center', height: 42, flexDirection: 'row', borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#d1d1d1' },
+  en: { width: 58, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  es: { width: 58, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
+  enText: { color: colors.primary, fontSize: 18, fontWeight: fontWeight.bold },
+  esText: { color: colors.white, fontSize: 18, fontWeight: fontWeight.bold },
+  footer: { position: 'absolute', bottom: 32, left: 0, right: 0, alignItems: 'center' },
+  footerText: { color: colors.muted, fontSize: 15 },
+  footerBrand: { color: colors.muted, fontSize: 14, fontWeight: fontWeight.bold, marginTop: 6, letterSpacing: 0.8 },
 });

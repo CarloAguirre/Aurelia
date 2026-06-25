@@ -3,6 +3,18 @@ import { InspectionAnswerValue, InspectionType } from '@aurelia/contracts';
 
 export type ManualChecklistAnswers = Record<string, InspectionAnswerValue>;
 
+export interface ManualPickedAsset {
+  uri: string;
+  name: string;
+}
+
+export interface ManualChecklistItemDetail {
+  comment?: string;
+  detectedCondition?: string;
+  correctiveAction?: string;
+  evidence?: ManualPickedAsset | null;
+}
+
 export interface ManualInspectionDraft {
   inspectorName: string;
   inspectorCompanyName: string;
@@ -25,6 +37,11 @@ export interface ManualInspectionDraft {
   templateCode: string | null;
   templateItemsCount: number | null;
   answersByItemId: ManualChecklistAnswers;
+  detailsByItemId: Record<string, ManualChecklistItemDetail>;
+  generalPhoto: ManualPickedAsset | null;
+  findingCompanyId: string | null;
+  findingCompanyName: string | null;
+  findingResponsibleIds: string[];
 }
 
 interface ManualInspectionLocationInput {
@@ -43,6 +60,10 @@ interface ManualInspectionState extends ManualInspectionDraft {
   setInspectionType: (type: InspectionType, label: string) => void;
   setTemplate: (input: { id: string; name: string; code: string; itemsCount: number }) => void;
   setAnswer: (itemId: string, value: InspectionAnswerValue) => void;
+  setItemDetail: (itemId: string, detail: Partial<ManualChecklistItemDetail>) => void;
+  setGeneralPhoto: (asset: ManualPickedAsset | null) => void;
+  setFindingCompany: (id: string | null, name: string | null) => void;
+  setFindingResponsibles: (ids: string[]) => void;
   reset: () => void;
 }
 
@@ -68,6 +89,11 @@ const initialDraft: ManualInspectionDraft = {
   templateCode: null,
   templateItemsCount: null,
   answersByItemId: {},
+  detailsByItemId: {},
+  generalPhoto: null,
+  findingCompanyId: null,
+  findingCompanyName: null,
+  findingResponsibleIds: [],
 };
 
 export const useManualInspectionDraft = create<ManualInspectionState>((set) => ({
@@ -86,8 +112,12 @@ export const useManualInspectionDraft = create<ManualInspectionState>((set) => (
       locationCapturedAt: new Date().toISOString(),
     }),
   setInspectionType: (inspectionType, inspectionTypeLabel) =>
-    set({ inspectionType, inspectionTypeLabel, templateId: null, templateName: null, templateCode: null, templateItemsCount: null, answersByItemId: {} }),
-  setTemplate: ({ id, name, code, itemsCount }) => set({ templateId: id, templateName: name, templateCode: code, templateItemsCount: itemsCount, answersByItemId: {} }),
+    set({ inspectionType, inspectionTypeLabel, templateId: null, templateName: null, templateCode: null, templateItemsCount: null, answersByItemId: {}, detailsByItemId: {}, generalPhoto: null }),
+  setTemplate: ({ id, name, code, itemsCount }) => set({ templateId: id, templateName: name, templateCode: code, templateItemsCount: itemsCount, answersByItemId: {}, detailsByItemId: {}, generalPhoto: null }),
   setAnswer: (itemId, value) => set((state) => ({ answersByItemId: { ...state.answersByItemId, [itemId]: value } })),
+  setItemDetail: (itemId, detail) => set((state) => ({ detailsByItemId: { ...state.detailsByItemId, [itemId]: { ...state.detailsByItemId[itemId], ...detail } } })),
+  setGeneralPhoto: (generalPhoto) => set({ generalPhoto }),
+  setFindingCompany: (findingCompanyId, findingCompanyName) => set({ findingCompanyId, findingCompanyName }),
+  setFindingResponsibles: (findingResponsibleIds) => set({ findingResponsibleIds }),
   reset: () => set(initialDraft),
 }));

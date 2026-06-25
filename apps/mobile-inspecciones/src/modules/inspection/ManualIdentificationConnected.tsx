@@ -4,7 +4,8 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, fontWeight, spacing } from '../../shared/theme/tokens';
-import { FieldBox, FieldLabel, FormCard, LocationMapPreview, ManualFooter, ManualHeader, OfflineBanner, SelectBox } from '../../shared/components/form/ManualFormUi';
+import { FieldBox, FieldLabel, FormCard, LocationMapPreview, OfflineBanner, SelectBox } from '../../shared/components/form/ManualFormUi';
+import { ManualFlowFooter, ManualFlowHeader } from '../../shared/components/form/ManualFlowScaffold';
 import { useMobileSession } from '../auth/mobileSession.store';
 import { useManualInspectionDraft } from './manualInspection.store';
 import { useManualInspectionCatalogs } from './useManualInspectionCatalogs';
@@ -95,7 +96,7 @@ export function ManualIdentificationConnected() {
     <SafeAreaProvider>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.screen}>
-          <ManualHeader title="Identificación" subtitle="Paso 1 de 5" badge="GF HSE" />
+          <ManualFlowHeader title="Identificación" subtitle="Paso 1 de 5" badge="GF HSE" />
           <OfflineBanner online={online} hasSession={hasSession} />
           <ManualFormStepper activeStep={currentStep} steps={['Datos', 'Tipo', 'Obs.', 'Resumen']} />
           <ScrollView style={styles.content} contentContainerStyle={styles.contentInner} showsVerticalScrollIndicator={false}>
@@ -121,7 +122,7 @@ export function ManualIdentificationConnected() {
               <View style={styles.hintRow}><FontAwesome5 name="hand-point-up" size={11} color={colors.blueLink} /><Text style={styles.hintText}>Captura GPS real; el ajuste manual del pin queda para la siguiente iteración</Text></View>
             </FormCard>
           </ScrollView>
-          <ManualFooter onCancel={cancel} onNext={next} nextDisabled={!canContinue} />
+          <ManualFlowFooter secondaryLabel="Cancelar" onSecondary={cancel} onPrimary={next} primaryDisabled={!canContinue} />
           <SelectSheet visible={activePicker === 'area'} title="Seleccionar área" subtitle="Catálogo cargado desde la API" options={areaOptions} selectedId={draft.areaId} loading={loadingAreas} onClose={closePicker} onSelect={selectArea} />
           <SelectSheet visible={activePicker === 'sector'} title="Seleccionar sector" subtitle={draft.areaName ?? 'Selecciona un área primero'} options={sectorOptions} selectedId={draft.sectorId} loading={loadingSectors} emptyText="No hay sectores para el área seleccionada" onClose={closePicker} onSelect={selectSector} />
           <SelectSheet visible={activePicker === 'date'} title="Fecha de inspección" subtitle="Selecciona la fecha del registro" options={dateOptions} selectedId={draft.inspectionDate} onClose={closePicker} onSelect={selectDate} />

@@ -4,11 +4,11 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
 
 export type QuickOptVariant = 'default' | 'selected' | 'teal' | 'disabled';
-export type QuickIcon = 'search' | 'clipboard-check' | 'plus' | 'arrow-right' | 'list' | 'check' | 'pen';
+type QuickIcon = 'search' | 'clipboard-check' | 'plus' | 'arrow-right' | 'list' | 'check' | 'pen';
 
 interface QuickOptProps {
   label: string;
-  icon?: QuickIcon;
+  icon?: string;
   variant?: QuickOptVariant;
   onPress?: () => void;
 }
@@ -19,7 +19,20 @@ function getIconColor(variant: QuickOptVariant) {
   return colors.blueLink;
 }
 
+function iconName(icon?: string): QuickIcon | null {
+  if (!icon) return null;
+  if (icon === 'clipboard-check') return 'clipboard-check';
+  if (icon === 'plus') return 'plus';
+  if (icon === 'arrow-right') return 'arrow-right';
+  if (icon === 'list') return 'list';
+  if (icon === 'check') return 'check';
+  if (icon === 'pen') return 'pen';
+  return 'search';
+}
+
 export function QuickOpt({ label, icon, variant = 'default', onPress }: QuickOptProps) {
+  const name = iconName(icon);
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -27,14 +40,14 @@ export function QuickOpt({ label, icon, variant = 'default', onPress }: QuickOpt
       style={[styles.opt, optVariantStyle[variant]]}
       activeOpacity={0.7}
     >
-      {icon ? <FontAwesome5 name={icon} size={10} color={getIconColor(variant)} /> : null}
+      {name ? <FontAwesome5 name={name} size={10} color={getIconColor(variant)} /> : null}
       <Text style={[styles.label, optTextVariantStyle[variant]]}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
 interface QuickOptsProps {
-  options: Array<{ label: string; icon?: QuickIcon; value: string }>;
+  options: Array<{ label: string; icon?: string; value: string }>;
   selected?: string | null;
   onSelect?: (value: string) => void;
 }

@@ -16,7 +16,6 @@ import { useManualInspectionDraft, type ManualChecklistItemDetail, type ManualPi
 import { useManualInspectionFlowStore } from './manualInspectionFlow.store';
 
 type ChecklistItemRow = InspectionChecklistItem & { sectionTitle: string };
-
 type PickerKind = 'template' | 'company';
 
 const answerOptions = [
@@ -41,11 +40,7 @@ function getTemplateItems(template: InspectionChecklistTemplateResponse | undefi
 }
 
 function templateToOption(template: InspectionChecklistTemplateResponse): SelectSheetOption {
-  return {
-    id: template.id,
-    label: template.name,
-    description: `${template.code} · ${getItemsCount(template)} ítems`,
-  };
+  return { id: template.id, label: template.name, description: `${template.code} · ${getItemsCount(template)} ítems` };
 }
 
 function getAssetName(asset: ImagePicker.ImagePickerAsset, fallback: string): string {
@@ -68,7 +63,6 @@ async function pickImageAsset(fallbackName: string): Promise<ManualPickedAsset |
   });
 
   if (result.canceled || result.assets.length === 0) return null;
-
   const asset = result.assets[0];
   return { uri: asset.uri, name: getAssetName(asset, fallbackName) };
 }
@@ -76,14 +70,8 @@ async function pickImageAsset(fallbackName: string): Promise<ManualPickedAsset |
 function TemplateMeta({ code, itemsCount }: { code: string | null; itemsCount: number | null }) {
   return (
     <View style={styles.metaRow}>
-      <View style={styles.metaItem}>
-        <FontAwesome5 name="hashtag" size={13} color={colors.muted} />
-        <Text style={styles.metaText}>{code ?? 'Sin código'}</Text>
-      </View>
-      <View style={styles.metaItem}>
-        <FontAwesome5 name="list-ul" size={13} color={colors.muted} />
-        <Text style={styles.metaText}>{itemsCount ?? 0} ítems</Text>
-      </View>
+      <View style={styles.metaItem}><FontAwesome5 name="hashtag" size={13} color={colors.muted} /><Text style={styles.metaText}>{code ?? 'Sin código'}</Text></View>
+      <View style={styles.metaItem}><FontAwesome5 name="list-ul" size={13} color={colors.muted} /><Text style={styles.metaText}>{itemsCount ?? 0} ítems</Text></View>
     </View>
   );
 }
@@ -98,46 +86,20 @@ function TemplateCard({ loading, error, empty, onOpen, onRetry }: { loading: boo
         <FieldLabel>Seleccione la plantilla *</FieldLabel>
         <SelectBox value={draft.templateName ?? 'Seleccione'} loading={loading} disabled={disabled} onPress={onOpen} />
       </View>
-      {loading ? (
-        <View style={styles.stateRow}>
-          <ActivityIndicator size="small" color={colors.gold} />
-          <Text style={styles.stateText}>Cargando plantillas desde la API</Text>
-        </View>
-      ) : null}
-      {error ? (
-        <TouchableOpacity style={styles.stateRow} onPress={onRetry} activeOpacity={0.75}>
-          <FontAwesome5 name="exclamation-circle" size={13} color="#BD3B5B" />
-          <Text style={styles.errorText}>No se pudieron cargar. Toca para reintentar.</Text>
-        </TouchableOpacity>
-      ) : null}
-      {empty ? (
-        <View style={styles.stateRow}>
-          <FontAwesome5 name="inbox" size={13} color={colors.muted} />
-          <Text style={styles.stateText}>No hay plantillas activas disponibles.</Text>
-        </View>
-      ) : null}
+      {loading ? <View style={styles.stateRow}><ActivityIndicator size="small" color={colors.gold} /><Text style={styles.stateText}>Cargando plantillas desde la API</Text></View> : null}
+      {error ? <TouchableOpacity style={styles.stateRow} onPress={onRetry} activeOpacity={0.75}><FontAwesome5 name="exclamation-circle" size={13} color="#BD3B5B" /><Text style={styles.errorText}>No se pudieron cargar. Toca para reintentar.</Text></TouchableOpacity> : null}
+      {empty ? <View style={styles.stateRow}><FontAwesome5 name="inbox" size={13} color={colors.muted} /><Text style={styles.stateText}>No hay plantillas activas disponibles.</Text></View> : null}
       {!loading && !error && !empty ? <TemplateMeta code={draft.templateCode} itemsCount={draft.templateItemsCount} /> : null}
     </View>
   );
 }
 
-function ProgressCard({ answeredCount, totalCount, answers }: { answeredCount: number; totalCount: number; answers: Record<string, InspectionAnswerValue> }) {
-  const values = Object.values(answers);
-  const yesCount = values.filter((value) => value === InspectionAnswerValue.COMPLIANT).length;
-  const noCount = values.filter((value) => value === InspectionAnswerValue.NOT_COMPLIANT).length;
-  const naCount = values.filter((value) => value === InspectionAnswerValue.NOT_APPLICABLE).length;
-  const yesWidth = totalCount ? `${(yesCount / totalCount) * 100}%` : '0%';
-  const noWidth = totalCount ? `${(noCount / totalCount) * 100}%` : '0%';
-  const naWidth = totalCount ? `${(naCount / totalCount) * 100}%` : '0%';
-
+function ProgressCard({ answeredCount, totalCount }: { answeredCount: number; totalCount: number }) {
+  const width = totalCount ? `${(answeredCount / totalCount) * 100}%` : '0%';
   return (
     <View style={styles.progressCard}>
       <Text style={styles.progressText}>{answeredCount} de {totalCount} respondidos</Text>
-      <View style={styles.progressRail}>
-        <View style={[styles.progressYes, { width: yesWidth }]} />
-        <View style={[styles.progressNo, { width: noWidth }]} />
-        <View style={[styles.progressNa, { width: naWidth }]} />
-      </View>
+      <View style={styles.progressRail}><View style={[styles.progressFill, { width }]} /></View>
     </View>
   );
 }
@@ -146,9 +108,7 @@ function AttachmentButton({ asset, emptyTitle, onPick, compact = false }: { asse
   if (asset) {
     return (
       <TouchableOpacity style={[styles.attachmentDone, compact && styles.attachmentDoneCompact]} activeOpacity={0.75} onPress={onPick}>
-        <View style={styles.attachmentIconBox}>
-          <FontAwesome5 name="camera" size={14} color={colors.white} />
-        </View>
+        <View style={styles.attachmentIconBox}><FontAwesome5 name="camera" size={14} color={colors.white} /></View>
         <Text style={styles.attachmentText} numberOfLines={1}>{asset.name}</Text>
       </TouchableOpacity>
     );
@@ -181,12 +141,7 @@ function ReferencePhotoBox() {
 }
 
 function ChecklistAnswerButton({ label, value, selected, onPress }: { label: string; value: InspectionAnswerValue; selected: boolean; onPress: () => void }) {
-  const selectedStyle = value === InspectionAnswerValue.COMPLIANT
-    ? styles.answerButtonYes
-    : value === InspectionAnswerValue.NOT_COMPLIANT
-      ? styles.answerButtonNo
-      : styles.answerButtonNa;
-
+  const selectedStyle = value === InspectionAnswerValue.COMPLIANT ? styles.answerButtonYes : value === InspectionAnswerValue.NOT_COMPLIANT ? styles.answerButtonNo : styles.answerButtonNa;
   return (
     <TouchableOpacity style={[styles.answerButton, selected && selectedStyle]} activeOpacity={0.75} onPress={onPress}>
       <Text style={[styles.answerButtonText, selected && styles.answerButtonTextSelected]}>{label}</Text>
@@ -198,14 +153,7 @@ function OptionalCommentBox({ detail, onChange }: { detail: ManualChecklistItemD
   return (
     <View style={styles.optionalCommentWrap}>
       <Text style={styles.conditionalLabel}>Comentario (Opcional)</Text>
-      <TextInput
-        style={styles.textArea}
-        multiline
-        value={detail.comment ?? ''}
-        placeholder="Describa una condición o comentario de mejora a modo de consideración si lo desea."
-        placeholderTextColor="#757575"
-        onChangeText={(comment) => onChange({ comment })}
-      />
+      <TextInput style={styles.textArea} multiline value={detail.comment ?? ''} placeholder="Describa una condición o comentario de mejora a modo de consideración si lo desea." placeholderTextColor="#757575" onChangeText={(comment) => onChange({ comment })} />
     </View>
   );
 }
@@ -219,43 +167,13 @@ function FindingDetailBox({ index, detail, onChange }: { index: number; detail: 
   return (
     <View style={styles.findingBox}>
       <View style={styles.findingHeader}>
-        <View style={styles.findingBadges}>
-          <View style={styles.obsBadge}><Text style={styles.obsBadgeText}>Obs. {index + 1}</Text></View>
-          <View style={styles.highBadge}><Text style={styles.highBadgeText}>Alto</Text></View>
-        </View>
-        <View style={styles.deleteBadge}>
-          <FontAwesome5 name="trash" size={12} color="#C4365A" />
-        </View>
+        <View style={styles.findingBadges}><View style={styles.obsBadge}><Text style={styles.obsBadgeText}>Obs. {index + 1}</Text></View><View style={styles.highBadge}><Text style={styles.highBadgeText}>Alto</Text></View></View>
+        <View style={styles.deleteBadge}><FontAwesome5 name="trash" size={12} color="#C4365A" /></View>
       </View>
-      <View style={styles.inputGroupWhite}>
-        <Text style={styles.upperLabel}>Condición detectada *</Text>
-        <TextInput
-          style={styles.detailTextArea}
-          multiline
-          value={detail.detectedCondition ?? ''}
-          placeholder="Describa la condición detectada."
-          placeholderTextColor="#757575"
-          onChangeText={(detectedCondition) => onChange({ detectedCondition })}
-        />
-      </View>
-      <View style={styles.inputGroupGray}>
-        <Text style={styles.upperLabel}>Medida correctiva propuesta *</Text>
-        <TextInput
-          style={styles.detailTextArea}
-          multiline
-          value={detail.correctiveAction ?? ''}
-          placeholder="Indique la medida correctiva propuesta."
-          placeholderTextColor="#757575"
-          onChangeText={(correctiveAction) => onChange({ correctiveAction })}
-        />
-      </View>
-      <View style={styles.evidenceWrap}>
-        <AttachmentButton asset={detail.evidence} emptyTitle="Adjuntar foto" onPick={pick} compact />
-      </View>
-      <View style={styles.slaRow}>
-        <Text style={styles.slaLabel}>SLA calculado</Text>
-        <Text style={styles.slaValue}>xx días hábiles</Text>
-      </View>
+      <View style={styles.inputGroupWhite}><Text style={styles.upperLabel}>Condición detectada *</Text><TextInput style={styles.detailTextArea} multiline value={detail.detectedCondition ?? ''} placeholder="Describa la condición detectada." placeholderTextColor="#757575" onChangeText={(detectedCondition) => onChange({ detectedCondition })} /></View>
+      <View style={styles.inputGroupGray}><Text style={styles.upperLabel}>Medida correctiva propuesta *</Text><TextInput style={styles.detailTextArea} multiline value={detail.correctiveAction ?? ''} placeholder="Indique la medida correctiva propuesta." placeholderTextColor="#757575" onChangeText={(correctiveAction) => onChange({ correctiveAction })} /></View>
+      <View style={styles.evidenceWrap}><AttachmentButton asset={detail.evidence} emptyTitle="Adjuntar foto" onPick={pick} compact /></View>
+      <View style={styles.slaRow}><Text style={styles.slaLabel}>SLA calculado</Text><Text style={styles.slaValue}>xx días hábiles</Text></View>
     </View>
   );
 }
@@ -267,15 +185,8 @@ function ChecklistItem({ item, index, answer, detail, onAnswer, onDetailChange }
 
   return (
     <View style={[styles.itemWrap, isCompliant && styles.itemWrapYes, isNotCompliant && styles.itemWrapNo, isNotApplicable && styles.itemWrapNa]}>
-      <View style={styles.questionRow}>
-        <Text style={styles.itemIndex}>{index + 1}</Text>
-        <Text style={styles.questionText}>{item.question}</Text>
-      </View>
-      <View style={styles.answerRow}>
-        {answerOptions.map((option) => (
-          <ChecklistAnswerButton key={option.value} label={option.label} value={option.value} selected={answer === option.value} onPress={() => onAnswer(option.value)} />
-        ))}
-      </View>
+      <View style={styles.questionRow}><Text style={styles.itemIndex}>{index + 1}</Text><Text style={styles.questionText}>{item.question}</Text></View>
+      <View style={styles.answerRow}>{answerOptions.map((option) => <ChecklistAnswerButton key={option.value} label={option.label} value={option.value} selected={answer === option.value} onPress={() => onAnswer(option.value)} />)}</View>
       {isNotCompliant ? <FindingDetailBox index={index} detail={detail} onChange={onDetailChange} /> : null}
       {isCompliant ? <OptionalCommentBox detail={detail} onChange={onDetailChange} /> : null}
     </View>
@@ -290,24 +201,9 @@ function ChecklistItemsCard({ template, items }: { template: InspectionChecklist
 
   return (
     <View style={styles.itemsCard}>
-      <View style={styles.itemsHeader}>
-        <Text style={styles.itemsHeaderTitle}>{headerTitle}</Text>
-        <Text style={styles.itemsHeaderCode}>{template.code}</Text>
-      </View>
-      {items.length === 0 ? (
-        <View style={styles.emptyItemsBox}>
-          <Text style={styles.stateText}>Esta plantilla no tiene ítems activos.</Text>
-        </View>
-      ) : items.map((item, index) => (
-        <ChecklistItem
-          key={item.id}
-          item={item}
-          index={index}
-          answer={draft.answersByItemId[item.id]}
-          detail={draft.detailsByItemId[item.id] ?? {}}
-          onAnswer={(value) => setAnswer(item.id, value)}
-          onDetailChange={(detail) => setItemDetail(item.id, detail)}
-        />
+      <View style={styles.itemsHeader}><Text style={styles.itemsHeaderTitle}>{headerTitle}</Text><Text style={styles.itemsHeaderCode}>{template.code}</Text></View>
+      {items.length === 0 ? <View style={styles.emptyItemsBox}><Text style={styles.stateText}>Esta plantilla no tiene ítems activos.</Text></View> : items.map((item, index) => (
+        <ChecklistItem key={item.id} item={item} index={index} answer={draft.answersByItemId[item.id]} detail={draft.detailsByItemId[item.id] ?? {}} onAnswer={(value) => setAnswer(item.id, value)} onDetailChange={(detail) => setItemDetail(item.id, detail)} />
       ))}
     </View>
   );
@@ -315,21 +211,13 @@ function ChecklistItemsCard({ template, items }: { template: InspectionChecklist
 
 function ResponsibleBlock({ onOpenCompany, companiesLoading }: { onOpenCompany: () => void; companiesLoading: boolean }) {
   const draft = useManualInspectionDraft();
-  const responsibleText = draft.findingResponsibleIds.length > 0
-    ? `${draft.findingResponsibleIds.length} responsables seleccionados`
-    : 'Pendiente endpoint de responsables';
+  const responsibleText = draft.findingResponsibleIds.length > 0 ? `${draft.findingResponsibleIds.length} responsables seleccionados` : 'Pendiente endpoint de responsables';
 
   return (
     <View style={styles.responsibleCard}>
       <Text style={styles.responsibleTitle}>Responsables</Text>
-      <View style={styles.fieldGroup}>
-        <FieldLabel>Empresa encargada de los hallazgos</FieldLabel>
-        <SelectBox value={draft.findingCompanyName ?? 'Seleccione empresa'} loading={companiesLoading} onPress={onOpenCompany} />
-      </View>
-      <View style={styles.fieldGroup}>
-        <FieldLabel>Personal encargado de los hallazgos</FieldLabel>
-        <SelectBox value={responsibleText} disabled />
-      </View>
+      <View style={styles.fieldGroup}><FieldLabel>Empresa encargada de los hallazgos</FieldLabel><SelectBox value={draft.findingCompanyName ?? 'Seleccione empresa'} loading={companiesLoading} onPress={onOpenCompany} /></View>
+      <View style={styles.fieldGroup}><FieldLabel>Personal encargado de los hallazgos</FieldLabel><SelectBox value={responsibleText} disabled /></View>
     </View>
   );
 }
@@ -348,6 +236,7 @@ export function ManualChecklistTemplateScreen() {
   const closePicker = useManualInspectionFlowStore((state) => state.closePicker);
   const goToType = useManualInspectionFlowStore((state) => state.goToType);
   const goToObservations = useManualInspectionFlowStore((state) => state.goToObservations);
+  const goToSummary = useManualInspectionFlowStore((state) => state.goToSummary);
   const templatesQuery = useInspectionChecklistTemplates();
   const companiesQuery = useManualInspectionCompanies();
   const templates = templatesQuery.data ?? [];
@@ -400,7 +289,8 @@ export function ManualChecklistTemplateScreen() {
       Alert.alert('Responsable requerido', 'Selecciona la empresa encargada de los hallazgos.');
       return;
     }
-    Alert.alert('Siguiente paso', 'El resumen de la inspección se integrará en la siguiente iteración.');
+    goToSummary();
+    router.push('/inspection/manual/summary');
   }
 
   return (
@@ -411,19 +301,9 @@ export function ManualChecklistTemplateScreen() {
           <OfflineBanner online={online} hasSession={hasSession} />
           <ManualFormStepper activeStep={3} steps={['Datos', 'Tipo', 'Ítems', 'Resumen']} />
           <ScrollView style={styles.content} contentContainerStyle={styles.contentInner} showsVerticalScrollIndicator={false}>
-            <View style={styles.copyBlock}>
-              <Text style={styles.title}>Checklist normativo</Text>
-              <Text style={styles.subtitle}>Responde todos los ítems · los NO quedarán registrados como observaciones</Text>
-            </View>
+            <View style={styles.copyBlock}><Text style={styles.title}>Checklist normativo</Text><Text style={styles.subtitle}>Responde todos los ítems · los NO quedarán registrados como observaciones</Text></View>
             <TemplateCard loading={templatesQuery.isLoading} error={templatesQuery.isError} empty={!templatesQuery.isLoading && !templatesQuery.isError && templates.length === 0} onOpen={() => openPicker('template')} onRetry={templatesQuery.refetch} />
-            {selectedTemplate ? (
-              <>
-                <ProgressCard answeredCount={answeredCount} totalCount={items.length} answers={draft.answersByItemId} />
-                <ReferencePhotoBox />
-                <ChecklistItemsCard template={selectedTemplate} items={items} />
-                {hasFindings ? <ResponsibleBlock onOpenCompany={() => openPicker('company')} companiesLoading={companiesQuery.isLoading} /> : null}
-              </>
-            ) : null}
+            {selectedTemplate ? <><ProgressCard answeredCount={answeredCount} totalCount={items.length} /><ReferencePhotoBox /><ChecklistItemsCard template={selectedTemplate} items={items} />{hasFindings ? <ResponsibleBlock onOpenCompany={() => openPicker('company')} companiesLoading={companiesQuery.isLoading} /> : null}</> : null}
           </ScrollView>
           <ManualFlowFooter secondaryLabel="Atrás" secondaryIcon="arrow-left" onSecondary={back} onPrimary={next} primaryDisabled={!canContinue} />
           <SelectSheet visible={activePicker === 'template'} title="Seleccione la plantilla" subtitle="Plantillas normativas disponibles" options={templateOptions} selectedId={draft.templateId} loading={templatesQuery.isLoading} emptyText="No hay plantillas activas" onClose={closePicker} onSelect={selectTemplate} />
@@ -452,10 +332,8 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 11, lineHeight: 14, color: '#BD3B5B' },
   progressCard: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 15, paddingVertical: 13, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 1.5, shadowOffset: { width: 0, height: 1 } },
   progressText: { fontSize: 12, lineHeight: 15, fontWeight: fontWeight.bold, color: colors.primary },
-  progressRail: { marginTop: 8, height: 6, borderRadius: 4, backgroundColor: colors.border, flexDirection: 'row', overflow: 'hidden' },
-  progressYes: { height: 6, backgroundColor: '#3A9B3A' },
-  progressNo: { height: 6, backgroundColor: '#C4365A' },
-  progressNa: { height: 6, backgroundColor: colors.borderMid },
+  progressRail: { marginTop: 8, height: 6, borderRadius: 4, backgroundColor: colors.border, overflow: 'hidden' },
+  progressFill: { height: 6, backgroundColor: '#3A9B3A' },
   photoWrap: { gap: 6 },
   photoLabel: { fontSize: 13, lineHeight: 16, fontWeight: fontWeight.bold, color: colors.primary },
   photoBox: { minHeight: 98, borderRadius: 10, borderWidth: 2, borderStyle: 'dashed', borderColor: colors.borderMid, backgroundColor: '#F6FAFF', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 24 },

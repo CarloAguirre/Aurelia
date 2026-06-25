@@ -1,5 +1,7 @@
 import { create } from 'zustand';
-import { InspectionType } from '@aurelia/contracts';
+import { InspectionAnswerValue, InspectionType } from '@aurelia/contracts';
+
+export type ManualChecklistAnswers = Record<string, InspectionAnswerValue>;
 
 export interface ManualInspectionDraft {
   inspectorName: string;
@@ -22,6 +24,7 @@ export interface ManualInspectionDraft {
   templateName: string | null;
   templateCode: string | null;
   templateItemsCount: number | null;
+  answersByItemId: ManualChecklistAnswers;
 }
 
 interface ManualInspectionLocationInput {
@@ -39,6 +42,7 @@ interface ManualInspectionState extends ManualInspectionDraft {
   setLocation: (input: ManualInspectionLocationInput) => void;
   setInspectionType: (type: InspectionType, label: string) => void;
   setTemplate: (input: { id: string; name: string; code: string; itemsCount: number }) => void;
+  setAnswer: (itemId: string, value: InspectionAnswerValue) => void;
   reset: () => void;
 }
 
@@ -63,6 +67,7 @@ const initialDraft: ManualInspectionDraft = {
   templateName: null,
   templateCode: null,
   templateItemsCount: null,
+  answersByItemId: {},
 };
 
 export const useManualInspectionDraft = create<ManualInspectionState>((set) => ({
@@ -81,7 +86,8 @@ export const useManualInspectionDraft = create<ManualInspectionState>((set) => (
       locationCapturedAt: new Date().toISOString(),
     }),
   setInspectionType: (inspectionType, inspectionTypeLabel) =>
-    set({ inspectionType, inspectionTypeLabel, templateId: null, templateName: null, templateCode: null, templateItemsCount: null }),
-  setTemplate: ({ id, name, code, itemsCount }) => set({ templateId: id, templateName: name, templateCode: code, templateItemsCount: itemsCount }),
+    set({ inspectionType, inspectionTypeLabel, templateId: null, templateName: null, templateCode: null, templateItemsCount: null, answersByItemId: {} }),
+  setTemplate: ({ id, name, code, itemsCount }) => set({ templateId: id, templateName: name, templateCode: code, templateItemsCount: itemsCount, answersByItemId: {} }),
+  setAnswer: (itemId, value) => set((state) => ({ answersByItemId: { ...state.answersByItemId, [itemId]: value } })),
   reset: () => set(initialDraft),
 }));

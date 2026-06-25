@@ -9,6 +9,7 @@ import { ManualFlowFooter, ManualFlowHeader } from '../../shared/components/form
 import { OfflineBanner } from '../../shared/components/form/ManualFormUi';
 import { ManualFormStepper } from './ManualSelectionUi';
 import { useInspectionChecklistTemplates } from './hooks/useInspectionChecklistTemplates';
+import { useSubmitManualInspection } from './hooks/useSubmitManualInspection';
 import { useManualConnectivityStatus } from './useManualConnectivityStatus';
 import { useManualInspectionDraft, type ManualChecklistItemDetail } from './manualInspection.store';
 import { useManualInspectionFlowStore } from './manualInspectionFlow.store';
@@ -72,7 +73,6 @@ function ResultsCard({ totalCount, yesCount, noCount, naCount }: { totalCount: n
 
 function ObservationsCard({ observations }: { observations: SummaryObservation[] }) {
   if (observations.length === 0) return null;
-
   return (
     <SectionCard title={`Observaciones (${observations.length})`} icon="tasks">
       {observations.map((observation) => (
@@ -94,7 +94,6 @@ function ObservationsCard({ observations }: { observations: SummaryObservation[]
 
 function ResponsiblesCard({ companyName, inspectorName }: { companyName: string | null; inspectorName: string }) {
   if (!companyName) return null;
-
   return (
     <SectionCard title="Responsables" icon="user-tie">
       <SummaryRow label="EECC" value={companyName} />
@@ -132,12 +131,14 @@ function OfflineNotice() {
 export function ManualInspectionSummaryScreen() {
   const { online, hasSession } = useManualConnectivityStatus();
   const draft = useManualInspectionDraft();
-  const resetDraft = useManualInspectionDraft((state) => state.reset);
+  const setLastSavedResult = useManualInspectionDraft((state) => state.setLastSavedResult);
   const goToObservations = useManualInspectionFlowStore((state) => state.goToObservations);
   const goToSummary = useManualInspectionFlowStore((state) => state.goToSummary);
   const templatesQuery = useInspectionChecklistTemplates();
+  const submitMutation = useSubmitManualInspection();
   const selectedTemplate = templatesQuery.data?.find((template) => template.id === draft.templateId);
   const items = useMemo(() => getTemplateItems(selectedTemplate), [selectedTemplate]);
+  const indexedItems = useMemo(() => items.map((item, index) => ({ ...item, index })), [items]);
   const values = items.map((item) => draft.answersByItemId[item.id]);
   const yesCount = values.filter((value) => value === InspectionAnswerValue.COMPLIANT).length;
   const noCount = values.filter((value) => value === InspectionAnswerValue.NOT_COMPLIANT).length;
@@ -155,10 +156,18 @@ export function ManualInspectionSummaryScreen() {
     router.replace('/inspection/manual/observations');
   }
 
-  function save() {
-    Alert.alert('Inspección guardada', 'La inspección quedó guardada localmente para sincronización posterior.');
-    resetDraft();
-    router.replace('/inspection/dashboard');
+  async function save() {
+    if (!selectedTemplate) {
+      Alert.alert('Plantilla no disponible', 'No se pudo encontrar la plantilla seleccionada para guardar la inspección.');
+      return;
+    }
+    try {
+      const result = await submitMutation.mutateAsync({ draft, template: selectedTemplate, items: indexedItems });
+      setLastSavedResult(result);
+      router.replace('/inspection/manual/saved');
+    } catch {
+      Alert.alert('No se pudo guardar', 'Revisa la conexión con la API e intenta nuevamente.');
+    }
   }
 
   return (
@@ -190,7 +199,7 @@ export function ManualInspectionSummaryScreen() {
             <ResponsiblesCard companyName={draft.findingCompanyName} inspectorName={draft.inspectorName} />
             <OfflineNotice />
           </ScrollView>
-          <ManualFlowFooter secondaryLabel="Atrás" secondaryIcon="arrow-left" onSecondary={back} onPrimary={save} primaryLabel="Guardar inspección" primaryVariant="success" primaryIcon="check" />
+          <ManualFlowFooter secondaryLabel="Atrás" secondaryIcon="arrow-left" onSecondary={back} onPrimary={save} primaryLabel={submitMutation.isPending ? 'Guardando...' : 'Guardar inspección'} primaryVariant="success" primaryIcon="check" primaryDisabled={submitMutation.isPending} />
         </View>
       </SafeAreaView>
     </SafeAreaProvider>

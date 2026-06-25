@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
@@ -66,12 +66,8 @@ export function ManualInspectionTypeScreen() {
   }
 
   function next() {
-    if (!draft.inspectionType) {
-      Alert.alert('Tipo requerido', 'Selecciona el tipo de inspección antes de continuar.');
-      return;
-    }
     goToObservations();
-    Alert.alert('Siguiente paso', 'La pantalla de observaciones se integrará en la siguiente iteración.');
+    router.push('/inspection/manual/observations');
   }
 
   function selectType(option: ManualTypeOption) {

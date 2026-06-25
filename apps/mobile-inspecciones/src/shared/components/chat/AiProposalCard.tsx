@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
 
 interface AiProposalCardProps {
@@ -20,7 +21,7 @@ export function AiProposalCard({
   return (
     <View style={[styles.container, styles.marginLeft]}>
       <View style={styles.header}>
-        <Text style={styles.headerIcon}>✦</Text>
+        <FontAwesome5 name="magic" size={11} color={colors.goldDark} />
         <Text style={styles.headerTitle}>Medida sugerida por AurelIA</Text>
         {fallback && <Text style={styles.fallbackBadge}>fallback</Text>}
       </View>
@@ -28,7 +29,7 @@ export function AiProposalCard({
         <Text style={styles.label}>Medida correctiva</Text>
         <Text style={styles.suggestion}>{suggestion}</Text>
         <View style={styles.meta}>
-          <Text style={styles.metaIcon}>📈</Text>
+          <FontAwesome5 name="chart-line" size={9} color={colors.teal} />
           <Text style={styles.metaText}>
             Basada en historial 2023–2026 · Gold Fields Salares Norte
           </Text>
@@ -40,16 +41,20 @@ export function AiProposalCard({
           disabled={accepted}
           style={[styles.editBtn, accepted && styles.disabledBtn]}
         >
-          <Text style={[styles.editBtnText, accepted && styles.disabledText]}>
-            ✏ Editar
-          </Text>
+          <View style={styles.btnContent}>
+            <FontAwesome5 name="pen" size={10} color={accepted ? colors.muted : colors.body} />
+            <Text style={[styles.editBtnText, accepted && styles.disabledText]}>Editar</Text>
+          </View>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={onAccept}
           disabled={accepted}
           style={[styles.acceptBtn, accepted && styles.disabledBtn]}
         >
-          <Text style={styles.acceptBtnText}>✓ Aceptar</Text>
+          <View style={styles.btnContent}>
+            <FontAwesome5 name="check" size={10} color={colors.white} />
+            <Text style={styles.acceptBtnText}>Aceptar</Text>
+          </View>
         </TouchableOpacity>
       </View>
     </View>
@@ -79,7 +84,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(200,160,100,0.2)',
   },
-  headerIcon: { fontSize: fontSize.sm, color: colors.goldDark },
   headerTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.goldDark, flex: 1 },
   fallbackBadge: {
     fontSize: 9,
@@ -113,13 +117,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
   },
-  metaIcon: { fontSize: 9, color: colors.teal },
-  metaText: { fontSize: fontSize.xs, color: colors.muted },
+  metaText: { fontSize: fontSize.xs, color: colors.muted, flex: 1 },
   actions: {
     flexDirection: 'row',
     gap: spacing.sm - 2,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + 2,
+  },
+  btnContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
   },
   editBtn: {
     height: 36,

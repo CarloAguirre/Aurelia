@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type ManualInspectionPicker = 'area' | 'sector' | 'date' | null;
+export type ManualInspectionPicker = 'area' | 'sector' | 'date' | 'template' | null;
 
 interface ManualInspectionFlowState {
   currentStep: number;

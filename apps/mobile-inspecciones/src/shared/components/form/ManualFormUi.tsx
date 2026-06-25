@@ -173,12 +173,31 @@ interface LocationMapPreviewProps {
   onCoordinateChange?: (coords: { latitude: number; longitude: number }) => void;
 }
 
+function hasValidLocation(latitude: number | null, longitude: number | null) {
+  return typeof latitude === 'number' && typeof longitude === 'number' && Number.isFinite(latitude) && Number.isFinite(longitude) && latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180;
+}
+
 function mapTileUrl(latitude: number, longitude: number, zoom = 14): string {
   const scale = 2 ** zoom;
   const x = Math.floor(((longitude + 180) / 360) * scale);
   const latRad = latitude * Math.PI / 180;
   const y = Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * scale);
   return `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
+}
+
+function getLocalPoint(event: GestureResponderEvent) {
+  const nativeEvent = event.nativeEvent as Record<string, unknown>;
+  const locationX = typeof nativeEvent.locationX === 'number' && Number.isFinite(nativeEvent.locationX) ? nativeEvent.locationX : undefined;
+  const locationY = typeof nativeEvent.locationY === 'number' && Number.isFinite(nativeEvent.locationY) ? nativeEvent.locationY : undefined;
+
+  if (locationX !== undefined && locationY !== undefined) return { x: locationX, y: locationY };
+
+  const offsetX = typeof nativeEvent.offsetX === 'number' && Number.isFinite(nativeEvent.offsetX) ? nativeEvent.offsetX : undefined;
+  const offsetY = typeof nativeEvent.offsetY === 'number' && Number.isFinite(nativeEvent.offsetY) ? nativeEvent.offsetY : undefined;
+
+  if (offsetX !== undefined && offsetY !== undefined) return { x: offsetX, y: offsetY };
+
+  return null;
 }
 
 function MapGradient() {
@@ -199,8 +218,8 @@ function MapGradient() {
 
 export function LocationMapPreview({ latitude, longitude, accuracyLabel, onCoordinateChange }: LocationMapPreviewProps) {
   const [layout, setLayout] = React.useState({ width: 0, height: 0 });
-  const hasLocation = latitude !== null && longitude !== null;
-  const mapLabel = hasLocation ? `${latitude.toFixed(5)}, ${longitude.toFixed(5)}` : 'Ubicación pendiente';
+  const hasLocation = hasValidLocation(latitude, longitude);
+  const mapLabel = hasLocation ? `${latitude?.toFixed(5)}, ${longitude?.toFixed(5)}` : 'Ubicación pendiente';
 
   function handleLayout(event: LayoutChangeEvent) {
     setLayout({ width: event.nativeEvent.layout.width, height: event.nativeEvent.layout.height });
@@ -208,22 +227,28 @@ export function LocationMapPreview({ latitude, longitude, accuracyLabel, onCoord
 
   function handleMapPress(event: GestureResponderEvent) {
     if (!hasLocation || !onCoordinateChange || layout.width === 0 || layout.height === 0) return;
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') return;
+
+    const point = getLocalPoint(event);
+    if (!point) return;
 
     const next = moveLatLngFromViewportPoint({
       latitude,
       longitude,
       mapWidth: layout.width,
       mapHeight: layout.height,
-      locationX: event.nativeEvent.locationX,
-      locationY: event.nativeEvent.locationY,
+      locationX: point.x,
+      locationY: point.y,
     });
+
+    if (!next) return;
 
     onCoordinateChange(next);
   }
 
   return (
     <Pressable style={styles.mapBox} onLayout={handleLayout} onPress={handleMapPress} disabled={!hasLocation || !onCoordinateChange}>
-      {hasLocation ? <Image source={{ uri: mapTileUrl(latitude, longitude) }} style={styles.mapImage} /> : <MapGradient />}
+      {hasLocation && typeof latitude === 'number' && typeof longitude === 'number' ? <Image source={{ uri: mapTileUrl(latitude, longitude) }} style={styles.mapImage} /> : <MapGradient />}
       {hasLocation ? <View style={styles.mapOverlay} /> : null}
       {!hasLocation ? <View style={styles.mapPlaceholder}><Text style={styles.mapPlaceholderText}>Captura la ubicación para ver el mapa real</Text></View> : null}
       <View style={styles.mapLineOne} />

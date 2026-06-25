@@ -56,6 +56,7 @@ export class AuthService {
     await this.usersRepository.update(user.id, { lastLoginAt: new Date() });
 
     const roles = user.userRoles?.map((userRole) => userRole.role.code) ?? [];
+    const isGoldFieldsUser = user.email.endsWith('@goldfields.com');
 
     return {
       token: `demo-token-${user.id}`,
@@ -67,9 +68,9 @@ export class AuthService {
         lastName: user.lastName,
         position: user.position,
         companyId: user.companyId,
-        companyName: user.company?.name ?? null,
+        companyName: user.company?.name ?? (isGoldFieldsUser ? 'Gold Fields' : null),
         areaId: user.areaId,
-        areaName: user.area?.name ?? null,
+        areaName: user.area?.name ?? (isGoldFieldsUser ? 'Medio Ambiente' : null),
         roles,
         permissions: roles.includes(Role.ADMIN) ? ['*'] : ['inspections:create', 'inspections:read'],
       },

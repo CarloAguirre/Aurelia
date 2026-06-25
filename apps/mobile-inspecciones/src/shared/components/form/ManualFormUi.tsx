@@ -1,7 +1,9 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Pressable, type GestureResponderEvent, type LayoutChangeEvent } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
-import { colors, fontSize, fontWeight, spacing } from '../../theme/tokens';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import { moveLatLngFromViewportPoint } from '../../utils/geo.utils';
+import { colors, fontSize, fontWeight } from '../../theme/tokens';
 
 interface HeaderProps {
   title: string;
@@ -168,6 +170,7 @@ interface LocationMapPreviewProps {
   latitude: number | null;
   longitude: number | null;
   accuracyLabel: string;
+  onCoordinateChange?: (coords: { latitude: number; longitude: number }) => void;
 }
 
 function mapTileUrl(latitude: number, longitude: number, zoom = 14): string {
@@ -178,14 +181,51 @@ function mapTileUrl(latitude: number, longitude: number, zoom = 14): string {
   return `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
 }
 
-export function LocationMapPreview({ latitude, longitude, accuracyLabel }: LocationMapPreviewProps) {
+function MapGradient() {
+  return (
+    <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" preserveAspectRatio="none">
+      <Defs>
+        <LinearGradient id="manualMapGradient" x1="0" y1="0" x2="1" y2="1">
+          <Stop offset="0%" stopColor="#1e4a2e" />
+          <Stop offset="40%" stopColor="#2a5a3a" />
+          <Stop offset="70%" stopColor="#1a3828" />
+          <Stop offset="100%" stopColor="#243e30" />
+        </LinearGradient>
+      </Defs>
+      <Rect width="100%" height="100%" fill="url(#manualMapGradient)" opacity={0.9} />
+    </Svg>
+  );
+}
+
+export function LocationMapPreview({ latitude, longitude, accuracyLabel, onCoordinateChange }: LocationMapPreviewProps) {
+  const [layout, setLayout] = React.useState({ width: 0, height: 0 });
   const hasLocation = latitude !== null && longitude !== null;
   const mapLabel = hasLocation ? `${latitude.toFixed(5)}, ${longitude.toFixed(5)}` : 'Ubicación pendiente';
 
+  function handleLayout(event: LayoutChangeEvent) {
+    setLayout({ width: event.nativeEvent.layout.width, height: event.nativeEvent.layout.height });
+  }
+
+  function handleMapPress(event: GestureResponderEvent) {
+    if (!hasLocation || !onCoordinateChange || layout.width === 0 || layout.height === 0) return;
+
+    const next = moveLatLngFromViewportPoint({
+      latitude,
+      longitude,
+      mapWidth: layout.width,
+      mapHeight: layout.height,
+      locationX: event.nativeEvent.locationX,
+      locationY: event.nativeEvent.locationY,
+    });
+
+    onCoordinateChange(next);
+  }
+
   return (
-    <View style={styles.mapBox}>
-      {hasLocation ? <Image source={{ uri: mapTileUrl(latitude, longitude) }} style={styles.mapImage} /> : <View style={styles.mapPlaceholder}><Text style={styles.mapPlaceholderText}>Captura la ubicación para ver el mapa real</Text></View>}
-      <View style={styles.mapOverlay} />
+    <Pressable style={styles.mapBox} onLayout={handleLayout} onPress={handleMapPress} disabled={!hasLocation || !onCoordinateChange}>
+      {hasLocation ? <Image source={{ uri: mapTileUrl(latitude, longitude) }} style={styles.mapImage} /> : <MapGradient />}
+      {hasLocation ? <View style={styles.mapOverlay} /> : null}
+      {!hasLocation ? <View style={styles.mapPlaceholder}><Text style={styles.mapPlaceholderText}>Captura la ubicación para ver el mapa real</Text></View> : null}
       <View style={styles.mapLineOne} />
       <View style={styles.mapLineTwo} />
       <View style={styles.mapPin}>
@@ -193,7 +233,7 @@ export function LocationMapPreview({ latitude, longitude, accuracyLabel }: Locat
       </View>
       <View style={styles.mapLabel}><Text style={styles.mapLabelText}>{mapLabel}</Text></View>
       <View style={styles.mapAccuracy}><Text style={styles.mapAccuracyText}>{accuracyLabel}</Text></View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -242,7 +282,7 @@ const styles = StyleSheet.create({
   homeIndicator: { width: 120, height: 4, borderRadius: 2, backgroundColor: colors.borderMid, marginTop: 14, marginBottom: 8 },
   mapBox: { height: 120, borderRadius: 10, borderWidth: 1.5, borderColor: colors.borderMid, backgroundColor: '#1E3A2E', overflow: 'hidden', position: 'relative' },
   mapImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
-  mapPlaceholder: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, backgroundColor: '#1E3A2E' },
+  mapPlaceholder: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   mapPlaceholderText: { fontSize: 11, lineHeight: 15, color: 'rgba(255,255,255,0.75)', textAlign: 'center' },
   mapOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(6, 46, 33, 0.25)' },
   mapLineOne: { position: 'absolute', top: 35, left: 59, width: 178, height: 3, borderRadius: 2, backgroundColor: 'rgba(255,200,100,0.4)' },

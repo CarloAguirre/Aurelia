@@ -47,7 +47,6 @@ export function ChatInput({ onSend, placeholder = 'Escribe aquí o usa los contr
           placeholder={placeholder}
           placeholderTextColor={colors.placeholder}
           style={styles.input}
-          multiline
           blurOnSubmit
           returnKeyType="send"
           editable={!disabled}
@@ -92,15 +91,15 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    minHeight: 40,
-    maxHeight: 80,
+    height: 40,
     paddingHorizontal: 14,
-    paddingVertical: spacing.sm + 2,
+    paddingVertical: 0,
     borderWidth: 1.5,
     borderColor: colors.borderMid,
-    borderRadius: radius.full,
+    borderRadius: 20,
     fontFamily: 'System',
     fontSize: fontSize.base,
+    lineHeight: 18,
     color: colors.primary,
     backgroundColor: colors.surface,
   },

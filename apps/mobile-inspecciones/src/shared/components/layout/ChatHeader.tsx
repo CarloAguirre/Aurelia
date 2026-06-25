@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, fontSize, fontWeight } from '../../theme/tokens';
 
@@ -14,7 +15,6 @@ export const STEP_LABELS = [
 ];
 
 const STEP_PCT = ['14%', '28%', '42%', '57%', '71%', '86%', '100%'];
-
 const STEP_DOTS = STEP_LABELS.length;
 
 interface Props {
@@ -27,13 +27,12 @@ export function ChatHeader({ currentStep, agentStatus = 'active' }: Props) {
   const safeStep = Math.min(currentStep, STEP_LABELS.length - 1);
 
   return (
-    <View style={[styles.wrapper, { paddingTop: insets.top }]}>
-      {/* Agent bar */}
+    <View style={[styles.wrapper, { paddingTop: insets.top }]}> 
       <View style={styles.agentBar}>
         <View style={styles.agentLeft}>
           <View style={styles.avatarWrapper}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarIcon}>✦</Text>
+              <FontAwesome5 name="magic" size={14} color={colors.navy} />
             </View>
             <View style={[styles.statusDot, agentStatus === 'thinking' && styles.statusDotThinking]} />
           </View>
@@ -48,11 +47,10 @@ export function ChatHeader({ currentStep, agentStatus = 'active' }: Props) {
           </View>
         </View>
         <TouchableOpacity style={styles.menuBtn} activeOpacity={0.7}>
-          <Text style={styles.menuIcon}>⋮</Text>
+          <FontAwesome5 name="ellipsis-v" size={15} color="rgba(255,255,255,0.6)" />
         </TouchableOpacity>
       </View>
 
-      {/* Progress bar */}
       <View style={styles.progressWrapper}>
         <View style={styles.stepsRow}>
           {Array.from({ length: STEP_DOTS }, (_, i) => (
@@ -106,7 +104,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarIcon: { fontSize: 14, color: colors.navy, fontWeight: fontWeight.bold },
   statusDot: {
     position: 'absolute',
     bottom: 1,
@@ -137,7 +134,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  menuIcon: { fontSize: 18, color: 'rgba(255,255,255,0.6)' },
   progressWrapper: {
     paddingHorizontal: spacing.lg,
     paddingBottom: 7,

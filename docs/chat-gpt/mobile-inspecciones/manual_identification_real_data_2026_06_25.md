@@ -93,6 +93,37 @@ altitude
 locationCapturedAt
 ```
 
+### Store del flujo
+
+Se agregó:
+
+```txt
+apps/mobile-inspecciones/src/modules/inspection/manualInspectionFlow.store.ts
+```
+
+Responsabilidad:
+
+- Mantener `currentStep`.
+- Controlar el picker activo de área, sector o fecha.
+- Abrir/cerrar selectores sin mezclar estado UI dentro del borrador.
+
+### Selectores reales
+
+Se agregó:
+
+```txt
+apps/mobile-inspecciones/src/modules/inspection/ManualSelectionUi.tsx
+```
+
+Incluye:
+
+- `ManualFormStepper` con distribución balanceada del stepper.
+- `SelectSheet` para área, sector y fecha.
+
+La pantalla ya no cicla área/sector al tocar. Ahora abre una lista modal y permite seleccionar explícitamente.
+
+La fecha ya no es un campo muerto. Ahora abre una lista de fechas próximas.
+
 ### Mapa real
 
 Se actualizó:
@@ -113,12 +144,12 @@ Si hay coordenadas, renderiza tile real de OpenStreetMap. Si no hay ubicación, 
 
 ## Pendientes
 
-1. Reemplazar ciclo de selección área/sector por modal/lista real o picker.
-2. Evaluar proveedor formal de mapas antes de producción.
-3. Agregar `@react-native-community/netinfo` si se necesita estado real de red en iOS/Android.
-4. Implementar pin arrastrable real.
-5. Persistir borrador local en storage, no solo Zustand en memoria.
-6. Enviar ubicación al backend cuando exista endpoint de creación de inspección manual.
+1. Evaluar proveedor formal de mapas antes de producción.
+2. Agregar `@react-native-community/netinfo` si se necesita estado real de red en iOS/Android.
+3. Implementar pin arrastrable real.
+4. Persistir borrador local en storage, no solo Zustand en memoria.
+5. Enviar ubicación al backend cuando exista endpoint de creación de inspección manual.
+6. Reemplazar selector de fecha por calendario visual completo si el diseño lo exige.
 
 ## Comandos de prueba
 
@@ -140,8 +171,9 @@ Validar en navegador:
 
 1. Iniciar sesión.
 2. Ir a `/inspection/manual/identification`.
-3. Seleccionar área.
-4. Seleccionar sector.
-5. Presionar `Capturar ubicación`.
-6. Aceptar permiso de ubicación del navegador.
-7. Confirmar que aparece coordenada real, precisión y mapa.
+3. Tocar área y seleccionar desde lista.
+4. Tocar sector y seleccionar desde lista.
+5. Tocar fecha y seleccionar desde lista.
+6. Presionar `Capturar ubicación`.
+7. Aceptar permiso de ubicación del navegador.
+8. Confirmar que aparece coordenada real, precisión y mapa.

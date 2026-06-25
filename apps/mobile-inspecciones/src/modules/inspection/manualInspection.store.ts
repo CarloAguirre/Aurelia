@@ -18,6 +18,10 @@ export interface ManualInspectionDraft {
   locationCapturedAt: string | null;
   inspectionType: InspectionType;
   inspectionTypeLabel: string;
+  templateId: string | null;
+  templateName: string | null;
+  templateCode: string | null;
+  templateItemsCount: number | null;
 }
 
 interface ManualInspectionLocationInput {
@@ -34,6 +38,7 @@ interface ManualInspectionState extends ManualInspectionDraft {
   setInspectionDate: (value: string) => void;
   setLocation: (input: ManualInspectionLocationInput) => void;
   setInspectionType: (type: InspectionType, label: string) => void;
+  setTemplate: (input: { id: string; name: string; code: string; itemsCount: number }) => void;
   reset: () => void;
 }
 
@@ -54,6 +59,10 @@ const initialDraft: ManualInspectionDraft = {
   locationCapturedAt: null,
   inspectionType: InspectionType.REGULATORY,
   inspectionTypeLabel: 'Checklist normativo',
+  templateId: null,
+  templateName: null,
+  templateCode: null,
+  templateItemsCount: null,
 };
 
 export const useManualInspectionDraft = create<ManualInspectionState>((set) => ({
@@ -71,6 +80,8 @@ export const useManualInspectionDraft = create<ManualInspectionState>((set) => (
       altitude,
       locationCapturedAt: new Date().toISOString(),
     }),
-  setInspectionType: (inspectionType, inspectionTypeLabel) => set({ inspectionType, inspectionTypeLabel }),
+  setInspectionType: (inspectionType, inspectionTypeLabel) =>
+    set({ inspectionType, inspectionTypeLabel, templateId: null, templateName: null, templateCode: null, templateItemsCount: null }),
+  setTemplate: ({ id, name, code, itemsCount }) => set({ templateId: id, templateName: name, templateCode: code, templateItemsCount: itemsCount }),
   reset: () => set(initialDraft),
 }));

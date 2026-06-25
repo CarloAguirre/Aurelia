@@ -4,6 +4,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, fontWeight } from '../../shared/theme/tokens';
+import { GoldFieldsAureliaLogo } from '../../shared/components/brand/GoldFieldsAureliaLogo';
 
 export function AureliaAccessScreen() {
   return (
@@ -15,10 +16,7 @@ export function AureliaAccessScreen() {
             <View style={styles.statusIcons}><FontAwesome5 name="signal" size={15} color="#111" /><FontAwesome5 name="wifi" size={15} color="#111" /></View>
           </View>
           <View style={styles.body}>
-            <View style={styles.logoRow}>
-              <View style={styles.logoCircle}><Text style={styles.lion}>GF</Text></View>
-              <View><Text style={styles.gold}>Gold Fields</Text><Text style={styles.aurelia}>A U R E L I A</Text></View>
-            </View>
+            <View style={styles.logoWrap}><GoldFieldsAureliaLogo width={137} height={44} /></View>
             <Text style={styles.title}>Le damos la bienvenida a <Text style={styles.titleBlue}>AurelIA</Text></Text>
             <Text style={styles.subtitle}>Sistema de gestión ambiental</Text>
             <View style={styles.form}>
@@ -47,15 +45,11 @@ const styles = StyleSheet.create({
   time: { color: '#fff', fontSize: 14, fontWeight: fontWeight.bold },
   statusIcons: { flexDirection: 'row', gap: 12 },
   body: { flex: 1, paddingHorizontal: 24, alignItems: 'center' },
-  logoRow: { marginTop: 115, flexDirection: 'row', alignItems: 'center', gap: 9 },
-  logoCircle: { width: 48, height: 48, borderRadius: 24, borderWidth: 3, borderColor: colors.blueLink, alignItems: 'center', justifyContent: 'center' },
-  lion: { color: colors.blueLink, fontSize: 12, fontWeight: fontWeight.bold },
-  gold: { color: colors.blueLink, fontSize: 14, fontWeight: fontWeight.bold, letterSpacing: 1.8, textTransform: 'uppercase' },
-  aurelia: { color: '#687da1', fontSize: 17, letterSpacing: 6 },
-  title: { marginTop: 48, fontSize: 22, lineHeight: 28, color: colors.primary, fontWeight: fontWeight.bold, textAlign: 'center' },
+  logoWrap: { marginTop: 69, width: 137, height: 44 },
+  title: { marginTop: 49, fontSize: 22, lineHeight: 28, color: colors.primary, fontWeight: fontWeight.bold, textAlign: 'center' },
   titleBlue: { color: colors.blueLink },
-  subtitle: { marginTop: 14, fontSize: 16, color: colors.primary, textAlign: 'center' },
-  form: { marginTop: 103, width: '100%' },
+  subtitle: { marginTop: 13, fontSize: 16, color: colors.primary, textAlign: 'center' },
+  form: { marginTop: 96, width: '100%' },
   label: { fontSize: 18, color: colors.primary, fontWeight: fontWeight.bold, marginBottom: 10 },
   labelTwo: { fontSize: 18, color: colors.primary, fontWeight: fontWeight.bold, marginTop: 43, marginBottom: 10 },
   input: { height: 52, borderRadius: 10, borderWidth: 1.5, borderColor: colors.borderMid, backgroundColor: '#f3f8ff' },
@@ -64,12 +58,12 @@ const styles = StyleSheet.create({
   restoreText: { color: colors.gold, fontSize: 15, fontWeight: fontWeight.bold, textDecorationLine: 'underline' },
   disabledButton: { marginTop: 27, height: 52, borderRadius: 10, backgroundColor: '#d3d3d3', alignItems: 'center', justifyContent: 'center' },
   disabledText: { color: '#6f6f6f', fontSize: 16, fontWeight: fontWeight.bold },
-  lang: { marginTop: 22, alignSelf: 'center', height: 42, flexDirection: 'row', borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#d1d1d1' },
-  en: { width: 58, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
-  es: { width: 58, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
+  lang: { marginTop: 22, alignSelf: 'center', height: 32, flexDirection: 'row', borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#d1d1d1' },
+  en: { width: 45, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  es: { width: 43, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
   enText: { color: colors.primary, fontSize: 18, fontWeight: fontWeight.bold },
   esText: { color: colors.white, fontSize: 18, fontWeight: fontWeight.bold },
-  footer: { position: 'absolute', bottom: 32, left: 0, right: 0, alignItems: 'center' },
+  footer: { position: 'absolute', bottom: 31, left: 0, right: 0, alignItems: 'center' },
   footerText: { color: colors.muted, fontSize: 15 },
   footerBrand: { color: colors.muted, fontSize: 14, fontWeight: fontWeight.bold, marginTop: 6, letterSpacing: 0.8 },
 });

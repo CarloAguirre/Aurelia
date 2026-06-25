@@ -41,6 +41,8 @@ export function ManualIdentificationConnected() {
   const currentStep = useManualInspectionFlowStore((state) => state.currentStep);
   const openPicker = useManualInspectionFlowStore((state) => state.openPicker);
   const closePicker = useManualInspectionFlowStore((state) => state.closePicker);
+  const goToIdentification = useManualInspectionFlowStore((state) => state.goToIdentification);
+  const goToType = useManualInspectionFlowStore((state) => state.goToType);
   const { online, hasSession } = useManualConnectivityStatus();
   const { areas, sectors, loadingAreas, loadingSectors } = useManualInspectionCatalogs();
   const { captureLocation, capturing, locationError } = useManualInspectionLocation();
@@ -49,6 +51,10 @@ export function ManualIdentificationConnected() {
   const areaOptions = useMemo<SelectSheetOption[]>(() => areas.map((area) => ({ id: area.id, label: area.name, description: area.code })), [areas]);
   const sectorOptions = useMemo<SelectSheetOption[]>(() => sectors.map((sector) => ({ id: sector.id, label: sector.name, description: sector.code })), [sectors]);
   const dateOptions = useMemo<SelectSheetOption[]>(buildDateOptions, []);
+
+  React.useEffect(() => {
+    goToIdentification();
+  }, [goToIdentification]);
 
   function cancel() {
     closePicker();
@@ -88,7 +94,8 @@ export function ManualIdentificationConnected() {
       Alert.alert('Falta ubicación', 'Captura la ubicación real antes de continuar.');
       return;
     }
-    Alert.alert('Siguiente paso', 'La pantalla Tipo de inspección se integrará en la siguiente iteración.');
+    goToType();
+    router.push('/inspection/manual/type');
   }
 
   return (

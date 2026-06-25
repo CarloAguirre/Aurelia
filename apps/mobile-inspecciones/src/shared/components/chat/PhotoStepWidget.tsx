@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
 
 interface Props {
@@ -46,7 +47,7 @@ export function PhotoStepWidget({ onSkip, onCapture, resolved = false }: Props) 
   if (resolved) {
     return (
       <View style={[styles.resolvedCard, styles.marginLeft]}>
-        <Text style={styles.resolvedIcon}>✓</Text>
+        <FontAwesome5 name="check-circle" size={16} color={colors.successTxt} />
         <View>
           <Text style={styles.resolvedTitle}>Foto procesada ✓</Text>
           <Text style={styles.resolvedSub}>GPS y hora registrados automáticamente</Text>
@@ -58,7 +59,7 @@ export function PhotoStepWidget({ onSkip, onCapture, resolved = false }: Props) 
   return (
     <View style={[styles.container, styles.marginLeft]}>
       <View style={styles.iconBox}>
-        <Text style={styles.icon}>📷</Text>
+        <FontAwesome5 name="camera-retro" size={18} color={colors.muted} />
       </View>
       <Text style={styles.title}>Adjuntar fotografía del hallazgo</Text>
       <Text style={styles.subtitle}>Fecha, hora y GPS se registran automáticamente</Text>
@@ -68,7 +69,7 @@ export function PhotoStepWidget({ onSkip, onCapture, resolved = false }: Props) 
           onPress={() => launchCamera(onCapture)}
           activeOpacity={0.7}
         >
-          <Text style={styles.foOptIcon}>📷</Text>
+          <FontAwesome5 name="camera" size={11} color={colors.body} />
           <Text style={styles.foOptText}>Tomar foto</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -76,7 +77,7 @@ export function PhotoStepWidget({ onSkip, onCapture, resolved = false }: Props) 
           onPress={() => launchGallery(onCapture)}
           activeOpacity={0.7}
         >
-          <Text style={styles.foOptIcon}>🖼</Text>
+          <FontAwesome5 name="image" size={11} color={colors.body} />
           <Text style={styles.foOptText}>Desde galería</Text>
         </TouchableOpacity>
       </View>
@@ -107,7 +108,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  icon: { fontSize: 18 },
   title: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.body },
   subtitle: { fontSize: fontSize.xs, color: colors.placeholder, textAlign: 'center' },
   btnRow: {
@@ -127,7 +127,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 5,
   },
-  foOptIcon: { fontSize: fontSize.sm },
   foOptText: {
     fontSize: fontSize.sm,
     fontWeight: fontWeight.semibold,
@@ -147,10 +146,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-  },
-  resolvedIcon: {
-    fontSize: fontSize.xl,
-    color: colors.successTxt,
   },
   resolvedTitle: {
     fontSize: fontSize.md,

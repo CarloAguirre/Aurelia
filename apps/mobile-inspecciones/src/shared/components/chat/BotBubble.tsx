@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
 
 interface Props {
@@ -32,7 +33,7 @@ export function BotBubble({ text, time }: Props) {
   return (
     <View style={styles.row}>
       <View style={styles.avatar}>
-        <Text style={styles.avatarIcon}>✦</Text>
+        <FontAwesome5 name="magic" size={10} color={colors.navy} />
       </View>
       <View style={styles.bubble}>
         <FormattedText text={text} />
@@ -57,12 +58,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
-  },
-  avatarIcon: {
-    fontSize: 10,
-    color: colors.navy,
-    fontWeight: fontWeight.bold,
-    lineHeight: 12,
   },
   bubble: {
     maxWidth: '85%',

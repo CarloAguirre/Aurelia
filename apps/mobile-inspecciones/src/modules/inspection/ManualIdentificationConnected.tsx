@@ -4,6 +4,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, fontWeight, spacing } from '../../shared/theme/tokens';
+import { formatLocationLabel } from '../../shared/utils/geo.utils';
 import { FieldBox, FieldLabel, FormCard, LocationMapPreview, OfflineBanner, SelectBox } from '../../shared/components/form/ManualFormUi';
 import { ManualFlowFooter, ManualFlowHeader } from '../../shared/components/form/ManualFlowScaffold';
 import { useMobileSession } from '../auth/mobileSession.store';
@@ -83,6 +84,16 @@ export function ManualIdentificationConnected() {
     if (!ok && locationError) Alert.alert('Ubicación', locationError);
   }
 
+  function adjustLocation(coords: { latitude: number; longitude: number }) {
+    draft.setLocation({
+      label: formatLocationLabel(coords.latitude, coords.longitude, draft.locationAccuracyLabel),
+      accuracy: draft.locationAccuracyLabel,
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      altitude: draft.altitude,
+    });
+  }
+
   function next() {
     if (!canContinue) {
       Alert.alert('Faltan datos', 'Completa área, sector, fecha y ubicación antes de continuar.');
@@ -118,8 +129,8 @@ export function ManualIdentificationConnected() {
               </TouchableOpacity>
               {locationError ? <Text style={styles.errorText}>{locationError}</Text> : null}
               <FieldBox value={draft.locationLabel} variant="input" />
-              <LocationMapPreview latitude={draft.latitude} longitude={draft.longitude} accuracyLabel={draft.locationAccuracyLabel} />
-              <View style={styles.hintRow}><FontAwesome5 name="hand-point-up" size={11} color={colors.blueLink} /><Text style={styles.hintText}>Captura GPS real; el ajuste manual del pin queda para la siguiente iteración</Text></View>
+              <LocationMapPreview latitude={draft.latitude} longitude={draft.longitude} accuracyLabel={draft.locationAccuracyLabel} onCoordinateChange={adjustLocation} />
+              <View style={styles.hintRow}><FontAwesome5 name="hand-point-up" size={11} color={colors.blueLink} /><Text style={styles.hintText}>Toca el mapa para ajustar manualmente la ubicación del pin</Text></View>
             </FormCard>
           </ScrollView>
           <ManualFlowFooter secondaryLabel="Cancelar" onSecondary={cancel} onPrimary={next} primaryDisabled={!canContinue} />

@@ -22,8 +22,14 @@ Nodo:
 - Se ajustó el tab inferior para que use punto visual como Figma, no texto de punto grande.
 - Se dejó visible `Formularios inconclusos` aunque no exista draft real, con fallback visual del diseño.
 - Se implementó el footer con degradado Figma usando `react-native-svg`, sin agregar dependencias nuevas.
-- Se ajustó la alineación óptica de los textos de badges `Alto`, `Crítico`, `Medio` con `lineHeight`, `paddingTop` e `includeFontPadding`.
+- Se ajustó la alineación óptica de los textos de badges `Alto`, `Crítico`, `Medio` con `lineHeight` e `includeFontPadding`.
 - Se mantuvo la conexión real con API y contracts; no se volvió a mocks permanentes.
+
+## Follow-up 2026-06-25
+
+- El padding superior en chips debe quedar en `0`, no compensado con `1px`.
+- No se debe commitear la key de FontAwesome ni registrarla en documentación.
+- Para iconografía real de Figma, se recomienda exportar los SVG usados por el diseño a `assets/icons` y consumirlos localmente, no consultar una API de iconos en runtime.
 
 ## Estilos Figma usados en footer
 

@@ -6,7 +6,6 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import type { InspectionResponse } from '@aurelia/contracts';
 import { InspectionStatus } from '@aurelia/contracts';
 import { colors, fontWeight } from '../../shared/theme/tokens';
-import { GoldFieldsAureliaLogo } from '../../shared/components/brand/GoldFieldsAureliaLogo';
 import { useMobileSession } from '../auth/mobileSession.store';
 import { useInspectionFlow } from './useInspectionFlow';
 import { useInspectionHomeSummary, useMobileInspections } from './hooks/useInspectionHomeData';
@@ -15,8 +14,16 @@ import FilterIcon from '../../../assets/icons/home-filter.svg';
 import PlusIcon from '../../../assets/icons/home-plus.svg';
 import ShieldIcon from '../../../assets/icons/home-shield.svg';
 import FindingIcon from '../../../assets/icons/home-finding.svg';
+import LogoMobile from '../../../assets/icons/logo_mobile.svg';
 
-type Tone = 'red' | 'gold' | 'green' | 'gray';
+type Tone = 'red' | 'orange' | 'gold' | 'green' | 'gray';
+
+type CardRowProps = {
+  label: string;
+  tag?: string;
+  tone: Tone;
+  icon: 'open' | 'closed' | 'rejected' | 'executed';
+};
 
 function Metric({ value, label, color }: { value: string; label: string; color: string }) {
   return (
@@ -27,12 +34,51 @@ function Metric({ value, label, color }: { value: string; label: string; color: 
   );
 }
 
-function SmallRow({ label, tag, tone }: { label: string; tag?: string; tone: Tone }) {
+function StatusGlyph({ icon, tone }: { icon: CardRowProps['icon']; tone: Tone }) {
+  const palette = tonePalette[tone];
+  const name = icon === 'closed' ? 'check-circle' : icon === 'rejected' ? 'times-circle' : icon === 'executed' ? 'check-circle' : 'clock';
+  return <FontAwesome5 name={name} size={10} color={palette.fg} solid />;
+}
+
+function SeverityBadge({ label, tone }: { label: string; tone: Tone }) {
   const palette = tonePalette[tone];
   return (
-    <View style={[styles.smallRow, { backgroundColor: palette.bg }]}> 
-      <Text style={[styles.smallRowText, { color: palette.fg }]}>{label}</Text>
-      {tag ? <Text style={[styles.smallRowTag, { color: palette.fg }]}>{tag}</Text> : null}
+    <View style={[styles.severityBadge, { backgroundColor: palette.badgeBg }]}> 
+      <Text style={[styles.severityText, { color: palette.badgeFg }]}>{label}</Text>
+    </View>
+  );
+}
+
+function CardRow({ label, tag, tone, icon }: CardRowProps) {
+  const palette = tonePalette[tone];
+  return (
+    <View style={[styles.cardRow, { backgroundColor: palette.bg }]}> 
+      <View style={styles.cardRowLeft}>
+        <StatusGlyph icon={icon} tone={tone} />
+        <Text style={[styles.cardRowText, { color: palette.fg }]}>{label}</Text>
+      </View>
+      {tag ? <SeverityBadge label={tag} tone={tone} /> : null}
+    </View>
+  );
+}
+
+function TypeChip({ label }: { label: string }) {
+  const isChecklist = label.toLowerCase().includes('checklist');
+  return (
+    <View style={[styles.typeChip, isChecklist ? styles.typeChipTeal : styles.typeChipBlue]}>
+      {isChecklist ? <FontAwesome5 name="clipboard-check" size={9} color="#006153" /> : <FindingIcon width={12} height={9} />}
+      <Text style={[styles.typeChipText, isChecklist ? styles.typeChipTextTeal : styles.typeChipTextBlue]}>{label}</Text>
+    </View>
+  );
+}
+
+function StatusChip({ status }: { status: InspectionStatus }) {
+  const tone = getInspectionTone(status);
+  const palette = tonePalette[tone];
+  return (
+    <View style={[styles.statusChip, { backgroundColor: palette.bg }]}> 
+      <StatusGlyph icon={status === InspectionStatus.CLOSED ? 'closed' : 'open'} tone={tone} />
+      <Text style={[styles.statusChipText, { color: palette.fg }]}>{inspectionStatusLabel[status]}</Text>
     </View>
   );
 }
@@ -41,7 +87,7 @@ function InspectionCard({ inspection, index }: { inspection: InspectionResponse;
   const tone = getInspectionTone(inspection.status);
   const closedFindings = Math.max(inspection.findingsCount - inspection.openFindingsCount, 0);
   const displayId = `#${String(index + 1).padStart(3, '0')}`;
-  const locationMeta = inspection.scheduledAt ? `Programada - ${formatDate(inspection.scheduledAt)}` : 'Sin fecha programada';
+  const locationMeta = inspection.scheduledAt ? `Programada · ${formatDate(inspection.scheduledAt)}` : 'Sin fecha programada';
 
   return (
     <View style={styles.card}>
@@ -50,13 +96,8 @@ function InspectionCard({ inspection, index }: { inspection: InspectionResponse;
         <View style={styles.cardTop}>
           <Text style={styles.id}>{displayId}</Text>
           <View style={styles.pills}>
-            <View style={styles.pillBlue}>
-              <FindingIcon width={12} height={9} />
-              <Text style={styles.pillBlueText}>Inspección</Text>
-            </View>
-            <View style={[styles.statusPill, { backgroundColor: tonePalette[tone].bg }]}> 
-              <Text style={[styles.statusPillText, { color: tonePalette[tone].fg }]}>● {inspectionStatusLabel[inspection.status]}</Text>
-            </View>
+            <TypeChip label="Inspección" />
+            <StatusChip status={inspection.status} />
           </View>
         </View>
         <Text style={styles.cardTitle}>{inspection.title}</Text>
@@ -64,9 +105,9 @@ function InspectionCard({ inspection, index }: { inspection: InspectionResponse;
           <FontAwesome5 name="map-marker-alt" size={10} color="#aaa" />
           <Text style={styles.metaText}>{locationMeta}</Text>
         </View>
-        <SmallRow label={`${inspection.openFindingsCount} abiertas`} tag="Hallazgos" tone={inspection.openFindingsCount > 0 ? 'gold' : 'green'} />
-        <SmallRow label={`${closedFindings} cerradas`} tag="Verificadas" tone="green" />
-        <SmallRow label={`${inspection.findingsCount} totales`} tag="Observaciones" tone="gray" />
+        <CardRow label={`${inspection.openFindingsCount} abiertas`} tag={inspection.openFindingsCount > 0 ? 'Alto' : undefined} tone={inspection.openFindingsCount > 0 ? 'gold' : 'green'} icon="open" />
+        <CardRow label={`${closedFindings} cerradas`} tag={closedFindings > 0 ? 'Alto' : undefined} tone="green" icon="closed" />
+        <CardRow label={`${inspection.findingsCount} totales`} tag="Observaciones" tone="gray" icon="rejected" />
       </View>
     </View>
   );
@@ -99,7 +140,7 @@ function DraftBox({ title, detail, progress }: { title: string; detail: string; 
         </View>
         <Text style={styles.chev}>›</Text>
         <View style={styles.step}>
-          <Text style={styles.stepText}>En progreso</Text>
+          <Text style={styles.stepText}>Paso {Math.ceil(safeProgress / 20)}/5</Text>
         </View>
       </TouchableOpacity>
     </View>
@@ -138,7 +179,7 @@ export function InspectionsHomeFigmaScreen() {
   const openInspections = summary ? getOpenInspections(summary.inspections.byStatus) : 0;
   const closedRate = summary ? `${summary.inspections.closedRate}%` : '0%';
   const roleLabel = user?.roles?.[0] ?? 'Inspector';
-  const draftTitle = `${draftTypeName ?? 'Inspección'} · ${draftAreaName ?? 'Sin área'}`;
+  const draftTitle = `${draftTypeName ?? 'Hallazgo'} · ${draftAreaName ?? 'Planta Procesos'}`;
   const draftDetail = [draftAreaName, draftSectorName, draftCompanyName].filter(Boolean).join(' · ') || 'Datos parciales guardados en este dispositivo';
   const draftProgress = Math.max(20, draftProgressStep * 20);
 
@@ -152,12 +193,8 @@ export function InspectionsHomeFigmaScreen() {
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.screen}>
           <View style={styles.header}>
-            <View style={styles.status}>
-              <Text style={styles.time}>9:41</Text>
-              <FontAwesome5 name="signal" size={15} color={colors.white} />
-            </View>
             <View style={styles.brandRow}>
-              <GoldFieldsAureliaLogo width={137} height={45} variant="white" />
+              <LogoMobile width={137} height={45} />
               <TouchableOpacity style={styles.bell}>
                 <BellIcon width={20} height={16} />
               </TouchableOpacity>
@@ -209,7 +246,7 @@ export function InspectionsHomeFigmaScreen() {
               <View style={styles.tabLine} />
             </View>
             <View style={styles.tabInactive}>
-              <Text style={styles.tabDot}>•</Text>
+              <View style={styles.tabDot} />
               <Text style={styles.tabText}>Historial</Text>
             </View>
           </View>
@@ -252,23 +289,22 @@ const inspectionStatusLabel: Record<InspectionStatus, string> = {
   [InspectionStatus.CANCELLED]: 'Cancelada',
 };
 
-const tonePalette: Record<Tone, { bg: string; fg: string; line: string }> = {
-  red: { bg: '#ffd0db', fg: '#570b1d', line: '#c4365a' },
-  gold: { bg: '#ffeab8', fg: '#463100', line: '#e8a820' },
-  green: { bg: '#dfffce', fg: '#2a5c16', line: '#2a5c16' },
-  gray: { bg: '#f1f1f1', fg: '#646464', line: '#8a8a8a' },
+const tonePalette: Record<Tone, { bg: string; fg: string; line: string; badgeBg: string; badgeFg: string }> = {
+  red: { bg: '#ffd0db', fg: '#570b1d', line: '#c4365a', badgeBg: '#c4365a', badgeFg: '#fff' },
+  orange: { bg: '#ffe1cd', fg: '#532a0e', line: '#e8a820', badgeBg: '#e8a820', badgeFg: '#fff' },
+  gold: { bg: '#ffeab8', fg: '#463100', line: '#e8a820', badgeBg: '#e8a820', badgeFg: '#fff' },
+  green: { bg: '#e0ffd3', fg: '#2a5c16', line: '#2a5c16', badgeBg: '#e8a820', badgeFg: '#fff' },
+  gray: { bg: '#f7f7f7', fg: '#646464', line: '#8a8a8a', badgeBg: '#c4365a', badgeFg: '#fff' },
 };
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.navyDark },
   screen: { flex: 1, backgroundColor: '#f7f7f7' },
-  header: { backgroundColor: colors.navyDark, paddingHorizontal: 20, paddingBottom: 20 },
-  status: { height: 28, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  time: { color: colors.white, fontSize: 12, fontWeight: fontWeight.semibold },
-  brandRow: { height: 51, marginTop: 6, flexDirection: 'row', alignItems: 'center' },
+  header: { backgroundColor: colors.navyDark, paddingHorizontal: 20, paddingTop: 26, paddingBottom: 20 },
+  brandRow: { height: 51, flexDirection: 'row', alignItems: 'center' },
   bell: { marginLeft: 'auto', width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
   hello: { marginTop: 16, color: 'rgba(255,255,255,0.5)', fontSize: 13 },
-  name: { marginTop: 2, color: colors.white, fontSize: 22, fontWeight: fontWeight.bold },
+  name: { marginTop: 2, color: colors.white, fontSize: 22, lineHeight: 26.4, fontWeight: fontWeight.bold },
   role: { marginTop: 10, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(200,160,100,0.4)', backgroundColor: 'rgba(200,160,100,0.2)', paddingHorizontal: 11, paddingVertical: 4 },
   roleText: { color: colors.gold, fontSize: 11, fontWeight: fontWeight.semibold },
   metrics: { height: 70, backgroundColor: colors.white, flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.border },
@@ -276,13 +312,13 @@ const styles = StyleSheet.create({
   metricValue: { fontSize: 18, fontWeight: fontWeight.bold },
   metricLabel: { marginTop: 2, color: colors.muted, fontSize: 9, textAlign: 'center' },
   divider: { width: 1, marginVertical: 14, backgroundColor: colors.border },
-  actions: { backgroundColor: colors.white, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 12, gap: 8, borderBottomWidth: 1, borderBottomColor: colors.border },
+  actions: { backgroundColor: colors.white, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 11, gap: 6, borderBottomWidth: 1, borderBottomColor: colors.border },
   filter: { height: 36, borderRadius: 8, borderWidth: 1.5, borderColor: colors.borderMid, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
   filterText: { color: colors.body, fontSize: 12, fontWeight: fontWeight.semibold },
-  newButton: { height: 52, borderRadius: 14, backgroundColor: colors.gold, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  newButton: { height: 52, borderRadius: 14, backgroundColor: colors.gold, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', shadowColor: colors.gold, shadowOpacity: 0.3, shadowRadius: 5, shadowOffset: { width: 0, height: 2 } },
   newText: { color: colors.white, fontSize: 15, fontWeight: fontWeight.bold },
   list: { flex: 1 },
-  listContent: { padding: 14, gap: 10 },
+  listContent: { paddingHorizontal: 14, paddingVertical: 12, gap: 10 },
   drafts: { backgroundColor: colors.white, borderRadius: 12, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
   draftHeader: { padding: 14, flexDirection: 'row', justifyContent: 'space-between' },
   draftTitle: { color: colors.primary, fontSize: 15, fontWeight: fontWeight.bold },
@@ -300,34 +336,40 @@ const styles = StyleSheet.create({
   chev: { color: colors.muted, fontSize: 30 },
   step: { position: 'absolute', right: 20, top: 15, height: 18, borderRadius: 6, borderWidth: 1, borderColor: '#e8c86a', backgroundColor: '#ffeab8', paddingHorizontal: 7, justifyContent: 'center' },
   stepText: { color: '#463100', fontSize: 10, fontWeight: fontWeight.bold },
-  card: { backgroundColor: colors.white, borderRadius: 12, borderWidth: 1.5, borderColor: colors.border, overflow: 'hidden' },
+  card: { backgroundColor: colors.white, borderRadius: 12, borderWidth: 1.5, borderColor: colors.border, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
   topLine: { height: 3 },
-  cardInner: { padding: 14 },
+  cardInner: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 14 },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   id: { color: colors.blueLink, fontSize: 12, fontWeight: fontWeight.bold },
-  pills: { flexDirection: 'row', gap: 8 },
-  pillBlue: { flexDirection: 'row', gap: 5, alignItems: 'center', backgroundColor: '#e6f3ff', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
-  pillBlueText: { color: '#0d3862', fontSize: 10, fontWeight: fontWeight.bold },
-  statusPill: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
-  statusPillText: { fontSize: 10, fontWeight: fontWeight.bold },
+  pills: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  typeChip: { flexDirection: 'row', gap: 4, alignItems: 'center', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
+  typeChipBlue: { backgroundColor: '#e6f3ff' },
+  typeChipTeal: { backgroundColor: '#c5fff6' },
+  typeChipText: { fontSize: 10, fontWeight: fontWeight.bold },
+  typeChipTextBlue: { color: '#0d3862' },
+  typeChipTextTeal: { color: '#006153' },
+  statusChip: { flexDirection: 'row', gap: 4, alignItems: 'center', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  statusChipText: { fontSize: 10, fontWeight: fontWeight.bold },
   cardTitle: { color: colors.primary, fontSize: 13, fontWeight: fontWeight.bold, marginTop: 8 },
-  meta: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 3 },
   metaText: { color: colors.muted, fontSize: 11 },
-  smallRow: { marginTop: 5, borderRadius: 7, minHeight: 23, paddingHorizontal: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  smallRowText: { fontSize: 11, fontWeight: fontWeight.semibold },
-  smallRowTag: { fontSize: 11, fontWeight: fontWeight.semibold },
+  cardRow: { marginTop: 5, borderRadius: 7, minHeight: 23, paddingHorizontal: 8, paddingVertical: 5, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cardRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  cardRowText: { fontSize: 11, fontWeight: fontWeight.semibold },
+  severityBadge: { minWidth: 30, height: 13, borderRadius: 4, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+  severityText: { fontSize: 9, fontWeight: fontWeight.bold },
   stateCard: { backgroundColor: colors.white, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 18, alignItems: 'center', gap: 8 },
   stateTitle: { color: colors.primary, fontSize: 15, fontWeight: fontWeight.bold, textAlign: 'center' },
   stateDetail: { color: colors.muted, fontSize: 12, textAlign: 'center', lineHeight: 18 },
   stateButton: { marginTop: 6, minHeight: 40, paddingHorizontal: 16, borderRadius: 10, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' },
   stateButtonText: { color: colors.white, fontSize: 13, fontWeight: fontWeight.bold },
   tabs: { height: 84, backgroundColor: colors.navyDark, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 28 },
-  tabActive: { flex: 1, alignItems: 'center', gap: 6, borderRadius: 6, backgroundColor: 'rgba(0,179,152,0.09)', paddingTop: 5 },
-  tabInactive: { flex: 1, alignItems: 'center', gap: 6 },
+  tabActive: { flex: 1, alignItems: 'center', gap: 7, borderRadius: 6, backgroundColor: 'rgba(0,179,152,0.09)', paddingHorizontal: 10, paddingVertical: 6 },
+  tabInactive: { flex: 1, alignItems: 'center', gap: 7, paddingHorizontal: 10, paddingVertical: 6 },
   tabCount: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#c4365a', alignItems: 'center', justifyContent: 'center' },
   tabCountText: { color: colors.white, fontSize: 9, fontWeight: fontWeight.bold },
   tabActiveText: { color: colors.teal, fontSize: 13, fontWeight: fontWeight.semibold },
   tabText: { color: 'rgba(255,255,255,0.44)', fontSize: 13 },
-  tabDot: { color: 'rgba(255,255,255,0.2)', fontSize: 20 },
-  tabLine: { width: '90%', height: 1.5, backgroundColor: colors.teal, borderRadius: 2 },
+  tabDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)' },
+  tabLine: { width: '100%', height: 1.5, backgroundColor: colors.teal, borderRadius: 2 },
 });

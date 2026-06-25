@@ -14,7 +14,7 @@ export function AureliaAccessScreen() {
             <Text style={styles.title}>Le damos la bienvenida a AurelIA</Text>
             <Text style={styles.subtitle}>Sistema de gestión ambiental</Text>
           </View>
-          <TouchableOpacity style={styles.button} onPress={() => router.replace('/inspection/home')} activeOpacity={0.82}>
+          <TouchableOpacity style={styles.button} onPress={() => router.replace('/inspection/dashboard')} activeOpacity={0.82}>
             <Text style={styles.buttonText}>Ingresar</Text>
           </TouchableOpacity>
           <View style={styles.footer}>

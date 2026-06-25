@@ -85,20 +85,50 @@ interface FieldBoxProps {
   value: string;
   variant?: 'readonly' | 'input';
   right?: React.ReactNode;
+  onPress?: () => void;
+  disabled?: boolean;
 }
 
-export function FieldBox({ value, variant = 'readonly', right }: FieldBoxProps) {
-  return (
-    <View style={[styles.fieldBox, variant === 'input' && styles.inputBox]}>
-      <Text style={styles.fieldValue}>{value}</Text>
+export function FieldBox({ value, variant = 'readonly', right, onPress, disabled = false }: FieldBoxProps) {
+  const content = (
+    <>
+      <Text style={[styles.fieldValue, disabled && styles.disabledText]}>{value}</Text>
       {right}
-    </View>
+    </>
   );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity
+        style={[styles.fieldBox, variant === 'input' && styles.inputBox, disabled && styles.disabledBox]}
+        activeOpacity={0.75}
+        onPress={onPress}
+        disabled={disabled}
+      >
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
+  return <View style={[styles.fieldBox, variant === 'input' && styles.inputBox, disabled && styles.disabledBox]}>{content}</View>;
 }
 
-export function SelectBox({ value }: { value: string }) {
+interface SelectBoxProps {
+  value: string;
+  onPress?: () => void;
+  loading?: boolean;
+  disabled?: boolean;
+}
+
+export function SelectBox({ value, onPress, loading = false, disabled = false }: SelectBoxProps) {
   return (
-    <FieldBox value={value} variant="input" right={<FontAwesome5 name="caret-down" size={14} color={colors.primary} />} />
+    <FieldBox
+      value={loading ? 'Cargando...' : value}
+      variant="input"
+      onPress={onPress}
+      disabled={disabled || loading}
+      right={<FontAwesome5 name="caret-down" size={14} color={disabled ? colors.placeholder : colors.primary} />}
+    />
   );
 }
 
@@ -167,7 +197,9 @@ const styles = StyleSheet.create({
   fieldLabel: { fontSize: 13, fontWeight: fontWeight.bold, color: colors.primary },
   fieldBox: { height: 50, borderRadius: 10, backgroundColor: '#EEEEEE', paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   inputBox: { backgroundColor: '#F6FAFF', borderWidth: 1.5, borderColor: colors.borderMid },
+  disabledBox: { opacity: 0.65 },
   fieldValue: { fontSize: 14, fontWeight: fontWeight.medium, color: colors.primary },
+  disabledText: { color: colors.placeholder },
   footer: { backgroundColor: colors.white, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 10, paddingHorizontal: 14, alignItems: 'center' },
   footerButtons: { flexDirection: 'row', gap: 10, width: '100%' },
   cancelButton: { height: 50, borderRadius: 14, borderWidth: 2, borderColor: colors.gold, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center' },

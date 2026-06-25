@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Alert,
   Platform,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -32,7 +31,7 @@ export function InspectionModeScreen() {
   }
 
   function openManual() {
-    Alert.alert('Formulario manual', 'El wizard manual se integrará en una siguiente iteración.');
+    router.push('/inspection/manual/identification');
   }
 
   function cancelInspection() {

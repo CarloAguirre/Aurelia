@@ -1,45 +1,73 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, fontWeight, spacing } from '../../shared/theme/tokens';
-import { FieldBox, FieldLabel, FormCard, FormStepper, LocationMapPreview, ManualFooter, ManualHeader, OfflineBanner, SelectBox } from '../../shared/components/form/ManualFormUi';
+import { FieldBox, FieldLabel, FormCard, LocationMapPreview, ManualFooter, ManualHeader, OfflineBanner, SelectBox } from '../../shared/components/form/ManualFormUi';
 import { useMobileSession } from '../auth/mobileSession.store';
 import { useManualInspectionDraft } from './manualInspection.store';
 import { useManualInspectionCatalogs } from './useManualInspectionCatalogs';
 import { useManualConnectivityStatus } from './useManualConnectivityStatus';
 import { useManualInspectionLocation } from './useManualInspectionLocation';
+import { useManualInspectionFlowStore } from './manualInspectionFlow.store';
+import { ManualFormStepper, SelectSheet, type SelectSheetOption } from './ManualSelectionUi';
 
 function LabeledField({ label, children }: { label: string; children: React.ReactNode }) {
   return <View style={styles.fieldGroup}><FieldLabel>{label}</FieldLabel>{children}</View>;
 }
 
+function formatDate(value: Date): string {
+  const day = String(value.getDate()).padStart(2, '0');
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const year = value.getFullYear();
+  return `${day}-${month}-${year}`;
+}
+
+function buildDateOptions(): SelectSheetOption[] {
+  return Array.from({ length: 21 }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() + index);
+    const label = formatDate(date);
+    const description = index === 0 ? 'Hoy' : index === 1 ? 'Mañana' : new Intl.DateTimeFormat('es-CL', { weekday: 'long' }).format(date);
+    return { id: label, label, description };
+  });
+}
+
 export function ManualIdentificationConnected() {
   const draft = useManualInspectionDraft();
   const user = useMobileSession((state) => state.user);
+  const activePicker = useManualInspectionFlowStore((state) => state.activePicker);
+  const currentStep = useManualInspectionFlowStore((state) => state.currentStep);
+  const openPicker = useManualInspectionFlowStore((state) => state.openPicker);
+  const closePicker = useManualInspectionFlowStore((state) => state.closePicker);
   const { online, hasSession } = useManualConnectivityStatus();
   const { areas, sectors, loadingAreas, loadingSectors } = useManualInspectionCatalogs();
   const { captureLocation, capturing, locationError } = useManualInspectionLocation();
   const inspectorName = user?.fullName ?? draft.inspectorName;
   const inspectorCompanyName = user?.companyName ?? draft.inspectorCompanyName;
+  const areaOptions = useMemo<SelectSheetOption[]>(() => areas.map((area) => ({ id: area.id, label: area.name, description: area.code })), [areas]);
+  const sectorOptions = useMemo<SelectSheetOption[]>(() => sectors.map((sector) => ({ id: sector.id, label: sector.name, description: sector.code })), [sectors]);
+  const dateOptions = useMemo<SelectSheetOption[]>(buildDateOptions, []);
 
   function cancel() {
+    closePicker();
     router.replace('/inspection/start');
   }
 
-  function selectArea() {
-    if (loadingAreas || !areas.length) return;
-    const currentIndex = areas.findIndex((area) => area.id === draft.areaId);
-    const nextArea = areas[(currentIndex + 1) % areas.length];
-    draft.setArea(nextArea.id, nextArea.name);
+  function selectArea(option: SelectSheetOption) {
+    draft.setArea(option.id, option.label);
+    closePicker();
   }
 
-  function selectSector() {
-    if (!draft.areaId || loadingSectors || !sectors.length) return;
-    const currentIndex = sectors.findIndex((sector) => sector.id === draft.sectorId);
-    const nextSector = sectors[(currentIndex + 1) % sectors.length];
-    draft.setSector(nextSector.id, nextSector.name);
+  function selectSector(option: SelectSheetOption) {
+    draft.setSector(option.id, option.label);
+    closePicker();
+  }
+
+  function selectDate(option: SelectSheetOption) {
+    draft.setInspectionDate(option.label);
+    closePicker();
   }
 
   async function capture() {
@@ -69,7 +97,7 @@ export function ManualIdentificationConnected() {
         <View style={styles.screen}>
           <ManualHeader title="Identificación" subtitle="Paso 1 de 5" badge="GF HSE" />
           <OfflineBanner online={online} hasSession={hasSession} />
-          <FormStepper activeStep={1} steps={['Datos', 'Tipo', 'Obs.', 'Resumen']} />
+          <ManualFormStepper activeStep={currentStep} steps={['Datos', 'Tipo', 'Obs.', 'Resumen']} />
           <ScrollView style={styles.content} contentContainerStyle={styles.contentInner} showsVerticalScrollIndicator={false}>
             <View><Text style={styles.title}>Identificación</Text><Text style={styles.subtitle}>Completa los datos del inspector y de la inspección antes de continuar</Text></View>
             <FormCard icon={<FontAwesome5 name="user-tag" size={11} color={colors.blueLink} />} title="Datos del inspector" subtitle="¿Quién está realizando esta inspección?">
@@ -78,10 +106,10 @@ export function ManualIdentificationConnected() {
             </FormCard>
             <FormCard icon={<FontAwesome5 name="map-marked-alt" size={11} color={colors.teal} />} title="Datos de la inspección" subtitle="¿Dónde y cuándo se realiza esta inspección?">
               <View style={styles.twoColumns}>
-                <View style={styles.column}><LabeledField label="Área *"><SelectBox value={draft.areaName ?? '-Seleccionar-'} loading={loadingAreas} onPress={selectArea} /></LabeledField></View>
-                <View style={styles.column}><LabeledField label="Sector *"><SelectBox value={draft.sectorName ?? '-Seleccionar-'} loading={loadingSectors} disabled={!draft.areaId} onPress={selectSector} /></LabeledField></View>
+                <View style={styles.column}><LabeledField label="Área *"><SelectBox value={draft.areaName ?? '-Seleccionar-'} loading={loadingAreas} onPress={() => openPicker('area')} /></LabeledField></View>
+                <View style={styles.column}><LabeledField label="Sector *"><SelectBox value={draft.sectorName ?? '-Seleccionar-'} loading={loadingSectors} disabled={!draft.areaId} onPress={() => openPicker('sector')} /></LabeledField></View>
               </View>
-              <LabeledField label="Fecha de inspección *"><FieldBox value={draft.inspectionDate} variant="input" right={<FontAwesome5 name="calendar-alt" size={16} color={colors.primary} />} /></LabeledField>
+              <LabeledField label="Fecha de inspección *"><FieldBox value={draft.inspectionDate} variant="input" onPress={() => openPicker('date')} right={<FontAwesome5 name="calendar-alt" size={16} color={colors.primary} />} /></LabeledField>
               <View style={styles.locationHeader}><FieldLabel>Ubicación *</FieldLabel><TouchableOpacity style={styles.infoButton} activeOpacity={0.7}><FontAwesome5 name="info" size={13} color={colors.blueLink} /></TouchableOpacity></View>
               <TouchableOpacity style={[styles.locationButton, !draft.locationCaptured && styles.locationButtonPending]} activeOpacity={0.8} onPress={capture} disabled={capturing}>
                 <FontAwesome5 name={draft.locationCaptured ? 'check-circle' : 'crosshairs'} size={14} color={colors.white} />
@@ -94,6 +122,9 @@ export function ManualIdentificationConnected() {
             </FormCard>
           </ScrollView>
           <ManualFooter onCancel={cancel} onNext={next} />
+          <SelectSheet visible={activePicker === 'area'} title="Seleccionar área" subtitle="Catálogo cargado desde la API" options={areaOptions} selectedId={draft.areaId} loading={loadingAreas} onClose={closePicker} onSelect={selectArea} />
+          <SelectSheet visible={activePicker === 'sector'} title="Seleccionar sector" subtitle={draft.areaName ?? 'Selecciona un área primero'} options={sectorOptions} selectedId={draft.sectorId} loading={loadingSectors} emptyText="No hay sectores para el área seleccionada" onClose={closePicker} onSelect={selectSector} />
+          <SelectSheet visible={activePicker === 'date'} title="Fecha de inspección" subtitle="Selecciona la fecha del registro" options={dateOptions} selectedId={draft.inspectionDate} onClose={closePicker} onSelect={selectDate} />
         </View>
       </SafeAreaView>
     </SafeAreaProvider>

@@ -4,29 +4,29 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, fontWeight } from '../../shared/theme/tokens';
-import { GoldFieldsAureliaLogo } from '../../shared/components/brand/GoldFieldsAureliaLogo';
 import { login } from '../../shared/services/api/auth.api';
 import { useMobileSession } from './mobileSession.store';
+import LogoMobile from '../../../assets/icons/logo_mobile.svg';
 
 export function AureliaAccessScreen() {
   const setMobileSession = useMobileSession((state) => state.setMobileSession);
   const [email, setEmail] = useState('karen.opazo@goldfields.com');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [credential, setCredential] = useState('');
+  const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const canSubmit = email.trim().length > 0 && password.length > 0 && !loading;
+  const canSubmit = email.trim().length > 0 && credential.length > 0 && !loading;
 
   async function submit() {
     if (!canSubmit) return;
     setLoading(true);
     setError(null);
     try {
-      const response = await login(email, password);
+      const response = await login(email, credential);
       setMobileSession(response.token, response.user);
       router.replace('/inspection/dashboard');
     } catch {
-      setError('No se pudo iniciar sesión. Revisa usuario, clave o conexión con la API.');
+      setError('No se pudo iniciar sesión. Revisa los datos o la conexión con la API.');
     } finally {
       setLoading(false);
     }
@@ -36,45 +36,20 @@ export function AureliaAccessScreen() {
     <SafeAreaProvider>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.screen}>
-          <View style={styles.statusBar}>
-            <Text style={styles.time}>9:41</Text>
-            <View style={styles.statusIcons}>
-              <FontAwesome5 name="signal" size={15} color="#111" />
-              <FontAwesome5 name="wifi" size={15} color="#111" />
-            </View>
-          </View>
           <View style={styles.body}>
             <View style={styles.logoWrap}>
-              <GoldFieldsAureliaLogo width={137} height={44} />
+              <LogoMobile width={137} height={45} />
             </View>
             <Text style={styles.title}>Le damos la bienvenida a <Text style={styles.titleBlue}>AurelIA</Text></Text>
             <Text style={styles.subtitle}>Sistema de gestión ambiental</Text>
             <View style={styles.form}>
               <Text style={styles.label}>Nombre de usuario</Text>
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                placeholder="usuario@goldfields.com"
-                placeholderTextColor="#8b9aaa"
-                style={styles.input}
-              />
+              <TextInput value={email} onChangeText={setEmail} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" placeholder="usuario@goldfields.com" placeholderTextColor="#8b9aaa" style={styles.input} />
               <Text style={styles.labelTwo}>Contraseña</Text>
               <View style={styles.inputWithIcon}>
-                <TextInput
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  placeholder="Contraseña"
-                  placeholderTextColor="#8b9aaa"
-                  style={styles.passwordInput}
-                />
-                <TouchableOpacity style={styles.eyeButton} onPress={() => setShowPassword((value) => !value)}>
-                  <FontAwesome5 name={showPassword ? 'eye-slash' : 'eye'} size={18} color={colors.teal} />
+                <TextInput value={credential} onChangeText={setCredential} secureTextEntry={!visible} autoCapitalize="none" autoCorrect={false} placeholder="Contraseña" placeholderTextColor="#8b9aaa" style={styles.passwordInput} />
+                <TouchableOpacity style={styles.eyeButton} onPress={() => setVisible((value) => !value)}>
+                  <FontAwesome5 name={visible ? 'eye-slash' : 'eye'} size={18} color={colors.teal} />
                 </TouchableOpacity>
               </View>
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -95,12 +70,9 @@ export function AureliaAccessScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#111' },
   screen: { flex: 1, backgroundColor: '#fff' },
-  statusBar: { height: 28, backgroundColor: '#111', paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  time: { color: '#fff', fontSize: 14, fontWeight: fontWeight.bold },
-  statusIcons: { flexDirection: 'row', gap: 12 },
-  body: { flex: 1, paddingHorizontal: 24, alignItems: 'center' },
-  logoWrap: { marginTop: 69, width: 137, height: 44 },
-  title: { marginTop: 49, fontSize: 22, lineHeight: 28, color: colors.primary, fontWeight: fontWeight.bold, textAlign: 'center' },
+  body: { flex: 1, paddingHorizontal: 24, paddingTop: 69, alignItems: 'center' },
+  logoWrap: { width: 154, height: 56, borderRadius: 14, backgroundColor: colors.navyDark, alignItems: 'center', justifyContent: 'center' },
+  title: { marginTop: 37, fontSize: 22, lineHeight: 28, color: colors.primary, fontWeight: fontWeight.bold, textAlign: 'center' },
   titleBlue: { color: colors.blueLink },
   subtitle: { marginTop: 13, fontSize: 16, color: colors.primary, textAlign: 'center' },
   form: { marginTop: 76, width: '100%' },

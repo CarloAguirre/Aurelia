@@ -22,23 +22,27 @@ interface SelectSheetProps {
 }
 
 export function ManualFormStepper({ activeStep, steps }: { activeStep: number; steps: string[] }) {
+  const progressWidth = `${Math.max(1, activeStep) / steps.length * 100}%`;
+
   return (
     <View style={styles.stepperWrap}>
       <View style={styles.stepperRow}>
         {steps.map((step, index) => {
-          const active = index + 1 === activeStep;
+          const stepNumber = index + 1;
+          const active = stepNumber === activeStep;
+          const completed = stepNumber < activeStep;
           return (
             <View key={step} style={styles.stepItem}>
-              {index < steps.length - 1 ? <View style={styles.stepLine} /> : null}
-              <View style={[styles.stepCircle, active && styles.stepCircleActive]}>
-                <Text style={[styles.stepNumber, active && styles.stepNumberActive]}>{index + 1}</Text>
+              {index < steps.length - 1 ? <View style={[styles.stepLine, completed && styles.stepLineCompleted]} /> : null}
+              <View style={[styles.stepCircle, active && styles.stepCircleActive, completed && styles.stepCircleCompleted]}>
+                <Text style={[styles.stepNumber, active && styles.stepNumberActive, completed && styles.stepNumberCompleted]}>{completed ? '✓' : stepNumber}</Text>
               </View>
-              <Text style={[styles.stepLabel, active && styles.stepLabelActive]}>{step}</Text>
+              <Text style={[styles.stepLabel, active && styles.stepLabelActive, completed && styles.stepLabelCompleted]}>{step}</Text>
             </View>
           );
         })}
       </View>
-      <View style={styles.progressRail}><View style={styles.progressFill} /></View>
+      <View style={styles.progressRail}><View style={[styles.progressFill, { width: progressWidth }]} /></View>
     </View>
   );
 }
@@ -86,14 +90,18 @@ const styles = StyleSheet.create({
   stepperRow: { flexDirection: 'row', alignItems: 'flex-start', width: '100%' },
   stepItem: { flex: 1, alignItems: 'center', position: 'relative' },
   stepLine: { position: 'absolute', top: 11, left: '50%', right: '-50%', height: 2, backgroundColor: colors.borderMid },
+  stepLineCompleted: { backgroundColor: colors.gold },
   stepCircle: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: colors.borderMid, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
   stepCircleActive: { borderWidth: 2, borderColor: colors.gold },
+  stepCircleCompleted: { borderWidth: 0, backgroundColor: colors.gold },
   stepNumber: { fontSize: 9, fontWeight: fontWeight.bold, color: colors.placeholder },
   stepNumberActive: { color: colors.gold },
+  stepNumberCompleted: { color: colors.white },
   stepLabel: { marginTop: 3, fontSize: 8, color: colors.placeholder },
   stepLabelActive: { fontWeight: fontWeight.semibold, color: colors.goldDark },
+  stepLabelCompleted: { color: colors.goldDark },
   progressRail: { marginTop: 6, height: 2, borderRadius: 2, backgroundColor: colors.border },
-  progressFill: { width: 10, height: 2, borderRadius: 2, backgroundColor: colors.goldDark },
+  progressFill: { height: 2, borderRadius: 2, backgroundColor: colors.goldDark },
   sheetOverlay: { flex: 1, justifyContent: 'flex-end' },
   sheetBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.42)' },
   sheetPanel: { maxHeight: '72%', borderTopLeftRadius: 20, borderTopRightRadius: 20, backgroundColor: colors.white, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 22 },

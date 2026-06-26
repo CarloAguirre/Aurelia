@@ -2,11 +2,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   InspectionAnswerValue,
   InspectionFindingSeverity,
-  MobileSyncOperationType,
   type CreateInspectionFindingRequest,
   type CreateInspectionRequest,
   type InspectionChecklistItem,
   type InspectionChecklistTemplateResponse,
+  type MobileSyncOperationType,
   type UpsertInspectionAnswerRequest,
 } from '@aurelia/contracts';
 import { createLocalInspection } from '../../../shared/offline/local-inspections';
@@ -24,6 +24,11 @@ interface SaveManualInspectionOfflineInput {
   items: ManualTemplateItem[];
   trySyncNow: boolean;
 }
+
+const CREATE_INSPECTION = 'CREATE_INSPECTION' as MobileSyncOperationType;
+const UPSERT_INSPECTION_ANSWER = 'UPSERT_INSPECTION_ANSWER' as MobileSyncOperationType;
+const CREATE_INSPECTION_FINDING = 'CREATE_INSPECTION_FINDING' as MobileSyncOperationType;
+const CLOSE_INSPECTION = 'CLOSE_INSPECTION' as MobileSyncOperationType;
 
 function createId(prefix: string): string {
   const random = Math.random().toString(36).slice(2, 10);
@@ -46,17 +51,11 @@ function buildAnswerText(answer: InspectionAnswerValue | undefined, detail: Manu
 
 function buildAnswerNotes(answer: InspectionAnswerValue | undefined, detail: ManualInspectionDraft['detailsByItemId'][string]): string | null {
   if (answer !== InspectionAnswerValue.NOT_COMPLIANT) return null;
-  const correctiveAction = detail?.correctiveAction?.trim();
-  const evidenceName = detail?.evidence?.name;
-  return [correctiveAction ? `Medida correctiva: ${correctiveAction}` : null, evidenceName ? `Evidencia local: ${evidenceName}` : null].filter(Boolean).join('\n') || null;
+  return [detail?.correctiveAction?.trim() || null, detail?.evidence?.name || null].filter(Boolean).join('\n') || null;
 }
 
 function buildFindingDescription(detail: ManualInspectionDraft['detailsByItemId'][string]): string {
-  return [
-    detail?.detectedCondition?.trim() ? `Condición detectada: ${detail.detectedCondition.trim()}` : null,
-    detail?.correctiveAction?.trim() ? `Medida correctiva propuesta: ${detail.correctiveAction.trim()}` : null,
-    detail?.evidence?.name ? `Evidencia local: ${detail.evidence.name}` : null,
-  ].filter(Boolean).join('\n');
+  return [detail?.detectedCondition?.trim() || null, detail?.correctiveAction?.trim() || null, detail?.evidence?.name || null].filter(Boolean).join('\n');
 }
 
 function getDueDate(): string {
@@ -95,26 +94,9 @@ export function useSaveManualInspectionOffline() {
         notes: draft.generalPhoto?.name ? `Foto general local: ${draft.generalPhoto.name}` : null,
       };
 
-      await createLocalInspection({
-        localId: localInspectionId,
-        title,
-        inspectionTypeId: template.inspectionTypeId,
-        templateId: template.id,
-        companyId: draft.findingCompanyId,
-        areaId: draft.areaId,
-        sectorId: draft.sectorId,
-        scheduledAt,
-        latitude: draft.latitude,
-        longitude: draft.longitude,
-        notes: createPayload.notes ?? null,
-        findingsCount: noCount,
-        openFindingsCount: noCount,
-        closed: noCount === 0,
-      });
-
       await syncQueue.enqueue({
         localId: localInspectionId,
-        operationType: MobileSyncOperationType.CREATE_INSPECTION,
+        operationType: CREATE_INSPECTION,
         entityType: 'inspection',
         payload: createPayload,
         createdBy,
@@ -136,7 +118,7 @@ export function useSaveManualInspectionOffline() {
         const answerLocalId = createId('answer');
         await syncQueue.enqueue({
           localId: answerLocalId,
-          operationType: MobileSyncOperationType.UPSERT_INSPECTION_ANSWER,
+          operationType: UPSERT_INSPECTION_ANSWER,
           entityType: 'inspection_answer',
           payload: { inspectionLocalId: localInspectionId, ...answerPayload },
           createdBy,
@@ -154,7 +136,7 @@ export function useSaveManualInspectionOffline() {
             dueAt: getDueDate(),
           };
           await syncQueue.enqueue({
-            operationType: MobileSyncOperationType.CREATE_INSPECTION_FINDING,
+            operationType: CREATE_INSPECTION_FINDING,
             entityType: 'inspection_finding',
             payload: { inspectionLocalId: localInspectionId, ...findingPayload },
             createdBy,
@@ -168,7 +150,7 @@ export function useSaveManualInspectionOffline() {
 
       if (noCount === 0) {
         await syncQueue.enqueue({
-          operationType: MobileSyncOperationType.CLOSE_INSPECTION,
+          operationType: CLOSE_INSPECTION,
           entityType: 'inspection_close',
           payload: { inspectionLocalId: localInspectionId, reason: 'Checklist sin hallazgos abiertos' },
           createdBy,
@@ -177,6 +159,23 @@ export function useSaveManualInspectionOffline() {
           dependsOnLocalIds: [localInspectionId],
         });
       }
+
+      await createLocalInspection({
+        localId: localInspectionId,
+        title,
+        inspectionTypeId: template.inspectionTypeId,
+        templateId: template.id,
+        companyId: draft.findingCompanyId,
+        areaId: draft.areaId,
+        sectorId: draft.sectorId,
+        scheduledAt,
+        latitude: draft.latitude,
+        longitude: draft.longitude,
+        notes: createPayload.notes ?? null,
+        findingsCount: noCount,
+        openFindingsCount: noCount,
+        closed: noCount === 0,
+      });
 
       if (trySyncNow) void syncPendingOperations();
       return { inspectionId: localInspectionId, totalCount: items.length, yesCount, noCount, naCount, closed: noCount === 0 };

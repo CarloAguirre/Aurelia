@@ -153,9 +153,42 @@ El `createdBy` usa el usuario autenticado cuando existe; si no hay sesión local
 
 En `/inspection/chat`, la captura ahora guarda `fotoUri` local y continúa el flujo sin llamar inmediatamente a `/files/upload`.
 
-La evidencia queda como metadata local dentro de la operación de hallazgo. La subida binaria real sigue pendiente para la iteración FileSystem/SQLite.
+La evidencia queda como metadata local asociada al hallazgo. La subida binaria real queda pendiente para FileSystem/SQLite native.
 
-### Iteración D: conteo local de hallazgos
+### Iteración D: operación explícita UPLOAD_ATTACHMENT
+
+El contrato ya contiene:
+
+```txt
+UPLOAD_ATTACHMENT
+```
+
+Se agregó en `useSaveAssistantInspectionOffline` una operación explícita por cada foto adjunta:
+
+```txt
+CREATE_INSPECTION
+CREATE_INSPECTION_FINDING
+UPLOAD_ATTACHMENT
+```
+
+La operación `UPLOAD_ATTACHMENT` usa `entityType: evidence`, depende de la inspección y del hallazgo local, y conserva metadata dev:
+
+```txt
+inspectionLocalId
+findingLocalId
+localEvidenceId
+sourceUri
+remoteFileId
+fileName
+mimeType
+sizeBytes
+evidenceType
+capturedAt
+```
+
+Esto permite validar el flujo offline completo en cola, aunque la subida binaria final queda pendiente para el worker/FileSystem.
+
+### Iteración E: conteo local de hallazgos
 
 Se agregó soporte para incrementar/establecer contadores locales de hallazgos:
 
@@ -173,7 +206,8 @@ apps/mobile-inspecciones/src/shared/offline/local-inspections.ts
 4. Completar conversación.
 5. Enviar inspección.
 6. Crear `local_inspections` y `sync_queue`.
-7. Intentar `POST /api/mobile/sync` por auto-sync/background.
+7. Si hay foto, `sync_queue` debe incluir `UPLOAD_ATTACHMENT`.
+8. Intentar `POST /api/mobile/sync` por auto-sync/background.
 
 ### Offline con bootstrap previo
 
@@ -182,7 +216,8 @@ apps/mobile-inspecciones/src/shared/offline/local-inspections.ts
 3. Completar conversación sin depender de `/organization/*` ni `/inspections/types`.
 4. Enviar inspección.
 5. Guardar local + cola.
-6. Al volver al dashboard con API viva, auto-sync debe enviar batch.
+6. Si hay foto, encolar `UPLOAD_ATTACHMENT` con metadata local.
+7. Al volver al dashboard con API viva, auto-sync debe enviar batch.
 
 ### Offline sin bootstrap
 
@@ -205,7 +240,9 @@ Debe sincronizar catálogos antes de operar offline
 6. Confirmar /inspection/success.
 7. Confirmar local_inspections:v1.
 8. Confirmar sync_queue:v1.
-9. Confirmar POST /api/mobile/sync si hay API viva.
+9. Confirmar CREATE_INSPECTION y CREATE_INSPECTION_FINDING.
+10. Si hubo foto, confirmar UPLOAD_ATTACHMENT.
+11. Confirmar POST /api/mobile/sync si hay API viva.
 ```
 
 ### Caso offline
@@ -229,16 +266,17 @@ Debe sincronizar catálogos antes de operar offline
 
 - Probar `/inspection/chat` online.
 - Probar `/inspection/chat` offline con bootstrap previo.
-- Confirmar que `sync_queue:v1` contiene `CREATE_INSPECTION` y `CREATE_INSPECTION_FINDING`.
+- Confirmar que `sync_queue:v1` contiene `CREATE_INSPECTION`, `CREATE_INSPECTION_FINDING` y `UPLOAD_ATTACHMENT` cuando aplica.
 - Validar que el backend acepte `CREATE_INSPECTION_FINDING` con `inspectionLocalId`.
+- Validar que el backend acepte `UPLOAD_ATTACHMENT` como operación en batch.
 - Definir cómo resolver dependencias localId -> remoteId en el worker final.
 
-### Iteración siguiente 2: evidencias offline completas
+### Iteración siguiente 2: evidencias offline completas native
 
-- Crear operación explícita para evidencias si el contrato lo soporta.
-- Si no existe, agregar contrato `CREATE_EVIDENCE` o `UPLOAD_ATTACHMENT`.
-- En native usar FileSystem para binarios.
-- En web/dev persistir metadata y nombre/uri en localStorage.
+- Persistir binarios en FileSystem en native.
+- Agregar hash/checksum y tamaño real.
+- En web/dev mantener metadata y sourceUri en localStorage.
+- Resolver subida real desde worker/sync.
 
 ### Iteración siguiente 3: SQLite native
 

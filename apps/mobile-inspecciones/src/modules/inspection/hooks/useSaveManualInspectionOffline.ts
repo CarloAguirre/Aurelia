@@ -178,7 +178,7 @@ export function useSaveManualInspectionOffline() {
         });
       }
 
-      if (trySyncNow) await syncPendingOperations();
+      if (trySyncNow) void syncPendingOperations();
       return { inspectionId: localInspectionId, totalCount: items.length, yesCount, noCount, naCount, closed: noCount === 0 };
     },
     onSuccess: async () => {

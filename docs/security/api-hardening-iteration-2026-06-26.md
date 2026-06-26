@@ -17,8 +17,9 @@ No se tocó la fidelidad visual ni el flujo asistido mobile de inspecciones.
 - `HealthController` no tenía marca pública explícita.
 - `MobileBootstrapController`, `MobileSyncController`, inspecciones, organización y usuarios no tenían marca pública, por lo que quedan protegidos al activar el guard global.
 - El cliente mobile ya enviaba `Authorization: Bearer <token>` cuando existe sesión.
-- `apps/api/src/test/api-smoke.ts` todavía ejecutaba flujos sin Bearer token, por lo que quedaba desalineado con el guard global.
+- `apps/api/src/test/api-smoke.ts` ejecutaba flujos sin Bearer token, por lo que quedaba desalineado con el guard global.
 - Los permisos base ya existían en seed para organización, usuarios, roles y permisos, pero no había guard declarativo que los exigiera por endpoint.
+- El login emitía permisos fallback: `*` para ADMIN e `inspections:create`, `inspections:read` para otros roles.
 
 ## Cambios aplicados
 
@@ -40,7 +41,7 @@ Se actualizó:
 apps/api/src/modules/auth/jwt-token.service.ts
 ```
 
-Ahora el payload firmado incluye:
+El payload firmado incluye:
 
 ```txt
 sub
@@ -76,9 +77,11 @@ El login ya no devuelve `demo-token-*`. Ahora:
 1. Normaliza el email.
 2. Valida usuario activo existente en base de datos.
 3. Valida contraseña desde env.
-4. Emite token firmado con `JwtTokenService`.
-5. Actualiza `lastLoginAt`.
-6. Devuelve usuario y token compatible con el cliente mobile actual.
+4. Carga roles desde `user_roles`.
+5. Carga permisos reales desde `role_permissions` y `permissions`.
+6. Emite token firmado con `JwtTokenService`.
+7. Actualiza `lastLoginAt`.
+8. Devuelve usuario y token compatible con el cliente mobile actual.
 
 Variables de compatibilidad dev:
 
@@ -89,6 +92,39 @@ DEMO_LOGIN_PASSWORD
 
 Se prefiere `API_LOGIN_PASSWORD`. `DEMO_LOGIN_PASSWORD` queda como compatibilidad local temporal, sin valor hardcodeado.
 
+### Permisos reales desde base de datos
+
+Se actualizó:
+
+```txt
+apps/api/src/modules/auth/auth.service.ts
+```
+
+`AuthService` ahora obtiene permisos desde la relación:
+
+```txt
+users -> user_roles -> roles -> role_permissions -> permissions
+```
+
+Se eliminaron los permisos fijos del login:
+
+```txt
+ADMIN -> *
+otros roles -> inspections:create, inspections:read
+```
+
+El token queda alineado con lo que exista realmente en `role_permissions`.
+
+### Sin wildcard administrativo
+
+Se actualizó:
+
+```txt
+apps/api/src/modules/auth/permissions.guard.ts
+```
+
+El guard ya no acepta `*` como bypass. Toda ruta con `@RequirePermissions(...)` exige explícitamente que el token contenga cada permiso requerido.
+
 ### Configuración de secretos por ambiente
 
 Se actualizó:
@@ -97,7 +133,7 @@ Se actualizó:
 apps/api/src/config/configuration.ts
 ```
 
-Ahora expone:
+Expone:
 
 ```txt
 security.tokenKey
@@ -125,7 +161,7 @@ Se actualizó:
 apps/api/src/modules/auth/jwt-auth.guard.ts
 ```
 
-El guard ahora consulta `@Public()` con `Reflector`. Si la ruta no es pública, exige `Authorization: Bearer <token>`.
+El guard consulta `@Public()` con `Reflector`. Si la ruta no es pública, exige `Authorization: Bearer <token>`.
 
 ### Decorador de permisos
 
@@ -151,7 +187,7 @@ Se registró como segundo `APP_GUARD` en:
 apps/api/src/modules/auth/auth.module.ts
 ```
 
-El guard permite rutas sin permisos declarados, respeta `@Public()`, acepta `*` como bypass administrativo y retorna `403` cuando el token no contiene los permisos requeridos.
+El guard permite rutas sin permisos declarados, respeta `@Public()` y retorna `403` cuando el token no contiene los permisos requeridos.
 
 ### Usuarios, roles, permisos y organización protegidos
 
@@ -209,7 +245,7 @@ apps/api/src/modules/health/health.controller.ts
 
 El controlador quedó marcado con `@Public()` para mantener disponible `GET /api/health` sin token.
 
-### Smoke test autenticado y con RBAC
+### Smoke test autenticado y con RBAC real
 
 Se actualizó:
 
@@ -228,10 +264,13 @@ El smoke test ahora:
 7. Valida `/api/me` con usuario autenticado real.
 8. Valida que mobile bootstrap siga funcionando después del login.
 9. Valida `403` para usuario inspector en usuarios, organización, roles y permisos.
-10. Ejecuta login admin y valida acceso a usuarios, organización, roles y permisos.
-11. Reutiliza Bearer token para los flujos existentes de inspecciones, incidentes y SPR.
+10. Ejecuta login admin.
+11. Valida que admin no reciba wildcard `*`.
+12. Valida que admin reciba permisos reales desde `role_permissions`.
+13. Valida acceso admin a usuarios, organización, roles y permisos.
+14. Reutiliza Bearer token para los flujos existentes de inspecciones, incidentes y SPR.
 
-Esto cubre la brecha inmediata entre JWT global, RBAC declarativo y validación automatizada mínima.
+Esto cubre la brecha inmediata entre JWT global, RBAC declarativo, permisos reales y validación automatizada mínima.
 
 ### Headers, CORS y rate limit
 
@@ -369,11 +408,13 @@ Resultado esperado:
 403
 ```
 
-Login admin:
+Login admin y validación de permisos reales:
 
 ```bash
 $adminLogin = Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/auth/login -ContentType "application/json" -Body '{"email":"carlos.aguirre@goldfields.com","password":"AureliaLocalOnly"}'
 $adminToken = $adminLogin.token
+$adminMe = Invoke-RestMethod -Method Get -Uri http://localhost:3000/api/me -Headers @{ Authorization = "Bearer $adminToken" }
+$adminMe.permissions
 Invoke-RestMethod -Method Get -Uri http://localhost:3000/api/users -Headers @{ Authorization = "Bearer $adminToken" }
 ```
 
@@ -394,7 +435,7 @@ pnpm --filter api build
 
 1. Reemplazar contraseña compartida por credenciales por usuario o SSO/OIDC.
 2. Agregar hash de password si se implementa auth local.
-3. Cargar permisos reales desde `role_permissions` en login y eliminar fallback `*` / permisos fijos.
+3. Completar matriz de permisos reales para roles no administrativos.
 4. Agregar refresh tokens, revocación y rotación.
 5. Extender `@RequirePermissions()` a inspecciones, incidentes, SPR, evidencias, comentarios y workflows.
 6. Implementar storage seguro native para token mobile.
@@ -407,8 +448,8 @@ pnpm --filter api build
 
 ```txt
 Antes: 4/10 aproximado
-Después de esta iteración: 6/10 aproximado
+Después de esta iteración: 6/10 - 6.5/10 aproximado
 Objetivo productivo: 8/10+
 ```
 
-La API queda con JWT firmado, guard global, rutas públicas explícitas, primera capa RBAC declarativa y smoke test alineado al flujo autenticado, pero todavía no queda productiva hasta cerrar credenciales por usuario, permisos reales desde base de datos, refresh/revocación, storage seguro mobile y auditoría.
+La API queda con JWT firmado, guard global, rutas públicas explícitas, primera capa RBAC declarativa, permisos reales desde base de datos y smoke test alineado al flujo autenticado, pero todavía no queda productiva hasta cerrar credenciales por usuario, matriz completa de permisos, refresh/revocación, storage seguro mobile y auditoría.

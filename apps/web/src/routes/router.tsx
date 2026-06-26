@@ -7,6 +7,7 @@ import { IncidentsPage } from '../modules/incidents/IncidentsPage';
 import { CriticalControlsPage } from '../modules/critical-controls/CriticalControlsPage';
 import { ReportsPage } from '../modules/reports/ReportsPage';
 import { AdminPage } from '../modules/admin/AdminPage';
+import { RequireAuth } from '../shared/components/RequireAuth';
 
 export const router = createBrowserRouter([
   {
@@ -15,7 +16,11 @@ export const router = createBrowserRouter([
   },
   {
     path: '/',
-    element: <App />,
+    element: (
+      <RequireAuth>
+        <App />
+      </RequireAuth>
+    ),
     children: [
       { index: true, element: <DashboardPage /> },
       { path: 'inspections', element: <InspectionsPage /> },

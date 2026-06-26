@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { LoginResponse } from '@aurelia/contracts';
 import svgPaths from './svg-login';
 import loginBg from './login-bg.png';
-import { login, saveSession } from '../../shared/services/auth.service';
+import { useLoginMutation } from '../../shared/hooks/useLoginMutation';
+import { getMe } from '../../shared/services/auth.service';
+import { useSessionStore } from '../../shared/stores/session.store';
 
 /* ─── Logo AurelIA (isotipo vectorial + wordmark) ─── */
 function AureliaLogo() {
@@ -105,6 +108,40 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loginMutation = useLoginMutation();
+  const token = useSessionStore((state) => state.token);
+  const clearSession = useSessionStore((state) => state.clearSession);
+  const hydrateSession = useSessionStore((state) => state.hydrateSession);
+  const setSession = useSessionStore((state) => state.setSession);
+
+  useEffect(() => {
+    hydrateSession();
+  }, [hydrateSession]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function validateBeforeRedirect() {
+      if (!token) {
+        return;
+      }
+
+      try {
+        await getMe();
+        if (!cancelled) {
+          navigate('/', { replace: true });
+        }
+      } catch {
+        clearSession();
+      }
+    }
+
+    void validateBeforeRedirect();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clearSession, navigate, token]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -112,22 +149,27 @@ export function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await login({ email: email.trim(), password });
-      saveSession(response);
+      const response = await loginMutation.mutateAsync({ email: email.trim(), password });
+      setSession(response as LoginResponse);
       navigate('/');
-    } catch {
-      setError('Credenciales incorrectas. Verifique su usuario y contraseña.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('401') || message.toLowerCase().includes('invalid credentials')) {
+        setError('Credenciales incorrectas. Verifique su usuario y contraseña.');
+      } else {
+        setError('No se pudo conectar con la API de autenticación. Verifique que el backend esté levantado.');
+      }
     } finally {
       setLoading(false);
     }
   }
 
   const inputStyle: React.CSSProperties = {
-    height: 40,
+    height: 48,
     background: '#f6faff',
     border: '1px solid #d1d1d1',
     borderRadius: 8,
-    padding: '0 12px',
+    padding: '0 16px',
     fontSize: 14,
     color: '#131313',
     letterSpacing: 0.28,
@@ -138,127 +180,110 @@ export function LoginPage() {
   };
 
   return (
-    <div style={{ display: 'flex', width: '100%', height: '100vh', background: '#fff', fontFamily: 'Inter, system-ui, sans-serif', overflow: 'hidden' }}>
-
-      {/* Panel izquierdo */}
-      <div style={{ flex: '1 1 60%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 80px', minWidth: 0, background: '#fff' }}>
-
-        <div style={{ marginBottom: 40 }}>
-          <AureliaLogo />
-        </div>
-
-        <div style={{ textAlign: 'center', marginBottom: 56, width: '100%', maxWidth: 449 }}>
-          <p style={{ margin: '0 0 16px', fontSize: 24, fontWeight: 700, color: '#131313', letterSpacing: 0.48, lineHeight: '29px' }}>
-            {'Le damos la bienvenida a '}
-            <span style={{ color: '#24588b' }}>AurelIA</span>
-          </p>
-          <p style={{ margin: 0, fontSize: 16, fontWeight: 400, color: '#131313', letterSpacing: 0.32, lineHeight: '25.9px' }}>
-            Sistema de gestión ambiental
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: 449, display: 'flex', flexDirection: 'column', gap: 24 }}>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <label style={{ fontSize: 14, fontWeight: 700, color: '#131313', letterSpacing: 0.28, lineHeight: '22.7px' }}>
-              Nombre de usuario
-            </label>
-            <input
-              type="text"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="usuario@goldfields.com"
-              autoComplete="username"
-              required
-              style={inputStyle}
-              onFocus={(e) => { e.target.style.borderColor = '#24588b'; e.target.style.boxShadow = '0 0 0 2px rgba(36,88,139,0.12)'; }}
-              onBlur={(e)  => { e.target.style.borderColor = '#d1d1d1'; e.target.style.boxShadow = 'none'; }}
-            />
+    <div style={{ display: 'grid', minHeight: '100vh', gridTemplateColumns: 'minmax(0, 1.12fr) minmax(420px, 0.88fr)', background: '#fff', overflow: 'hidden', fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <section style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '72px clamp(32px, 6vw, 88px)', minWidth: 0 }}>
+        <div style={{ width: '100%', maxWidth: 386, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div style={{ marginBottom: 44, transform: 'scale(1.06)', transformOrigin: 'center top' }}>
+            <AureliaLogo />
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <label style={{ fontSize: 14, fontWeight: 700, color: '#131313', letterSpacing: 0.28, lineHeight: '22.7px' }}>
-              Contraseña
-            </label>
-            <div style={{ position: 'relative' }}>
+          <div style={{ marginBottom: 46, maxWidth: 460, textAlign: 'center' }}>
+            <p style={{ margin: '0 0 12px', fontSize: 22, fontWeight: 700, color: '#131313', letterSpacing: 0.2, lineHeight: '30px' }}>
+              Le damos la bienvenida a <span style={{ color: '#24588b' }}>AurelIA</span>
+            </p>
+            <p style={{ margin: 0, fontSize: 16, color: '#313131', letterSpacing: 0.1, lineHeight: '25px' }}>
+              Sistema de gestión ambiental
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 22 }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#131313', letterSpacing: 0.08, lineHeight: '22px' }}>Nombre de usuario</span>
               <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••••••"
-                autoComplete="current-password"
+                type="text"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="usuario@goldfields.com"
+                autoComplete="username"
                 required
-                style={{ ...inputStyle, paddingRight: 44 }}
-                onFocus={(e) => { e.target.style.borderColor = '#24588b'; e.target.style.boxShadow = '0 0 0 2px rgba(36,88,139,0.12)'; }}
-                onBlur={(e)  => { e.target.style.borderColor = '#d1d1d1'; e.target.style.boxShadow = 'none'; }}
+                style={inputStyle}
               />
+            </label>
+
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#131313', letterSpacing: 0.08, lineHeight: '22px' }}>Contraseña</span>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••••••"
+                  autoComplete="current-password"
+                  required
+                  style={{ ...inputStyle, paddingRight: 44 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((value) => !value)}
+                  style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', width: 24, height: 24, padding: 0, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                >
+                  <div style={{ width: 18, height: 14 }}>
+                    <EyeIcon visible={showPassword} />
+                  </div>
+                </button>
+              </div>
+            </label>
+
+            {error ? (
+              <p style={{ margin: '-8px 0 -2px', fontSize: 12, color: '#a14c4c', textAlign: 'center', background: '#fbefef', padding: '10px 12px', borderRadius: 8, lineHeight: 1.45 }}>
+                {error}
+              </p>
+            ) : null}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginTop: -2 }}>
               <button
                 type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', width: 24, height: 24, padding: 0, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 14, fontWeight: 700, color: '#c8a064', textDecoration: 'underline', letterSpacing: 0.08, lineHeight: '22px', fontFamily: 'inherit' }}
               >
-                <div style={{ width: 18, height: 14 }}>
-                  <EyeIcon visible={showPassword} />
-                </div>
+                Recuperar contraseña
               </button>
             </div>
-          </div>
 
-          {error && (
-            <p style={{ margin: 0, fontSize: 13, color: '#c0392b', textAlign: 'center', lineHeight: '1.5', background: '#fef2f2', padding: '8px 12px', borderRadius: 6 }}>
-              {error}
-            </p>
-          )}
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -8 }}>
             <button
-              type="button"
-              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 14, fontWeight: 700, color: '#c8a064', textDecoration: 'underline', letterSpacing: 0.28, lineHeight: '22.7px', fontFamily: 'inherit' }}
+              type="submit"
+              disabled={loading || loginMutation.isPending}
+              style={{ height: 42, marginTop: 4, background: loading || loginMutation.isPending ? '#d4b07a' : '#c8a064', border: 'none', borderRadius: 8, color: '#fff', fontSize: 14, fontWeight: 700, letterSpacing: 0.08, cursor: loading || loginMutation.isPending ? 'not-allowed' : 'pointer', width: '100%', fontFamily: 'inherit', transition: 'background 0.15s' }}
             >
-              Recuperar contraseña
+              {loading || loginMutation.isPending ? 'Ingresando...' : 'Iniciar sesión'}
             </button>
-          </div>
+          </form>
 
-          <button
-            type="submit"
-            disabled={loading}
-            style={{ height: 39, background: loading ? '#d4b07a' : '#c8a064', border: 'none', borderRadius: 8, color: '#fff', fontSize: 14, fontWeight: 700, letterSpacing: 0.28, cursor: loading ? 'not-allowed' : 'pointer', width: '100%', fontFamily: 'inherit', transition: 'background 0.15s' }}
-            onMouseEnter={(e) => { if (!loading) e.currentTarget.style.background = '#b8904a'; }}
-            onMouseLeave={(e) => { if (!loading) e.currentTarget.style.background = '#c8a064'; }}
-          >
-            {loading ? 'Ingresando...' : 'Iniciar sesión'}
-          </button>
-        </form>
-
-        {/* Selector de idioma */}
-        <div style={{ marginTop: 56, display: 'flex' }}>
-          <div style={{ height: 32, background: '#fff', borderRadius: '8px 0 0 8px', border: '1px solid #d1d1d1', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 14px', cursor: 'pointer' }}>
-            <span style={{ fontWeight: 700, fontSize: 14, color: '#131313' }}>EN</span>
-          </div>
-          <div style={{ height: 32, background: '#c8a064', borderRadius: '0 8px 8px 0', border: '1px solid #c8a064', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 14px', cursor: 'pointer' }}>
-            <span style={{ fontWeight: 700, fontSize: 14, color: '#fff' }}>ES</span>
+          <div style={{ marginTop: 46, display: 'flex' }}>
+            <div style={{ height: 32, background: '#fff', borderRadius: '8px 0 0 8px', border: '1px solid #d1d1d1', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 14px', cursor: 'pointer' }}>
+              <span style={{ fontWeight: 700, fontSize: 14, color: '#131313' }}>EN</span>
+            </div>
+            <div style={{ height: 32, background: '#c8a064', borderRadius: '0 8px 8px 0', border: '1px solid #c8a064', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 14px', cursor: 'pointer' }}>
+              <span style={{ fontWeight: 700, fontSize: 14, color: '#fff' }}>ES</span>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Panel derecho: imagen + overlay */}
-      <div style={{ flex: '0 0 40%', position: 'relative', overflow: 'hidden' }}>
-        <img
-          src={loginBg}
-          alt=""
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }}
-        />
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(180.033deg, rgb(0, 29, 57) 0%, rgb(0, 179, 152) 129.83%)', mixBlendMode: 'overlay' }} />
-        <div style={{ position: 'absolute', bottom: 48, left: '50%', transform: 'translateX(-50%)', width: 303, height: 85, background: 'rgba(0, 29, 57, 0.75)', borderRadius: 8, overflow: 'hidden', display: 'flex', alignItems: 'center' }}>
-          <p style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', margin: 0, fontWeight: 700, fontSize: 12, color: '#fff', letterSpacing: 0.24, lineHeight: '19.4px', width: 140 }}>
-            Una aplicación interna de Gold Fields
-          </p>
-          <div style={{ position: 'absolute', right: 0, top: 0, width: 85, height: 85 }}>
-            <GoldFieldsLogo />
+      <aside style={{ position: 'relative', overflow: 'hidden', minHeight: 320, background: '#001d39' }}>
+        <img src={loginBg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0, 29, 57, 0.82) 0%, rgba(0, 179, 152, 0.20) 62%, rgba(0, 179, 152, 0.08) 100%)' }} />
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 28px 36px' }}>
+          <div style={{ width: '100%', maxWidth: 292, minHeight: 72, background: 'rgba(0, 29, 57, 0.72)', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 10, padding: '16px 18px', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <p style={{ margin: 0, color: '#fff', fontSize: 12, fontWeight: 700, lineHeight: 1.45, maxWidth: 134 }}>
+              Una aplicación interna de Gold Fields
+            </p>
+            <div style={{ position: 'relative', width: 54, height: 54, flexShrink: 0 }}>
+              <GoldFieldsLogo />
+            </div>
           </div>
         </div>
-      </div>
+      </aside>
     </div>
   );
 }

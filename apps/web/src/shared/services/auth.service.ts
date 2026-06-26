@@ -1,49 +1,50 @@
-import { httpPost } from './http-client';
+import type { AuthUserResponse, LoginRequest, LoginResponse, MeResponse } from '@aurelia/contracts';
+import { httpGet, httpPost } from './http-client';
+import { clearStoredSession, readStoredSession, writeStoredSession } from './session-storage';
 
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
+type LoginApiResponse = {
+  accessToken?: string;
+  token?: string;
+  user: AuthUserResponse;
+};
 
-export interface LoginResponse {
-  token: string;
-  user: {
-    id: string;
-    email: string;
-    fullName: string;
-    firstName: string;
-    lastName: string;
-    position: string | null;
-    companyId: string | null;
-    companyName: string | null;
-    areaId: string | null;
-    areaName: string | null;
-    roles: string[];
-    permissions: string[];
+function normalizeLoginResponse(response: LoginApiResponse): LoginResponse {
+  const accessToken = response.accessToken ?? response.token;
+
+  if (!accessToken) {
+    throw new Error('Login response missing access token');
+  }
+
+  return {
+    accessToken,
+    user: response.user,
   };
 }
 
-const TOKEN_KEY = 'aurelia_token';
-const USER_KEY = 'aurelia_user';
-
 export function login(payload: LoginRequest): Promise<LoginResponse> {
-  return httpPost<LoginRequest, LoginResponse>('/auth/login', payload);
+  return httpPost<LoginRequest, LoginApiResponse>('/auth/login', payload).then(normalizeLoginResponse);
+}
+
+export function getMe(): Promise<MeResponse> {
+  return httpGet<MeResponse>('/me');
 }
 
 export function saveSession(response: LoginResponse): void {
-  localStorage.setItem(TOKEN_KEY, response.token);
-  localStorage.setItem(USER_KEY, JSON.stringify(response.user));
+  writeStoredSession({ token: response.accessToken, user: response.user });
 }
 
 export function clearSession(): void {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(USER_KEY);
+  clearStoredSession();
 }
 
 export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+  return readStoredSession()?.token ?? null;
 }
 
 export function isAuthenticated(): boolean {
   return !!getToken();
+}
+
+export function getStoredUser(): LoginResponse['user'] | null {
+  return readStoredSession()?.user ?? null;
 }

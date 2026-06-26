@@ -9,6 +9,7 @@ import type { ObservacionDraft } from '../useInspectionFlow';
 
 const CREATE_INSPECTION = 'CREATE_INSPECTION' as MobileSyncOperationType;
 const CREATE_INSPECTION_FINDING = 'CREATE_INSPECTION_FINDING' as MobileSyncOperationType;
+const UPLOAD_ATTACHMENT = 'UPLOAD_ATTACHMENT' as MobileSyncOperationType;
 
 const SEVERITY_MAP: Record<string, 'low' | 'medium' | 'high' | 'critical'> = {
   Bajo: 'low',
@@ -36,6 +37,20 @@ export interface SaveAssistantInspectionResult {
   evidencesCount: number;
 }
 
+interface AttachmentPayload {
+  inspectionLocalId: string;
+  findingLocalId: string;
+  localEvidenceId: string;
+  sourceUri: string | null;
+  remoteFileId: string | null;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  evidenceType: 'photo';
+  title: string;
+  capturedAt: string;
+}
+
 function createId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
@@ -52,10 +67,21 @@ function buildFindingDescription(observation: ObservacionDraft): string | null {
   const parts = [
     observation.desc ? `Condición detectada: ${observation.desc}` : null,
     observation.medida ? `Medida correctiva: ${observation.medida}` : null,
-    observation.fotoUri ? `Evidencia local: ${observation.fotoUri}` : null,
+    observation.fotoUri ? `Evidencia local pendiente: ${observation.fotoUri}` : null,
     observation.fileId ? `Archivo remoto previo: ${observation.fileId}` : null,
   ];
   return parts.filter(Boolean).join('\n') || null;
+}
+
+function getPhotoSource(observation: ObservacionDraft): string | null {
+  return observation.fotoUri ?? observation.fileId ?? null;
+}
+
+function getFileName(source: string | null): string {
+  if (!source) return 'evidencia-local.jpg';
+  const clean = source.split('?')[0] ?? source;
+  const last = clean.split('/').filter(Boolean).pop();
+  return last || 'evidencia-local.jpg';
 }
 
 export function useSaveAssistantInspectionOffline() {
@@ -69,7 +95,7 @@ export function useSaveAssistantInspectionOffline() {
       const inspectionLocalId = createId('inspection');
       const createdAt = new Date().toISOString();
       const title = `${input.inspectionTypeName} — ${input.areaName ?? 'Área no informada'} · ${input.sectorName ?? 'Sector no informado'}`;
-      const evidencesCount = input.observations.filter((observation) => Boolean(observation.fotoUri || observation.fileId)).length;
+      const evidencesCount = input.observations.filter((observation) => Boolean(getPhotoSource(observation))).length;
       const createPayload: CreateInspectionRequest = {
         inspectionTypeId: input.inspectionTypeId,
         templateId: null,
@@ -114,8 +140,8 @@ export function useSaveAssistantInspectionOffline() {
 
       for (const observation of input.observations) {
         const findingLocalId = createId('finding');
-        const payload: CreateInspectionFindingRequest & { inspectionLocalId: string } = {
-          inspectionLocalId: inspectionLocalId,
+        const findingPayload: CreateInspectionFindingRequest & { inspectionLocalId: string } = {
+          inspectionLocalId,
           checklistItemId: null,
           title: (observation.desc ?? 'Hallazgo').slice(0, 200),
           description: buildFindingDescription(observation),
@@ -127,13 +153,42 @@ export function useSaveAssistantInspectionOffline() {
           localId: findingLocalId,
           operationType: CREATE_INSPECTION_FINDING,
           entityType: 'inspection_finding',
-          payload,
+          payload: findingPayload,
           createdBy,
           deviceId: session.deviceId,
           deviceSessionId: session.deviceSessionId,
-          evidences: observation.fotoUri || observation.fileId ? [{ localEvidenceId: createId('evidence'), localEntityId: findingLocalId, fileName: observation.fileId ?? observation.fotoUri ?? 'evidencia-local', mimeType: 'image/jpeg', sizeBytes: 0 }] : undefined,
           dependsOnLocalIds: [inspectionLocalId],
         });
+
+        const photoSource = getPhotoSource(observation);
+        if (photoSource) {
+          const localEvidenceId = createId('evidence');
+          const fileName = getFileName(photoSource);
+          const attachmentPayload: AttachmentPayload = {
+            inspectionLocalId,
+            findingLocalId,
+            localEvidenceId,
+            sourceUri: observation.fotoUri ?? null,
+            remoteFileId: observation.fileId ?? null,
+            fileName,
+            mimeType: 'image/jpeg',
+            sizeBytes: 0,
+            evidenceType: 'photo',
+            title: `Foto: ${(observation.desc ?? 'hallazgo').slice(0, 80)}`,
+            capturedAt: new Date().toISOString(),
+          };
+          await syncQueue.enqueue({
+            localId: localEvidenceId,
+            operationType: UPLOAD_ATTACHMENT,
+            entityType: 'evidence',
+            payload: attachmentPayload,
+            createdBy,
+            deviceId: session.deviceId,
+            deviceSessionId: session.deviceSessionId,
+            evidences: [{ localEvidenceId, localEntityId: findingLocalId, fileName, mimeType: 'image/jpeg', sizeBytes: 0 }],
+            dependsOnLocalIds: [inspectionLocalId, findingLocalId],
+          });
+        }
       }
 
       if (input.trySyncNow) void syncPendingOperations({ ignoreRetryDelay: true });

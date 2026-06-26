@@ -350,7 +350,7 @@ export function InspectionAssistantChatScreen() {
     flow.goToResumen();
     const obsCount = flow.observaciones.length;
     const photoCount = flow.observaciones.filter((observation) => Boolean(observation.fileId || observation.fotoUri)).length;
-    addMsg({ type: 'bot', text: '¿Todo listo? Revisa el resumen y envía la inspección.' });
+    addMsg({ type: 'bot', text: '¡Listo! Revisa el resumen antes de guardar:' });
     addMsg({ type: 'submit_btn', obsCount, photoCount });
   }
 
@@ -371,9 +371,10 @@ export function InspectionAssistantChatScreen() {
     }
     addMsg({ type: 'typing' });
     try {
+      const criticalCount = flow.observaciones.filter((observation) => observation.nivel === 'Crítico').length;
       const result = await saveAssistantInspection.mutateAsync({ inspectionTypeId: flow.inspectionTypeId, inspectionTypeName: flow.inspectionTypeName, areaId: flow.areaId, areaName: flow.areaName, sectorId: flow.sectorId, sectorName: flow.sectorName, companyId: flow.companyId, observations: flow.observaciones, ownerUserId: flow.personnelIds[0] ?? null, trySyncNow: online && hasSession });
       removeTyping();
-      router.replace({ pathname: '/inspection/success', params: { inspectionId: result.inspectionId, findingsCount: String(result.findingsCount), evidencesCount: String(result.evidencesCount) } });
+      router.replace({ pathname: '/inspection/success', params: { inspectionId: result.inspectionId, findingsCount: String(result.findingsCount), evidencesCount: String(result.evidencesCount), areaName: flow.areaName ?? '', sectorName: flow.sectorName ?? '', companyName: flow.companyName ?? '', personnelNames: flow.personnelNames.join(', '), criticalCount: String(criticalCount) } });
     } catch {
       removeTyping();
       addErrorMsg('Error al guardar la inspección en la cola local.', () => handleSubmit(widgetId));
@@ -406,7 +407,7 @@ export function InspectionAssistantChatScreen() {
       case 'company_suggestion': return <CompanySuggestionCard key={msg.id} company={msg.company} reason={msg.reason} disabled={isResolved} onChooseOther={() => handleChooseOtherCompany(msg.companies, msg.id)} onConfirm={() => handleCompanySelect(msg.company, msg.id)} />;
       case 'company_chips': return <ChipRow key={msg.id} chips={msg.companies.map((company) => company.name)} selected={isResolved ? flow.companyName : null} onSelect={(name) => { if (!isResolved) { const company = msg.companies.find((item) => item.name === name); if (company) void handleCompanySelect(company, msg.id); } }} />;
       case 'personnel_picker': return <PersonnelPicker key={msg.id} users={msg.users} confirmed={confirmedPickerIds.has(msg.id)} onConfirm={(selected) => handlePersonnelConfirm(selected, msg.id)} />;
-      case 'submit_btn': return <SubmitWidget key={msg.id} obsCount={msg.obsCount} photoCount={msg.photoCount} submitted={isResolved || saveAssistantInspection.isPending} onSubmit={() => handleSubmit(msg.id)} />;
+      case 'submit_btn': return <SubmitWidget key={msg.id} inspectionTypeName={flow.inspectionTypeName} inspectorName="Karen Opazo S." areaName={flow.areaName} sectorName={flow.sectorName} companyName={flow.companyName} personnelNames={flow.personnelNames} observations={flow.observaciones} submitted={isResolved || saveAssistantInspection.isPending} onSubmit={() => handleSubmit(msg.id)} />;
       default: return null;
     }
   }

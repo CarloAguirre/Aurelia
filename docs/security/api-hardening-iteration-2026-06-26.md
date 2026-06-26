@@ -17,6 +17,7 @@ No se tocó la fidelidad visual ni el flujo asistido mobile de inspecciones.
 - `HealthController` no tenía marca pública explícita.
 - `MobileBootstrapController`, `MobileSyncController`, inspecciones, organización y usuarios no tenían marca pública, por lo que quedan protegidos al activar el guard global.
 - El cliente mobile ya enviaba `Authorization: Bearer <token>` cuando existe sesión.
+- `apps/api/src/test/api-smoke.ts` todavía ejecutaba flujos sin Bearer token, por lo que quedaba desalineado con el guard global.
 
 ## Cambios aplicados
 
@@ -156,6 +157,28 @@ apps/api/src/modules/health/health.controller.ts
 
 El controlador quedó marcado con `@Public()` para mantener disponible `GET /api/health` sin token.
 
+### Smoke test autenticado
+
+Se actualizó:
+
+```txt
+apps/api/src/test/api-smoke.ts
+```
+
+El smoke test ahora:
+
+1. Configura secretos efímeros si no existen variables de entorno.
+2. Valida `GET /api/health` sin token.
+3. Valida `GET /api/me` sin token con respuesta `401`.
+4. Valida `GET /api/mobile/bootstrap` sin token con respuesta `401`.
+5. Valida login inválido con respuesta `401`.
+6. Ejecuta login válido.
+7. Guarda el Bearer token.
+8. Valida `/api/me` con usuario autenticado real.
+9. Reutiliza el Bearer token para los flujos existentes de inspecciones, incidentes y SPR.
+
+Esto cubre la brecha inmediata que quedaba entre el guard global y la validación automatizada de la API.
+
 ### Headers, CORS y rate limit
 
 Se mantiene lo ya aplicado:
@@ -211,7 +234,7 @@ Instalar dependencias:
 pnpm install
 ```
 
-Configurar variables mínimas:
+Configurar variables mínimas para levantar API manualmente:
 
 ```bash
 $env:API_TOKEN_KEY="dev-local-token-key-change-me-32-characters"
@@ -268,6 +291,12 @@ Validar bootstrap mobile con Bearer:
 Invoke-RestMethod -Method Get -Uri http://localhost:3000/api/mobile/bootstrap -Headers @{ Authorization = "Bearer $token" }
 ```
 
+Smoke test:
+
+```bash
+pnpm --filter api test:smoke
+```
+
 Build API:
 
 ```bash
@@ -285,7 +314,7 @@ pnpm --filter api build
 6. Implementar storage seguro native para token mobile.
 7. Definir cifrado de datos sensibles en base de datos.
 8. Agregar auditoría de login, sync y evidencias.
-9. Agregar tests de seguridad mínimos.
+9. Ampliar tests de seguridad con expiración, token alterado, Bearer malformado y rutas públicas/protegidas por módulo.
 10. Evaluar rate limit persistente o distribuido para producción.
 
 ## Nivel estimado
@@ -296,4 +325,4 @@ Después de esta iteración: 5/10 - 6/10 aproximado
 Objetivo productivo: 8/10+
 ```
 
-La API queda con JWT firmado, guard global y rutas públicas explícitas, pero todavía no queda productiva hasta cerrar credenciales por usuario, RBAC granular, refresh/revocación, storage seguro mobile y auditoría.
+La API queda con JWT firmado, guard global, rutas públicas explícitas y smoke test alineado al flujo autenticado, pero todavía no queda productiva hasta cerrar credenciales por usuario, RBAC granular, refresh/revocación, storage seguro mobile y auditoría.

@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { randomUUID } from 'crypto';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DataSource } from 'typeorm';
@@ -24,6 +25,12 @@ type SprParameterRow = CatalogRow & {
   requiresEvidence?: boolean;
 };
 
+type LoginSmokeResponse = JsonObject & {
+  token: string;
+};
+
+let accessToken: string | null = null;
+
 const asArray = <T>(value: unknown, label: string): T[] => {
   if (!Array.isArray(value)) throw new Error(`${label} did not return an array`);
   return value as T[];
@@ -40,10 +47,20 @@ const ensureId = (value: unknown, label: string): string => {
   return row.id;
 };
 
+function configureSmokeAuthEnv(): string {
+  process.env.API_TOKEN_KEY ??= `api-smoke-token-key-${randomUUID().replaceAll('-', '')}`;
+  process.env.API_LOGIN_PASSWORD ??= `api-smoke-login-password-${randomUUID()}`;
+  return process.env.API_LOGIN_PASSWORD;
+}
+
 async function request(baseUrl: string, method: string, path: string, body?: JsonObject, expectedStatus = 200): Promise<unknown> {
+  const headers: Record<string, string> = {};
+  if (body) headers['content-type'] = 'application/json';
+  if (accessToken) headers.authorization = `Bearer ${accessToken}`;
+
   const response = await fetch(`${baseUrl}${path}`, {
     method,
-    headers: body ? { 'content-type': 'application/json' } : undefined,
+    headers: Object.keys(headers).length > 0 ? headers : undefined,
     body: body ? JSON.stringify(body) : undefined,
   });
 
@@ -57,6 +74,30 @@ async function request(baseUrl: string, method: string, path: string, body?: Jso
   if (!text) return null;
   if (contentType.includes('application/json')) return JSON.parse(text);
   return text;
+}
+
+async function runAuthBoundaryChecks(baseUrl: string, password: string): Promise<void> {
+  await request(baseUrl, 'GET', '/health');
+  await request(baseUrl, 'GET', '/me', undefined, 401);
+  await request(baseUrl, 'GET', '/mobile/bootstrap', undefined, 401);
+  await request(baseUrl, 'POST', '/auth/login', {
+    email: 'karen.opazo@goldfields.com',
+    password: 'invalid-password',
+  }, 401);
+
+  const login = asObject<LoginSmokeResponse>(
+    await request(baseUrl, 'POST', '/auth/login', {
+      email: 'karen.opazo@goldfields.com',
+      password,
+    }),
+    'login',
+  );
+
+  if (typeof login.token !== 'string' || login.token.length === 0) throw new Error('login did not return a token');
+  accessToken = login.token;
+
+  const me = asObject<JsonObject>(await request(baseUrl, 'GET', '/me'), 'me');
+  if (me.email !== 'karen.opazo@goldfields.com') throw new Error('/me did not return the authenticated user');
 }
 
 async function runInspectionFlow(baseUrl: string): Promise<void> {
@@ -319,6 +360,7 @@ async function runSprFlow(baseUrl: string): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  const smokePassword = configureSmokeAuthEnv();
   const app = await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
@@ -338,7 +380,7 @@ async function main(): Promise<void> {
   const baseUrl = `http://127.0.0.1:${address.port}/api`;
 
   try {
-    await request(baseUrl, 'GET', '/health');
+    await runAuthBoundaryChecks(baseUrl, smokePassword);
     await runInspectionFlow(baseUrl);
     await runIncidentFlow(baseUrl);
     await runSprFlow(baseUrl);

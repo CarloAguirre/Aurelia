@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role } from '@aurelia/contracts';
 import { UserEntity } from '../users/entities/user.entity';
+import { JwtTokenService } from './jwt-token.service';
 
 export interface LoginRequest {
   email: string;
@@ -10,7 +11,7 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  token: string;
+  accessToken: string;
   user: {
     id: string;
     email: string;
@@ -32,6 +33,7 @@ export class AuthService {
   constructor(
     @InjectRepository(UserEntity)
     private readonly usersRepository: Repository<UserEntity>,
+    private readonly jwtTokenService: JwtTokenService,
   ) {}
 
   async login(payload: LoginRequest): Promise<LoginResponse> {
@@ -57,9 +59,17 @@ export class AuthService {
 
     const roles = user.userRoles?.map((userRole) => userRole.role.code) ?? [];
     const isGoldFieldsUser = user.email.endsWith('@goldfields.com');
+    const permissions = roles.includes(Role.ADMIN) ? ['*'] : ['inspections:create', 'inspections:read'];
+
+    const accessToken = this.jwtTokenService.sign({
+      sub: user.id,
+      email: user.email,
+      roles,
+      permissions,
+    });
 
     return {
-      token: `demo-token-${user.id}`,
+      accessToken,
       user: {
         id: user.id,
         email: user.email,
@@ -72,7 +82,7 @@ export class AuthService {
         areaId: user.areaId,
         areaName: user.area?.name ?? (isGoldFieldsUser ? 'Medio Ambiente' : null),
         roles,
-        permissions: roles.includes(Role.ADMIN) ? ['*'] : ['inspections:create', 'inspections:read'],
+        permissions,
       },
     };
   }

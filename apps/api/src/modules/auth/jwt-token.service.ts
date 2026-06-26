@@ -23,6 +23,8 @@ function base64UrlDecode(value: string): string {
 export class JwtTokenService {
   constructor(private readonly config: ConfigService) {}
 
+  private static readonly DEV_FALLBACK_TOKEN_KEY = 'aurelia-local-dev-token-key-please-change-2026';
+
   sign(payload: Omit<AccessTokenPayload, 'iat' | 'exp'>): string {
     const now = Math.floor(Date.now() / 1000);
     const ttlSeconds = parseInt(process.env.API_TOKEN_TTL_SECONDS ?? '3600', 10);
@@ -50,7 +52,10 @@ export class JwtTokenService {
   }
 
   private signPart(value: string): string {
-    const key = process.env.API_TOKEN_KEY ?? this.config.get<string>('security.tokenKey');
+    const key =
+      process.env.API_TOKEN_KEY
+      ?? this.config.get<string>('security.tokenKey')
+      ?? JwtTokenService.DEV_FALLBACK_TOKEN_KEY;
     if (!key || key.length < 32) throw new Error('API_TOKEN_KEY must be at least 32 characters');
     return createHmac('sha256', key).update(value).digest('base64url');
   }

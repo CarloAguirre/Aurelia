@@ -1,32 +1,34 @@
-import { useQuery } from '@tanstack/react-query';
-import { fetchAreas, fetchSectors } from '../../shared/services/api/organization.api';
+import { MISSING_MOBILE_BOOTSTRAP_MESSAGE } from '../../shared/offline/local-catalogs';
+import { useMobileBootstrap } from '../../shared/hooks/useMobileBootstrap';
 import { useManualInspectionDraft } from './manualInspection.store';
 
 export const manualInspectionCatalogKeys = {
+  bootstrap: ['manual-inspection', 'mobile-bootstrap'] as const,
   areas: ['manual-inspection', 'areas'] as const,
   sectors: (areaId: string | null) => ['manual-inspection', 'sectors', areaId] as const,
 };
 
+function getCatalogErrorMessage(error: unknown): string | null {
+  if (error instanceof Error && error.message) return error.message;
+  return MISSING_MOBILE_BOOTSTRAP_MESSAGE;
+}
+
 export function useManualInspectionCatalogs() {
   const areaId = useManualInspectionDraft((state) => state.areaId);
-
-  const areasQuery = useQuery({
-    queryKey: manualInspectionCatalogKeys.areas,
-    queryFn: fetchAreas,
-  });
-
-  const sectorsQuery = useQuery({
-    queryKey: manualInspectionCatalogKeys.sectors(areaId),
-    queryFn: () => fetchSectors(areaId ?? ''),
-    enabled: areaId !== null,
-  });
+  const bootstrapQuery = useMobileBootstrap();
+  const areas = bootstrapQuery.data?.catalogs.areas ?? [];
+  const sectors = areaId
+    ? (bootstrapQuery.data?.catalogs.sectors ?? []).filter((sector) => sector.areaId === areaId)
+    : [];
+  const catalogErrorMessage = bootstrapQuery.isError ? getCatalogErrorMessage(bootstrapQuery.error) : null;
 
   return {
-    areasQuery,
-    sectorsQuery,
-    areas: areasQuery.data ?? [],
-    sectors: sectorsQuery.data ?? [],
-    loadingAreas: areasQuery.isLoading,
-    loadingSectors: sectorsQuery.isLoading,
+    areasQuery: bootstrapQuery,
+    sectorsQuery: bootstrapQuery,
+    areas,
+    sectors,
+    loadingAreas: bootstrapQuery.isLoading,
+    loadingSectors: Boolean(areaId && bootstrapQuery.isLoading),
+    catalogErrorMessage,
   };
 }

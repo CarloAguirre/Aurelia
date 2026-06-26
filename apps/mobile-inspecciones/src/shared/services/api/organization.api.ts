@@ -1,15 +1,18 @@
 import type { AreaResponse, CompanyResponse, SectorResponse } from '@aurelia/contracts';
-import { httpGet } from '../http-client';
+import { getMobileBootstrapLocalFirst } from '../../offline/local-catalogs';
 
-export function fetchAreas(): Promise<AreaResponse[]> {
-  return httpGet<AreaResponse[]>('/organization/areas');
+export async function fetchAreas(): Promise<AreaResponse[]> {
+  const bootstrap = await getMobileBootstrapLocalFirst();
+  return bootstrap.catalogs.areas;
 }
 
-export function fetchSectors(areaId: string): Promise<SectorResponse[]> {
-  return httpGet<SectorResponse[]>(`/organization/sectors?areaId=${areaId}`);
+export async function fetchSectors(areaId: string): Promise<SectorResponse[]> {
+  const bootstrap = await getMobileBootstrapLocalFirst();
+  return bootstrap.catalogs.sectors.filter((sector) => sector.areaId === areaId);
 }
 
-export function fetchCompanies(isContractor?: boolean): Promise<CompanyResponse[]> {
-  const q = isContractor !== undefined ? `?isContractor=${isContractor}` : '';
-  return httpGet<CompanyResponse[]>(`/organization/companies${q}`);
+export async function fetchCompanies(isContractor?: boolean): Promise<CompanyResponse[]> {
+  const bootstrap = await getMobileBootstrapLocalFirst();
+  if (isContractor === undefined) return bootstrap.catalogs.companies;
+  return bootstrap.catalogs.companies.filter((company) => company.isContractor === isContractor);
 }

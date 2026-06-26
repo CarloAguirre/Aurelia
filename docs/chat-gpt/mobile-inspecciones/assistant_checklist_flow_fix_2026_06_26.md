@@ -19,4 +19,10 @@ UPLOAD_ATTACHMENT cuando aplica
 POST /api/mobile/sync
 ```
 
-Pendiente: aplicar el cambio en `InspectionChatScreen.tsx` eliminando la rama que llama a `router.replace('/inspection/manual/identification')`.
+Se creo un reemplazo funcional en:
+
+```txt
+apps/mobile-inspecciones/src/modules/inspection/InspectionAssistantChatScreen.tsx
+```
+
+Pendiente tecnico: apuntar `apps/mobile-inspecciones/app/inspection/chat.tsx` a ese componente o aplicar el mismo cambio en `InspectionChatScreen.tsx`.

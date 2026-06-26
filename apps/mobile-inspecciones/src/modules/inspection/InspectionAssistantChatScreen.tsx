@@ -10,6 +10,7 @@ import { TypingIndicator } from '../../shared/components/chat/TypingIndicator';
 import { ChipRow } from '../../shared/components/chat/ChipRow';
 import { QuickOpts } from '../../shared/components/chat/QuickOpts';
 import { AiProposalCard } from '../../shared/components/chat/AiProposalCard';
+import { CompanySuggestionCard } from '../../shared/components/chat/CompanySuggestionCard';
 import { PersonnelPicker } from '../../shared/components/chat/PersonnelPicker';
 import { PhotoStepWidget } from '../../shared/components/chat/PhotoStepWidget';
 import { ErrorBubble } from '../../shared/components/chat/ErrorBubble';
@@ -46,6 +47,7 @@ type MessageItem =
   | { id: string; type: 'criticality_widget' }
   | { id: string; type: 'sla_widget'; suggestedDays: number; observationNumber: number }
   | { id: string; type: 'more_obs_opts' }
+  | { id: string; type: 'company_suggestion'; company: CompanyResponse; reason: string; companies: CompanyResponse[] }
   | { id: string; type: 'company_chips'; companies: CompanyResponse[] }
   | { id: string; type: 'personnel_picker'; users: UserResponse[] }
   | { id: string; type: 'ai_proposal' }
@@ -73,6 +75,11 @@ function buildTypeOptions(records: InspectionTypeResponse[]): AssistantTypeOptio
     { value: InspectionType.ENVIRONMENTAL, label: 'Hallazgo', icon: 'search', inspectionTypeId: typeId(records, InspectionType.ENVIRONMENTAL) },
     { value: InspectionType.REGULATORY, label: 'Checklist normativo', icon: 'clipboard-check', inspectionTypeId: typeId(records, InspectionType.REGULATORY) },
   ];
+}
+
+function pickSuggestedCompany(companies: CompanyResponse[], suggestion: string): CompanyResponse | null {
+  const normalized = suggestion.toUpperCase();
+  return companies.find((company) => normalized.includes(company.name.toUpperCase())) ?? companies.find((company) => company.name.toUpperCase() === 'SOMACOR') ?? companies[0] ?? null;
 }
 
 export function InspectionAssistantChatScreen() {
@@ -289,35 +296,44 @@ export function InspectionAssistantChatScreen() {
     addMsg({ type: 'typing' });
     try {
       const companies = await queryClient.fetchQuery({ queryKey: COMPANIES_KEY, queryFn: () => fetchCompanies(true), staleTime: 5 * 60 * 1000 });
-      let aiHint = '';
+      let reason = flow.aiSuggestion ?? 'Corregir la condición identificada antes del próximo turno. Registrar evidencia fotográfica y notificar al supervisor de área.';
       if (online && hasSession) {
         try {
           const result = await suggestCompany({ area: flow.areaName ?? '', sector: flow.sectorName ?? '', availableCompanies: companies.map((company) => company.name) });
-          if (!result.fallback) aiHint = result.suggestion;
-        } catch {
-          aiHint = '';
-        }
+          if (result.suggestion) reason = result.suggestion;
+        } catch {}
       }
+      const suggestedCompany = pickSuggestedCompany(companies, reason);
       removeTyping();
-      if (aiHint) addMsg({ type: 'bot', text: `✦ ${aiHint}` });
-      addMsg({ type: 'bot', text: '¿Qué empresa contratista está involucrada en esta inspección?' });
-      addMsg({ type: 'company_chips', companies });
+      if (!suggestedCompany) {
+        addMsg({ type: 'bot', text: '¿Qué empresa contratista está involucrada en esta inspección?' });
+        addMsg({ type: 'company_chips', companies });
+        return;
+      }
+      addMsg({ type: 'bot', text: `Basándome en el historial de ${flow.areaName} · ${flow.sectorName}, te propongo:` });
+      addMsg({ type: 'company_suggestion', company: suggestedCompany, reason, companies });
     } catch {
       removeTyping();
       addErrorMsg('Error al cargar empresas desde catálogos locales.', () => handleMoreObs(value, widgetId));
     }
   }
 
+  function handleChooseOtherCompany(companies: CompanyResponse[], widgetId: string) {
+    resolveWidget(widgetId);
+    addMsg({ type: 'bot', text: 'Selecciona la empresa:' });
+    addMsg({ type: 'company_chips', companies });
+  }
+
   async function handleCompanySelect(company: CompanyResponse, widgetId: string) {
     resolveWidget(widgetId);
     flow.setCompany(company.id, company.name);
-    addMsg({ type: 'user', text: company.name });
+    addMsg({ type: 'user', text: `✓ ${company.name} confirmada` });
     addMsg({ type: 'typing' });
     try {
       const users = await queryClient.fetchQuery({ queryKey: personnelKey(company.id), queryFn: () => fetchUsers({ companyId: company.id }), staleTime: 5 * 60 * 1000 });
       removeTyping();
       if (users.length > 0) {
-        addMsg({ type: 'bot', text: `Selecciona el personal de ${company.name} presente en la inspección:` });
+        addMsg({ type: 'bot', text: `Para ${company.name} en ${flow.areaName}, sugiero este personal. Selecciona uno o más:` });
         addMsg({ type: 'personnel_picker', users });
       } else {
         await showSubmitSummary('No hay personal registrado para esta empresa. Continuando al resumen.');
@@ -343,7 +359,7 @@ export function InspectionAssistantChatScreen() {
     const ids = selected.map((user) => user.id);
     const names = selected.map((user) => user.fullName);
     flow.setPersonnel(ids, names);
-    addMsg({ type: 'user', text: `Personal: ${names.length > 0 ? names.join(', ') : 'Nadie seleccionado'}` });
+    addMsg({ type: 'user', text: `✓ Personal: ${names.length > 0 ? names.join(', ') : 'Nadie seleccionado'}` });
     await showSubmitSummary();
   }
 
@@ -387,6 +403,7 @@ export function InspectionAssistantChatScreen() {
       case 'criticality_widget': return <CriticalityWidget key={msg.id} resolved={isResolved} onComplete={(probability, consequence, level, slaDays) => handleCriticalityComplete(probability, consequence, level, slaDays, msg.id)} />;
       case 'sla_widget': return <SlaConfirmWidget key={msg.id} initialDays={msg.suggestedDays} observationNumber={msg.observationNumber} resolved={isResolved} onSave={(days) => handleSlaSave(days, msg.id)} />;
       case 'more_obs_opts': return <QuickOpts key={msg.id} options={[{ value: 'mas', label: 'Sí, agregar otra' }, { value: 'empresa', label: 'No, pasar a empresa y personal' }]} selected={isResolved ? 'empresa' : null} onSelect={(value) => { if (!isResolved) void handleMoreObs(value, msg.id); }} />;
+      case 'company_suggestion': return <CompanySuggestionCard key={msg.id} company={msg.company} reason={msg.reason} disabled={isResolved} onChooseOther={() => handleChooseOtherCompany(msg.companies, msg.id)} onConfirm={() => handleCompanySelect(msg.company, msg.id)} />;
       case 'company_chips': return <ChipRow key={msg.id} chips={msg.companies.map((company) => company.name)} selected={isResolved ? flow.companyName : null} onSelect={(name) => { if (!isResolved) { const company = msg.companies.find((item) => item.name === name); if (company) void handleCompanySelect(company, msg.id); } }} />;
       case 'personnel_picker': return <PersonnelPicker key={msg.id} users={msg.users} confirmed={confirmedPickerIds.has(msg.id)} onConfirm={(selected) => handlePersonnelConfirm(selected, msg.id)} />;
       case 'submit_btn': return <SubmitWidget key={msg.id} obsCount={msg.obsCount} photoCount={msg.photoCount} submitted={isResolved || saveAssistantInspection.isPending} onSubmit={() => handleSubmit(msg.id)} />;

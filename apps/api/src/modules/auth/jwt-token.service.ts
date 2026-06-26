@@ -5,6 +5,7 @@ import { createHmac, timingSafeEqual } from 'crypto';
 export interface AccessTokenPayload {
   sub: string;
   email: string;
+  fullName: string;
   roles: string[];
   permissions: string[];
   iat: number;
@@ -12,26 +13,33 @@ export interface AccessTokenPayload {
 }
 
 function base64UrlEncode(value: string): string {
-  return Buffer.from(value).toString('base64url');
+  return Buffer.from(value, 'utf8').toString('base64url');
 }
 
 function base64UrlDecode(value: string): string {
   return Buffer.from(value, 'base64url').toString('utf8');
 }
 
+function parseTokenJson(value: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(base64UrlDecode(value));
+    if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') throw new Error('Invalid token');
+    return parsed as Record<string, unknown>;
+  } catch {
+    throw new UnauthorizedException('Invalid token');
+  }
+}
+
 @Injectable()
 export class JwtTokenService {
   constructor(private readonly config: ConfigService) {}
 
-  private static readonly DEV_FALLBACK_TOKEN_KEY = 'aurelia-local-dev-token-key-please-change-2026';
-
   sign(payload: Omit<AccessTokenPayload, 'iat' | 'exp'>): string {
     const now = Math.floor(Date.now() / 1000);
-    const ttlSeconds = parseInt(process.env.API_TOKEN_TTL_SECONDS ?? '3600', 10);
     const fullPayload: AccessTokenPayload = {
       ...payload,
       iat: now,
-      exp: now + ttlSeconds,
+      exp: now + this.getTtlSeconds(),
     };
     const header = base64UrlEncode(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
     const body = base64UrlEncode(JSON.stringify(fullPayload));
@@ -43,27 +51,58 @@ export class JwtTokenService {
     const parts = token.split('.');
     if (parts.length !== 3) throw new UnauthorizedException('Invalid token');
     const [header, body, signature] = parts;
+    const parsedHeader = parseTokenJson(header);
+    if (parsedHeader.alg !== 'HS256' || parsedHeader.typ !== 'JWT') throw new UnauthorizedException('Invalid token');
     const expected = this.signPart(`${header}.${body}`);
     if (!this.safeEquals(signature, expected)) throw new UnauthorizedException('Invalid token');
-    const payload = JSON.parse(base64UrlDecode(body)) as AccessTokenPayload;
-    if (!payload.sub || !payload.email || !payload.exp) throw new UnauthorizedException('Invalid token');
+    const payload = parseTokenJson(body);
+    if (!this.isAccessTokenPayload(payload)) throw new UnauthorizedException('Invalid token');
     if (payload.exp < Math.floor(Date.now() / 1000)) throw new UnauthorizedException('Token expired');
     return payload;
   }
 
   private signPart(value: string): string {
-    const key =
-      process.env.API_TOKEN_KEY
-      ?? this.config.get<string>('security.tokenKey')
-      ?? JwtTokenService.DEV_FALLBACK_TOKEN_KEY;
-    if (!key || key.length < 32) throw new Error('API_TOKEN_KEY must be at least 32 characters');
+    const key = this.getTokenKey();
     return createHmac('sha256', key).update(value).digest('base64url');
   }
 
+  private getTokenKey(): string {
+    const key = this.config.get<string>('security.tokenKey');
+    if (!key || key.length < 32) throw new Error('API_TOKEN_KEY must be at least 32 characters');
+    return key;
+  }
+
+  private getTtlSeconds(): number {
+    const ttlSeconds = this.config.get<number>('security.tokenTtlSeconds');
+    if (!ttlSeconds || ttlSeconds <= 0) throw new Error('API_TOKEN_TTL_SECONDS must be a positive number');
+    return ttlSeconds;
+  }
+
+  private isAccessTokenPayload(payload: unknown): payload is AccessTokenPayload {
+    if (!payload || Array.isArray(payload) || typeof payload !== 'object') {
+      return false;
+    }
+
+    const value = payload as Record<string, unknown>;
+
+    return (
+      typeof value.sub === 'string' &&
+      typeof value.email === 'string' &&
+      typeof value.fullName === 'string' &&
+      Array.isArray(value.roles) &&
+      value.roles.every((role) => typeof role === 'string') &&
+      Array.isArray(value.permissions) &&
+      value.permissions.every((permission) => typeof permission === 'string') &&
+      typeof value.iat === 'number' &&
+      typeof value.exp === 'number'
+    );
+  }
+
   private safeEquals(left: string, right: string): boolean {
-    const leftBuffer = Buffer.from(left);
-    const rightBuffer = Buffer.from(right);
+    const leftBuffer = Buffer.from(left, 'utf8');
+    const rightBuffer = Buffer.from(right, 'utf8');
     if (leftBuffer.length !== rightBuffer.length) return false;
     return timingSafeEqual(leftBuffer, rightBuffer);
   }
 }
+

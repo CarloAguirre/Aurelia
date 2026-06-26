@@ -1,29 +1,26 @@
-import { Body, Controller, Get, Post, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req } from '@nestjs/common';
 import { MeResponse, Role } from '@aurelia/contracts';
 import type { AuthenticatedRequest } from './authenticated-request';
 import { AuthService, LoginRequest, LoginResponse } from './auth.service';
-import { JwtAuthGuard } from './jwt-auth.guard';
+import { Public } from './public.decorator';
 
 @Controller()
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Public()
   @Post('auth/login')
+  @HttpCode(HttpStatus.OK)
   login(@Body() payload: LoginRequest): Promise<LoginResponse> {
     return this.authService.login(payload);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('me')
   getMe(@Req() request: AuthenticatedRequest): MeResponse {
-    if (!request.user) {
-      throw new UnauthorizedException('Unauthorized');
-    }
-
     return {
       id: request.user.sub,
       email: request.user.email,
-      fullName: request.user.email,
+      fullName: request.user.fullName,
       roles: request.user.roles as Role[],
       permissions: request.user.permissions,
       isPlaceholder: false,

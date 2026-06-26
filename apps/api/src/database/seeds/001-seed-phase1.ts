@@ -65,14 +65,32 @@ async function seed(ds: DataSource): Promise<void> {
 
     // Base permissions
     const permissions = [
-      { code: 'organization:read',  name: 'Ver organización',   module: 'organization', action: 'read'  },
-      { code: 'organization:write', name: 'Editar organización', module: 'organization', action: 'write' },
-      { code: 'users:read',         name: 'Ver usuarios',        module: 'users',        action: 'read'  },
-      { code: 'users:write',        name: 'Editar usuarios',     module: 'users',        action: 'write' },
-      { code: 'roles:read',         name: 'Ver roles',           module: 'roles',        action: 'read'  },
-      { code: 'roles:write',        name: 'Editar roles',        module: 'roles',        action: 'write' },
-      { code: 'permissions:read',   name: 'Ver permisos',        module: 'permissions',  action: 'read'  },
-      { code: 'permissions:write',  name: 'Editar permisos',     module: 'permissions',  action: 'write' },
+      { code: 'organization:read',  name: 'Ver organización',       module: 'organization', action: 'read'  },
+      { code: 'organization:write', name: 'Editar organización',    module: 'organization', action: 'write' },
+      { code: 'users:read',         name: 'Ver usuarios',           module: 'users',        action: 'read'  },
+      { code: 'users:write',        name: 'Editar usuarios',        module: 'users',        action: 'write' },
+      { code: 'roles:read',         name: 'Ver roles',              module: 'roles',        action: 'read'  },
+      { code: 'roles:write',        name: 'Editar roles',           module: 'roles',        action: 'write' },
+      { code: 'permissions:read',   name: 'Ver permisos',           module: 'permissions',  action: 'read'  },
+      { code: 'permissions:write',  name: 'Editar permisos',        module: 'permissions',  action: 'write' },
+      { code: 'mobile:read',        name: 'Ver bootstrap mobile',    module: 'mobile',       action: 'read'  },
+      { code: 'mobile:sync',        name: 'Sincronizar mobile',      module: 'mobile',       action: 'sync'  },
+      { code: 'inspections:read',   name: 'Ver inspecciones',       module: 'inspections',  action: 'read'  },
+      { code: 'inspections:write',  name: 'Editar inspecciones',    module: 'inspections',  action: 'write' },
+      { code: 'incidents:read',     name: 'Ver incidentes',         module: 'incidents',    action: 'read'  },
+      { code: 'incidents:write',    name: 'Editar incidentes',      module: 'incidents',    action: 'write' },
+      { code: 'spr:read',           name: 'Ver SPR',                module: 'spr',          action: 'read'  },
+      { code: 'spr:write',          name: 'Editar SPR',             module: 'spr',          action: 'write' },
+      { code: 'spr:submit',         name: 'Enviar SPR',             module: 'spr',          action: 'submit' },
+      { code: 'spr:approve',        name: 'Aprobar SPR',            module: 'spr',          action: 'approve' },
+      { code: 'evidences:read',     name: 'Ver evidencias',         module: 'evidences',    action: 'read'  },
+      { code: 'evidences:write',    name: 'Editar evidencias',      module: 'evidences',    action: 'write' },
+      { code: 'evidences:validate', name: 'Validar evidencias',     module: 'evidences',    action: 'validate' },
+      { code: 'comments:read',      name: 'Ver comentarios',        module: 'comments',     action: 'read'  },
+      { code: 'comments:write',     name: 'Crear comentarios',      module: 'comments',     action: 'write' },
+      { code: 'workflows:read',     name: 'Ver workflows',          module: 'workflows',    action: 'read'  },
+      { code: 'workflows:write',    name: 'Editar workflows',       module: 'workflows',    action: 'write' },
+      { code: 'workflows:approve',  name: 'Aprobar workflows',      module: 'workflows',    action: 'approve' },
     ];
 
     for (const perm of permissions) {
@@ -92,6 +110,85 @@ async function seed(ds: DataSource): Promise<void> {
        WHERE r.code = 'ADMIN'
        ON CONFLICT DO NOTHING`,
     );
+
+    const rolePermissions: Record<string, string[]> = {
+      SUPERVISOR: [
+        'organization:read',
+        'users:read',
+        'mobile:read',
+        'mobile:sync',
+        'inspections:read',
+        'inspections:write',
+        'incidents:read',
+        'incidents:write',
+        'spr:read',
+        'spr:write',
+        'spr:submit',
+        'spr:approve',
+        'evidences:read',
+        'evidences:write',
+        'evidences:validate',
+        'comments:read',
+        'comments:write',
+        'workflows:read',
+        'workflows:write',
+        'workflows:approve',
+      ],
+      INSPECTOR: [
+        'organization:read',
+        'mobile:read',
+        'mobile:sync',
+        'inspections:read',
+        'inspections:write',
+        'incidents:read',
+        'incidents:write',
+        'spr:read',
+        'spr:write',
+        'spr:submit',
+        'evidences:read',
+        'evidences:write',
+        'comments:read',
+        'comments:write',
+        'workflows:read',
+      ],
+      APPROVER: [
+        'organization:read',
+        'users:read',
+        'mobile:read',
+        'inspections:read',
+        'incidents:read',
+        'spr:read',
+        'spr:approve',
+        'evidences:read',
+        'evidences:validate',
+        'comments:read',
+        'comments:write',
+        'workflows:read',
+        'workflows:approve',
+      ],
+      VIEWER: [
+        'organization:read',
+        'mobile:read',
+        'inspections:read',
+        'incidents:read',
+        'spr:read',
+        'evidences:read',
+        'comments:read',
+        'workflows:read',
+      ],
+    };
+
+    for (const [roleCode, permissionCodes] of Object.entries(rolePermissions)) {
+      await qr.query(
+        `INSERT INTO role_permissions (role_id, permission_id)
+         SELECT r.id, p.id
+         FROM roles r, permissions p
+         WHERE r.code = $1
+           AND p.code = ANY($2::text[])
+         ON CONFLICT DO NOTHING`,
+        [roleCode, permissionCodes],
+      );
+    }
 
     // Entity reference type catalog (Phase 2)
     const entityRefTypes = [

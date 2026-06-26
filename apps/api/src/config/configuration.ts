@@ -12,4 +12,7 @@ export default () => ({
     tokenKey: process.env.API_TOKEN_KEY,
     tokenTtlSeconds: parseInt(process.env.API_TOKEN_TTL_SECONDS ?? '3600', 10),
   },
+  auth: {
+    loginPassword: process.env.API_LOGIN_PASSWORD ?? process.env.DEMO_LOGIN_PASSWORD,
+  },
 });

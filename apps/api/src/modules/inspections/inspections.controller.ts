@@ -9,6 +9,7 @@ import {
   InspectionStatus,
   InspectionTypeResponse,
 } from '@aurelia/contracts';
+import { RequirePermissions } from '../auth/require-permissions.decorator';
 import { CloseInspectionDto } from './dto/close-inspection.dto';
 import { CreateInspectionFindingDto } from './dto/create-inspection-finding.dto';
 import { CreateInspectionFollowupDto } from './dto/create-inspection-followup.dto';
@@ -20,6 +21,7 @@ import { UpdateInspectionStatusDto } from './dto/update-inspection-status.dto';
 import { UpsertInspectionAnswerDto } from './dto/upsert-inspection-answer.dto';
 import { InspectionsService } from './inspections.service';
 
+@RequirePermissions('inspections:read')
 @Controller('inspections')
 export class InspectionsController {
   constructor(private readonly inspectionsService: InspectionsService) {}
@@ -47,6 +49,7 @@ export class InspectionsController {
     return this.inspectionsService.findAll({ status, inspectionTypeId });
   }
 
+  @RequirePermissions('inspections:write')
   @Post()
   create(@Body() dto: CreateInspectionDto): Promise<InspectionResponse> {
     return this.inspectionsService.create(dto, null);
@@ -57,6 +60,7 @@ export class InspectionsController {
     return this.inspectionsService.findFindings(id);
   }
 
+  @RequirePermissions('inspections:write')
   @Post(':id/findings')
   createFinding(
     @Param('id', ParseUUIDPipe) id: string,
@@ -65,6 +69,7 @@ export class InspectionsController {
     return this.inspectionsService.createFinding(id, dto, null);
   }
 
+  @RequirePermissions('inspections:write')
   @Post(':id/close')
   async closeInspection(
     @Param('id', ParseUUIDPipe) id: string,
@@ -81,6 +86,7 @@ export class InspectionsController {
     );
   }
 
+  @RequirePermissions('inspections:write')
   @Post(':id/answers')
   upsertAnswer(
     @Param('id', ParseUUIDPipe) id: string,
@@ -94,6 +100,7 @@ export class InspectionsController {
     return this.inspectionsService.findOne(id);
   }
 
+  @RequirePermissions('inspections:write')
   @Patch(':id/status')
   updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
@@ -102,6 +109,7 @@ export class InspectionsController {
     return this.inspectionsService.updateStatus(id, dto, null);
   }
 
+  @RequirePermissions('inspections:write')
   @Patch(':id')
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -110,6 +118,7 @@ export class InspectionsController {
     return this.inspectionsService.update(id, dto, null);
   }
 
+  @RequirePermissions('inspections:write')
   @Post('findings/:findingId/followups')
   createFollowup(
     @Param('findingId', ParseUUIDPipe) findingId: string,
@@ -118,6 +127,7 @@ export class InspectionsController {
     return this.inspectionsService.createFollowup(findingId, dto, null);
   }
 
+  @RequirePermissions('inspections:write')
   @Patch('findings/:findingId')
   updateFinding(
     @Param('findingId', ParseUUIDPipe) findingId: string,
@@ -126,6 +136,7 @@ export class InspectionsController {
     return this.inspectionsService.updateFinding(findingId, dto, null);
   }
 
+  @RequirePermissions('inspections:write')
   @Patch('followups/:followupId')
   updateFollowup(
     @Param('followupId', ParseUUIDPipe) followupId: string,

@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { randomUUID } from 'crypto';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DataSource } from 'typeorm';
@@ -24,6 +25,115 @@ type SprParameterRow = CatalogRow & {
   requiresEvidence?: boolean;
 };
 
+type LoginSmokeResponse = JsonObject & {
+  token: string;
+};
+
+type PermissionSeed = {
+  code: string;
+  name: string;
+  module: string;
+  action: string;
+};
+
+let accessToken: string | null = null;
+
+const securityPermissions: PermissionSeed[] = [
+  { code: 'organization:read', name: 'Ver organización', module: 'organization', action: 'read' },
+  { code: 'organization:write', name: 'Editar organización', module: 'organization', action: 'write' },
+  { code: 'users:read', name: 'Ver usuarios', module: 'users', action: 'read' },
+  { code: 'users:write', name: 'Editar usuarios', module: 'users', action: 'write' },
+  { code: 'roles:read', name: 'Ver roles', module: 'roles', action: 'read' },
+  { code: 'roles:write', name: 'Editar roles', module: 'roles', action: 'write' },
+  { code: 'permissions:read', name: 'Ver permisos', module: 'permissions', action: 'read' },
+  { code: 'permissions:write', name: 'Editar permisos', module: 'permissions', action: 'write' },
+  { code: 'mobile:read', name: 'Ver bootstrap mobile', module: 'mobile', action: 'read' },
+  { code: 'mobile:sync', name: 'Sincronizar mobile', module: 'mobile', action: 'sync' },
+  { code: 'inspections:read', name: 'Ver inspecciones', module: 'inspections', action: 'read' },
+  { code: 'inspections:write', name: 'Editar inspecciones', module: 'inspections', action: 'write' },
+  { code: 'incidents:read', name: 'Ver incidentes', module: 'incidents', action: 'read' },
+  { code: 'incidents:write', name: 'Editar incidentes', module: 'incidents', action: 'write' },
+  { code: 'spr:read', name: 'Ver SPR', module: 'spr', action: 'read' },
+  { code: 'spr:write', name: 'Editar SPR', module: 'spr', action: 'write' },
+  { code: 'spr:submit', name: 'Enviar SPR', module: 'spr', action: 'submit' },
+  { code: 'spr:approve', name: 'Aprobar SPR', module: 'spr', action: 'approve' },
+  { code: 'evidences:read', name: 'Ver evidencias', module: 'evidences', action: 'read' },
+  { code: 'evidences:write', name: 'Editar evidencias', module: 'evidences', action: 'write' },
+  { code: 'evidences:validate', name: 'Validar evidencias', module: 'evidences', action: 'validate' },
+  { code: 'comments:read', name: 'Ver comentarios', module: 'comments', action: 'read' },
+  { code: 'comments:write', name: 'Crear comentarios', module: 'comments', action: 'write' },
+  { code: 'workflows:read', name: 'Ver workflows', module: 'workflows', action: 'read' },
+  { code: 'workflows:write', name: 'Editar workflows', module: 'workflows', action: 'write' },
+  { code: 'workflows:approve', name: 'Aprobar workflows', module: 'workflows', action: 'approve' },
+];
+
+const rolePermissions: Record<string, string[]> = {
+  SUPERVISOR: [
+    'organization:read',
+    'users:read',
+    'mobile:read',
+    'mobile:sync',
+    'inspections:read',
+    'inspections:write',
+    'incidents:read',
+    'incidents:write',
+    'spr:read',
+    'spr:write',
+    'spr:submit',
+    'spr:approve',
+    'evidences:read',
+    'evidences:write',
+    'evidences:validate',
+    'comments:read',
+    'comments:write',
+    'workflows:read',
+    'workflows:write',
+    'workflows:approve',
+  ],
+  INSPECTOR: [
+    'organization:read',
+    'mobile:read',
+    'mobile:sync',
+    'inspections:read',
+    'inspections:write',
+    'incidents:read',
+    'incidents:write',
+    'spr:read',
+    'spr:write',
+    'spr:submit',
+    'evidences:read',
+    'evidences:write',
+    'comments:read',
+    'comments:write',
+    'workflows:read',
+  ],
+  APPROVER: [
+    'organization:read',
+    'users:read',
+    'mobile:read',
+    'inspections:read',
+    'incidents:read',
+    'spr:read',
+    'spr:approve',
+    'evidences:read',
+    'evidences:validate',
+    'comments:read',
+    'comments:write',
+    'workflows:read',
+    'workflows:approve',
+  ],
+  VIEWER: [
+    'organization:read',
+    'mobile:read',
+    'inspections:read',
+    'incidents:read',
+    'spr:read',
+    'evidences:read',
+    'comments:read',
+    'workflows:read',
+  ],
+};
+
 const asArray = <T>(value: unknown, label: string): T[] => {
   if (!Array.isArray(value)) throw new Error(`${label} did not return an array`);
   return value as T[];
@@ -40,10 +150,60 @@ const ensureId = (value: unknown, label: string): string => {
   return row.id;
 };
 
+const ensureStringArray = (value: unknown, label: string): string[] => {
+  if (!Array.isArray(value) || !value.every((item) => typeof item === 'string')) {
+    throw new Error(`${label} did not return a string array`);
+  }
+  return value;
+};
+
+function configureSmokeAuthEnv(): string {
+  process.env.API_TOKEN_KEY ??= `api-smoke-token-key-${randomUUID().replaceAll('-', '')}`;
+  process.env.API_LOGIN_PASSWORD ??= `api-smoke-login-password-${randomUUID()}`;
+  const password = process.env.API_LOGIN_PASSWORD;
+  if (!password) throw new Error('API_LOGIN_PASSWORD is not configured for smoke tests');
+  return password;
+}
+
+async function ensureSecurityPermissionMatrix(dataSource: DataSource): Promise<void> {
+  for (const permission of securityPermissions) {
+    await dataSource.query(
+      `INSERT INTO permissions (code, name, module, action)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (code) DO NOTHING`,
+      [permission.code, permission.name, permission.module, permission.action],
+    );
+  }
+
+  await dataSource.query(
+    `INSERT INTO role_permissions (role_id, permission_id)
+     SELECT r.id, p.id
+     FROM roles r, permissions p
+     WHERE r.code = 'ADMIN'
+     ON CONFLICT DO NOTHING`,
+  );
+
+  for (const [roleCode, permissionCodes] of Object.entries(rolePermissions)) {
+    await dataSource.query(
+      `INSERT INTO role_permissions (role_id, permission_id)
+       SELECT r.id, p.id
+       FROM roles r, permissions p
+       WHERE r.code = $1
+         AND p.code = ANY($2::text[])
+       ON CONFLICT DO NOTHING`,
+      [roleCode, permissionCodes],
+    );
+  }
+}
+
 async function request(baseUrl: string, method: string, path: string, body?: JsonObject, expectedStatus = 200): Promise<unknown> {
+  const headers: Record<string, string> = {};
+  if (body) headers['content-type'] = 'application/json';
+  if (accessToken) headers.authorization = `Bearer ${accessToken}`;
+
   const response = await fetch(`${baseUrl}${path}`, {
     method,
-    headers: body ? { 'content-type': 'application/json' } : undefined,
+    headers: Object.keys(headers).length > 0 ? headers : undefined,
     body: body ? JSON.stringify(body) : undefined,
   });
 
@@ -57,6 +217,75 @@ async function request(baseUrl: string, method: string, path: string, body?: Jso
   if (!text) return null;
   if (contentType.includes('application/json')) return JSON.parse(text);
   return text;
+}
+
+async function loginAs(baseUrl: string, email: string, password: string): Promise<string> {
+  accessToken = null;
+  const login = asObject<LoginSmokeResponse>(
+    await request(baseUrl, 'POST', '/auth/login', { email, password }),
+    'login',
+  );
+  if (typeof login.token !== 'string' || login.token.length === 0) throw new Error('login did not return a token');
+  return login.token;
+}
+
+function assertIncludesAll(values: string[], expected: string[], label: string): void {
+  for (const item of expected) {
+    if (!values.includes(item)) throw new Error(`${label} is missing ${item}`);
+  }
+}
+
+function assertExcludesAll(values: string[], excluded: string[], label: string): void {
+  for (const item of excluded) {
+    if (values.includes(item)) throw new Error(`${label} should not include ${item}`);
+  }
+}
+
+async function runAuthBoundaryChecks(baseUrl: string, password: string): Promise<void> {
+  await request(baseUrl, 'GET', '/health');
+  await request(baseUrl, 'GET', '/me', undefined, 401);
+  await request(baseUrl, 'GET', '/mobile/bootstrap', undefined, 401);
+  await request(baseUrl, 'POST', '/auth/login', {
+    email: 'karen.opazo@goldfields.com',
+    password: 'invalid-password',
+  }, 401);
+
+  accessToken = await loginAs(baseUrl, 'karen.opazo@goldfields.com', password);
+
+  const me = asObject<JsonObject>(await request(baseUrl, 'GET', '/me'), 'me');
+  if (me.email !== 'karen.opazo@goldfields.com') throw new Error('/me did not return the authenticated user');
+  const inspectorPermissions = ensureStringArray(me.permissions, 'inspector permissions');
+  assertIncludesAll(
+    inspectorPermissions,
+    ['mobile:read', 'mobile:sync', 'inspections:write', 'incidents:write', 'spr:submit', 'evidences:write', 'comments:write'],
+    'inspector permissions',
+  );
+  assertExcludesAll(inspectorPermissions, ['*', 'users:read', 'roles:read', 'permissions:read', 'spr:approve'], 'inspector permissions');
+
+  await request(baseUrl, 'GET', '/mobile/bootstrap');
+  await request(baseUrl, 'GET', '/mobile/sync');
+  await request(baseUrl, 'GET', '/organization/areas');
+  await request(baseUrl, 'GET', '/inspections/types');
+  await request(baseUrl, 'GET', '/incidents/types');
+  await request(baseUrl, 'GET', '/spr/groups');
+  await request(baseUrl, 'GET', '/users', undefined, 403);
+  await request(baseUrl, 'GET', '/roles', undefined, 403);
+  await request(baseUrl, 'GET', '/permissions', undefined, 403);
+
+  accessToken = await loginAs(baseUrl, 'carlos.aguirre@goldfields.com', password);
+  const adminMe = asObject<JsonObject>(await request(baseUrl, 'GET', '/me'), 'admin me');
+  const adminPermissions = ensureStringArray(adminMe.permissions, 'admin permissions');
+  if (adminPermissions.includes('*')) throw new Error('admin token should not include wildcard permissions');
+  assertIncludesAll(
+    adminPermissions,
+    ['users:read', 'organization:read', 'roles:read', 'permissions:read', 'inspections:write', 'incidents:write', 'spr:approve', 'evidences:validate'],
+    'admin permissions',
+  );
+
+  await request(baseUrl, 'GET', '/users');
+  await request(baseUrl, 'GET', '/organization/areas');
+  await request(baseUrl, 'GET', '/roles');
+  await request(baseUrl, 'GET', '/permissions');
 }
 
 async function runInspectionFlow(baseUrl: string): Promise<void> {
@@ -319,6 +548,7 @@ async function runSprFlow(baseUrl: string): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  const smokePassword = configureSmokeAuthEnv();
   const app = await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
   app.setGlobalPrefix('api');
   app.useGlobalPipes(
@@ -332,13 +562,14 @@ async function main(): Promise<void> {
   await app.init();
   const dataSource = app.get(DataSource);
   await dataSource.runMigrations();
+  await ensureSecurityPermissionMatrix(dataSource);
   await app.listen(0);
 
   const address = app.getHttpServer().address() as AddressInfo;
   const baseUrl = `http://127.0.0.1:${address.port}/api`;
 
   try {
-    await request(baseUrl, 'GET', '/health');
+    await runAuthBoundaryChecks(baseUrl, smokePassword);
     await runInspectionFlow(baseUrl);
     await runIncidentFlow(baseUrl);
     await runSprFlow(baseUrl);

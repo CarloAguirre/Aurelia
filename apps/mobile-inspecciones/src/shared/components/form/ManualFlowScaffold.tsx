@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, fontSize, fontWeight } from '../../theme/tokens';
 
@@ -14,9 +14,9 @@ export function ManualFlowHeader({ title, subtitle, badge, onBack }: ManualFlowH
   return (
     <View style={styles.header}>
       {onBack ? (
-        <TouchableOpacity style={styles.headerBackButton} onPress={onBack} activeOpacity={0.75}>
+        <Pressable style={styles.headerBackButton} onPress={onBack} hitSlop={8}>
           <FontAwesome5 name="arrow-left" size={18} color={colors.white} />
-        </TouchableOpacity>
+        </Pressable>
       ) : null}
       <View style={styles.headerText}>
         <Text style={styles.headerTitle}>{title}</Text>
@@ -52,17 +52,17 @@ export function ManualFlowFooter({ secondaryLabel, onSecondary, primaryLabel = '
   }
 
   return (
-    <View style={styles.footer}>
-      <View style={styles.footerButtons}>
-        <TouchableOpacity style={styles.secondaryButton} activeOpacity={0.75} onPress={onSecondary}>
+    <View style={styles.footer} pointerEvents="box-none">
+      <View style={styles.footerButtons} pointerEvents="box-none">
+        <Pressable style={styles.secondaryButton} onPress={onSecondary} hitSlop={6}>
           {secondaryIcon ? <FontAwesome5 name={secondaryIcon} size={14} color={colors.gold} /> : null}
           <Text style={styles.secondaryText}>{secondaryLabel}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.primaryButton, success && styles.primaryButtonSuccess, primaryDisabled && styles.primaryButtonDisabled]} activeOpacity={0.82} onPressIn={handlePrimary} onPress={handlePrimary} disabled={primaryDisabled}>
+        </Pressable>
+        <Pressable style={[styles.primaryButton, success && styles.primaryButtonSuccess, primaryDisabled && styles.primaryButtonDisabled]} onPress={handlePrimary} disabled={primaryDisabled} hitSlop={6}>
           {primaryIcon === 'check' ? <FontAwesome5 name="check" size={14} color={primaryDisabled ? colors.placeholder : colors.white} /> : null}
           <Text style={[styles.primaryText, primaryDisabled && styles.primaryTextDisabled]}>{primaryLabel}</Text>
           {primaryIcon === 'arrow-right' ? <FontAwesome5 name="arrow-right" size={14} color={primaryDisabled ? colors.placeholder : colors.white} /> : null}
-        </TouchableOpacity>
+        </Pressable>
       </View>
       <View style={styles.homeIndicator} />
     </View>

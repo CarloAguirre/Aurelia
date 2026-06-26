@@ -1,7 +1,9 @@
 import { Body, Controller, Get, NotFoundException, Param, Post } from '@nestjs/common';
 import type { MobileSyncBatchRequest, MobileSyncBatchResponse } from '@aurelia/contracts';
+import { RequirePermissions } from '../auth/require-permissions.decorator';
 import { MobileSyncService } from './mobile-sync.service';
 
+@RequirePermissions('mobile:sync')
 @Controller('mobile/sync')
 export class MobileSyncController {
   constructor(private readonly mobileSyncService: MobileSyncService) {}

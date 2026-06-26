@@ -28,6 +28,7 @@ function toOperation(item: SyncQueueItem): MobileSyncOperationRequest {
 
 export interface SyncNowResult {
   attempted: number;
+  accepted: number;
   synced: number;
   error: number;
   conflict: number;
@@ -35,7 +36,7 @@ export interface SyncNowResult {
 
 export async function syncPendingOperations(): Promise<SyncNowResult> {
   const ready = await syncQueue.getReadyToSync();
-  if (ready.length === 0) return { attempted: 0, synced: 0, error: 0, conflict: 0 };
+  if (ready.length === 0) return { attempted: 0, accepted: 0, synced: 0, error: 0, conflict: 0 };
 
   const session = await getOrCreateOfflineDeviceSession();
   const batch: MobileSyncBatchRequest = {
@@ -52,13 +53,16 @@ export async function syncPendingOperations(): Promise<SyncNowResult> {
 
   try {
     const response = await submitMobileSyncBatch(batch);
+    let accepted = 0;
     let synced = 0;
     let error = 0;
     let conflict = 0;
     for (const result of response.results) {
-      if (result.status === MobileSyncStatus.SYNCED || result.status === MobileSyncStatus.PROCESSING || result.status === MobileSyncStatus.PENDING) {
+      if (result.status === MobileSyncStatus.SYNCED) {
         await syncQueue.markSynced(result.localId, result.remoteId);
         synced += 1;
+      } else if (result.status === MobileSyncStatus.PROCESSING || result.status === MobileSyncStatus.PENDING) {
+        accepted += 1;
       } else if (result.status === MobileSyncStatus.CONFLICT) {
         await syncQueue.markConflict(result.localId, result.conflictReason ?? 'Conflicto de sincronización');
         conflict += 1;
@@ -67,10 +71,10 @@ export async function syncPendingOperations(): Promise<SyncNowResult> {
         error += 1;
       }
     }
-    return { attempted: ready.length, synced, error, conflict };
+    return { attempted: ready.length, accepted, synced, error, conflict };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Error de sincronización';
     await Promise.all(ready.map((item) => syncQueue.markError(item.localId, message)));
-    return { attempted: ready.length, synced: 0, error: ready.length, conflict: 0 };
+    return { attempted: ready.length, accepted: 0, synced: 0, error: ready.length, conflict: 0 };
   }
 }

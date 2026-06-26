@@ -8,4 +8,8 @@ export default () => ({
     name: process.env.DB_NAME ?? 'aurelia',
     synchronize: process.env.DB_SYNCHRONIZE === 'true',
   },
+  security: {
+    tokenKey: process.env.API_TOKEN_KEY,
+    tokenTtlSeconds: parseInt(process.env.API_TOKEN_TTL_SECONDS ?? '3600', 10),
+  },
 });

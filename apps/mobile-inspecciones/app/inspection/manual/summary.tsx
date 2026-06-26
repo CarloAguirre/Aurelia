@@ -1,3 +1,3 @@
-import { ManualInspectionSummaryScreen } from '../../../src/modules/inspection/ManualInspectionSummaryScreen';
+import { ManualInspectionSummaryFixedScreen } from '../../../src/modules/inspection/ManualInspectionSummaryFixedScreen';
 
-export default ManualInspectionSummaryScreen;
+export default ManualInspectionSummaryFixedScreen;

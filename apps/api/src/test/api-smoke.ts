@@ -50,7 +50,9 @@ const ensureId = (value: unknown, label: string): string => {
 function configureSmokeAuthEnv(): string {
   process.env.API_TOKEN_KEY ??= `api-smoke-token-key-${randomUUID().replaceAll('-', '')}`;
   process.env.API_LOGIN_PASSWORD ??= `api-smoke-login-password-${randomUUID()}`;
-  return process.env.API_LOGIN_PASSWORD;
+  const password = process.env.API_LOGIN_PASSWORD;
+  if (!password) throw new Error('API_LOGIN_PASSWORD is not configured for smoke tests');
+  return password;
 }
 
 async function request(baseUrl: string, method: string, path: string, body?: JsonObject, expectedStatus = 200): Promise<unknown> {

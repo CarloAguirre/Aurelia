@@ -1,4 +1,4 @@
-import type { CreateInspectionFindingRequest, CreateInspectionRequest, MobileSyncOperationType } from '@aurelia/contracts';
+import type { CreateInspectionRequest, MobileSyncOperationType } from '@aurelia/contracts';
 import { createLocalInspection, incrementLocalInspectionFindings } from '../../offline/local-inspections';
 import { getOrCreateOfflineDeviceSession } from '../../offline/offline-device-session';
 import { syncPendingOperations } from '../../sync/sync-engine';
@@ -119,7 +119,7 @@ export async function createFinding(inspectionId: string, dto: CreateFindingDto)
   const session = await getOrCreateOfflineDeviceSession();
   const localId = createId('finding');
   const createdAt = new Date().toISOString();
-  const payload: CreateInspectionFindingRequest & { inspectionLocalId: string } = {
+  const payload = {
     inspectionLocalId: inspectionId,
     checklistItemId: null,
     title: dto.title,

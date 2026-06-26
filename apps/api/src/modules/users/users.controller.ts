@@ -1,11 +1,13 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { UserResponse } from '@aurelia/contracts';
+import { RequirePermissions } from '../auth/require-permissions.decorator';
 import { AssignUserAreaDto } from './dto/assign-user-area.dto';
 import { AssignUserCompanyDto } from './dto/assign-user-company.dto';
 import { AssignUserRoleDto } from './dto/assign-user-role.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UsersService } from './users.service';
 
+@RequirePermissions('users:read')
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -23,11 +25,13 @@ export class UsersController {
     return this.usersService.findOne(id);
   }
 
+  @RequirePermissions('users:write')
   @Post()
   create(@Body() dto: CreateUserDto): Promise<UserResponse> {
     return this.usersService.create(dto);
   }
 
+  @RequirePermissions('users:write')
   @Post(':id/roles')
   assignRole(
     @Param('id', ParseUUIDPipe) id: string,
@@ -36,6 +40,7 @@ export class UsersController {
     return this.usersService.assignRole(id, dto);
   }
 
+  @RequirePermissions('users:write')
   @Post(':id/companies')
   assignCompany(
     @Param('id', ParseUUIDPipe) id: string,
@@ -44,6 +49,7 @@ export class UsersController {
     return this.usersService.assignCompany(id, dto);
   }
 
+  @RequirePermissions('users:write')
   @Post(':id/areas')
   assignArea(
     @Param('id', ParseUUIDPipe) id: string,

@@ -41,6 +41,10 @@ export interface EnqueueSyncOperationInput<TPayload = unknown> {
   localId?: string;
 }
 
+export interface ReadyToSyncOptions {
+  ignoreRetryDelay?: boolean;
+}
+
 class PersistentSyncQueue {
   async enqueue<TPayload>(input: EnqueueSyncOperationInput<TPayload>): Promise<SyncQueueItem<TPayload>> {
     const items = await this.getAll();
@@ -80,11 +84,12 @@ class PersistentSyncQueue {
     return items.filter((item) => statuses.includes(item.status));
   }
 
-  async getReadyToSync(): Promise<SyncQueueItem[]> {
+  async getReadyToSync(options: ReadyToSyncOptions = {}): Promise<SyncQueueItem[]> {
     const items = await this.getAll();
     const current = now();
     return items.filter((item) => {
       if (![PENDING, ERROR].includes(item.status)) return false;
+      if (options.ignoreRetryDelay) return true;
       return !item.nextRetryAt || item.nextRetryAt <= current;
     });
   }

@@ -3,6 +3,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 're
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
+import { InspectionType } from '@aurelia/contracts';
 import { BotBubble } from '../../shared/components/chat/BotBubble';
 import { UserBubble } from '../../shared/components/chat/UserBubble';
 import { TypingIndicator } from '../../shared/components/chat/TypingIndicator';
@@ -22,6 +23,7 @@ import { fetchUsers, type UserResponse } from '../../shared/services/api/users.a
 import { suggestCorrectiveMeasure, suggestCompany } from '../../shared/services/api/ai.api';
 import { useInspectionFlow } from './useInspectionFlow';
 import { useManualConnectivityStatus } from './useManualConnectivityStatus';
+import { useManualInspectionDraft } from './manualInspection.store';
 import { useSaveAssistantInspectionOffline } from './hooks/useSaveAssistantInspectionOffline';
 
 const AREAS_KEY = ['areas'] as const;
@@ -32,7 +34,13 @@ const personnelKey = (companyId: string) => ['personnel', companyId] as const;
 const PROBS = ['1 · Muy improbable', '2 · Improbable', '3 · Posible', '4 · Probable', '5 · Casi seguro'];
 const CONS = ['1 · Insignificante', '2 · Menor', '3 · Moderado', '4 · Mayor', '5 · Catastrófico'];
 const SLA_LABEL: Record<string, string> = { Bajo: '14 días', Medio: '7 días', Alto: '3 días', Crítico: '1 día' };
-const TIPO_ICON: Record<string, string> = { HALLAZGO: '🔍', CHECKLIST: '📋', ROUTINE: '📋', PREVENTIVE: '🛡', REGULATORY: '📜' };
+
+type AssistantInspectionTypeOption = {
+  value: InspectionType;
+  label: string;
+  icon: string;
+  inspectionTypeId: string | null;
+};
 
 type MessageItem =
   | { id: string; type: 'bot'; text: string }
@@ -41,7 +49,7 @@ type MessageItem =
   | { id: string; type: 'error'; message: string }
   | { id: string; type: 'area_chips'; areas: AreaResponse[] }
   | { id: string; type: 'sector_chips'; sectors: SectorResponse[] }
-  | { id: string; type: 'tipo_opts'; tipos: InspectionTypeResponse[] }
+  | { id: string; type: 'tipo_opts'; tipos: AssistantInspectionTypeOption[] }
   | { id: string; type: 'prob_chips' }
   | { id: string; type: 'cons_chips' }
   | { id: string; type: 'more_obs_opts' }
@@ -68,18 +76,20 @@ function calcNivel(p: number, c: number): string {
   return 'Crítico';
 }
 
-function tipoIcon(code: string, name: string): string {
-  if (TIPO_ICON[code.toUpperCase()]) return TIPO_ICON[code.toUpperCase()];
-  const normalized = name.toLowerCase();
-  if (normalized.includes('hallazgo')) return '🔍';
-  if (normalized.includes('checklist') || normalized.includes('normativ')) return '📋';
-  if (normalized.includes('preventiv')) return '🛡';
-  if (normalized.includes('regulat')) return '📜';
-  return '📋';
+function typeId(records: InspectionTypeResponse[], code: InspectionType): string | null {
+  return records.find((item) => item.code === code)?.id ?? null;
+}
+
+function buildAssistantTypeOptions(records: InspectionTypeResponse[]): AssistantInspectionTypeOption[] {
+  return [
+    { value: InspectionType.ENVIRONMENTAL, label: 'Hallazgo', icon: 'search', inspectionTypeId: typeId(records, InspectionType.ENVIRONMENTAL) },
+    { value: InspectionType.REGULATORY, label: 'Checklist normativo', icon: 'clipboard-check', inspectionTypeId: typeId(records, InspectionType.REGULATORY) },
+  ];
 }
 
 export function InspectionChatScreen() {
   const flow = useInspectionFlow();
+  const manualDraft = useManualInspectionDraft();
   const queryClient = useQueryClient();
   const scrollRef = useRef<ScrollView>(null);
   const retryCallbacks = useRef<Map<string, () => void>>(new Map());
@@ -143,12 +153,8 @@ export function InspectionChatScreen() {
     addMsg({ type: 'user', text: area.name });
     addMsg({ type: 'typing' });
     try {
-      const [sectors, tipos] = await Promise.all([
-        queryClient.fetchQuery({ queryKey: sectorsKey(area.id), queryFn: () => fetchSectors(area.id), staleTime: 5 * 60 * 1000 }),
-        queryClient.fetchQuery({ queryKey: TYPES_KEY, queryFn: fetchInspectionTypes, staleTime: 5 * 60 * 1000 }),
-      ]);
+      const sectors = await queryClient.fetchQuery({ queryKey: sectorsKey(area.id), queryFn: () => fetchSectors(area.id), staleTime: 5 * 60 * 1000 });
       removeTyping();
-      queryClient.setQueryData(TYPES_KEY, tipos);
       addMsg({ type: 'bot', text: `${area.name} ✓ — ¿En qué sector?` });
       addMsg({ type: 'sector_chips', sectors });
     } catch {
@@ -164,20 +170,34 @@ export function InspectionChatScreen() {
     addMsg({ type: 'typing' });
     await delay(500);
     try {
-      const tipos = await queryClient.fetchQuery({ queryKey: TYPES_KEY, queryFn: fetchInspectionTypes, staleTime: 5 * 60 * 1000 });
+      const records = await queryClient.fetchQuery({ queryKey: TYPES_KEY, queryFn: fetchInspectionTypes, staleTime: 5 * 60 * 1000 });
+      const tipos = buildAssistantTypeOptions(records);
       removeTyping();
       addMsg({ type: 'bot', text: `${flow.areaName} · ${sector.name} ✓ — ¿Tipo de inspección?` });
       addMsg({ type: 'tipo_opts', tipos });
     } catch {
       removeTyping();
-      addErrorMsg('Error al cargar tipos de inspección desde catálogos locales.', () => handleSectorSelect(sector, widgetId));
+      addErrorMsg('Error al resolver tipos de inspección desde catálogos locales.', () => handleSectorSelect(sector, widgetId));
     }
   }
 
-  async function handleTipoSelect(tipo: InspectionTypeResponse, widgetId: string) {
+  async function handleTipoSelect(tipo: AssistantInspectionTypeOption, widgetId: string) {
     resolveWidget(widgetId);
-    flow.setInspectionType(tipo.id, tipo.name);
-    addMsg({ type: 'user', text: tipo.name });
+    if (!tipo.inspectionTypeId) {
+      addErrorMsg(`No existe el tipo ${tipo.label} en el catálogo bootstrap.`);
+      return;
+    }
+    flow.setInspectionType(tipo.inspectionTypeId, tipo.label);
+    addMsg({ type: 'user', text: tipo.label });
+    if (tipo.value === InspectionType.REGULATORY) {
+      if (flow.areaId && flow.areaName) manualDraft.setArea(flow.areaId, flow.areaName);
+      if (flow.sectorId && flow.sectorName) manualDraft.setSector(flow.sectorId, flow.sectorName);
+      manualDraft.setInspectionType(InspectionType.REGULATORY, 'Checklist normativo');
+      addMsg({ type: 'bot', text: 'Checklist normativo requiere fecha, ubicación, plantilla e ítems igual que el formulario manual. Ya dejé área y sector preseleccionados; completa esos datos en el flujo manual para no generar una inspección incompleta.' });
+      await delay(900);
+      router.replace('/inspection/manual/identification');
+      return;
+    }
     addMsg({ type: 'typing' });
     await delay(500);
     removeTyping();
@@ -421,7 +441,7 @@ export function InspectionChatScreen() {
       case 'sector_chips':
         return <ChipRow key={msg.id} chips={msg.sectors.map((sector) => sector.name)} selected={isResolved ? flow.sectorName : null} onSelect={(name) => { if (!isResolved) { const sector = msg.sectors.find((item) => item.name === name); if (sector) void handleSectorSelect(sector, msg.id); } }} />;
       case 'tipo_opts':
-        return <QuickOpts key={msg.id} options={msg.tipos.map((tipo) => ({ value: tipo.id, label: tipo.name, icon: tipoIcon(tipo.code, tipo.name) }))} selected={isResolved ? flow.inspectionTypeId : null} onSelect={(id) => { if (!isResolved) { const tipo = msg.tipos.find((item) => item.id === id); if (tipo) void handleTipoSelect(tipo, msg.id); } }} />;
+        return <QuickOpts key={msg.id} options={msg.tipos.map((tipo) => ({ value: tipo.value, label: tipo.label, icon: tipo.icon }))} selected={isResolved ? flow.inspectionTypeName : null} onSelect={(value) => { if (!isResolved) { const tipo = msg.tipos.find((item) => item.value === value); if (tipo) void handleTipoSelect(tipo, msg.id); } }} />;
       case 'ai_proposal':
         return <AiProposalCard key={msg.id} suggestion={flow.aiSuggestion ?? ''} fallback={flow.aiFallback} accepted={aiAccepted} onAccept={handleAiAccept} onEdit={handleAiEdit} />;
       case 'prob_chips':

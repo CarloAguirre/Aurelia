@@ -9,15 +9,18 @@ import {
   Query,
 } from '@nestjs/common';
 import { EvidenceResponse, EvidenceLinkResponse } from '@aurelia/contracts';
+import { RequirePermissions } from '../auth/require-permissions.decorator';
 import { EvidencesService } from './evidences.service';
 import { CreateEvidenceDto } from './dto/create-evidence.dto';
 import { LinkEvidenceDto } from './dto/link-evidence.dto';
 import { ValidateEvidenceDto } from './dto/validate-evidence.dto';
 
+@RequirePermissions('evidences:read')
 @Controller('evidences')
 export class EvidencesController {
   constructor(private readonly evidencesService: EvidencesService) {}
 
+  @RequirePermissions('evidences:write')
   @Post()
   create(@Body() dto: CreateEvidenceDto): Promise<EvidenceResponse> {
     return this.evidencesService.create(dto);
@@ -31,6 +34,7 @@ export class EvidencesController {
     return this.evidencesService.findAll(entityType, entityId);
   }
 
+  @RequirePermissions('evidences:write')
   @Post(':id/link')
   link(
     @Param('id', ParseUUIDPipe) id: string,
@@ -39,6 +43,7 @@ export class EvidencesController {
     return this.evidencesService.link(id, dto);
   }
 
+  @RequirePermissions('evidences:validate')
   @Patch(':id/validate')
   validate(
     @Param('id', ParseUUIDPipe) id: string,

@@ -25,7 +25,7 @@ export class JwtTokenService {
 
   sign(payload: Omit<AccessTokenPayload, 'iat' | 'exp'>): string {
     const now = Math.floor(Date.now() / 1000);
-    const ttlSeconds = this.config.get<number>('security.jwtExpiresInSeconds') ?? 3600;
+    const ttlSeconds = parseInt(process.env.API_TOKEN_TTL_SECONDS ?? '3600', 10);
     const fullPayload: AccessTokenPayload = {
       ...payload,
       iat: now,
@@ -50,9 +50,9 @@ export class JwtTokenService {
   }
 
   private signPart(value: string): string {
-    const secret = this.config.get<string>('security.jwtSecret');
-    if (!secret || secret.length < 32) throw new Error('JWT_SECRET must be at least 32 characters');
-    return createHmac('sha256', secret).update(value).digest('base64url');
+    const key = process.env.API_TOKEN_KEY ?? this.config.get<string>('security.tokenKey');
+    if (!key || key.length < 32) throw new Error('API_TOKEN_KEY must be at least 32 characters');
+    return createHmac('sha256', key).update(value).digest('base64url');
   }
 
   private safeEquals(left: string, right: string): boolean {

@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { MobileSyncStatus, type MobileSyncBatchRequest, type MobileSyncBatchResponse } from '@aurelia/contracts';
+import type { MobileSyncBatchRequest, MobileSyncBatchResponse, MobileSyncStatus } from '@aurelia/contracts';
 import { InMemoryMobileSyncBroker } from '../../shared/messaging/in-memory-mobile-sync-broker';
+
+const PROCESSING = 'PROCESSING' as MobileSyncStatus;
 
 @Injectable()
 export class MobileSyncService {
@@ -22,11 +24,11 @@ export class MobileSyncService {
     const response: MobileSyncBatchResponse = {
       batchId: batch.batchId,
       acceptedAt,
-      status: MobileSyncStatus.PROCESSING,
+      status: PROCESSING,
       results: batch.operations.map((operation) => ({
         localId: operation.localId,
         remoteId: null,
-        status: MobileSyncStatus.PROCESSING,
+        status: PROCESSING,
         syncedAt: null,
       })),
       nextRecommendedSyncAt: null,

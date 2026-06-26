@@ -1,8 +1,10 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role } from '@aurelia/contracts';
 import { UserEntity } from '../users/entities/user.entity';
+import { JwtTokenService } from './jwt-token.service';
 
 export interface LoginRequest {
   email: string;
@@ -32,16 +34,28 @@ export class AuthService {
   constructor(
     @InjectRepository(UserEntity)
     private readonly usersRepository: Repository<UserEntity>,
+    private readonly jwtTokenService: JwtTokenService,
+    private readonly config: ConfigService,
   ) {}
 
   async login(payload: LoginRequest): Promise<LoginResponse> {
-    const password = process.env.DEMO_LOGIN_PASSWORD ?? 'Aurelia2026!';
-    if (payload.password !== password) {
+    const email = payload?.email?.trim().toLowerCase();
+    const loginPassword = this.config.get<string>('auth.loginPassword');
+
+    if (!email || !payload?.password) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (!loginPassword) {
+      throw new InternalServerErrorException('API login password is not configured');
+    }
+
+    if (payload.password !== loginPassword) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const user = await this.usersRepository.findOne({
-      where: { email: payload.email.toLowerCase(), isActive: true },
+      where: { email, isActive: true },
       relations: {
         company: true,
         area: true,
@@ -56,24 +70,40 @@ export class AuthService {
     await this.usersRepository.update(user.id, { lastLoginAt: new Date() });
 
     const roles = user.userRoles?.map((userRole) => userRole.role.code) ?? [];
+    const permissions = this.resolvePermissions(roles);
     const isGoldFieldsUser = user.email.endsWith('@goldfields.com');
+    const fullName = `${user.firstName} ${user.lastName}`.trim();
+    const companyName = user.company?.name ?? (isGoldFieldsUser ? 'Gold Fields' : null);
+    const areaName = user.area?.name ?? (isGoldFieldsUser ? 'Medio Ambiente' : null);
+    const token = this.jwtTokenService.sign({
+      sub: user.id,
+      email: user.email,
+      fullName,
+      roles,
+      permissions,
+    });
 
     return {
-      token: `demo-token-${user.id}`,
+      token,
       user: {
         id: user.id,
         email: user.email,
-        fullName: `${user.firstName} ${user.lastName}`,
+        fullName,
         firstName: user.firstName,
         lastName: user.lastName,
         position: user.position,
         companyId: user.companyId,
-        companyName: user.company?.name ?? (isGoldFieldsUser ? 'Gold Fields' : null),
+        companyName,
         areaId: user.areaId,
-        areaName: user.area?.name ?? (isGoldFieldsUser ? 'Medio Ambiente' : null),
+        areaName,
         roles,
-        permissions: roles.includes(Role.ADMIN) ? ['*'] : ['inspections:create', 'inspections:read'],
+        permissions,
       },
     };
+  }
+
+  private resolvePermissions(roles: Role[]): string[] {
+    if (roles.includes(Role.ADMIN)) return ['*'];
+    return ['inspections:create', 'inspections:read'];
   }
 }

@@ -46,7 +46,7 @@ export function ManualIdentificationConnected() {
   const goToIdentification = useManualInspectionFlowStore((state) => state.goToIdentification);
   const goToType = useManualInspectionFlowStore((state) => state.goToType);
   const { online, hasSession } = useManualConnectivityStatus();
-  const { areas, sectors, loadingAreas, loadingSectors } = useManualInspectionCatalogs();
+  const { areas, sectors, loadingAreas, loadingSectors, catalogErrorMessage } = useManualInspectionCatalogs();
   const { captureLocation, capturing, locationError } = useManualInspectionLocation();
   const inspectorName = user?.fullName ?? draft.inspectorName;
   const inspectorCompanyName = user?.companyName ?? draft.inspectorCompanyName;
@@ -54,6 +54,7 @@ export function ManualIdentificationConnected() {
   const sectorOptions = useMemo<SelectSheetOption[]>(() => sectors.map((sector) => ({ id: sector.id, label: sector.name, description: sector.code })), [sectors]);
   const dateOptions = useMemo<SelectSheetOption[]>(buildDateOptions, []);
   const canContinue = Boolean(draft.areaId && draft.sectorId && draft.inspectionDate && draft.locationCaptured);
+  const catalogEmptyText = catalogErrorMessage ?? 'No hay catálogos disponibles para operar offline';
 
   React.useEffect(() => {
     goToIdentification();
@@ -134,8 +135,8 @@ export function ManualIdentificationConnected() {
             </FormCard>
           </ScrollView>
           <ManualFlowFooter secondaryLabel="Cancelar" onSecondary={cancel} onPrimary={next} primaryDisabled={!canContinue} />
-          <SelectSheet visible={activePicker === 'area'} title="Seleccionar área" subtitle="Catálogo cargado desde la API" options={areaOptions} selectedId={draft.areaId} loading={loadingAreas} onClose={closePicker} onSelect={selectArea} />
-          <SelectSheet visible={activePicker === 'sector'} title="Seleccionar sector" subtitle={draft.areaName ?? 'Selecciona un área primero'} options={sectorOptions} selectedId={draft.sectorId} loading={loadingSectors} emptyText="No hay sectores para el área seleccionada" onClose={closePicker} onSelect={selectSector} />
+          <SelectSheet visible={activePicker === 'area'} title="Seleccionar área" subtitle="Catálogo online/cache local" options={areaOptions} selectedId={draft.areaId} loading={loadingAreas} emptyText={catalogEmptyText} onClose={closePicker} onSelect={selectArea} />
+          <SelectSheet visible={activePicker === 'sector'} title="Seleccionar sector" subtitle={draft.areaName ?? 'Selecciona un área primero'} options={sectorOptions} selectedId={draft.sectorId} loading={loadingSectors} emptyText={catalogEmptyText} onClose={closePicker} onSelect={selectSector} />
           <SelectSheet visible={activePicker === 'date'} title="Fecha de inspección" subtitle="Selecciona la fecha del registro" options={dateOptions} selectedId={draft.inspectionDate} onClose={closePicker} onSelect={selectDate} />
         </View>
       </SafeAreaView>

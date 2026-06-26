@@ -59,7 +59,13 @@ export class AuthService {
       relations: {
         company: true,
         area: true,
-        userRoles: { role: true },
+        userRoles: {
+          role: {
+            rolePermissions: {
+              permission: true,
+            },
+          },
+        },
       },
     });
 
@@ -70,7 +76,7 @@ export class AuthService {
     await this.usersRepository.update(user.id, { lastLoginAt: new Date() });
 
     const roles = user.userRoles?.map((userRole) => userRole.role.code) ?? [];
-    const permissions = this.resolvePermissions(roles);
+    const permissions = this.resolvePermissions(user);
     const isGoldFieldsUser = user.email.endsWith('@goldfields.com');
     const fullName = `${user.firstName} ${user.lastName}`.trim();
     const companyName = user.company?.name ?? (isGoldFieldsUser ? 'Gold Fields' : null);
@@ -102,8 +108,11 @@ export class AuthService {
     };
   }
 
-  private resolvePermissions(roles: Role[]): string[] {
-    if (roles.includes(Role.ADMIN)) return ['*'];
-    return ['inspections:create', 'inspections:read'];
+  private resolvePermissions(user: UserEntity): string[] {
+    const permissions = user.userRoles?.flatMap((userRole) => (
+      userRole.role.rolePermissions?.map((rolePermission) => rolePermission.permission.code) ?? []
+    )) ?? [];
+
+    return Array.from(new Set(permissions)).sort();
   }
 }

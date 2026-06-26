@@ -1,4 +1,4 @@
-import type { AreaResponse, CompanyResponse } from '../organization';
+import type { AreaResponse, CompanyResponse, SectorResponse } from '../organization';
 import type { UserResponse } from '../users';
 import type { InspectionChecklistTemplateResponse, InspectionTypeResponse } from '../inspections';
 import type { ISODateString } from '../../types/common';
@@ -9,7 +9,7 @@ export interface MobileBootstrapResponse {
   expiresAt: ISODateString;
   catalogs: {
     areas: AreaResponse[];
-    sectors: unknown[];
+    sectors: SectorResponse[];
     companies: CompanyResponse[];
     users: UserResponse[];
     inspectionTypes: InspectionTypeResponse[];

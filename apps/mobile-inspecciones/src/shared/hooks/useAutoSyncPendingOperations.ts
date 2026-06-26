@@ -19,7 +19,7 @@ export function useAutoSyncPendingOperations() {
     if (!hasSession || !isOnline() || runningRef.current) return;
     runningRef.current = true;
     try {
-      const result = await syncPendingOperations();
+      const result = await syncPendingOperations({ ignoreRetryDelay: true });
       if (result.attempted > 0) {
         void queryClient.invalidateQueries({ queryKey: ['mobile-inspecciones', 'inspections'] });
         void queryClient.invalidateQueries({ queryKey: ['mobile-inspecciones', 'inspection-home-summary'] });

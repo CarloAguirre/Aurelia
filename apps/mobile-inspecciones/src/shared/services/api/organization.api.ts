@@ -1,6 +1,8 @@
 import type { AreaResponse, CompanyResponse, SectorResponse } from '@aurelia/contracts';
 import { getMobileBootstrapLocalFirst } from '../../offline/local-catalogs';
 
+export type { AreaResponse, CompanyResponse, SectorResponse };
+
 export async function fetchAreas(): Promise<AreaResponse[]> {
   const bootstrap = await getMobileBootstrapLocalFirst();
   return bootstrap.catalogs.areas;

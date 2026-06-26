@@ -156,18 +156,23 @@ export function ManualInspectionSummaryScreen() {
     router.replace('/inspection/manual/observations');
   }
 
-  async function save() {
+  function save() {
     if (!selectedTemplate) {
       Alert.alert('Plantilla no disponible', 'No se pudo encontrar la plantilla seleccionada para guardar la inspección.');
       return;
     }
-    try {
-      const result = await saveMutation.mutateAsync({ draft, template: selectedTemplate, items: indexedItems, trySyncNow: online });
-      setLastSavedResult(result);
-      router.replace('/inspection/manual/saved');
-    } catch {
-      Alert.alert('No se pudo guardar', 'No se pudo escribir el formulario en la cola local. Intenta nuevamente.');
-    }
+    saveMutation.mutate(
+      { draft, template: selectedTemplate, items: indexedItems, trySyncNow: online && hasSession },
+      {
+        onSuccess: (result) => {
+          setLastSavedResult(result);
+          router.replace('/inspection/manual/saved');
+        },
+        onError: () => {
+          Alert.alert('No se pudo guardar', 'No se pudo escribir el formulario en la cola local. Intenta nuevamente.');
+        },
+      },
+    );
   }
 
   return (

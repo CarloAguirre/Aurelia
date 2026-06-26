@@ -14,6 +14,8 @@ import { PersonnelPicker } from '../../shared/components/chat/PersonnelPicker';
 import { PhotoStepWidget } from '../../shared/components/chat/PhotoStepWidget';
 import { ErrorBubble } from '../../shared/components/chat/ErrorBubble';
 import { SubmitWidget } from '../../shared/components/chat/SubmitWidget';
+import { CriticalityWidget } from '../../shared/components/chat/CriticalityWidget';
+import { SlaConfirmWidget } from '../../shared/components/chat/SlaConfirmWidget';
 import { ChatHeader } from '../../shared/components/layout/ChatHeader';
 import { ChatInput } from '../../shared/components/layout/ChatInput';
 import { colors, spacing } from '../../shared/theme/tokens';
@@ -30,8 +32,6 @@ const TYPES_KEY = ['inspection-types'] as const;
 const COMPANIES_KEY = ['companies', 'contractors'] as const;
 const sectorsKey = (areaId: string) => ['sectors', areaId] as const;
 const personnelKey = (companyId: string) => ['personnel', companyId] as const;
-const PROBS = ['1 · Muy improbable', '2 · Improbable', '3 · Posible', '4 · Probable', '5 · Casi seguro'];
-const CONS = ['1 · Insignificante', '2 · Menor', '3 · Moderado', '4 · Mayor', '5 · Catastrófico'];
 const SLA_LABEL: Record<string, string> = { Bajo: '14 días', Medio: '7 días', Alto: '3 días', Crítico: '1 día' };
 
 type AssistantTypeOption = { value: InspectionType; label: string; icon: string; inspectionTypeId: string | null };
@@ -43,8 +43,8 @@ type MessageItem =
   | { id: string; type: 'area_chips'; areas: AreaResponse[] }
   | { id: string; type: 'sector_chips'; sectors: SectorResponse[] }
   | { id: string; type: 'tipo_opts'; tipos: AssistantTypeOption[] }
-  | { id: string; type: 'prob_chips' }
-  | { id: string; type: 'cons_chips' }
+  | { id: string; type: 'criticality_widget' }
+  | { id: string; type: 'sla_widget'; suggestedDays: number; observationNumber: number }
   | { id: string; type: 'more_obs_opts' }
   | { id: string; type: 'company_chips'; companies: CompanyResponse[] }
   | { id: string; type: 'personnel_picker'; users: UserResponse[] }
@@ -62,14 +62,6 @@ function nextId() {
 
 function delay(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
-}
-
-function calcNivel(p: number, c: number): string {
-  const score = (p - 1) + (c - 1);
-  if (score <= 1) return 'Bajo';
-  if (score <= 3) return 'Medio';
-  if (score <= 5) return 'Alto';
-  return 'Crítico';
 }
 
 function typeId(records: InspectionTypeResponse[], code: InspectionType): string | null {
@@ -234,15 +226,19 @@ export function InspectionAssistantChatScreen() {
     setAiAccepted(false);
   }
 
+  async function showCriticalityStep() {
+    await delay(300);
+    addMsg({ type: 'bot', text: 'Definamos la criticidad. Selecciona la Probabilidad:' });
+    addMsg({ type: 'criticality_widget' });
+  }
+
   async function handleAiAccept() {
     if (aiAccepted) return;
     setAiAccepted(true);
     setWaitingInput(null);
     flow.acceptMedida(flow.aiSuggestion ?? '', 'ia');
     addMsg({ type: 'user', text: '✓ Medida aceptada' });
-    await delay(300);
-    addMsg({ type: 'bot', text: 'Definamos la criticidad. Selecciona la Probabilidad:' });
-    addMsg({ type: 'prob_chips' });
+    await showCriticalityStep();
   }
 
   function handleAiEdit() {
@@ -257,30 +253,23 @@ export function InspectionAssistantChatScreen() {
     setAiAccepted(true);
     flow.acceptMedida(text, 'manual');
     addMsg({ type: 'user', text });
-    await delay(300);
-    addMsg({ type: 'bot', text: 'Definamos la criticidad. Selecciona la Probabilidad:' });
-    addMsg({ type: 'prob_chips' });
+    await showCriticalityStep();
   }
 
-  async function handleProbSelect(label: string, widgetId: string) {
+  async function handleCriticalityComplete(probability: number, consequence: number, level: string, slaDays: number, widgetId: string) {
     resolveWidget(widgetId);
-    flow.setProb(parseInt(label[0]));
-    addMsg({ type: 'user', text: label });
-    await delay(200);
-    addMsg({ type: 'bot', text: '¿Qué tan grave sería el impacto? Selecciona la Consecuencia:' });
-    addMsg({ type: 'cons_chips' });
-  }
-
-  async function handleConsSelect(label: string, widgetId: string) {
-    resolveWidget(widgetId);
-    const cons = parseInt(label[0]);
-    flow.setCons(cons);
-    addMsg({ type: 'user', text: label });
-    const nivel = calcNivel(flow.currentObs.prob ?? 1, cons);
+    flow.setProb(probability);
+    flow.setCons(consequence);
     await delay(500);
-    addMsg({ type: 'bot', text: `Criticidad: ${nivel}. SLA sugerido: ${SLA_LABEL[nivel] ?? '7 días'}.` });
-    await delay(700);
-    addMsg({ type: 'bot', text: '¿Hay más observaciones que registrar?' });
+    addMsg({ type: 'bot', text: `SLA sugerido: ${SLA_LABEL[level] ?? `${slaDays} días`}. Confirma o ajusta:` });
+    addMsg({ type: 'sla_widget', suggestedDays: slaDays, observationNumber: flow.observaciones.length + 1 });
+  }
+
+  async function handleSlaSave(days: number, widgetId: string) {
+    resolveWidget(widgetId);
+    flow.setSla(days);
+    await delay(350);
+    addMsg({ type: 'bot', text: 'Observación guardada. ¿Hay más observaciones que registrar?' });
     addMsg({ type: 'more_obs_opts' });
   }
 
@@ -395,8 +384,8 @@ export function InspectionAssistantChatScreen() {
         return <QuickOpts key={msg.id} options={msg.tipos.map((tipo) => ({ value: tipo.value, label: tipo.label, icon: tipo.icon }))} selected={isResolved ? selected : null} onSelect={(value) => { if (!isResolved) { const tipo = msg.tipos.find((item) => item.value === value); if (tipo) void handleTipoSelect(tipo, msg.id); } }} />;
       }
       case 'ai_proposal': return <AiProposalCard key={msg.id} suggestion={flow.aiSuggestion ?? ''} fallback={flow.aiFallback} accepted={aiAccepted} onAccept={handleAiAccept} onEdit={handleAiEdit} />;
-      case 'prob_chips': return <ChipRow key={msg.id} chips={PROBS} selected={isResolved && flow.currentObs.prob ? PROBS[flow.currentObs.prob - 1] : null} onSelect={(label) => { if (!isResolved) void handleProbSelect(label, msg.id); }} />;
-      case 'cons_chips': return <ChipRow key={msg.id} chips={CONS} selected={isResolved && flow.currentObs.cons ? CONS[flow.currentObs.cons - 1] : null} onSelect={(label) => { if (!isResolved) void handleConsSelect(label, msg.id); }} />;
+      case 'criticality_widget': return <CriticalityWidget key={msg.id} resolved={isResolved} onComplete={(probability, consequence, level, slaDays) => handleCriticalityComplete(probability, consequence, level, slaDays, msg.id)} />;
+      case 'sla_widget': return <SlaConfirmWidget key={msg.id} initialDays={msg.suggestedDays} observationNumber={msg.observationNumber} resolved={isResolved} onSave={(days) => handleSlaSave(days, msg.id)} />;
       case 'more_obs_opts': return <QuickOpts key={msg.id} options={[{ value: 'mas', label: 'Sí, agregar otra' }, { value: 'empresa', label: 'No, pasar a empresa y personal' }]} selected={isResolved ? 'empresa' : null} onSelect={(value) => { if (!isResolved) void handleMoreObs(value, msg.id); }} />;
       case 'company_chips': return <ChipRow key={msg.id} chips={msg.companies.map((company) => company.name)} selected={isResolved ? flow.companyName : null} onSelect={(name) => { if (!isResolved) { const company = msg.companies.find((item) => item.name === name); if (company) void handleCompanySelect(company, msg.id); } }} />;
       case 'personnel_picker': return <PersonnelPicker key={msg.id} users={msg.users} confirmed={confirmedPickerIds.has(msg.id)} onConfirm={(selected) => handlePersonnelConfirm(selected, msg.id)} />;

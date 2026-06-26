@@ -4,17 +4,53 @@
 
 Subir la API desde MVP/demo hacia una base de seguridad inicial sin bloquear el avance funcional de mobile inspecciones.
 
+## Alcance respetado
+
+No se tocó la fidelidad visual ni el flujo asistido mobile de inspecciones.
+
+## Estado revisado antes de cambiar código
+
+- `AuthService` validaba una contraseña demo y devolvía `demo-token-${user.id}`.
+- `JwtTokenService` ya existía, pero el login no lo usaba para emitir el token.
+- `JwtAuthGuard` validaba Bearer token, pero no estaba activo como `APP_GUARD` global.
+- `AuthController.getMe` ya leía `request.user`, pero `fullName` seguía usando el email.
+- `HealthController` no tenía marca pública explícita.
+- `MobileBootstrapController`, `MobileSyncController`, inspecciones, organización y usuarios no tenían marca pública, por lo que quedan protegidos al activar el guard global.
+- El cliente mobile ya enviaba `Authorization: Bearer <token>` cuando existe sesión.
+
 ## Cambios aplicados
+
+### Decorador de rutas públicas
+
+Se agregó:
+
+```txt
+apps/api/src/modules/auth/public.decorator.ts
+```
+
+Expone `@Public()` e `IS_PUBLIC_KEY` para declarar explícitamente rutas o controladores fuera del guard global.
 
 ### Token service
 
-Se agregó:
+Se actualizó:
 
 ```txt
 apps/api/src/modules/auth/jwt-token.service.ts
 ```
 
-Implementa emisión y verificación de tokens firmados HS256 usando `crypto` de Node.
+Ahora el payload firmado incluye:
+
+```txt
+sub
+email
+fullName
+roles
+permissions
+iat
+exp
+```
+
+También valida estructura de header, algoritmo `HS256`, tipo `JWT`, firma HMAC, expiración y forma mínima del payload.
 
 Variables esperadas:
 
@@ -23,19 +59,73 @@ API_TOKEN_KEY
 API_TOKEN_TTL_SECONDS
 ```
 
-### Auth guard disponible
+`API_TOKEN_KEY` debe tener al menos 32 caracteres.
 
-Se agregó:
+### Login con token firmado
+
+Se actualizó:
+
+```txt
+apps/api/src/modules/auth/auth.service.ts
+```
+
+El login ya no devuelve `demo-token-*`. Ahora:
+
+1. Normaliza el email.
+2. Valida usuario activo existente en base de datos.
+3. Valida contraseña desde env.
+4. Emite token firmado con `JwtTokenService`.
+5. Actualiza `lastLoginAt`.
+6. Devuelve usuario y token compatible con el cliente mobile actual.
+
+Variables de compatibilidad dev:
+
+```txt
+API_LOGIN_PASSWORD
+DEMO_LOGIN_PASSWORD
+```
+
+Se prefiere `API_LOGIN_PASSWORD`. `DEMO_LOGIN_PASSWORD` queda como compatibilidad local temporal, sin valor hardcodeado.
+
+### Configuración de secretos por ambiente
+
+Se actualizó:
+
+```txt
+apps/api/src/config/configuration.ts
+```
+
+Ahora expone:
+
+```txt
+security.tokenKey
+security.tokenTtlSeconds
+auth.loginPassword
+```
+
+No se dejó `JWT_SECRET`, `API_TOKEN_KEY` ni contraseña de login hardcodeada.
+
+### Guard global
+
+Se actualizó:
+
+```txt
+apps/api/src/modules/auth/auth.module.ts
+```
+
+`JwtAuthGuard` quedó activo como `APP_GUARD`.
+
+### Guard con metadata pública
+
+Se actualizó:
 
 ```txt
 apps/api/src/modules/auth/jwt-auth.guard.ts
 ```
 
-El guard valida cabecera Bearer y deja el usuario decodificado en `request.user`.
+El guard ahora consulta `@Public()` con `Reflector`. Si la ruta no es pública, exige `Authorization: Bearer <token>`.
 
-Por seguridad operativa del desarrollo actual, quedó registrado como provider y no como `APP_GUARD` global hasta reemplazar completamente el login demo.
-
-### Endpoint me
+### Login público y `/api/me` real
 
 Se actualizó:
 
@@ -43,61 +133,167 @@ Se actualizó:
 apps/api/src/modules/auth/auth.controller.ts
 ```
 
-para leer desde `request.user` cuando el guard esté activo.
+`POST /api/auth/login` quedó público con `@Public()`.
 
-### Headers y rate limit
+`GET /api/me` queda protegido y responde desde `request.user`:
 
-Se agregó:
+```txt
+id
+email
+fullName
+roles
+permissions
+isPlaceholder=false
+```
+
+### Health público
+
+Se actualizó:
+
+```txt
+apps/api/src/modules/health/health.controller.ts
+```
+
+El controlador quedó marcado con `@Public()` para mantener disponible `GET /api/health` sin token.
+
+### Headers, CORS y rate limit
+
+Se mantiene lo ya aplicado:
 
 ```txt
 apps/api/src/shared/security/http-security.ts
-```
-
-Incluye headers HTTP básicos y rate limit in-memory de 180 requests por minuto por ip, método y path.
-
-### CORS por allowlist
-
-Se actualizó:
-
-```txt
 apps/api/src/main.ts
 ```
 
-Ahora CORS usa `CORS_ORIGINS` en vez de aceptar cualquier origen.
+CORS sigue usando `CORS_ORIGINS`, los headers básicos siguen activos y el rate limit in-memory se mantiene en 180 requests por minuto por ip, método y path.
 
-Valor sugerido en local:
+### Cliente mobile
 
-```txt
-CORS_ORIGINS=http://localhost:8081,http://localhost:3001,http://localhost:5173
-```
+No se modificó el flujo visual ni asistido mobile.
 
-### Cliente mobile preparado
-
-Se actualizó:
+Se mantiene lo ya aplicado:
 
 ```txt
 apps/mobile-inspecciones/src/shared/services/http-client.ts
 ```
 
-Cuando existe sesión mobile, agrega cabecera Bearer a las llamadas HTTP.
+El cliente mobile seguirá llamando bootstrap/sync después de login porque conserva el token en sesión y lo envía como Bearer.
+
+## Rutas públicas
+
+```txt
+POST /api/auth/login
+GET /api/health
+```
+
+## Rutas protegidas esperadas
+
+Sin `@Public()`, quedan protegidas por el guard global, incluyendo:
+
+```txt
+GET /api/me
+GET /api/mobile/bootstrap
+POST /api/mobile/sync
+GET /api/mobile/sync
+GET /api/inspections
+GET /api/organization/*
+GET /api/users/*
+GET /api/roles/*
+GET /api/incidents/*
+GET /api/spr/*
+```
+
+## Comandos de validación local
+
+Instalar dependencias:
+
+```bash
+pnpm install
+```
+
+Configurar variables mínimas:
+
+```bash
+$env:API_TOKEN_KEY="dev-local-token-key-change-me-32-characters"
+$env:API_LOGIN_PASSWORD="AureliaLocalOnly"
+$env:CORS_ORIGINS="http://localhost:8081,http://localhost:3001,http://localhost:5173"
+```
+
+Levantar API:
+
+```bash
+pnpm --filter api dev
+```
+
+Validar health público:
+
+```bash
+curl http://localhost:3000/api/health
+```
+
+Validar endpoint protegido sin token:
+
+```bash
+curl -i http://localhost:3000/api/mobile/bootstrap
+```
+
+Resultado esperado:
+
+```txt
+401
+```
+
+Login:
+
+```bash
+curl -s -X POST http://localhost:3000/api/auth/login -H "Content-Type: application/json" -d '{"email":"karen.opazo@goldfields.com","password":"AureliaLocalOnly"}'
+```
+
+Guardar token en PowerShell:
+
+```bash
+$login = Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/auth/login -ContentType "application/json" -Body '{"email":"karen.opazo@goldfields.com","password":"AureliaLocalOnly"}'
+$token = $login.token
+```
+
+Validar `/api/me` con Bearer:
+
+```bash
+Invoke-RestMethod -Method Get -Uri http://localhost:3000/api/me -Headers @{ Authorization = "Bearer $token" }
+```
+
+Validar bootstrap mobile con Bearer:
+
+```bash
+Invoke-RestMethod -Method Get -Uri http://localhost:3000/api/mobile/bootstrap -Headers @{ Authorization = "Bearer $token" }
+```
+
+Build API:
+
+```bash
+pnpm --filter @aurelia/contracts build
+pnpm --filter api build
+```
 
 ## Pendientes obligatorios para producción
 
-1. Reemplazar login demo por credenciales por usuario o SSO/OIDC.
-2. Activar `JwtAuthGuard` como guard global.
-3. Marcar explícitamente rutas públicas como login y health.
-4. Agregar permissions guard por endpoint.
-5. Implementar storage seguro native: SecureStore, SQLite cifrado o equivalente.
-6. Definir cifrado de datos sensibles en base de datos.
-7. Agregar auditoría de login, sync y evidencias.
-8. Agregar tests de seguridad mínimos.
+1. Reemplazar contraseña compartida por credenciales por usuario o SSO/OIDC.
+2. Agregar hash de password si se implementa auth local.
+3. Agregar refresh tokens, revocación y rotación.
+4. Implementar permissions guard por endpoint.
+5. Persistir permisos reales por rol y eliminar permisos fallback del login.
+6. Implementar storage seguro native para token mobile.
+7. Definir cifrado de datos sensibles en base de datos.
+8. Agregar auditoría de login, sync y evidencias.
+9. Agregar tests de seguridad mínimos.
+10. Evaluar rate limit persistente o distribuido para producción.
 
 ## Nivel estimado
 
 ```txt
-Antes: 2/10 - 3/10
-Después de esta iteración: 4/10 aproximado
+Antes: 4/10 aproximado
+Después de esta iteración: 5/10 - 6/10 aproximado
 Objetivo productivo: 8/10+
 ```
 
-La app mejora en headers, rate limit, CORS y preparación JWT, pero aún no queda productiva hasta cerrar login real, guard global y RBAC.
+La API queda con JWT firmado, guard global y rutas públicas explícitas, pero todavía no queda productiva hasta cerrar credenciales por usuario, RBAC granular, refresh/revocación, storage seguro mobile y auditoría.

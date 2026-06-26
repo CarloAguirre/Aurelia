@@ -47,6 +47,13 @@ const ensureId = (value: unknown, label: string): string => {
   return row.id;
 };
 
+const ensureStringArray = (value: unknown, label: string): string[] => {
+  if (!Array.isArray(value) || !value.every((item) => typeof item === 'string')) {
+    throw new Error(`${label} did not return a string array`);
+  }
+  return value;
+};
+
 function configureSmokeAuthEnv(): string {
   process.env.API_TOKEN_KEY ??= `api-smoke-token-key-${randomUUID().replaceAll('-', '')}`;
   process.env.API_LOGIN_PASSWORD ??= `api-smoke-login-password-${randomUUID()}`;
@@ -101,6 +108,8 @@ async function runAuthBoundaryChecks(baseUrl: string, password: string): Promise
 
   const me = asObject<JsonObject>(await request(baseUrl, 'GET', '/me'), 'me');
   if (me.email !== 'karen.opazo@goldfields.com') throw new Error('/me did not return the authenticated user');
+  const inspectorPermissions = ensureStringArray(me.permissions, 'inspector permissions');
+  if (inspectorPermissions.includes('*')) throw new Error('inspector token should not include wildcard permissions');
 
   await request(baseUrl, 'GET', '/mobile/bootstrap');
   await request(baseUrl, 'GET', '/users', undefined, 403);
@@ -109,6 +118,13 @@ async function runAuthBoundaryChecks(baseUrl: string, password: string): Promise
   await request(baseUrl, 'GET', '/permissions', undefined, 403);
 
   accessToken = await loginAs(baseUrl, 'carlos.aguirre@goldfields.com', password);
+  const adminMe = asObject<JsonObject>(await request(baseUrl, 'GET', '/me'), 'admin me');
+  const adminPermissions = ensureStringArray(adminMe.permissions, 'admin permissions');
+  if (adminPermissions.includes('*')) throw new Error('admin token should not include wildcard permissions');
+  for (const permission of ['users:read', 'organization:read', 'roles:read', 'permissions:read']) {
+    if (!adminPermissions.includes(permission)) throw new Error(`admin token is missing ${permission}`);
+  }
+
   await request(baseUrl, 'GET', '/users');
   await request(baseUrl, 'GET', '/organization/areas');
   await request(baseUrl, 'GET', '/roles');

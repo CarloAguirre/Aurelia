@@ -10,7 +10,7 @@ docs/references/Levantamiento de inspecciones.html
 
 ## Extracción desde HTML
 
-Se usaron directamente clases del HTML de referencia para criticidad, SLA, empresa sugerida y personal:
+Se usaron directamente clases del HTML de referencia para criticidad, SLA, empresa sugerida, personal, resumen y pantalla de éxito:
 
 ```txt
 .crit-sec
@@ -43,6 +43,14 @@ Se usaron directamente clases del HTML de referencia para criticidad, SLA, empre
 .pi.sel
 .pia-tag
 .pck
+.res-card
+.res-hdr
+.res-row
+.rk
+.rv
+.badge
+.done-screen
+.done-circle
 ```
 
 ## Criticidad y SLA
@@ -75,12 +83,6 @@ Se agregó:
 apps/mobile-inspecciones/src/shared/components/chat/CompanySuggestionCard.tsx
 ```
 
-Y se actualizó:
-
-```txt
-apps/mobile-inspecciones/src/modules/inspection/InspectionAssistantChatScreen.tsx
-```
-
 Comportamiento alineado con el HTML:
 
 ```txt
@@ -94,6 +96,59 @@ Comportamiento alineado con el HTML:
 ```
 
 El selector de chips de empresa ya no aparece inmediatamente después de guardar observación.
+
+## Resumen antes de guardar
+
+Se actualizó:
+
+```txt
+apps/mobile-inspecciones/src/shared/components/chat/SubmitWidget.tsx
+apps/mobile-inspecciones/src/modules/inspection/InspectionAssistantChatScreen.tsx
+```
+
+Después de seleccionar personal ahora ocurre:
+
+```txt
+1. bubble: ✓ Personal: nombres seleccionados
+2. bubble: ¡Listo! Revisa el resumen antes de guardar:
+3. card Datos generales
+4. card Observaciones
+5. pregunta ¿Todo correcto?
+6. botón Modificar algo
+7. botón Guardar inspección
+```
+
+## Pantalla final
+
+Se actualizó:
+
+```txt
+apps/mobile-inspecciones/app/inspection/success.tsx
+```
+
+La pantalla final ahora recibe datos del flujo:
+
+```txt
+areaName
+sectorName
+companyName
+personnelNames
+criticalCount
+findingsCount
+evidencesCount
+```
+
+Y muestra:
+
+```txt
+header completado
+círculo verde
+¡Inspección guardada!
+mensaje con observaciones + área/sector
+card EECC notificada
+cards de métricas
+acciones Misma área / Nueva insp.
+```
 
 ## Persistencia
 
@@ -122,7 +177,6 @@ Seguir comparando contra el HTML en:
 
 ```txt
 personal sugerido
-resumen final
 header/progress
 AI proposal card
 photo widget

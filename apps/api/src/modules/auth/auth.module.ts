@@ -6,6 +6,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { JwtTokenService } from './jwt-token.service';
+import { PermissionsGuard } from './permissions.guard';
 
 @Module({
   imports: [TypeOrmModule.forFeature([UserEntity])],
@@ -16,6 +17,10 @@ import { JwtTokenService } from './jwt-token.service';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: PermissionsGuard,
     },
   ],
   exports: [JwtTokenService],

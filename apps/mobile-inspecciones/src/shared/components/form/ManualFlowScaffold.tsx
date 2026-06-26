@@ -40,6 +40,17 @@ interface ManualFlowFooterProps {
 
 export function ManualFlowFooter({ secondaryLabel, onSecondary, primaryLabel = 'Continuar', onPrimary, primaryDisabled = false, secondaryIcon, primaryIcon = 'arrow-right', primaryVariant = 'gold' }: ManualFlowFooterProps) {
   const success = primaryVariant === 'success';
+  const primaryHandledRef = React.useRef(false);
+
+  function handlePrimary() {
+    if (primaryDisabled || primaryHandledRef.current) return;
+    primaryHandledRef.current = true;
+    onPrimary();
+    setTimeout(() => {
+      primaryHandledRef.current = false;
+    }, 350);
+  }
+
   return (
     <View style={styles.footer}>
       <View style={styles.footerButtons}>
@@ -47,7 +58,7 @@ export function ManualFlowFooter({ secondaryLabel, onSecondary, primaryLabel = '
           {secondaryIcon ? <FontAwesome5 name={secondaryIcon} size={14} color={colors.gold} /> : null}
           <Text style={styles.secondaryText}>{secondaryLabel}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.primaryButton, success && styles.primaryButtonSuccess, primaryDisabled && styles.primaryButtonDisabled]} activeOpacity={0.82} onPress={onPrimary} disabled={primaryDisabled}>
+        <TouchableOpacity style={[styles.primaryButton, success && styles.primaryButtonSuccess, primaryDisabled && styles.primaryButtonDisabled]} activeOpacity={0.82} onPressIn={handlePrimary} onPress={handlePrimary} disabled={primaryDisabled}>
           {primaryIcon === 'check' ? <FontAwesome5 name="check" size={14} color={primaryDisabled ? colors.placeholder : colors.white} /> : null}
           <Text style={[styles.primaryText, primaryDisabled && styles.primaryTextDisabled]}>{primaryLabel}</Text>
           {primaryIcon === 'arrow-right' ? <FontAwesome5 name="arrow-right" size={14} color={primaryDisabled ? colors.placeholder : colors.white} /> : null}

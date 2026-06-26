@@ -11,7 +11,7 @@ import { ManualFormStepper } from './ManualSelectionUi';
 import { useInspectionChecklistTemplates } from './hooks/useInspectionChecklistTemplates';
 import { useSaveManualInspectionOffline } from './hooks/useSaveManualInspectionOffline';
 import { useManualConnectivityStatus } from './useManualConnectivityStatus';
-import { useManualInspectionDraft, type ManualSavedInspectionResult } from './manualInspection.store';
+import { useManualInspectionDraft } from './manualInspection.store';
 import { useManualInspectionFlowStore } from './manualInspectionFlow.store';
 
 function trimLocationLabel(value: string): string {
@@ -76,20 +76,13 @@ export function ManualInspectionSummaryFixedScreen() {
       return;
     }
     setSavingStarted(true);
-    const optimisticResult: ManualSavedInspectionResult = {
-      inspectionId: `inspection_pending_${Date.now()}`,
-      totalCount: items.length,
-      yesCount,
-      noCount,
-      naCount,
-      closed: noCount === 0,
-    };
-    setLastSavedResult(optimisticResult);
-    router.replace('/inspection/manual/saved');
     saveMutation.mutate(
       { draft, template: selectedTemplate, items: indexedItems, trySyncNow: online && hasSession },
       {
-        onSuccess: setLastSavedResult,
+        onSuccess: (result) => {
+          setLastSavedResult(result);
+          router.replace('/inspection/manual/saved');
+        },
         onError: () => {
           setSavingStarted(false);
           Alert.alert('No se pudo guardar', 'No se pudo escribir el formulario en la cola local. Intenta nuevamente.');

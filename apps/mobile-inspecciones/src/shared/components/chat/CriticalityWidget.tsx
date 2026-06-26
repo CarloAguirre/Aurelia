@@ -19,6 +19,12 @@ const CONSEQUENCES = [
 ];
 
 const SLA_BY_LEVEL: Record<string, number> = { Bajo: 14, Medio: 7, Alto: 3, Crítico: 1 };
+const RESULT_COLORS: Record<string, { backgroundColor: string; borderColor: string; color: string }> = {
+  Bajo: { backgroundColor: colors.successSurf, borderColor: '#A8DFA0', color: colors.successTxt },
+  Medio: { backgroundColor: colors.warnSurf, borderColor: '#E8C86A', color: colors.warnTxt },
+  Alto: { backgroundColor: colors.ocreSurf, borderColor: '#E8A06A', color: colors.ocreTxt },
+  Crítico: { backgroundColor: colors.dangerSurf, borderColor: '#E090A8', color: colors.dangerTxt },
+};
 
 interface CriticalityWidgetProps {
   resolved?: boolean;
@@ -36,7 +42,7 @@ function level(probability: number, consequence: number): string {
 function Chip({ label, selected, disabled, onPress }: { label: string; selected: boolean; disabled?: boolean; onPress: () => void }) {
   return (
     <TouchableOpacity activeOpacity={0.75} disabled={disabled} onPress={onPress} style={[styles.chip, selected && styles.chipSelected, disabled && !selected && styles.chipDisabled]}>
-      <Text style={[styles.chipText, selected && styles.chipTextSelected, disabled && !selected && styles.chipTextDisabled]}>{label}</Text>
+      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -46,15 +52,14 @@ export function CriticalityWidget({ resolved = false, onComplete }: CriticalityW
   const [consequence, setConsequence] = useState<number | null>(null);
 
   function selectProbability(value: number) {
-    if (resolved) return;
+    if (resolved || probability) return;
     setProbability(value);
-    if (consequence) finish(value, consequence);
   }
 
   function selectConsequence(value: number) {
-    if (resolved) return;
+    if (resolved || consequence || !probability) return;
     setConsequence(value);
-    if (probability) finish(probability, value);
+    finish(probability, value);
   }
 
   function finish(nextProbability: number, nextConsequence: number) {
@@ -64,27 +69,31 @@ export function CriticalityWidget({ resolved = false, onComplete }: CriticalityW
 
   const currentLevel = probability && consequence ? level(probability, consequence) : null;
   const currentSla = currentLevel ? SLA_BY_LEVEL[currentLevel] ?? 7 : null;
+  const resultColors = currentLevel ? RESULT_COLORS[currentLevel] ?? RESULT_COLORS.Medio : RESULT_COLORS.Medio;
 
   return (
     <View style={styles.container}>
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>PROBABILIDAD · ¿QUÉ TAN PROBABLE ES QUE OCURRA?</Text>
-        <View style={styles.chips}>{PROBABILITIES.map((item) => <Chip key={item.value} label={item.label} selected={probability === item.value} disabled={resolved} onPress={() => selectProbability(item.value)} />)}</View>
+      <Text style={styles.sectionHeader}>PROBABILIDAD · ¿QUÉ TAN PROBABLE ES QUE OCURRA?</Text>
+      <View style={styles.sectionBody}>
+        <View style={styles.chips}>{PROBABILITIES.map((item) => <Chip key={item.value} label={item.label} selected={probability === item.value} disabled={resolved || Boolean(probability)} onPress={() => selectProbability(item.value)} />)}</View>
       </View>
-      <View style={styles.divider} />
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>CONSECUENCIA · ¿QUÉ TAN GRAVE SERÍA EL IMPACTO?</Text>
-        <View style={styles.chips}>{CONSEQUENCES.map((item) => <Chip key={item.value} label={item.label} selected={consequence === item.value} disabled={resolved} onPress={() => selectConsequence(item.value)} />)}</View>
-      </View>
-      {currentLevel ? (
-        <View style={styles.resultBox}>
-          <View>
-            <Text style={styles.resultMeta}>NIVEL · P{probability}×C{consequence}</Text>
-            <Text style={styles.resultLevel}>{currentLevel}</Text>
-          </View>
-          <View style={styles.slaBlock}>
-            <Text style={styles.resultMeta}>SLA sugerido</Text>
-            <Text style={styles.slaText}>{currentSla} días</Text>
+      {probability ? (
+        <View>
+          <Text style={styles.sectionHeader}>CONSECUENCIA · ¿QUÉ TAN GRAVE SERÍA EL IMPACTO?</Text>
+          <View style={styles.sectionBody}>
+            <View style={styles.chips}>{CONSEQUENCES.map((item) => <Chip key={item.value} label={item.label} selected={consequence === item.value} disabled={resolved || Boolean(consequence)} onPress={() => selectConsequence(item.value)} />)}</View>
+            {currentLevel ? (
+              <View style={[styles.resultBox, { backgroundColor: resultColors.backgroundColor, borderColor: resultColors.borderColor }]}>
+                <View>
+                  <Text style={[styles.resultMeta, { color: resultColors.color }]}>NIVEL · P{probability}×C{consequence}</Text>
+                  <Text style={[styles.resultLevel, { color: resultColors.color }]}>{currentLevel}</Text>
+                </View>
+                <View style={styles.slaBlock}>
+                  <Text style={[styles.slaMeta, { color: resultColors.color }]}>SLA sugerido</Text>
+                  <Text style={[styles.slaText, { color: resultColors.color }]}>{currentSla} días</Text>
+                </View>
+              </View>
+            ) : null}
           </View>
         </View>
       ) : null}
@@ -98,46 +107,45 @@ const styles = StyleSheet.create({
     marginRight: spacing.md,
     backgroundColor: colors.white,
     borderColor: colors.border,
-    borderRadius: radius.lg,
+    borderRadius: 12,
     borderWidth: 1,
     overflow: 'hidden',
-    shadowColor: colors.primary,
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
   },
-  section: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-  },
-  sectionTitle: {
+  sectionHeader: {
+    backgroundColor: colors.surface,
+    borderBottomColor: colors.border,
+    borderBottomWidth: 1,
     color: colors.muted,
     fontSize: fontSize.xs,
     fontWeight: fontWeight.bold,
-    letterSpacing: 0.6,
-    marginBottom: spacing.sm,
+    letterSpacing: 0.5,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 7,
+    textTransform: 'uppercase',
+  },
+  sectionBody: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
   },
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm - 2,
+    gap: 5,
   },
   chip: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.surface,
     borderColor: colors.borderMid,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 7,
+    borderRadius: radius.sm + 2,
+    borderWidth: 1.5,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
   },
   chipSelected: {
-    backgroundColor: colors.gold,
-    borderColor: colors.gold,
+    backgroundColor: colors.warnSurf,
+    borderColor: '#E8C86A',
   },
   chipDisabled: {
-    backgroundColor: colors.surface,
-    opacity: 0.7,
+    opacity: 0.5,
   },
   chipText: {
     color: colors.muted,
@@ -145,46 +153,37 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.semibold,
   },
   chipTextSelected: {
-    color: colors.navy,
-  },
-  chipTextDisabled: {
-    color: colors.placeholder,
-  },
-  divider: {
-    backgroundColor: colors.border,
-    height: 1,
+    color: colors.warnTxt,
   },
   resultBox: {
     alignItems: 'center',
-    backgroundColor: colors.warnSurf,
-    borderColor: colors.gold,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    borderRadius: radius.sm + 2,
+    borderWidth: 1.5,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    margin: spacing.md,
-    marginTop: 0,
+    marginTop: spacing.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: 10,
   },
   resultMeta: {
-    color: colors.warnTxt,
     fontSize: 9,
     fontWeight: fontWeight.bold,
+    marginBottom: 2,
+    textTransform: 'uppercase',
   },
   resultLevel: {
-    color: colors.warnTxt,
     fontSize: fontSize.xxl,
     fontWeight: fontWeight.bold,
-    marginTop: 2,
   },
   slaBlock: {
     alignItems: 'flex-end',
   },
+  slaMeta: {
+    fontSize: 9,
+    marginBottom: 2,
+  },
   slaText: {
-    color: colors.warnTxt,
     fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
-    marginTop: 2,
   },
 });

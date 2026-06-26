@@ -11,6 +11,7 @@ import {
   IncidentResponse,
   IncidentTypeResponse,
 } from '@aurelia/contracts';
+import { RequirePermissions } from '../auth/require-permissions.decorator';
 import { CreateIncidentFlashReportDto } from './dto/create-incident-flash-report.dto';
 import { CreateIncidentImmediateActionDto, UpdateIncidentImmediateActionDto } from './dto/create-incident-immediate-action.dto';
 import {
@@ -27,6 +28,7 @@ import { IncidentsService } from './incidents.service';
 import { UpdateIncidentDto } from './dto/update-incident.dto';
 import { UpdateIncidentStatusDto } from './dto/update-incident-status.dto';
 
+@RequirePermissions('incidents:read')
 @Controller('incidents')
 export class IncidentsController {
   constructor(private readonly incidentsService: IncidentsService) {}
@@ -55,11 +57,13 @@ export class IncidentsController {
     return this.incidentsService.findAll({ status, incidentTypeId, incidentLevelId });
   }
 
+  @RequirePermissions('incidents:write')
   @Post()
   create(@Body() dto: CreateIncidentDto): Promise<IncidentResponse> {
     return this.incidentsService.create(dto);
   }
 
+  @RequirePermissions('incidents:write')
   @Post(':id/flash-report')
   upsertFlashReport(
     @Param('id', ParseUUIDPipe) id: string,
@@ -78,6 +82,7 @@ export class IncidentsController {
     return this.incidentsService.findImmediateActions(id);
   }
 
+  @RequirePermissions('incidents:write')
   @Post(':id/immediate-actions')
   createImmediateAction(
     @Param('id', ParseUUIDPipe) id: string,
@@ -86,6 +91,7 @@ export class IncidentsController {
     return this.incidentsService.createImmediateAction(id, dto);
   }
 
+  @RequirePermissions('incidents:write')
   @Patch('immediate-actions/:actionId')
   updateImmediateAction(
     @Param('actionId', ParseUUIDPipe) actionId: string,
@@ -99,6 +105,7 @@ export class IncidentsController {
     return this.incidentsService.findInvestigations(id);
   }
 
+  @RequirePermissions('incidents:write')
   @Post(':id/investigations')
   createInvestigation(
     @Param('id', ParseUUIDPipe) id: string,
@@ -107,6 +114,7 @@ export class IncidentsController {
     return this.incidentsService.createInvestigation(id, dto);
   }
 
+  @RequirePermissions('incidents:write')
   @Patch('investigations/:investigationId')
   updateInvestigation(
     @Param('investigationId', ParseUUIDPipe) investigationId: string,
@@ -115,6 +123,7 @@ export class IncidentsController {
     return this.incidentsService.updateInvestigation(investigationId, dto);
   }
 
+  @RequirePermissions('incidents:write')
   @Post('investigations/:investigationId/five-why')
   upsertFiveWhy(
     @Param('investigationId', ParseUUIDPipe) investigationId: string,
@@ -123,6 +132,7 @@ export class IncidentsController {
     return this.incidentsService.upsertFiveWhy(investigationId, dto);
   }
 
+  @RequirePermissions('incidents:write')
   @Post('investigations/:investigationId/peepo')
   upsertPeepo(
     @Param('investigationId', ParseUUIDPipe) investigationId: string,
@@ -136,6 +146,7 @@ export class IncidentsController {
     return this.incidentsService.findActionPlans(id);
   }
 
+  @RequirePermissions('incidents:write')
   @Post(':id/action-plans')
   createActionPlan(
     @Param('id', ParseUUIDPipe) id: string,
@@ -144,6 +155,7 @@ export class IncidentsController {
     return this.incidentsService.createActionPlan(id, dto);
   }
 
+  @RequirePermissions('incidents:write')
   @Patch('action-plans/:actionPlanId')
   updateActionPlan(
     @Param('actionPlanId', ParseUUIDPipe) actionPlanId: string,
@@ -152,6 +164,7 @@ export class IncidentsController {
     return this.incidentsService.updateActionPlan(actionPlanId, dto);
   }
 
+  @RequirePermissions('incidents:write')
   @Post(':id/close')
   close(@Param('id', ParseUUIDPipe) id: string, @Body() dto: CloseIncidentDto): Promise<IncidentResponse> {
     return this.incidentsService.close(id, dto);
@@ -162,6 +175,7 @@ export class IncidentsController {
     return this.incidentsService.findOne(id);
   }
 
+  @RequirePermissions('incidents:write')
   @Patch(':id/status')
   updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
@@ -170,6 +184,7 @@ export class IncidentsController {
     return this.incidentsService.updateStatus(id, dto);
   }
 
+  @RequirePermissions('incidents:write')
   @Patch(':id')
   update(
     @Param('id', ParseUUIDPipe) id: string,

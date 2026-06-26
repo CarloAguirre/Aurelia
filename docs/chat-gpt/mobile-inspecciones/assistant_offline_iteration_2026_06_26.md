@@ -196,6 +196,36 @@ Se agregó soporte para incrementar/establecer contadores locales de hallazgos:
 apps/mobile-inspecciones/src/shared/offline/local-inspections.ts
 ```
 
+### Iteración F: validación backend de operaciones mobile-sync
+
+Se actualizó `apps/api/src/modules/mobile-sync/mobile-sync.service.ts` para reconocer explícitamente operaciones soportadas:
+
+```txt
+CREATE_INSPECTION
+UPSERT_INSPECTION_ANSWER
+CREATE_INSPECTION_FINDING
+CLOSE_INSPECTION
+CREATE_INCIDENT
+UPLOAD_ATTACHMENT
+```
+
+Si llega una operación no soportada, el resultado de esa operación vuelve con:
+
+```txt
+status: ERROR
+errorCode: UNSUPPORTED_OPERATION
+```
+
+También se agregó resumen de estado del broker in-memory:
+
+```txt
+acceptedBatches
+operationCounts
+pendingMessages
+```
+
+expuesto desde `GET /api/mobile/sync`.
+
 ## Estado esperado después de estas iteraciones
 
 ### Online
@@ -208,6 +238,7 @@ apps/mobile-inspecciones/src/shared/offline/local-inspections.ts
 6. Crear `local_inspections` y `sync_queue`.
 7. Si hay foto, `sync_queue` debe incluir `UPLOAD_ATTACHMENT`.
 8. Intentar `POST /api/mobile/sync` por auto-sync/background.
+9. API debe responder `PROCESSING` para operaciones soportadas.
 
 ### Offline con bootstrap previo
 
@@ -243,6 +274,7 @@ Debe sincronizar catálogos antes de operar offline
 9. Confirmar CREATE_INSPECTION y CREATE_INSPECTION_FINDING.
 10. Si hubo foto, confirmar UPLOAD_ATTACHMENT.
 11. Confirmar POST /api/mobile/sync si hay API viva.
+12. Confirmar GET /api/mobile/sync con operationCounts.
 ```
 
 ### Caso offline
@@ -258,18 +290,18 @@ Debe sincronizar catálogos antes de operar offline
 8. Levantar API.
 9. Volver a /inspection/dashboard.
 10. Confirmar POST /api/mobile/sync.
+11. Confirmar GET /api/mobile/sync con operationCounts.
 ```
 
 ## Pendientes secuenciales
 
-### Iteración siguiente 1: QA y ajuste de contrato de sync
+### Iteración siguiente 1: resolver worker dev de materialización
 
-- Probar `/inspection/chat` online.
-- Probar `/inspection/chat` offline con bootstrap previo.
-- Confirmar que `sync_queue:v1` contiene `CREATE_INSPECTION`, `CREATE_INSPECTION_FINDING` y `UPLOAD_ATTACHMENT` cuando aplica.
-- Validar que el backend acepte `CREATE_INSPECTION_FINDING` con `inspectionLocalId`.
-- Validar que el backend acepte `UPLOAD_ATTACHMENT` como operación en batch.
-- Definir cómo resolver dependencias localId -> remoteId en el worker final.
+- Resolver dependencias localId -> remoteId en el backend.
+- Materializar `CREATE_INSPECTION` en tablas reales.
+- Materializar `CREATE_INSPECTION_FINDING` usando `inspectionLocalId`.
+- Dejar `UPLOAD_ATTACHMENT` como metadata pendiente hasta FileSystem/storage.
+- Marcar operaciones como `SYNCED` cuando el worker dev las materialice.
 
 ### Iteración siguiente 2: evidencias offline completas native
 

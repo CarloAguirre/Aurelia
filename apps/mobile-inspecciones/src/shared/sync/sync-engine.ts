@@ -1,12 +1,16 @@
-import { MobileSyncStatus, type MobileSyncBatchRequest, type MobileSyncOperationRequest } from '@aurelia/contracts';
+import type { MobileSyncBatchRequest, MobileSyncOperationRequest, MobileSyncStatus } from '@aurelia/contracts';
 import { getOrCreateOfflineDeviceSession } from '../offline/offline-device-session';
 import { submitMobileSyncBatch } from '../services/api/mobile-sync.api';
 import { syncQueue } from './sync-queue';
 import type { SyncQueueItem } from './sync-status';
 
-function createId(prefix: string): string {
-  const random = Math.random().toString(36).slice(2, 10);
-  return `${prefix}_${Date.now()}_${random}`;
+const SYNCED = 'SYNCED' as MobileSyncStatus;
+const PROCESSING = 'PROCESSING' as MobileSyncStatus;
+const PENDING = 'PENDING' as MobileSyncStatus;
+const CONFLICT = 'CONFLICT' as MobileSyncStatus;
+
+function createId(prefix: string) {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function toOperation(item: SyncQueueItem): MobileSyncOperationRequest {
@@ -58,12 +62,12 @@ export async function syncPendingOperations(): Promise<SyncNowResult> {
     let error = 0;
     let conflict = 0;
     for (const result of response.results) {
-      if (result.status === MobileSyncStatus.SYNCED) {
+      if (result.status === SYNCED) {
         await syncQueue.markSynced(result.localId, result.remoteId);
         synced += 1;
-      } else if (result.status === MobileSyncStatus.PROCESSING || result.status === MobileSyncStatus.PENDING) {
+      } else if (result.status === PROCESSING || result.status === PENDING) {
         accepted += 1;
-      } else if (result.status === MobileSyncStatus.CONFLICT) {
+      } else if (result.status === CONFLICT) {
         await syncQueue.markConflict(result.localId, result.conflictReason ?? 'Conflicto de sincronización');
         conflict += 1;
       } else {

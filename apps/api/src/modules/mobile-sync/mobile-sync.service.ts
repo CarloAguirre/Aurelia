@@ -58,6 +58,12 @@ function remoteIdFromPayload(payload: unknown, key: keyof LocalizedPayload): str
   return typeof value === 'string' ? value : null;
 }
 
+function batchStatus(results: MobileSyncOperationResult[]): MobileSyncStatus {
+  if (results.some((result) => result.status === ERROR)) return ERROR;
+  if (results.some((result) => result.status === PROCESSING)) return PROCESSING;
+  return SYNCED;
+}
+
 @Injectable()
 export class MobileSyncService {
   private readonly broker = new InMemoryMobileSyncBroker();
@@ -83,7 +89,7 @@ export class MobileSyncService {
     const response: MobileSyncBatchResponse = {
       batchId: batch.batchId,
       acceptedAt,
-      status: results.some((result) => result.status === ERROR) ? ERROR : SYNCED,
+      status: batchStatus(results),
       results,
       nextRecommendedSyncAt: null,
     };

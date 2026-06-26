@@ -1,26 +1,5 @@
+import type { AreaResponse, CompanyResponse, SectorResponse } from '@aurelia/contracts';
 import { httpGet } from '../http-client';
-
-export interface AreaResponse {
-  id: string;
-  code: string;
-  name: string;
-  status: string;
-}
-
-export interface SectorResponse {
-  id: string;
-  code: string;
-  name: string;
-  status: string;
-}
-
-export interface CompanyResponse {
-  id: string;
-  code: string | null;
-  name: string;
-  isContractor: boolean;
-  status: string;
-}
 
 export function fetchAreas(): Promise<AreaResponse[]> {
   return httpGet<AreaResponse[]>('/organization/areas');

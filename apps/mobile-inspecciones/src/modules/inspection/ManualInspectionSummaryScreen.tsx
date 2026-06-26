@@ -9,7 +9,7 @@ import { ManualFlowFooter, ManualFlowHeader } from '../../shared/components/form
 import { OfflineBanner } from '../../shared/components/form/ManualFormUi';
 import { ManualFormStepper } from './ManualSelectionUi';
 import { useInspectionChecklistTemplates } from './hooks/useInspectionChecklistTemplates';
-import { useSubmitManualInspection } from './hooks/useSubmitManualInspection';
+import { useSaveManualInspectionOffline } from './hooks/useSaveManualInspectionOffline';
 import { useManualConnectivityStatus } from './useManualConnectivityStatus';
 import { useManualInspectionDraft, type ManualChecklistItemDetail } from './manualInspection.store';
 import { useManualInspectionFlowStore } from './manualInspectionFlow.store';
@@ -135,7 +135,7 @@ export function ManualInspectionSummaryScreen() {
   const goToObservations = useManualInspectionFlowStore((state) => state.goToObservations);
   const goToSummary = useManualInspectionFlowStore((state) => state.goToSummary);
   const templatesQuery = useInspectionChecklistTemplates();
-  const submitMutation = useSubmitManualInspection();
+  const saveMutation = useSaveManualInspectionOffline();
   const selectedTemplate = templatesQuery.data?.find((template) => template.id === draft.templateId);
   const items = useMemo(() => getTemplateItems(selectedTemplate), [selectedTemplate]);
   const indexedItems = useMemo(() => items.map((item, index) => ({ ...item, index })), [items]);
@@ -162,11 +162,11 @@ export function ManualInspectionSummaryScreen() {
       return;
     }
     try {
-      const result = await submitMutation.mutateAsync({ draft, template: selectedTemplate, items: indexedItems });
+      const result = await saveMutation.mutateAsync({ draft, template: selectedTemplate, items: indexedItems, trySyncNow: online });
       setLastSavedResult(result);
       router.replace('/inspection/manual/saved');
     } catch {
-      Alert.alert('No se pudo guardar', 'Revisa la conexión con la API e intenta nuevamente.');
+      Alert.alert('No se pudo guardar', 'No se pudo escribir el formulario en la cola local. Intenta nuevamente.');
     }
   }
 
@@ -199,7 +199,7 @@ export function ManualInspectionSummaryScreen() {
             <ResponsiblesCard companyName={draft.findingCompanyName} inspectorName={draft.inspectorName} />
             <OfflineNotice />
           </ScrollView>
-          <ManualFlowFooter secondaryLabel="Atrás" secondaryIcon="arrow-left" onSecondary={back} onPrimary={save} primaryLabel={submitMutation.isPending ? 'Guardando...' : 'Guardar inspección'} primaryVariant="success" primaryIcon="check" primaryDisabled={submitMutation.isPending} />
+          <ManualFlowFooter secondaryLabel="Atrás" secondaryIcon="arrow-left" onSecondary={back} onPrimary={save} primaryLabel={saveMutation.isPending ? 'Guardando...' : 'Guardar inspección'} primaryVariant="success" primaryIcon="check" primaryDisabled={saveMutation.isPending} />
         </View>
       </SafeAreaView>
     </SafeAreaProvider>

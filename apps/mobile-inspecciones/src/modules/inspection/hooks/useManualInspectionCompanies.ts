@@ -1,9 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
-import { fetchCompanies } from '../../../shared/services/api/organization.api';
+import { useMobileBootstrap } from '../../../shared/hooks/useMobileBootstrap';
 
 export function useManualInspectionCompanies() {
-  return useQuery({
-    queryKey: ['mobile-inspecciones', 'manual-inspection', 'contractor-companies'],
-    queryFn: () => fetchCompanies(true),
-  });
+  const bootstrapQuery = useMobileBootstrap();
+
+  return {
+    ...bootstrapQuery,
+    data: bootstrapQuery.data?.catalogs.companies.filter((company) => company.isContractor),
+  };
 }

@@ -1,5 +1,6 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { App } from '../app/App';
+import { LoginPage } from '../modules/auth/LoginPage';
 import { DashboardPage } from '../modules/dashboard/DashboardPage';
 import { InspectionsPage } from '../modules/inspections/InspectionsPage';
 import { IncidentsPage } from '../modules/incidents/IncidentsPage';
@@ -8,6 +9,10 @@ import { ReportsPage } from '../modules/reports/ReportsPage';
 import { AdminPage } from '../modules/admin/AdminPage';
 
 export const router = createBrowserRouter([
+  {
+    path: '/login',
+    element: <LoginPage />,
+  },
   {
     path: '/',
     element: <App />,

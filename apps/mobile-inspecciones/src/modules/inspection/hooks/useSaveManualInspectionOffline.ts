@@ -181,8 +181,8 @@ export function useSaveManualInspectionOffline() {
       if (trySyncNow) void syncPendingOperations();
       return { inspectionId: localInspectionId, totalCount: items.length, yesCount, noCount, naCount, closed: noCount === 0 };
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['mobile-inspecciones', 'inspections'] });
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['mobile-inspecciones', 'inspections'] });
     },
   });
 }

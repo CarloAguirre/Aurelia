@@ -1,9 +1,14 @@
-import { MobileSyncStatus, type MobileSyncOperationRequest, type MobileSyncOperationType } from '@aurelia/contracts';
+import type { MobileSyncStatus, MobileSyncOperationRequest, MobileSyncOperationType } from '@aurelia/contracts';
 import { localStorageDriver } from '../storage/local-storage';
 import type { SyncQueueItem, SyncQueueSnapshot } from './sync-status';
 
 const QUEUE_KEY = 'sync_queue:v1';
 const SCHEMA_VERSION = 'mobile-inspecciones-sync-v1';
+const PENDING = 'PENDING' as MobileSyncStatus;
+const PROCESSING = 'PROCESSING' as MobileSyncStatus;
+const SYNCED = 'SYNCED' as MobileSyncStatus;
+const ERROR = 'ERROR' as MobileSyncStatus;
+const CONFLICT = 'CONFLICT' as MobileSyncStatus;
 
 function now(): string {
   return new Date().toISOString();
@@ -16,11 +21,11 @@ function createId(prefix: string): string {
 
 function buildSnapshot(items: SyncQueueItem[]): SyncQueueSnapshot {
   return {
-    pending: items.filter((item) => item.status === MobileSyncStatus.PENDING).length,
-    processing: items.filter((item) => item.status === MobileSyncStatus.PROCESSING).length,
-    synced: items.filter((item) => item.status === MobileSyncStatus.SYNCED).length,
-    error: items.filter((item) => item.status === MobileSyncStatus.ERROR).length,
-    conflict: items.filter((item) => item.status === MobileSyncStatus.CONFLICT).length,
+    pending: items.filter((item) => item.status === PENDING).length,
+    processing: items.filter((item) => item.status === PROCESSING).length,
+    synced: items.filter((item) => item.status === SYNCED).length,
+    error: items.filter((item) => item.status === ERROR).length,
+    conflict: items.filter((item) => item.status === CONFLICT).length,
   };
 }
 
@@ -54,7 +59,7 @@ class PersistentSyncQueue {
       clientCreatedAt: createdAt,
       idempotencyKey: `${input.deviceId}:${localId}`,
       dependsOnLocalIds: input.dependsOnLocalIds,
-      status: MobileSyncStatus.PENDING,
+      status: PENDING,
       retryCount: 0,
       lastError: null,
       remoteId: null,
@@ -79,17 +84,17 @@ class PersistentSyncQueue {
     const items = await this.getAll();
     const current = now();
     return items.filter((item) => {
-      if (![MobileSyncStatus.PENDING, MobileSyncStatus.ERROR].includes(item.status)) return false;
+      if (![PENDING, ERROR].includes(item.status)) return false;
       return !item.nextRetryAt || item.nextRetryAt <= current;
     });
   }
 
   async markProcessing(localIds: string[]): Promise<void> {
-    await this.patch(localIds, (item) => ({ ...item, status: MobileSyncStatus.PROCESSING, updatedAt: now() }));
+    await this.patch(localIds, (item) => ({ ...item, status: PROCESSING, updatedAt: now() }));
   }
 
   async markSynced(localId: string, remoteId?: string | null): Promise<void> {
-    await this.patch([localId], (item) => ({ ...item, status: MobileSyncStatus.SYNCED, remoteId: remoteId ?? item.remoteId, lastError: null, updatedAt: now() }));
+    await this.patch([localId], (item) => ({ ...item, status: SYNCED, remoteId: remoteId ?? item.remoteId, lastError: null, updatedAt: now() }));
   }
 
   async markError(localId: string, error: string): Promise<void> {
@@ -97,17 +102,17 @@ class PersistentSyncQueue {
       const retryCount = item.retryCount + 1;
       const next = new Date();
       next.setSeconds(next.getSeconds() + Math.min(60 * retryCount, 300));
-      return { ...item, status: MobileSyncStatus.ERROR, retryCount, lastError: error, nextRetryAt: next.toISOString(), updatedAt: now() };
+      return { ...item, status: ERROR, retryCount, lastError: error, nextRetryAt: next.toISOString(), updatedAt: now() };
     });
   }
 
   async markConflict(localId: string, reason: string): Promise<void> {
-    await this.patch([localId], (item) => ({ ...item, status: MobileSyncStatus.CONFLICT, lastError: reason, updatedAt: now() }));
+    await this.patch([localId], (item) => ({ ...item, status: CONFLICT, lastError: reason, updatedAt: now() }));
   }
 
   async removeSynced(): Promise<void> {
     const items = await this.getAll();
-    await this.saveAll(items.filter((item) => item.status !== MobileSyncStatus.SYNCED));
+    await this.saveAll(items.filter((item) => item.status !== SYNCED));
   }
 
   async snapshot(): Promise<SyncQueueSnapshot> {

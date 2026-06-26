@@ -1,9 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
-import { fetchInspectionChecklistTemplates } from '../../../shared/services/api/inspection-templates.api';
+import { useMobileBootstrap } from '../../../shared/hooks/useMobileBootstrap';
 
 export function useInspectionChecklistTemplates() {
-  return useQuery({
-    queryKey: ['mobile-inspecciones', 'inspection-checklist-templates'],
-    queryFn: fetchInspectionChecklistTemplates,
-  });
+  const bootstrapQuery = useMobileBootstrap();
+
+  return {
+    ...bootstrapQuery,
+    data: bootstrapQuery.data?.catalogs.inspectionTemplates,
+  };
 }

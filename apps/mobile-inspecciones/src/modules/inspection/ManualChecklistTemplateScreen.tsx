@@ -8,6 +8,7 @@ import { InspectionAnswerValue, type InspectionChecklistItem, type InspectionChe
 import { colors, fontWeight } from '../../shared/theme/tokens';
 import { FieldLabel, OfflineBanner, SelectBox } from '../../shared/components/form/ManualFormUi';
 import { ManualFlowFooter, ManualFlowHeader } from '../../shared/components/form/ManualFlowScaffold';
+import { MISSING_MOBILE_BOOTSTRAP_MESSAGE } from '../../shared/offline/local-catalogs';
 import { ManualFormStepper, SelectSheet, type SelectSheetOption } from './ManualSelectionUi';
 import { useInspectionChecklistTemplates } from './hooks/useInspectionChecklistTemplates';
 import { useManualInspectionCompanies } from './hooks/useManualInspectionCompanies';
@@ -74,7 +75,7 @@ function TemplateMeta({ code, itemsCount }: { code: string | null; itemsCount: n
   );
 }
 
-function TemplateCard({ loading, error, empty, onOpen, onRetry }: { loading: boolean; error: boolean; empty: boolean; onOpen: () => void; onRetry: () => void }) {
+function TemplateCard({ loading, error, empty, errorMessage, onOpen, onRetry }: { loading: boolean; error: boolean; empty: boolean; errorMessage: string | null; onOpen: () => void; onRetry: () => void }) {
   const draft = useManualInspectionDraft();
   const disabled = loading || error || empty;
   return (
@@ -83,8 +84,8 @@ function TemplateCard({ loading, error, empty, onOpen, onRetry }: { loading: boo
         <FieldLabel>Seleccione la plantilla *</FieldLabel>
         <SelectBox value={draft.templateName ?? 'Seleccione'} loading={loading} disabled={disabled} onPress={onOpen} />
       </View>
-      {loading ? <View style={styles.stateRow}><ActivityIndicator size="small" color={colors.gold} /><Text style={styles.stateText}>Cargando plantillas desde la API</Text></View> : null}
-      {error ? <TouchableOpacity style={styles.stateRow} onPress={onRetry} activeOpacity={0.75}><FontAwesome5 name="exclamation-circle" size={13} color="#BD3B5B" /><Text style={styles.errorText}>No se pudieron cargar. Toca para reintentar.</Text></TouchableOpacity> : null}
+      {loading ? <View style={styles.stateRow}><ActivityIndicator size="small" color={colors.gold} /><Text style={styles.stateText}>Sincronizando catálogos de inspección</Text></View> : null}
+      {error ? <TouchableOpacity style={styles.stateRow} onPress={onRetry} activeOpacity={0.75}><FontAwesome5 name="exclamation-circle" size={13} color="#BD3B5B" /><Text style={styles.errorText}>{errorMessage ?? MISSING_MOBILE_BOOTSTRAP_MESSAGE}. Toca para reintentar.</Text></TouchableOpacity> : null}
       {empty ? <View style={styles.stateRow}><FontAwesome5 name="inbox" size={13} color={colors.muted} /><Text style={styles.stateText}>No hay plantillas activas disponibles.</Text></View> : null}
       {!loading && !error && !empty ? <TemplateMeta code={draft.templateCode} itemsCount={draft.templateItemsCount} /> : null}
     </View>
@@ -209,6 +210,8 @@ export function ManualChecklistTemplateScreen() {
   const hasFindings = items.some((item) => draft.answersByItemId[item.id] === InspectionAnswerValue.NOT_COMPLIANT);
   const missingFindingDetails = items.some((item) => draft.answersByItemId[item.id] === InspectionAnswerValue.NOT_COMPLIANT && !hasRequiredFindingDetail(draft.detailsByItemId[item.id]));
   const canContinue = Boolean(selectedTemplate && draft.generalPhoto && items.length > 0 && answeredCount === items.length && !missingFindingDetails && (!hasFindings || draft.findingCompanyId));
+  const catalogErrorMessage = templatesQuery.error instanceof Error ? templatesQuery.error.message : null;
+  const catalogEmptyText = catalogErrorMessage ?? MISSING_MOBILE_BOOTSTRAP_MESSAGE;
 
   React.useEffect(() => { goToObservations(); }, [goToObservations]);
 
@@ -232,12 +235,12 @@ export function ManualChecklistTemplateScreen() {
           <ManualFormStepper activeStep={3} steps={['Datos', 'Tipo', 'Ítems', 'Resumen']} />
           <ScrollView style={styles.content} contentContainerStyle={styles.contentInner} showsVerticalScrollIndicator={false}>
             <View style={styles.copyBlock}><Text style={styles.title}>Checklist normativo</Text><Text style={styles.subtitle}>Responde todos los ítems · los NO quedarán registrados como observaciones</Text></View>
-            <TemplateCard loading={templatesQuery.isLoading} error={templatesQuery.isError} empty={!templatesQuery.isLoading && !templatesQuery.isError && templates.length === 0} onOpen={() => openPicker('template')} onRetry={templatesQuery.refetch} />
+            <TemplateCard loading={templatesQuery.isLoading} error={templatesQuery.isError} empty={!templatesQuery.isLoading && !templatesQuery.isError && templates.length === 0} errorMessage={catalogErrorMessage} onOpen={() => openPicker('template')} onRetry={templatesQuery.refetch} />
             {selectedTemplate ? <><ProgressCard answeredCount={answeredCount} totalCount={items.length} /><ReferencePhotoBox /><ChecklistItemsCard template={selectedTemplate} items={items} />{hasFindings ? <ResponsibleBlock onOpenCompany={() => openPicker('company')} companiesLoading={companiesQuery.isLoading} /> : null}</> : null}
           </ScrollView>
           <ManualFlowFooter secondaryLabel="Atrás" secondaryIcon="arrow-left" onSecondary={back} onPrimary={next} primaryDisabled={!canContinue} />
-          <SelectSheet visible={activePicker === 'template'} title="Seleccione la plantilla" subtitle="Plantillas normativas disponibles" options={templateOptions} selectedId={draft.templateId} loading={templatesQuery.isLoading} emptyText="No hay plantillas activas" onClose={closePicker} onSelect={selectTemplate} />
-          <SelectSheet visible={activePicker === 'company'} title="Empresa encargada" subtitle="Empresas contratistas disponibles" options={companyOptions} selectedId={draft.findingCompanyId} loading={companiesQuery.isLoading} emptyText="No hay empresas disponibles" onClose={closePicker} onSelect={selectCompany} />
+          <SelectSheet visible={activePicker === 'template'} title="Seleccione la plantilla" subtitle="Plantillas normativas disponibles" options={templateOptions} selectedId={draft.templateId} loading={templatesQuery.isLoading} emptyText={catalogEmptyText} onClose={closePicker} onSelect={selectTemplate} />
+          <SelectSheet visible={activePicker === 'company'} title="Empresa encargada" subtitle="Empresas contratistas disponibles" options={companyOptions} selectedId={draft.findingCompanyId} loading={companiesQuery.isLoading} emptyText={catalogEmptyText} onClose={closePicker} onSelect={selectCompany} />
         </View>
       </SafeAreaView>
     </SafeAreaProvider>

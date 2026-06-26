@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req } from '@nestjs/common';
 import { MeResponse, Role } from '@aurelia/contracts';
+import type { AuthenticatedRequest } from './authenticated-request';
 import { AuthService, LoginRequest, LoginResponse } from './auth.service';
 
 @Controller()
@@ -12,14 +13,14 @@ export class AuthController {
   }
 
   @Get('me')
-  getMe(): MeResponse {
+  getMe(@Req() request: AuthenticatedRequest): MeResponse {
     return {
-      id: '00000000-0000-0000-0000-000000000000',
-      email: 'dev@aurelia.local',
-      fullName: 'Aurelia Dev User',
-      roles: [Role.ADMIN],
-      permissions: ['*'],
-      isPlaceholder: true,
+      id: request.user.sub,
+      email: request.user.email,
+      fullName: request.user.email,
+      roles: request.user.roles as Role[],
+      permissions: request.user.permissions,
+      isPlaceholder: false,
     };
   }
 }

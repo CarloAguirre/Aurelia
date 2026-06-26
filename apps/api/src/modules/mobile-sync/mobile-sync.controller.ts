@@ -20,10 +20,6 @@ export class MobileSyncController {
 
   @Get()
   status() {
-    return {
-      broker: process.env.MOBILE_SYNC_BROKER ?? 'in-memory',
-      pendingMessages: this.mobileSyncService.getPendingMessagesCount(),
-      timestamp: new Date().toISOString(),
-    };
+    return this.mobileSyncService.getStatus();
   }
 }

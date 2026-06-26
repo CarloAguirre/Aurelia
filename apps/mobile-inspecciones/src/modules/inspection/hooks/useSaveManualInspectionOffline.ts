@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   InspectionAnswerValue,
   InspectionFindingSeverity,
@@ -66,6 +66,7 @@ function getDueDate(): string {
 }
 
 export function useSaveManualInspectionOffline() {
+  const queryClient = useQueryClient();
   const user = useMobileSession((state) => state.user);
 
   return useMutation({
@@ -179,6 +180,9 @@ export function useSaveManualInspectionOffline() {
 
       if (trySyncNow) await syncPendingOperations();
       return { inspectionId: localInspectionId, totalCount: items.length, yesCount, noCount, naCount, closed: noCount === 0 };
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['mobile-inspecciones', 'inspections'] });
     },
   });
 }

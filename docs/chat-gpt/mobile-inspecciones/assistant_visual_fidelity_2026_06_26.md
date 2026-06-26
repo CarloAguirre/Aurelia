@@ -2,7 +2,7 @@
 
 ## Foco de esta iteración
 
-Alinear el paso de criticidad y SLA del flujo asistido con el prototipo HTML:
+Alinear pasos del flujo asistido con el prototipo HTML:
 
 ```txt
 docs/references/Levantamiento de inspecciones.html
@@ -10,7 +10,7 @@ docs/references/Levantamiento de inspecciones.html
 
 ## Extracción desde HTML
 
-Se usaron directamente las clases del HTML de referencia:
+Se usaron directamente clases del HTML de referencia para criticidad, SLA, empresa sugerida y personal:
 
 ```txt
 .crit-sec
@@ -29,70 +29,32 @@ Se usaron directamente las clases del HTML de referencia:
 .sla-row
 .sla-inp
 .qopt.tok
+.prop
+.phdr
+.pbdy
+.plb
+.ptx
+.pmt
+.pac
+.bed
+.bok
+.pers-list
+.pi
+.pi.sel
+.pia-tag
+.pck
 ```
 
-Referencias visuales importantes:
+## Criticidad y SLA
 
-```txt
-.crit-shdr -> background surface, padding 7px 12px, uppercase, border-bottom
-.crit-sbdy -> padding 10px 12px
-.cc -> background surface, border 1.5px, radius 8, font-size 10
-.cc.sel -> warn-surf, border #E8C86A, warn-txt
-.nivel-box -> margin-top 8, padding 10px 12px, radius 8
-.sla-sec -> radius 10, padding 10px 12px
-.sla-q -> background surface, radius 6, padding 5px 10px
-.sla-q.sel -> gold
-```
-
-## Problema detectado
-
-La implementación anterior mostraba:
-
-```txt
-bot bubble probabilidad
-chips sueltos
-user bubble con probabilidad
-bot bubble consecuencia
-chips sueltos
-user bubble con consecuencia
-bot bubble criticidad/SLA
-```
-
-El prototipo usa una tarjeta integrada:
-
-```txt
-PROBABILIDAD
-chips 1 a 5
-CONSECUENCIA
-chips 1 a 5
-resumen amarillo con NIVEL y SLA sugerido
-```
-
-Luego muestra una segunda tarjeta para confirmar o ajustar SLA:
-
-```txt
-SLA · DÍAS HÁBILES PARA RESOLVER
-chips 1, 3, 7, 14 días
-valor personalizado
-guardar observación
-```
-
-## Cambios aplicados
-
-Se agregaron componentes:
+El flujo ahora usa:
 
 ```txt
 apps/mobile-inspecciones/src/shared/components/chat/CriticalityWidget.tsx
 apps/mobile-inspecciones/src/shared/components/chat/SlaConfirmWidget.tsx
 ```
 
-Se actualizó:
-
-```txt
-apps/mobile-inspecciones/src/modules/inspection/InspectionAssistantChatScreen.tsx
-```
-
-Ahora el flujo:
+Comportamiento:
 
 ```txt
 1. pregunta criticidad
@@ -104,6 +66,34 @@ Ahora el flujo:
 7. muestra botón teal separado para guardar observación
 8. pregunta si hay más observaciones
 ```
+
+## Empresa sugerida
+
+Se agregó:
+
+```txt
+apps/mobile-inspecciones/src/shared/components/chat/CompanySuggestionCard.tsx
+```
+
+Y se actualizó:
+
+```txt
+apps/mobile-inspecciones/src/modules/inspection/InspectionAssistantChatScreen.tsx
+```
+
+Comportamiento alineado con el HTML:
+
+```txt
+1. Al continuar con empresa, AurelIA consulta/simula sugerencia.
+2. Muestra bubble: Basándome en el historial de área · sector, te propongo.
+3. Muestra card Empresa sugerida por AurelIA.
+4. Permite Confirmar empresa sugerida.
+5. Permite Elegir otra.
+6. Solo si se elige otra, muestra chips de empresas.
+7. Al confirmar, continúa a selección de personal.
+```
+
+El selector de chips de empresa ya no aparece inmediatamente después de guardar observación.
 
 ## Persistencia
 
@@ -131,10 +121,10 @@ POST /api/mobile/sync
 Seguir comparando contra el HTML en:
 
 ```txt
+personal sugerido
+resumen final
 header/progress
 AI proposal card
 photo widget
-empresa/persona
-submit summary
 espaciados/sombras/tamaños
 ```

@@ -38,8 +38,12 @@ export interface SyncNowResult {
   conflict: number;
 }
 
-export async function syncPendingOperations(): Promise<SyncNowResult> {
-  const ready = await syncQueue.getReadyToSync();
+export interface SyncPendingOperationsOptions {
+  ignoreRetryDelay?: boolean;
+}
+
+export async function syncPendingOperations(options: SyncPendingOperationsOptions = {}): Promise<SyncNowResult> {
+  const ready = await syncQueue.getReadyToSync({ ignoreRetryDelay: options.ignoreRetryDelay });
   if (ready.length === 0) return { attempted: 0, accepted: 0, synced: 0, error: 0, conflict: 0 };
 
   const session = await getOrCreateOfflineDeviceSession();

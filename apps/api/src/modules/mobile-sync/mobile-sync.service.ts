@@ -1,64 +1,30 @@
 import { Injectable } from '@nestjs/common';
-import type {
-  CreateInspectionFindingRequest,
-  CreateInspectionRequest,
-  MobileSyncBatchRequest,
-  MobileSyncBatchResponse,
-  MobileSyncOperationRequest,
-  MobileSyncOperationResult,
-  MobileSyncStatus,
-  UpsertInspectionAnswerRequest,
-} from '@aurelia/contracts';
+import { InjectRepository } from '@nestjs/typeorm';
+import type { CreateInspectionFindingRequest, CreateInspectionRequest, MobileSyncBatchRequest, MobileSyncBatchResponse, MobileSyncOperationRequest, MobileSyncOperationResult, MobileSyncStatus, UpsertInspectionAnswerRequest } from '@aurelia/contracts';
 import { InspectionStatus } from '@aurelia/contracts';
+import { Repository } from 'typeorm';
 import { InMemoryMobileSyncBroker } from '../../shared/messaging/in-memory-mobile-sync-broker';
 import { InspectionsService } from '../inspections/inspections.service';
+import { MobileSyncOperationEntity } from './entities/mobile-sync-operation.entity';
 
 const PROCESSING = 'PROCESSING' as MobileSyncStatus;
 const SYNCED = 'SYNCED' as MobileSyncStatus;
 const ERROR = 'ERROR' as MobileSyncStatus;
-const SUPPORTED_OPERATIONS = new Set([
-  'CREATE_INSPECTION',
-  'UPSERT_INSPECTION_ANSWER',
-  'CREATE_INSPECTION_FINDING',
-  'CLOSE_INSPECTION',
-  'CREATE_INCIDENT',
-  'UPLOAD_ATTACHMENT',
-]);
+const SUPPORTED = new Set(['CREATE_INSPECTION', 'UPSERT_INSPECTION_ANSWER', 'CREATE_INSPECTION_FINDING', 'CLOSE_INSPECTION', 'CREATE_INCIDENT', 'UPLOAD_ATTACHMENT']);
 
-interface MobileSyncServiceStatus {
-  broker: string;
-  pendingMessages: number;
-  acceptedBatches: number;
-  operationCounts: Record<string, number>;
-  materializedOperationCounts: Record<string, number>;
-  timestamp: string;
-}
+type LocalPayload = { inspectionLocalId?: string; localEvidenceId?: string };
 
-interface LocalizedPayload {
-  inspectionLocalId?: string;
-  findingLocalId?: string;
-  localEvidenceId?: string;
-}
-
-function isSupportedOperation(operation: MobileSyncOperationRequest): boolean {
-  return SUPPORTED_OPERATIONS.has(String(operation.operationType));
-}
-
-function isUuid(value: string | null | undefined): value is string {
-  return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
-}
-
-function actorId(value: string): string | null {
-  return isUuid(value) ? value : null;
-}
-
-function remoteIdFromPayload(payload: unknown, key: keyof LocalizedPayload): string | null {
+function getPayloadId(payload: unknown, key: keyof LocalPayload): string | null {
   if (!payload || typeof payload !== 'object') return null;
-  const value = (payload as LocalizedPayload)[key];
+  const value = (payload as LocalPayload)[key];
   return typeof value === 'string' ? value : null;
 }
 
-function batchStatus(results: MobileSyncOperationResult[]): MobileSyncStatus {
+function toActor(value: string): string | null {
+  return value.includes('-') ? value : null;
+}
+
+function getBatchStatus(results: MobileSyncOperationResult[]): MobileSyncStatus {
   if (results.some((result) => result.status === ERROR)) return ERROR;
   if (results.some((result) => result.status === PROCESSING)) return PROCESSING;
   return SYNCED;
@@ -68,31 +34,22 @@ function batchStatus(results: MobileSyncOperationResult[]): MobileSyncStatus {
 export class MobileSyncService {
   private readonly broker = new InMemoryMobileSyncBroker();
   private readonly batches = new Map<string, MobileSyncBatchResponse>();
-  private readonly localToRemoteIds = new Map<string, string>();
+  private readonly localToRemote = new Map<string, string>();
   private readonly materializedOperationCounts: Record<string, number> = {};
 
-  constructor(private readonly inspectionsService: InspectionsService) {}
+  constructor(
+    private readonly inspectionsService: InspectionsService,
+    @InjectRepository(MobileSyncOperationEntity) private readonly operations: Repository<MobileSyncOperationEntity>,
+  ) {}
 
   async acceptBatch(batch: MobileSyncBatchRequest): Promise<MobileSyncBatchResponse> {
     const existing = this.batches.get(batch.batchId);
     if (existing) return existing;
-
     const acceptedAt = new Date().toISOString();
-    await this.broker.publish({
-      messageId: batch.batchId,
-      sessionId: batch.deviceSessionId,
-      batch,
-      enqueuedAt: acceptedAt,
-    });
-
-    const results = await this.materializeBatch(batch);
-    const response: MobileSyncBatchResponse = {
-      batchId: batch.batchId,
-      acceptedAt,
-      status: batchStatus(results),
-      results,
-      nextRecommendedSyncAt: null,
-    };
+    await this.broker.publish({ messageId: batch.batchId, sessionId: batch.deviceSessionId, batch, enqueuedAt: acceptedAt });
+    const results: MobileSyncOperationResult[] = [];
+    for (const operation of batch.operations) results.push(await this.runOperation(batch.batchId, operation));
+    const response = { batchId: batch.batchId, acceptedAt, status: getBatchStatus(results), results, nextRecommendedSyncAt: null };
     this.batches.set(batch.batchId, response);
     this.broker.drain();
     return response;
@@ -102,127 +59,87 @@ export class MobileSyncService {
     return this.batches.get(batchId) ?? null;
   }
 
-  getStatus(): MobileSyncServiceStatus {
-    const operationCounts: Record<string, number> = {};
-    for (const message of this.broker.peek()) {
-      for (const operation of message.batch.operations) {
-        const key = String(operation.operationType);
-        operationCounts[key] = (operationCounts[key] ?? 0) + 1;
-      }
-    }
-    return {
-      broker: process.env.MOBILE_SYNC_BROKER ?? 'in-memory-dev-materializer',
-      pendingMessages: this.broker.peek().length,
-      acceptedBatches: this.batches.size,
-      operationCounts,
-      materializedOperationCounts: { ...this.materializedOperationCounts },
-      timestamp: new Date().toISOString(),
-    };
+  getStatus() {
+    return { broker: process.env.MOBILE_SYNC_BROKER ?? 'in-memory-dev-materializer', pendingMessages: this.broker.peek().length, acceptedBatches: this.batches.size, operationCounts: {}, materializedOperationCounts: { ...this.materializedOperationCounts }, timestamp: new Date().toISOString() };
   }
 
   getPendingMessagesCount(): number {
     return this.broker.peek().length;
   }
 
-  private async materializeBatch(batch: MobileSyncBatchRequest): Promise<MobileSyncOperationResult[]> {
-    const results: MobileSyncOperationResult[] = [];
-    for (const operation of batch.operations) {
-      results.push(await this.materializeOperation(operation));
-    }
-    return results;
-  }
-
-  private async materializeOperation(operation: MobileSyncOperationRequest): Promise<MobileSyncOperationResult> {
-    if (!isSupportedOperation(operation)) {
-      return this.errorResult(operation.localId, 'UNSUPPORTED_OPERATION', `Unsupported operation: ${String(operation.operationType)}`);
-    }
-    const existingRemoteId = this.localToRemoteIds.get(operation.localId);
-    if (existingRemoteId) return this.syncedResult(operation.localId, existingRemoteId);
-
+  private async runOperation(batchId: string, operation: MobileSyncOperationRequest): Promise<MobileSyncOperationResult> {
+    const stored = await this.operations.findOne({ where: { idempotencyKey: operation.idempotencyKey } });
+    if (stored) return this.resultFromStored(stored);
+    if (!SUPPORTED.has(String(operation.operationType))) return this.saveResult(batchId, operation, this.fail(operation.localId, 'UNSUPPORTED_OPERATION', 'Unsupported operation'));
     try {
-      switch (String(operation.operationType)) {
-        case 'CREATE_INSPECTION':
-          return await this.createInspection(operation);
-        case 'UPSERT_INSPECTION_ANSWER':
-          return await this.upsertInspectionAnswer(operation);
-        case 'CREATE_INSPECTION_FINDING':
-          return await this.createInspectionFinding(operation);
-        case 'CLOSE_INSPECTION':
-          return await this.closeInspection(operation);
-        case 'UPLOAD_ATTACHMENT':
-          return await this.uploadAttachment(operation);
-        case 'CREATE_INCIDENT':
-          return this.processingResult(operation.localId);
-        default:
-          return this.errorResult(operation.localId, 'UNSUPPORTED_OPERATION', `Unsupported operation: ${String(operation.operationType)}`);
-      }
+      const result = await this.execute(operation);
+      return this.saveResult(batchId, operation, result);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Mobile sync materialization failed';
-      return this.errorResult(operation.localId, 'MATERIALIZATION_ERROR', message);
+      const message = error instanceof Error ? error.message : 'Sync failed';
+      return this.saveResult(batchId, operation, this.fail(operation.localId, 'MATERIALIZATION_ERROR', message));
     }
   }
 
-  private async createInspection(operation: MobileSyncOperationRequest): Promise<MobileSyncOperationResult> {
-    const created = await this.inspectionsService.create(operation.payload as CreateInspectionRequest, actorId(operation.createdBy));
-    this.localToRemoteIds.set(operation.localId, created.id);
-    this.incrementMaterialized(String(operation.operationType));
-    return this.syncedResult(operation.localId, created.id);
+  private async execute(operation: MobileSyncOperationRequest): Promise<MobileSyncOperationResult> {
+    const type = String(operation.operationType);
+    if (type === 'CREATE_INSPECTION') {
+      const created = await this.inspectionsService.create(operation.payload as CreateInspectionRequest, toActor(operation.createdBy));
+      return this.done(operation, created.id);
+    }
+    if (type === 'UPSERT_INSPECTION_ANSWER') {
+      const inspectionId = await this.resolveInspection(operation);
+      if (!inspectionId) return this.fail(operation.localId, 'MISSING_INSPECTION_REMOTE_ID', 'Inspection dependency was not materialized');
+      const answer = await this.inspectionsService.upsertAnswer(inspectionId, operation.payload as UpsertInspectionAnswerRequest, toActor(operation.createdBy));
+      return this.done(operation, answer.id);
+    }
+    if (type === 'CREATE_INSPECTION_FINDING') {
+      const inspectionId = await this.resolveInspection(operation);
+      if (!inspectionId) return this.fail(operation.localId, 'MISSING_INSPECTION_REMOTE_ID', 'Inspection dependency was not materialized');
+      const finding = await this.inspectionsService.createFinding(inspectionId, operation.payload as CreateInspectionFindingRequest, toActor(operation.createdBy));
+      return this.done(operation, finding.id);
+    }
+    if (type === 'CLOSE_INSPECTION') {
+      const inspectionId = await this.resolveInspection(operation);
+      if (!inspectionId) return this.fail(operation.localId, 'MISSING_INSPECTION_REMOTE_ID', 'Inspection dependency was not materialized');
+      const closed = await this.inspectionsService.updateStatus(inspectionId, { status: InspectionStatus.CLOSED, comment: 'Closed from mobile sync' }, toActor(operation.createdBy));
+      return this.done(operation, closed.id);
+    }
+    if (type === 'UPLOAD_ATTACHMENT') return this.done(operation, getPayloadId(operation.payload, 'localEvidenceId') ?? operation.localId);
+    return { localId: operation.localId, remoteId: null, status: PROCESSING, syncedAt: null };
   }
 
-  private async upsertInspectionAnswer(operation: MobileSyncOperationRequest): Promise<MobileSyncOperationResult> {
-    const inspectionId = this.resolveInspectionId(operation.payload);
-    if (!inspectionId) return this.errorResult(operation.localId, 'MISSING_INSPECTION_REMOTE_ID', 'Inspection dependency was not materialized');
-    const payload = operation.payload as UpsertInspectionAnswerRequest & LocalizedPayload;
-    const answer = await this.inspectionsService.upsertAnswer(inspectionId, payload, actorId(operation.createdBy));
-    this.localToRemoteIds.set(operation.localId, answer.id);
-    this.incrementMaterialized(String(operation.operationType));
-    return this.syncedResult(operation.localId, answer.id);
+  private async resolveInspection(operation: MobileSyncOperationRequest): Promise<string | null> {
+    const localId = getPayloadId(operation.payload, 'inspectionLocalId');
+    if (!localId) return null;
+    const cached = this.localToRemote.get(this.key(operation.deviceId, localId));
+    if (cached) return cached;
+    const stored = await this.operations.findOne({ where: { deviceId: operation.deviceId, localId } });
+    if (!stored?.remoteId) return null;
+    this.localToRemote.set(this.key(operation.deviceId, localId), stored.remoteId);
+    return stored.remoteId;
   }
 
-  private async createInspectionFinding(operation: MobileSyncOperationRequest): Promise<MobileSyncOperationResult> {
-    const inspectionId = this.resolveInspectionId(operation.payload);
-    if (!inspectionId) return this.errorResult(operation.localId, 'MISSING_INSPECTION_REMOTE_ID', 'Inspection dependency was not materialized');
-    const finding = await this.inspectionsService.createFinding(inspectionId, operation.payload as CreateInspectionFindingRequest, actorId(operation.createdBy));
-    this.localToRemoteIds.set(operation.localId, finding.id);
-    this.incrementMaterialized(String(operation.operationType));
-    return this.syncedResult(operation.localId, finding.id);
+  private async saveResult(batchId: string, operation: MobileSyncOperationRequest, result: MobileSyncOperationResult): Promise<MobileSyncOperationResult> {
+    const saved = await this.operations.save(this.operations.create({ batchId, localId: operation.localId, idempotencyKey: operation.idempotencyKey, deviceId: operation.deviceId, deviceSessionId: operation.deviceSessionId, operationType: String(operation.operationType), entityType: operation.entityType, status: String(result.status), remoteId: result.remoteId ?? null, errorCode: result.errorCode ?? null, errorMessage: result.errorMessage ?? null, payload: operation.payload ?? null, syncedAt: result.syncedAt ? new Date(result.syncedAt) : null }));
+    return this.resultFromStored(saved);
   }
 
-  private async closeInspection(operation: MobileSyncOperationRequest): Promise<MobileSyncOperationResult> {
-    const inspectionId = this.resolveInspectionId(operation.payload);
-    if (!inspectionId) return this.errorResult(operation.localId, 'MISSING_INSPECTION_REMOTE_ID', 'Inspection dependency was not materialized');
-    const closed = await this.inspectionsService.updateStatus(inspectionId, { status: InspectionStatus.CLOSED, comment: 'Closed from mobile sync' }, actorId(operation.createdBy));
-    this.localToRemoteIds.set(operation.localId, closed.id);
-    this.incrementMaterialized(String(operation.operationType));
-    return this.syncedResult(operation.localId, closed.id);
+  private resultFromStored(row: MobileSyncOperationEntity): MobileSyncOperationResult {
+    if (row.remoteId) this.localToRemote.set(this.key(row.deviceId, row.localId), row.remoteId);
+    return { localId: row.localId, remoteId: row.remoteId, status: row.status as MobileSyncStatus, syncedAt: row.syncedAt ? row.syncedAt.toISOString() : null, errorCode: row.errorCode, errorMessage: row.errorMessage };
   }
 
-  private async uploadAttachment(operation: MobileSyncOperationRequest): Promise<MobileSyncOperationResult> {
-    const localEvidenceId = remoteIdFromPayload(operation.payload, 'localEvidenceId') ?? operation.localId;
-    this.localToRemoteIds.set(operation.localId, localEvidenceId);
-    this.incrementMaterialized(String(operation.operationType));
-    return this.syncedResult(operation.localId, localEvidenceId);
+  private done(operation: MobileSyncOperationRequest, remoteId: string): MobileSyncOperationResult {
+    this.localToRemote.set(this.key(operation.deviceId, operation.localId), remoteId);
+    this.materializedOperationCounts[String(operation.operationType)] = (this.materializedOperationCounts[String(operation.operationType)] ?? 0) + 1;
+    return { localId: operation.localId, remoteId, status: SYNCED, syncedAt: new Date().toISOString() };
   }
 
-  private resolveInspectionId(payload: unknown): string | null {
-    const localInspectionId = remoteIdFromPayload(payload, 'inspectionLocalId');
-    if (!localInspectionId) return null;
-    return this.localToRemoteIds.get(localInspectionId) ?? null;
-  }
-
-  private syncedResult(localId: string, remoteId: string): MobileSyncOperationResult {
-    return { localId, remoteId, status: SYNCED, syncedAt: new Date().toISOString() };
-  }
-
-  private processingResult(localId: string): MobileSyncOperationResult {
-    return { localId, remoteId: null, status: PROCESSING, syncedAt: null };
-  }
-
-  private errorResult(localId: string, errorCode: string, errorMessage: string): MobileSyncOperationResult {
+  private fail(localId: string, errorCode: string, errorMessage: string): MobileSyncOperationResult {
     return { localId, remoteId: null, status: ERROR, syncedAt: null, errorCode, errorMessage };
   }
 
-  private incrementMaterialized(operationType: string): void {
-    this.materializedOperationCounts[operationType] = (this.materializedOperationCounts[operationType] ?? 0) + 1;
+  private key(deviceId: string, localId: string): string {
+    return `${deviceId}:${localId}`;
   }
 }

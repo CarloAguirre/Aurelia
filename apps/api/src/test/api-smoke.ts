@@ -78,6 +78,16 @@ async function request(baseUrl: string, method: string, path: string, body?: Jso
   return text;
 }
 
+async function loginAs(baseUrl: string, email: string, password: string): Promise<string> {
+  accessToken = null;
+  const login = asObject<LoginSmokeResponse>(
+    await request(baseUrl, 'POST', '/auth/login', { email, password }),
+    'login',
+  );
+  if (typeof login.token !== 'string' || login.token.length === 0) throw new Error('login did not return a token');
+  return login.token;
+}
+
 async function runAuthBoundaryChecks(baseUrl: string, password: string): Promise<void> {
   await request(baseUrl, 'GET', '/health');
   await request(baseUrl, 'GET', '/me', undefined, 401);
@@ -87,19 +97,22 @@ async function runAuthBoundaryChecks(baseUrl: string, password: string): Promise
     password: 'invalid-password',
   }, 401);
 
-  const login = asObject<LoginSmokeResponse>(
-    await request(baseUrl, 'POST', '/auth/login', {
-      email: 'karen.opazo@goldfields.com',
-      password,
-    }),
-    'login',
-  );
-
-  if (typeof login.token !== 'string' || login.token.length === 0) throw new Error('login did not return a token');
-  accessToken = login.token;
+  accessToken = await loginAs(baseUrl, 'karen.opazo@goldfields.com', password);
 
   const me = asObject<JsonObject>(await request(baseUrl, 'GET', '/me'), 'me');
   if (me.email !== 'karen.opazo@goldfields.com') throw new Error('/me did not return the authenticated user');
+
+  await request(baseUrl, 'GET', '/mobile/bootstrap');
+  await request(baseUrl, 'GET', '/users', undefined, 403);
+  await request(baseUrl, 'GET', '/organization/areas', undefined, 403);
+  await request(baseUrl, 'GET', '/roles', undefined, 403);
+  await request(baseUrl, 'GET', '/permissions', undefined, 403);
+
+  accessToken = await loginAs(baseUrl, 'carlos.aguirre@goldfields.com', password);
+  await request(baseUrl, 'GET', '/users');
+  await request(baseUrl, 'GET', '/organization/areas');
+  await request(baseUrl, 'GET', '/roles');
+  await request(baseUrl, 'GET', '/permissions');
 }
 
 async function runInspectionFlow(baseUrl: string): Promise<void> {

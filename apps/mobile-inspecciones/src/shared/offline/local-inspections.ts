@@ -79,6 +79,24 @@ export async function createLocalInspection(input: CreateLocalInspectionInput): 
   return record;
 }
 
+export async function incrementLocalInspectionFindings(localId: string): Promise<void> {
+  const timestamp = now();
+  const records = await getLocalInspections();
+  await localStorageDriver.set(LOCAL_INSPECTIONS_KEY, records.map((record) => {
+    if (record.localId !== localId) return record;
+    return {
+      ...record,
+      updatedAt: timestamp,
+      inspection: {
+        ...record.inspection,
+        updatedAt: timestamp,
+        findingsCount: record.inspection.findingsCount + 1,
+        openFindingsCount: record.inspection.openFindingsCount + 1,
+      },
+    };
+  }));
+}
+
 export async function markLocalInspectionSynced(localId: string, remoteId: string): Promise<void> {
   const records = await getLocalInspections();
   await localStorageDriver.set(LOCAL_INSPECTIONS_KEY, records.map((record) => record.localId === localId ? { ...record, remoteId, syncStatus: 'SYNCED', updatedAt: now(), inspection: { ...record.inspection, id: remoteId } } : record));

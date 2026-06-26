@@ -10,7 +10,7 @@ La ruta `/inspection/start` ofrece dos caminos:
 El flujo manual ya quedó conectado al patrón offline-first:
 
 ```txt
-UI -> storage local -> sync_queue -> POST /api/mobile/sync -> broker -> worker pendiente -> DB final pendiente
+UI -> storage local -> sync_queue -> POST /api/mobile/sync -> broker -> worker dev -> DB
 ```
 
 El flujo asistido existía visualmente y se basaba en `docs/references/Levantamiento de inspecciones.html`, pero seguía usando endpoints directos y no la cola offline.
@@ -49,59 +49,6 @@ resumen
 
 No conviene reemplazarlo todavía por el store del flujo manual. La convergencia debe ocurrir en la capa de guardado/sync, no necesariamente en la UI conversacional.
 
-## Brechas encontradas
-
-### 1. Catálogos online directos
-
-El asistente cargaba catálogos desde servicios HTTP directos:
-
-```txt
-/organization/areas
-/organization/sectors
-/organization/companies
-/inspections/types
-/users
-```
-
-Esto bloqueaba el llenado offline.
-
-### 2. Submit online directo
-
-El submit usaba:
-
-```txt
-createInspection
-createFinding
-createEvidence
-linkEvidence
-```
-
-Esto creaba registros directamente contra endpoints tradicionales, saltándose `sync_queue`.
-
-### 3. Evidencias no resueltas para offline native
-
-La captura de foto intentaba `uploadFile` cuando el usuario adjuntaba imagen. Para offline real, debe persistir binario local en FileSystem y encolar metadata/binario después.
-
-### 4. Fidelidad visual pendiente
-
-El flujo usa componentes equivalentes al HTML:
-
-```txt
-ChatHeader
-BotBubble
-UserBubble
-TypingIndicator
-ChipRow
-QuickOpts
-AiProposalCard
-PhotoStepWidget
-PersonnelPicker
-SubmitWidget
-ChatInput
-```
-
-Pero aún falta una pasada de fidelidad 100% contra `docs/references/Levantamiento de inspecciones.html`.
-
 ## Cambios aplicados
 
 ### Iteración A: catálogos local-first
@@ -136,7 +83,7 @@ Y se integró en:
 apps/mobile-inspecciones/src/modules/inspection/InspectionChatScreen.tsx
 ```
 
-Ahora el asistente deja de usar el submit directo tradicional en la pantalla de chat. Al enviar, el hook:
+Al enviar, el hook:
 
 ```txt
 1. construye CREATE_INSPECTION
@@ -186,8 +133,6 @@ evidenceType
 capturedAt
 ```
 
-Esto permite validar el flujo offline completo en cola, aunque la subida binaria final queda pendiente para el worker/FileSystem.
-
 ### Iteración E: conteo local de hallazgos
 
 Se agregó soporte para incrementar/establecer contadores locales de hallazgos:
@@ -198,7 +143,7 @@ apps/mobile-inspecciones/src/shared/offline/local-inspections.ts
 
 ### Iteración F: validación backend de operaciones mobile-sync
 
-Se actualizó `apps/api/src/modules/mobile-sync/mobile-sync.service.ts` para reconocer explícitamente operaciones soportadas:
+`apps/api/src/modules/mobile-sync/mobile-sync.service.ts` reconoce explícitamente:
 
 ```txt
 CREATE_INSPECTION
@@ -209,22 +154,62 @@ CREATE_INCIDENT
 UPLOAD_ATTACHMENT
 ```
 
-Si llega una operación no soportada, el resultado de esa operación vuelve con:
+Si llega una operación no soportada, el resultado vuelve con:
 
 ```txt
 status: ERROR
 errorCode: UNSUPPORTED_OPERATION
 ```
 
-También se agregó resumen de estado del broker in-memory:
+`GET /api/mobile/sync` expone:
 
 ```txt
 acceptedBatches
 operationCounts
+materializedOperationCounts
 pendingMessages
 ```
 
-expuesto desde `GET /api/mobile/sync`.
+### Iteración G: worker dev de materialización
+
+Se agregó materialización inmediata para el broker in-memory dev en:
+
+```txt
+apps/api/src/modules/mobile-sync/mobile-sync.service.ts
+apps/api/src/modules/mobile-sync/mobile-sync.module.ts
+```
+
+El módulo mobile-sync ahora importa `InspectionsModule` para usar `InspectionsService`.
+
+El worker dev resuelve dependencias locales:
+
+```txt
+inspectionLocalId -> inspectionId real
+findingLocalId -> findingId real
+localEvidenceId -> evidence id dev
+```
+
+Operaciones materializadas:
+
+```txt
+CREATE_INSPECTION -> inspections
+UPSERT_INSPECTION_ANSWER -> inspection_item_responses
+CREATE_INSPECTION_FINDING -> inspection_findings
+CLOSE_INSPECTION -> inspections.status = CLOSED
+UPLOAD_ATTACHMENT -> metadata dev marcada como SYNCED
+```
+
+`CREATE_INCIDENT` queda en `PROCESSING` porque pertenece al módulo mobile-incidentes y no se materializa todavía desde este worker.
+
+Cuando una operación se materializa, la respuesta del batch devuelve:
+
+```txt
+status: SYNCED
+remoteId: <uuid real o id dev>
+syncedAt: <iso date>
+```
+
+Así la app mobile puede marcar la cola local como sincronizada.
 
 ## Estado esperado después de estas iteraciones
 
@@ -237,8 +222,9 @@ expuesto desde `GET /api/mobile/sync`.
 5. Enviar inspección.
 6. Crear `local_inspections` y `sync_queue`.
 7. Si hay foto, `sync_queue` debe incluir `UPLOAD_ATTACHMENT`.
-8. Intentar `POST /api/mobile/sync` por auto-sync/background.
-9. API debe responder `PROCESSING` para operaciones soportadas.
+8. `POST /api/mobile/sync` debe materializar en DB.
+9. La respuesta debe traer operaciones `SYNCED`.
+10. La cola local debe pasar a `SYNCED`.
 
 ### Offline con bootstrap previo
 
@@ -249,6 +235,7 @@ expuesto desde `GET /api/mobile/sync`.
 5. Guardar local + cola.
 6. Si hay foto, encolar `UPLOAD_ATTACHMENT` con metadata local.
 7. Al volver al dashboard con API viva, auto-sync debe enviar batch.
+8. El worker dev debe materializar en DB y devolver `SYNCED`.
 
 ### Offline sin bootstrap
 
@@ -269,12 +256,11 @@ Debe sincronizar catálogos antes de operar offline
 4. Completar flujo saltando foto o adjuntando foto.
 5. Enviar.
 6. Confirmar /inspection/success.
-7. Confirmar local_inspections:v1.
-8. Confirmar sync_queue:v1.
-9. Confirmar CREATE_INSPECTION y CREATE_INSPECTION_FINDING.
-10. Si hubo foto, confirmar UPLOAD_ATTACHMENT.
-11. Confirmar POST /api/mobile/sync si hay API viva.
-12. Confirmar GET /api/mobile/sync con operationCounts.
+7. Confirmar POST /api/mobile/sync.
+8. Confirmar que la respuesta del batch trae SYNCED.
+9. Confirmar GET /api/inspections muestra la inspección real.
+10. Confirmar GET /api/inspections/:id/findings muestra hallazgos reales.
+11. Confirmar GET /api/mobile/sync con materializedOperationCounts.
 ```
 
 ### Caso offline
@@ -290,18 +276,19 @@ Debe sincronizar catálogos antes de operar offline
 8. Levantar API.
 9. Volver a /inspection/dashboard.
 10. Confirmar POST /api/mobile/sync.
-11. Confirmar GET /api/mobile/sync con operationCounts.
+11. Confirmar operaciones SYNCED.
+12. Confirmar inspección y hallazgos en DB/API.
 ```
 
 ## Pendientes secuenciales
 
-### Iteración siguiente 1: resolver worker dev de materialización
+### Iteración siguiente 1: QA de materialización e idempotencia
 
-- Resolver dependencias localId -> remoteId en el backend.
-- Materializar `CREATE_INSPECTION` en tablas reales.
-- Materializar `CREATE_INSPECTION_FINDING` usando `inspectionLocalId`.
-- Dejar `UPLOAD_ATTACHMENT` como metadata pendiente hasta FileSystem/storage.
-- Marcar operaciones como `SYNCED` cuando el worker dev las materialice.
+- Probar `/inspection/chat` online.
+- Probar `/inspection/chat` offline con bootstrap previo.
+- Confirmar que `CREATE_INSPECTION`, `CREATE_INSPECTION_FINDING`, `UPSERT_INSPECTION_ANSWER`, `CLOSE_INSPECTION` y `UPLOAD_ATTACHMENT` responden como corresponde.
+- Probar reintento del mismo batch y mismo localId.
+- Persistir tabla de idempotencia si se quiere sobrevivir reinicio de API.
 
 ### Iteración siguiente 2: evidencias offline completas native
 
@@ -335,7 +322,7 @@ Ajustar tokens, spacing, radius, sombras y estados resueltos/deshabilitados.
 
 ## Notas importantes
 
-- El worker final sigue pendiente; `POST /api/mobile/sync` acepta batches y los deja en `PROCESSING`.
-- La DB final todavía no se materializa desde la cola.
-- El Service Bus real sigue pendiente para producción.
+- El worker actual es dev/in-memory y materializa inmediatamente.
+- Service Bus real sigue pendiente para producción.
+- La idempotencia localId -> remoteId vive en memoria; si se reinicia la API puede duplicar registros ante reenvío.
 - El almacenamiento dev sigue en localStorage; SQLite es una iteración posterior para native.

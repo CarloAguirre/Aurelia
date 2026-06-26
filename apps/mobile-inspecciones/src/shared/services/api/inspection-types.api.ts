@@ -1,4 +1,4 @@
-import { httpGet } from '../http-client';
+import { getMobileBootstrapLocalFirst } from '../../offline/local-catalogs';
 
 export interface InspectionTypeResponse {
   id: string;
@@ -8,6 +8,13 @@ export interface InspectionTypeResponse {
   status: string;
 }
 
-export function fetchInspectionTypes(): Promise<InspectionTypeResponse[]> {
-  return httpGet<InspectionTypeResponse[]>('/inspections/types');
+export async function fetchInspectionTypes(): Promise<InspectionTypeResponse[]> {
+  const bootstrap = await getMobileBootstrapLocalFirst();
+  return bootstrap.catalogs.inspectionTypes.map((type) => ({
+    id: type.id,
+    code: type.code,
+    name: type.name,
+    description: type.description,
+    status: type.status,
+  }));
 }

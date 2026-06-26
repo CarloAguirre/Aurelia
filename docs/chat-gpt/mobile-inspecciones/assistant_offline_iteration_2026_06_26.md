@@ -80,7 +80,7 @@ Esto creaba registros directamente contra endpoints tradicionales, saltándose `
 
 ### 3. Evidencias no resueltas para offline native
 
-La captura de foto todavía intenta `uploadFile` cuando el usuario adjunta imagen. Para offline real, debe persistir binario local en FileSystem y encolar metadata/binario después.
+La captura de foto intentaba `uploadFile` cuando el usuario adjuntaba imagen. Para offline real, debe persistir binario local en FileSystem y encolar metadata/binario después.
 
 ### 4. Fidelidad visual pendiente
 
@@ -102,9 +102,9 @@ ChatInput
 
 Pero aún falta una pasada de fidelidad 100% contra `docs/references/Levantamiento de inspecciones.html`.
 
-## Cambios aplicados en esta iteración
+## Cambios aplicados
 
-### Catálogos local-first
+### Iteración A: catálogos local-first
 
 Se migraron servicios compartidos del mobile para leer desde `mobile-bootstrap` local-first:
 
@@ -122,41 +122,48 @@ GET /api/mobile/bootstrap
 
 Pero si la API no está disponible, se usa cache local.
 
-### Submit asistido encolado
+### Iteración B: submit asistido en hook offline dedicado
 
-Se cambió el servicio usado por el asistente:
-
-```txt
-apps/mobile-inspecciones/src/shared/services/api/inspections-submit.api.ts
-```
-
-Ahora `createInspection` y `createFinding` generan operaciones en:
+Se creó:
 
 ```txt
-sync_queue:v1
+apps/mobile-inspecciones/src/modules/inspection/hooks/useSaveAssistantInspectionOffline.ts
 ```
 
-y crean/actualizan el registro local en:
+Y se integró en:
 
 ```txt
-local_inspections:v1
+apps/mobile-inspecciones/src/modules/inspection/InspectionChatScreen.tsx
 ```
 
-El auto-sync del dashboard se encarga de llamar luego:
+Ahora el asistente deja de usar el submit directo tradicional en la pantalla de chat. Al enviar, el hook:
 
 ```txt
-POST /api/mobile/sync
+1. construye CREATE_INSPECTION
+2. guarda local_inspections:v1
+3. construye CREATE_INSPECTION_FINDING por cada observación
+4. guarda sync_queue:v1
+5. intenta syncPendingOperations si hay red y sesión
+6. navega a /inspection/success
 ```
 
-### Conteo local de hallazgos
+El `createdBy` usa el usuario autenticado cuando existe; si no hay sesión local, cae a `local-user`.
 
-Se agregó soporte para incrementar contadores locales de hallazgos:
+### Iteración C: foto capturada sin upload directo
+
+En `/inspection/chat`, la captura ahora guarda `fotoUri` local y continúa el flujo sin llamar inmediatamente a `/files/upload`.
+
+La evidencia queda como metadata local dentro de la operación de hallazgo. La subida binaria real sigue pendiente para la iteración FileSystem/SQLite.
+
+### Iteración D: conteo local de hallazgos
+
+Se agregó soporte para incrementar/establecer contadores locales de hallazgos:
 
 ```txt
 apps/mobile-inspecciones/src/shared/offline/local-inspections.ts
 ```
 
-## Estado esperado después de esta iteración
+## Estado esperado después de estas iteraciones
 
 ### Online
 
@@ -185,36 +192,61 @@ Debe mostrar error claro de catálogos:
 Debe sincronizar catálogos antes de operar offline
 ```
 
+## Validación inmediata recomendada
+
+### Caso online
+
+```txt
+1. Limpiar localStorage de local_inspections y sync_queue.
+2. Entrar a /inspection/start.
+3. Iniciar con asistente.
+4. Completar flujo saltando foto o adjuntando foto.
+5. Enviar.
+6. Confirmar /inspection/success.
+7. Confirmar local_inspections:v1.
+8. Confirmar sync_queue:v1.
+9. Confirmar POST /api/mobile/sync si hay API viva.
+```
+
+### Caso offline
+
+```txt
+1. Cargar bootstrap una vez con API viva.
+2. Cortar API o red.
+3. Entrar a /inspection/chat.
+4. Completar flujo.
+5. Enviar.
+6. Confirmar éxito visual.
+7. Confirmar local_inspections:v1 y sync_queue:v1.
+8. Levantar API.
+9. Volver a /inspection/dashboard.
+10. Confirmar POST /api/mobile/sync.
+```
+
 ## Pendientes secuenciales
 
-### Iteración siguiente 1: validar flujo asistido completo
+### Iteración siguiente 1: QA y ajuste de contrato de sync
 
 - Probar `/inspection/chat` online.
 - Probar `/inspection/chat` offline con bootstrap previo.
-- Revisar que no existan imports directos a endpoints en el chat para catálogos.
 - Confirmar que `sync_queue:v1` contiene `CREATE_INSPECTION` y `CREATE_INSPECTION_FINDING`.
+- Validar que el backend acepte `CREATE_INSPECTION_FINDING` con `inspectionLocalId`.
+- Definir cómo resolver dependencias localId -> remoteId en el worker final.
 
-### Iteración siguiente 2: mejorar submit asistido
+### Iteración siguiente 2: evidencias offline completas
 
-- Crear hook explícito `useSaveAssistantInspectionOffline`.
-- Mover la lógica de `inspections-submit.api.ts` a un hook/service offline dedicado.
-- Usar usuario real como `createdBy`, no `local-user`.
-- Enviar `bootstrapVersion` usada.
-
-### Iteración siguiente 3: evidencias offline
-
-- Evitar `uploadFile` directo en `PhotoStepWidget` cuando no hay red.
-- Persistir `fotoUri` como evidencia local.
-- Encolar `UPLOAD_ATTACHMENT`.
+- Crear operación explícita para evidencias si el contrato lo soporta.
+- Si no existe, agregar contrato `CREATE_EVIDENCE` o `UPLOAD_ATTACHMENT`.
 - En native usar FileSystem para binarios.
+- En web/dev persistir metadata y nombre/uri en localStorage.
 
-### Iteración siguiente 4: SQLite native
+### Iteración siguiente 3: SQLite native
 
 - Crear driver SQLite para native.
 - Mantener localStorage solo en web/dev.
 - Migrar catálogos, inspecciones locales y cola.
 
-### Iteración siguiente 5: fidelidad visual 100%
+### Iteración siguiente 4: fidelidad visual 100%
 
 Comparar contra `docs/references/Levantamiento de inspecciones.html`:
 

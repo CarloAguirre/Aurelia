@@ -1,4 +1,5 @@
-import type { AreaResponse, CompanyResponse, SectorResponse } from '../organization';
+import type { AreaResponse } from '../areas';
+import type { CompanyResponse, SectorResponse } from '../organization';
 import type { UserResponse } from '../users';
 import type { InspectionChecklistTemplateResponse, InspectionTypeResponse } from '../inspections';
 import type { ISODateString } from '../../types/common';

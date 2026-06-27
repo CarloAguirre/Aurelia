@@ -47,27 +47,38 @@ export class AiService {
     }
   }
 
+  private toStringOrFallback(value: unknown, fallback: string): string {
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : fallback;
+  }
+
+  private toStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+    return value
+      .filter((item): item is string => typeof item === 'string')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+  }
+
   private buildPrompts(dto: AiSuggestDto): { systemPrompt: string; userPrompt: string } {
+    const context = dto.context ?? {};
+
     if (dto.type === AiSuggestType.CORRECTIVE_MEASURE) {
-      const { area, sector, description } = dto.context as {
-        area: string;
-        sector: string;
-        description: string;
-      };
+      const area = this.toStringOrFallback(context.area, 'área no informada');
+      const sector = this.toStringOrFallback(context.sector, 'sector no informado');
+      const description = this.toStringOrFallback(context.description, 'sin descripción');
       return {
         systemPrompt: `${SYSTEM_BASE} Especialista en medidas correctivas de seguridad y medio ambiente en minería.`,
         userPrompt: `Inspector reporta en ${area} · ${sector}: "${description}". Propón una medida correctiva breve y específica para este hallazgo en faena minera.`,
       };
     }
 
-    const { area, sector, companies } = dto.context as {
-      area: string;
-      sector: string;
-      companies: string[];
-    };
+    const area = this.toStringOrFallback(context.area, 'área no informada');
+    const sector = this.toStringOrFallback(context.sector, 'sector no informado');
+    const companies = this.toStringArray(context.companies);
+    const companiesText = companies.length > 0 ? companies.join(', ') : 'Sin empresas informadas';
     return {
       systemPrompt: `${SYSTEM_BASE} Especialista en gestión de empresas contratistas (EECC) en faenas mineras.`,
-      userPrompt: `Para resolver hallazgos en ${area} · ${sector}, ¿qué empresa de las siguientes recomendarías? Empresas: ${companies.join(', ')}. Di solo el nombre exacto de la empresa y una breve justificación en 1 oración.`,
+      userPrompt: `Para resolver hallazgos en ${area} · ${sector}, ¿qué empresa de las siguientes recomendarías? Empresas: ${companiesText}. Di solo el nombre exacto de la empresa y una breve justificación en 1 oración.`,
     };
   }
 }

@@ -121,6 +121,28 @@ Esto evita fallos donde el chat intentaba leer `length`, `find` o `map` sobre el
 
 También se ajustó el submit para volver a resolver la plantilla desde bootstrap si el hook todavía no alcanzó a hidratar `templatesQuery.data`.
 
+## Tercera iteración aplicada
+
+Se reemplazó la presentación resumida de cada ítem:
+
+```txt
+SÍ · ORDEN-LIMPIEZA
+NO · ORDEN-LIMPIEZA
+N/A · ORDEN-LIMPIEZA
+```
+
+por una tarjeta conversacional equivalente al formulario manual:
+
+```txt
+header con sección y código del ítem
+número del ítem
+pregunta completa desde checklistItem.question
+guía si existe
+botones SÍ / NO / N/A
+```
+
+Esto mantiene la conversación, pero muestra la pregunta real del checklist y no solo el código.
+
 ## Estado de Hallazgo
 
 `Hallazgo` sigue pendiente. Si el usuario lo selecciona, el chat muestra un aviso y no intenta guardar un payload incompleto.
@@ -162,8 +184,7 @@ CLOSE_INSPECTION
 
 ## Pendientes
 
-1. Pulir diseño de pregunta por ítem contra HTML.
-2. Mejorar etiqueta del widget de foto general, hoy reutiliza `PhotoStepWidget`.
-3. Persistir nombres de responsables además de IDs para success screen.
-4. Agregar ownerUserId real en findings cuando el contrato lo permita.
-5. Validar compilación local con `pnpm web -- --clear`.
+1. Mejorar etiqueta del widget de foto general, hoy reutiliza `PhotoStepWidget`.
+2. Persistir nombres de responsables además de IDs para success screen.
+3. Agregar ownerUserId real en findings cuando el contrato lo permita.
+4. Validar compilación local con `pnpm web -- --clear`.

@@ -1,184 +1,148 @@
-# Assistant visual fidelity - 2026-06-26
+# Assistant checklist normativo parity - 2026-06-26
 
-## Foco de esta iteración
+## Objetivo
 
-Alinear pasos del flujo asistido con el prototipo HTML:
+Hacer que el flujo conversacional de `/inspection/chat` para `Checklist normativo` construya la misma estructura que el formulario manual.
+
+## Principio de diseño
+
+El asistente no debe guardar un modelo libre cuando el usuario elige `Checklist normativo`.
+
+Debe llenar el mismo draft usado por el flujo manual:
 
 ```txt
-docs/references/Levantamiento de inspecciones.html
+useManualInspectionDraft
 ```
 
-## Extracción desde HTML
-
-Se usaron directamente clases del HTML de referencia para criticidad, SLA, empresa sugerida, personal, resumen y pantalla de éxito:
+Y debe guardar con el mismo hook:
 
 ```txt
-.crit-sec
-.crit-shdr
-.crit-sbdy
-.crit-chips
-.cc
-.cc.sel
-.cc.dis
-.nivel-box
-.sla-sec
-.sla-lbl
-.sla-qs
-.sla-q
-.sla-q.sel
-.sla-row
-.sla-inp
-.qopt.tok
-.prop
-.phdr
-.pbdy
-.plb
-.ptx
-.pmt
-.pac
-.bed
-.bok
-.pers-list
-.pi
-.pi.sel
-.pia-tag
-.pck
-.res-card
-.res-hdr
-.res-row
-.rk
-.rv
-.badge
-.done-screen
-.done-circle
+useSaveManualInspectionOffline
 ```
 
-## Criticidad y SLA
+## Cambios aplicados
 
-El flujo ahora usa:
+Se agregó la implementación conversacional en:
 
 ```txt
-apps/mobile-inspecciones/src/shared/components/chat/CriticalityWidget.tsx
-apps/mobile-inspecciones/src/shared/components/chat/SlaConfirmWidget.tsx
+apps/mobile-inspecciones/src/modules/inspection/InspectionChatScreenV2.tsx
 ```
 
-Comportamiento:
+Se delegó el componente anterior hacia V2 en:
 
 ```txt
-1. pregunta criticidad
-2. muestra tarjeta integrada de probabilidad/consecuencia
-3. muestra consecuencia solo después de elegir probabilidad
-4. deshabilita opciones no seleccionadas como en el HTML
-5. calcula nivel y SLA sugerido dentro de la tarjeta
-6. muestra tarjeta de confirmación SLA
-7. muestra botón teal separado para guardar observación
-8. pregunta si hay más observaciones
-```
-
-## Empresa sugerida
-
-Se agregó:
-
-```txt
-apps/mobile-inspecciones/src/shared/components/chat/CompanySuggestionCard.tsx
-```
-
-Comportamiento alineado con el HTML:
-
-```txt
-1. Al continuar con empresa, AurelIA consulta/simula sugerencia.
-2. Muestra bubble: Basándome en el historial de área · sector, te propongo.
-3. Muestra card Empresa sugerida por AurelIA.
-4. Permite Confirmar empresa sugerida.
-5. Permite Elegir otra.
-6. Solo si se elige otra, muestra chips de empresas.
-7. Al confirmar, continúa a selección de personal.
-```
-
-El selector de chips de empresa ya no aparece inmediatamente después de guardar observación.
-
-## Resumen antes de guardar
-
-Se actualizó:
-
-```txt
-apps/mobile-inspecciones/src/shared/components/chat/SubmitWidget.tsx
 apps/mobile-inspecciones/src/modules/inspection/InspectionAssistantChatScreen.tsx
 ```
 
-Después de seleccionar personal ahora ocurre:
+La ruta sigue entrando por:
 
 ```txt
-1. bubble: ✓ Personal: nombres seleccionados
-2. bubble: ¡Listo! Revisa el resumen antes de guardar:
-3. card Datos generales
-4. card Observaciones
-5. pregunta ¿Todo correcto?
-6. botón Modificar algo
-7. botón Guardar inspección
+apps/mobile-inspecciones/app/inspection/chat.tsx
 ```
 
-## Pantalla final
+## Ruta conversacional implementada
 
-Se actualizó:
+El chat pide y guarda, en orden:
 
 ```txt
-apps/mobile-inspecciones/app/inspection/success.tsx
+1. Área
+2. Sector
+3. Tipo de inspección
+4. Fecha de inspección
+5. Ubicación obligatoria
+6. Plantilla normativa
+7. Foto general obligatoria
+8. Respuestas de cada ítem real de la plantilla
+9. Si hay ítem NO: condición detectada
+10. Si hay ítem NO: medida correctiva
+11. Si hay ítem NO: foto del hallazgo
+12. Si hay hallazgos: empresa responsable
+13. Si hay hallazgos: responsables sugeridos
+14. Resumen
+15. Guardar inspección
 ```
 
-La pantalla final ahora recibe datos del flujo:
+## Paridad funcional con manual
+
+El asistente ahora usa:
 
 ```txt
-areaName
-sectorName
-companyName
-personnelNames
-criticalCount
-findingsCount
-evidencesCount
+useManualInspectionDraft.setArea
+useManualInspectionDraft.setSector
+useManualInspectionDraft.setInspectionDate
+useManualInspectionDraft.setLocation
+useManualInspectionDraft.setInspectionType
+useManualInspectionDraft.setTemplate
+useManualInspectionDraft.setGeneralPhoto
+useManualInspectionDraft.setAnswer
+useManualInspectionDraft.setItemDetail
+useManualInspectionDraft.setFindingCompany
+useManualInspectionDraft.setFindingResponsibles
 ```
 
-Y muestra:
+Al guardar, usa:
 
 ```txt
-header completado
-círculo verde
-¡Inspección guardada!
-mensaje con observaciones + área/sector
-card EECC notificada
-cards de métricas
-acciones Misma área / Nueva insp.
+useSaveManualInspectionOffline.mutateAsync({
+  draft,
+  template,
+  items,
+  trySyncNow
+})
 ```
 
-## Persistencia
-
-No se cambió el mecanismo de guardado final.
-
-El submit sigue usando:
+Por lo tanto genera las mismas operaciones offline que el manual:
 
 ```txt
-useSaveAssistantInspectionOffline
-```
-
-Por lo tanto el flujo conserva:
-
-```txt
-local_inspections:v1
-sync_queue:v1
 CREATE_INSPECTION
-CREATE_INSPECTION_FINDING
-UPLOAD_ATTACHMENT cuando aplica
-POST /api/mobile/sync
+UPSERT_INSPECTION_ANSWER
+CREATE_INSPECTION_FINDING cuando hay respuestas NO
+CLOSE_INSPECTION cuando no hay respuestas NO
 ```
 
-## Pendiente visual siguiente
+## Estado de Hallazgo
 
-Seguir comparando contra el HTML en:
+`Hallazgo` sigue pendiente. Si el usuario lo selecciona, el chat muestra un aviso y no intenta guardar un payload incompleto.
+
+## Validación recomendada
+
+1. Entrar a `/inspection/chat`.
+2. Seleccionar `Checklist normativo`.
+3. Completar área, sector, fecha y ubicación.
+4. Seleccionar plantilla.
+5. Adjuntar foto general.
+6. Responder todos los ítems.
+7. Marcar al menos un ítem como NO.
+8. Completar condición, medida y foto para ese ítem.
+9. Confirmar empresa y responsables.
+10. Guardar.
+11. Verificar en `mobile_sync_operations`:
+
+```sql
+select operation_type, status, local_id, remote_id, error_code, error_message
+from mobile_sync_operations
+order by created_at desc
+limit 30;
+```
+
+12. Deben existir:
 
 ```txt
-personal sugerido
-header/progress
-AI proposal card
-photo widget
-espaciados/sombras/tamaños
+CREATE_INSPECTION
+UPSERT_INSPECTION_ANSWER por cada ítem respondido
+CREATE_INSPECTION_FINDING por cada ítem NO
 ```
+
+Si no hay ítems NO, debe existir:
+
+```txt
+CLOSE_INSPECTION
+```
+
+## Pendientes
+
+1. Pulir diseño de pregunta por ítem contra HTML.
+2. Mejorar etiqueta del widget de foto general, hoy reutiliza `PhotoStepWidget`.
+3. Persistir nombres de responsables además de IDs para success screen.
+4. Agregar ownerUserId real en findings cuando el contrato lo permita.
+5. Validar compilación local con `pnpm web -- --clear`.

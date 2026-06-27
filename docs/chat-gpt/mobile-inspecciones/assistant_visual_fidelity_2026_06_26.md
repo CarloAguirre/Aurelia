@@ -100,6 +100,27 @@ CREATE_INSPECTION_FINDING cuando hay respuestas NO
 CLOSE_INSPECTION cuando no hay respuestas NO
 ```
 
+## Segunda iteración aplicada
+
+Se corrigió la carga de catálogos para evitar depender del resultado directo de `refetch()` de React Query, porque ese `refetch()` pertenece al bootstrap completo y no solo al arreglo derivado de plantillas o empresas.
+
+Ahora `InspectionChatScreenV2` carga directamente desde:
+
+```txt
+getMobileBootstrapLocalFirst()
+```
+
+para:
+
+```txt
+inspectionTemplates
+companies.filter(isContractor)
+```
+
+Esto evita fallos donde el chat intentaba leer `length`, `find` o `map` sobre el objeto bootstrap completo en vez de sobre un arreglo.
+
+También se ajustó el submit para volver a resolver la plantilla desde bootstrap si el hook todavía no alcanzó a hidratar `templatesQuery.data`.
+
 ## Estado de Hallazgo
 
 `Hallazgo` sigue pendiente. Si el usuario lo selecciona, el chat muestra un aviso y no intenta guardar un payload incompleto.
@@ -132,7 +153,6 @@ CREATE_INSPECTION
 UPSERT_INSPECTION_ANSWER por cada ítem respondido
 CREATE_INSPECTION_FINDING por cada ítem NO
 ```
-
 Si no hay ítems NO, debe existir:
 
 ```txt

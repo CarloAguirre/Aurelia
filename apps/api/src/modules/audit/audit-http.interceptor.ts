@@ -6,7 +6,7 @@ import {
   NestInterceptor,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { Observable, catchError, tap, throwError } from 'rxjs';
+import { Observable, catchError, from, mergeMap, throwError } from 'rxjs';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { AuditService } from './audit.service';
 
@@ -49,13 +49,13 @@ export class AuditHttpInterceptor implements NestInterceptor {
     const startedAt = Date.now();
 
     return next.handle().pipe(
-      tap(() => {
-        void this.writeAudit(request, response, rule, 'success', Date.now() - startedAt);
+      mergeMap(async (body) => {
+        await this.writeAudit(request, response, rule, 'success', Date.now() - startedAt);
+        return body;
       }),
-      catchError((err: unknown) => {
-        void this.writeAudit(request, response, rule, 'failed', Date.now() - startedAt, err);
-        return throwError(() => err);
-      }),
+      catchError((err: unknown) => from(
+        this.writeAudit(request, response, rule, 'failed', Date.now() - startedAt, err),
+      ).pipe(mergeMap(() => throwError(() => err)))),
     );
   }
 

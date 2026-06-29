@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserEntity } from '../users/entities/user.entity';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { CredentialHashService } from './credential-hash.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { JwtTokenService } from './jwt-token.service';
 import { PermissionsGuard } from './permissions.guard';
@@ -14,6 +15,7 @@ import { PermissionsGuard } from './permissions.guard';
   providers: [
     AuthService,
     JwtTokenService,
+    CredentialHashService,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
@@ -23,6 +25,6 @@ import { PermissionsGuard } from './permissions.guard';
       useClass: PermissionsGuard,
     },
   ],
-  exports: [JwtTokenService],
+  exports: [JwtTokenService, CredentialHashService],
 })
 export class AuthModule {}

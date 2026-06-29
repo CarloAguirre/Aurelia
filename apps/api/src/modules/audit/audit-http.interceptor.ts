@@ -8,6 +8,7 @@ import {
 import type { Request, Response } from 'express';
 import { Observable, catchError, from, mergeMap, throwError } from 'rxjs';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
+import { getRequestId } from '../../shared/security/request-id.middleware';
 import { AuditService } from './audit.service';
 
 type AuditRule = {
@@ -73,6 +74,7 @@ export class AuditHttpInterceptor implements NestInterceptor {
     err?: unknown,
   ): Promise<void> {
     const path = request.originalUrl.split('?')[0];
+    const requestId = getRequestId(request);
     const userAgentHeader = request.headers['user-agent'];
     const userAgent = Array.isArray(userAgentHeader) ? userAgentHeader[0] : userAgentHeader;
     const statusCode = err instanceof HttpException ? err.getStatus() : response.statusCode;
@@ -86,6 +88,7 @@ export class AuditHttpInterceptor implements NestInterceptor {
       actorUserId,
       action: `${rule.action}.${outcome}`,
       metadata: {
+        requestId,
         method: request.method,
         path,
         statusCode,

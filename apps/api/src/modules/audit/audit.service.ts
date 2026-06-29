@@ -1,14 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AuditLogResponse } from '@aurelia/contracts';
 import { Repository } from 'typeorm';
 import { AuditLogEntity } from './entities/audit-log.entity';
 import { CreateAuditLogDto } from './dto/create-audit-log.dto';
 
-// TODO: restrict GET /api/audit to ADMIN/VIEWER roles once auth is implemented in Phase 3+
-
 @Injectable()
 export class AuditService {
+  private readonly logger = new Logger(AuditService.name);
+
   constructor(
     @InjectRepository(AuditLogEntity)
     private readonly auditLogs: Repository<AuditLogEntity>,
@@ -27,6 +27,14 @@ export class AuditService {
       userAgent: dto.userAgent ?? null,
     });
     return this.toResponse(await this.auditLogs.save(entity));
+  }
+
+  async logSafe(dto: CreateAuditLogDto): Promise<void> {
+    try {
+      await this.log(dto);
+    } catch (err) {
+      this.logger.warn(err instanceof Error ? err.message : 'Audit log failed');
+    }
   }
 
   async findAll(entityType?: string, entityId?: string): Promise<AuditLogResponse[]> {

@@ -9,4 +9,5 @@ export interface CreateUserRequest {
   companyId?: ID;
   areaId?: ID;
   isActive?: boolean;
+  password?: string;
 }

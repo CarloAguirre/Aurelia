@@ -4,6 +4,11 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DataSource } from 'typeorm';
 import { AppModule } from './app.module';
+import { ResourceScopeInterceptor } from './modules/access-control/resource-scope.interceptor';
+import { ResourceScopeService } from './modules/access-control/resource-scope.service';
+import { IncidentEntity } from './modules/incidents/entities/incident.entity';
+import { InspectionEntity } from './modules/inspections/entities/inspection.entity';
+import { UserEntity } from './modules/users/entities/user.entity';
 import {
   createRateLimit,
   DatabaseRateLimitStore,
@@ -24,6 +29,14 @@ function createRateLimitStore(config: ConfigService, dataSource: DataSource) {
   return new MemoryRateLimitStore();
 }
 
+function createResourceScopeInterceptor(dataSource: DataSource): ResourceScopeInterceptor {
+  return new ResourceScopeInterceptor(
+    new ResourceScopeService(dataSource.getRepository(UserEntity)),
+    dataSource.getRepository(InspectionEntity),
+    dataSource.getRepository(IncidentEntity),
+  );
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
@@ -39,6 +52,7 @@ async function bootstrap() {
     store: createRateLimitStore(config, dataSource),
   }));
 
+  app.useGlobalInterceptors(createResourceScopeInterceptor(dataSource));
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

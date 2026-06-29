@@ -573,9 +573,10 @@ async function runSprFlow(baseUrl: string): Promise<void> {
   const parameterId = parameter?.id;
   if (!parameterId) throw new Error('SPR parameter seed is missing');
 
+  const uniqueSeed = parseInt(randomUUID().replaceAll('-', '').slice(0, 8), 16);
   const unique = Date.now();
-  const periodYear = 2000 + (unique % 100);
-  const periodMonth = 1 + (Math.floor(unique / 1000) % 10);
+  const periodYear = 2090 + (uniqueSeed % 11);
+  const periodMonth = 1 + (Math.floor(uniqueSeed / 11) % 11);
 
   const recordId = await createSprRecord(baseUrl, parameterId, periodYear, periodMonth, 'Smoke SPR monthly record');
 

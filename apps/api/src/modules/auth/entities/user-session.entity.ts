@@ -24,8 +24,8 @@ export class UserSessionEntity {
   user: UserEntity;
 
   @Index('idx_user_sessions_lookup', { unique: true })
-  @Column({ name: 'session_secret_hash', type: 'varchar', length: 128 })
-  sessionSecretHash: string;
+  @Column({ name: 'session_key_hash', type: 'varchar', length: 128 })
+  sessionKeyHash: string;
 
   @Column({ name: 'user_agent', type: 'text', nullable: true })
   userAgent: string | null;

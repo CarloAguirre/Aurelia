@@ -1,6 +1,7 @@
 import {
   CallHandler,
   ExecutionContext,
+  HttpException,
   Injectable,
   NestInterceptor,
 } from '@nestjs/common';
@@ -74,7 +75,7 @@ export class AuditHttpInterceptor implements NestInterceptor {
     const path = request.originalUrl.split('?')[0];
     const userAgentHeader = request.headers['user-agent'];
     const userAgent = Array.isArray(userAgentHeader) ? (userAgentHeader[0] ?? null) : (userAgentHeader ?? null);
-    const statusCode = response.statusCode;
+    const statusCode = err instanceof HttpException ? err.getStatus() : response.statusCode;
     const actorUserId = request.user?.sub ?? null;
     const entityId = typeof request.params?.id === 'string' ? request.params.id : null;
     const errorName = err instanceof Error ? err.constructor.name : null;

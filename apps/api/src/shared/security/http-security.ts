@@ -16,8 +16,6 @@ export interface RateLimitOptions {
   store?: RateLimitStore;
 }
 
-const requests = new Map<string, RateLimitEntry>();
-
 export function securityHeaders(_request: Request, response: Response, next: NextFunction): void {
   response.setHeader('X-Content-Type-Options', 'nosniff');
   response.setHeader('X-Frame-Options', 'DENY');
@@ -52,9 +50,9 @@ export class DatabaseRateLimitStore implements RateLimitStore {
   async increment(key: string, windowMs: number): Promise<RateLimitEntry> {
     const resetAt = new Date(Date.now() + windowMs);
     const rows = await this.dataSource.query(
-      `INSERT INTO rate_limit_buckets (key, count, reset_at)
+      `INSERT INTO rate_limit_buckets ("key", count, reset_at)
        VALUES ($1, 1, $2)
-       ON CONFLICT (key) DO UPDATE
+       ON CONFLICT ("key") DO UPDATE
        SET count = CASE
              WHEN rate_limit_buckets.reset_at <= now() THEN 1
              ELSE rate_limit_buckets.count + 1
@@ -98,11 +96,4 @@ export function createRateLimit(options: RateLimitOptions) {
       next(err);
     }
   };
-}
-
-export function cleanupMemoryRateLimitBuckets(): void {
-  const now = Date.now();
-  for (const [key, value] of requests.entries()) {
-    if (value.resetAt <= now) requests.delete(key);
-  }
 }

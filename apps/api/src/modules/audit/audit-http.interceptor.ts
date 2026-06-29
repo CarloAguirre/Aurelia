@@ -74,10 +74,10 @@ export class AuditHttpInterceptor implements NestInterceptor {
   ): Promise<void> {
     const path = request.originalUrl.split('?')[0];
     const userAgentHeader = request.headers['user-agent'];
-    const userAgent = Array.isArray(userAgentHeader) ? (userAgentHeader[0] ?? null) : (userAgentHeader ?? null);
+    const userAgent = Array.isArray(userAgentHeader) ? userAgentHeader[0] : userAgentHeader;
     const statusCode = err instanceof HttpException ? err.getStatus() : response.statusCode;
-    const actorUserId = request.user?.sub ?? null;
-    const entityId = typeof request.params?.id === 'string' ? request.params.id : null;
+    const actorUserId = request.user?.sub;
+    const entityId = typeof request.params?.id === 'string' ? request.params.id : undefined;
     const errorName = err instanceof Error ? err.constructor.name : null;
 
     await this.auditService.logSafe({
@@ -92,7 +92,7 @@ export class AuditHttpInterceptor implements NestInterceptor {
         durationMs,
         errorName,
       },
-      ipAddress: request.ip ?? null,
+      ipAddress: request.ip,
       userAgent,
     });
   }

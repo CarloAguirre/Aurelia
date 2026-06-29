@@ -1,11 +1,26 @@
 import 'reflect-metadata';
+import { pbkdf2, randomBytes } from 'crypto';
 import { config } from 'dotenv';
+import { promisify } from 'util';
 import { DataSource } from 'typeorm';
 import { AppDataSource } from '../data-source';
 
 config();
 
+const deriveKey = promisify(pbkdf2);
+const FORMAT = 'pbkdf2_sha256';
+const ITERATIONS = 210000;
+const KEY_LENGTH = 32;
+
+async function createPasswordHash(secret: string): Promise<string> {
+  const salt = randomBytes(16);
+  const key = await deriveKey(secret, salt, ITERATIONS, KEY_LENGTH, 'sha256');
+  return `${FORMAT}$${ITERATIONS}$${salt.toString('base64url')}$${key.toString('base64url')}`;
+}
+
 async function seed(ds: DataSource): Promise<void> {
+  const demoPassword = process.env.AURELIA_DEMO_USER_PASSWORD ?? 'AureliaDemo123!';
+  const demoPasswordHash = await createPasswordHash(demoPassword);
   const qr = ds.createQueryRunner();
   await qr.connect();
   await qr.startTransaction();
@@ -113,6 +128,16 @@ async function seed(ds: DataSource): Promise<void> {
          ON CONFLICT (email) DO NOTHING`,
         [u.email, u.first, u.last, u.pos],
       );
+
+      await qr.query(
+        `UPDATE users
+         SET password_hash = $2,
+             password_changed_at = NOW(),
+             failed_login_attempts = 0,
+             locked_until = NULL
+         WHERE email = $1`,
+        [u.email, demoPasswordHash],
+      );
     }
 
     // GF user roles
@@ -169,6 +194,16 @@ async function seed(ds: DataSource): Promise<void> {
          VALUES ($1, $2, $3, $4, true)
          ON CONFLICT (email) DO NOTHING`,
         [email, first, last, pos],
+      );
+
+      await qr.query(
+        `UPDATE users
+         SET password_hash = $2,
+             password_changed_at = NOW(),
+             failed_login_attempts = 0,
+             locked_until = NULL
+         WHERE email = $1`,
+        [email, demoPasswordHash],
       );
 
       // Assign role

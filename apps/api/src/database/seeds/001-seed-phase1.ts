@@ -1,11 +1,26 @@
 import 'reflect-metadata';
+import { pbkdf2, randomBytes } from 'crypto';
 import { config } from 'dotenv';
+import { promisify } from 'util';
 import { DataSource } from 'typeorm';
 import { AppDataSource } from '../data-source';
 
 config();
 
+const deriveKey = promisify(pbkdf2);
+const FORMAT = 'pbkdf2_sha256';
+const ITERATIONS = 210000;
+const KEY_LENGTH = 32;
+
+async function createPasswordHash(secret: string): Promise<string> {
+  const salt = randomBytes(16);
+  const key = await deriveKey(secret, salt, ITERATIONS, KEY_LENGTH, 'sha256');
+  return `${FORMAT}$${ITERATIONS}$${salt.toString('base64url')}$${key.toString('base64url')}`;
+}
+
 async function seed(ds: DataSource): Promise<void> {
+  const demoPassword = process.env.AURELIA_DEMO_USER_PASSWORD ?? 'AureliaDemo123!';
+  const demoPasswordHash = await createPasswordHash(demoPassword);
   const qr = ds.createQueryRunner();
   await qr.connect();
   await qr.startTransaction();
@@ -45,12 +60,22 @@ async function seed(ds: DataSource): Promise<void> {
       ['BU-001', 'Unidad de Negocio Principal'],
     );
 
-    // Default admin user (no password — auth TBD in Phase 2)
+    // Default admin user
     await qr.query(
-      `INSERT INTO users (email, first_name, last_name, is_active)
-       VALUES ($1, $2, $3, true)
+      `INSERT INTO users (email, first_name, last_name, is_active, password_hash, password_changed_at, failed_login_attempts, locked_until)
+       VALUES ($1, $2, $3, true, $4, NOW(), 0, NULL)
        ON CONFLICT (email) DO NOTHING`,
-      ['admin@aurelia.local', 'Admin', 'Sistema'],
+      ['admin@aurelia.local', 'Admin', 'Sistema', demoPasswordHash],
+    );
+
+    await qr.query(
+      `UPDATE users
+       SET password_hash = $2,
+           password_changed_at = NOW(),
+           failed_login_attempts = 0,
+           locked_until = NULL
+       WHERE email = $1`,
+      ['admin@aurelia.local', demoPasswordHash],
     );
 
     // Assign ADMIN role to default admin user

@@ -1,9 +1,10 @@
 import 'reflect-metadata';
-import { randomUUID } from 'crypto';
+import { pbkdf2, randomBytes, randomUUID } from 'crypto';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DataSource } from 'typeorm';
 import type { AddressInfo } from 'net';
+import { promisify } from 'util';
 import { AppModule } from '../app.module';
 
 type JsonObject = Record<string, unknown>;
@@ -37,6 +38,17 @@ type PermissionSeed = {
 };
 
 let accessToken: string | null = null;
+
+const deriveKey = promisify(pbkdf2);
+const FORMAT = 'pbkdf2_sha256';
+const ITERATIONS = 210000;
+const KEY_LENGTH = 32;
+const demoUsersForSmoke = [
+  'admin@aurelia.local',
+  'karen.opazo@goldfields.com',
+  'pedro.silva@goldfields.com',
+  'carlos.aguirre@goldfields.com',
+];
 
 const securityPermissions: PermissionSeed[] = [
   { code: 'organization:read', name: 'Ver organización', module: 'organization', action: 'read' },
@@ -159,10 +171,29 @@ const ensureStringArray = (value: unknown, label: string): string[] => {
 
 function configureSmokeAuthEnv(): string {
   process.env.API_TOKEN_KEY ??= `api-smoke-token-key-${randomUUID().replaceAll('-', '')}`;
-  process.env.API_LOGIN_PASSWORD ??= `api-smoke-login-password-${randomUUID()}`;
-  const password = process.env.API_LOGIN_PASSWORD;
-  if (!password) throw new Error('API_LOGIN_PASSWORD is not configured for smoke tests');
+  process.env.AURELIA_DEMO_USER_PASSWORD ??= 'AureliaDemo123!';
+  const password = process.env.AURELIA_DEMO_USER_PASSWORD;
+  if (!password) throw new Error('AURELIA_DEMO_USER_PASSWORD is not configured for smoke tests');
   return password;
+}
+
+async function createPasswordHash(secret: string): Promise<string> {
+  const salt = randomBytes(16);
+  const key = await deriveKey(secret, salt, ITERATIONS, KEY_LENGTH, 'sha256');
+  return `${FORMAT}$${ITERATIONS}$${salt.toString('base64url')}$${key.toString('base64url')}`;
+}
+
+async function ensureDemoUserCredentialHashes(dataSource: DataSource, password: string): Promise<void> {
+  const passwordHash = await createPasswordHash(password);
+  await dataSource.query(
+    `UPDATE users
+     SET password_hash = $1,
+         password_changed_at = NOW(),
+         failed_login_attempts = 0,
+         locked_until = NULL
+     WHERE email = ANY($2::text[])`,
+    [passwordHash, demoUsersForSmoke],
+  );
 }
 
 async function ensureSecurityPermissionMatrix(dataSource: DataSource): Promise<void> {
@@ -563,6 +594,7 @@ async function main(): Promise<void> {
   const dataSource = app.get(DataSource);
   await dataSource.runMigrations();
   await ensureSecurityPermissionMatrix(dataSource);
+  await ensureDemoUserCredentialHashes(dataSource, smokePassword);
   await app.listen(0);
 
   const address = app.getHttpServer().address() as AddressInfo;

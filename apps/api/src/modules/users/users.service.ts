@@ -12,6 +12,7 @@ import { AreaEntity } from '../organization/entities/area.entity';
 import { CompanyEntity } from '../organization/entities/company.entity';
 import { RoleEntity } from '../roles/entities/role.entity';
 import { PermissionEntity } from '../roles/entities/permission.entity';
+import { CredentialHashService } from '../auth/credential-hash.service';
 import { AssignUserAreaDto } from './dto/assign-user-area.dto';
 import { AssignUserCompanyDto } from './dto/assign-user-company.dto';
 import { AssignUserRoleDto } from './dto/assign-user-role.dto';
@@ -38,6 +39,7 @@ export class UsersService {
     private readonly userCompanies: Repository<UserCompanyEntity>,
     @InjectRepository(UserAreaEntity)
     private readonly userAreas: Repository<UserAreaEntity>,
+    private readonly credentialHashService: CredentialHashService,
   ) {}
 
   async findAll(filters?: { companyId?: string; role?: string }): Promise<UserResponse[]> {
@@ -89,6 +91,10 @@ export class UsersService {
       }
     }
 
+    const passwordHash = dto.password
+      ? await this.credentialHashService.create(dto.password)
+      : null;
+
     const entity = this.users.create({
       email: dto.email,
       firstName: dto.firstName,
@@ -98,6 +104,10 @@ export class UsersService {
       companyId: dto.companyId ?? null,
       areaId: dto.areaId ?? null,
       isActive: dto.isActive ?? true,
+      passwordHash,
+      passwordChangedAt: passwordHash ? new Date() : null,
+      failedLoginAttempts: 0,
+      lockedUntil: null,
     });
     try {
       const saved = await this.users.save(entity);

@@ -1,9 +1,9 @@
-import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role } from '@aurelia/contracts';
 import { UserEntity } from '../users/entities/user.entity';
+import { CredentialHashService } from './credential-hash.service';
 import { JwtTokenService } from './jwt-token.service';
 
 export interface LoginRequest {
@@ -31,26 +31,21 @@ export interface LoginResponse {
 
 @Injectable()
 export class AuthService {
+  private static readonly MAX_FAILED_ATTEMPTS = 5;
+
+  private static readonly LOCK_MINUTES = 15;
+
   constructor(
     @InjectRepository(UserEntity)
     private readonly usersRepository: Repository<UserEntity>,
     private readonly jwtTokenService: JwtTokenService,
-    private readonly config: ConfigService,
+    private readonly credentialHashService: CredentialHashService,
   ) {}
 
   async login(payload: LoginRequest): Promise<LoginResponse> {
     const email = payload?.email?.trim().toLowerCase();
-    const loginPassword = this.config.get<string>('auth.loginPassword');
 
     if (!email || !payload?.password) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    if (!loginPassword) {
-      throw new InternalServerErrorException('API login password is not configured');
-    }
-
-    if (payload.password !== loginPassword) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -73,7 +68,31 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    await this.usersRepository.update(user.id, { lastLoginAt: new Date() });
+    if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const isPasswordMatch = await this.credentialHashService.matches(payload.password, user.passwordHash);
+
+    if (!isPasswordMatch) {
+      const failedLoginAttempts = (user.failedLoginAttempts ?? 0) + 1;
+      const shouldLock = failedLoginAttempts >= AuthService.MAX_FAILED_ATTEMPTS;
+
+      await this.usersRepository.update(user.id, {
+        failedLoginAttempts,
+        lockedUntil: shouldLock
+          ? new Date(Date.now() + AuthService.LOCK_MINUTES * 60 * 1000)
+          : null,
+      });
+
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    await this.usersRepository.update(user.id, {
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+      lastLoginAt: new Date(),
+    });
 
     const roles = user.userRoles?.map((userRole) => userRole.role.code) ?? [];
     const permissions = this.resolvePermissions(user);

@@ -405,7 +405,7 @@ Configurar variables mínimas para levantar API manualmente:
 
 ```bash
 $env:API_TOKEN_KEY="dev-local-token-key-change-me-32-characters"
-$env:API_LOGIN_PASSWORD="AureliaLocalOnly"
+$env:AURELIA_DEMO_USER_PASSWORD="AureliaDemo123!"
 $env:CORS_ORIGINS="http://localhost:8081,http://localhost:3001,http://localhost:5173"
 ```
 
@@ -443,13 +443,13 @@ Resultado esperado:
 Login inspector:
 
 ```bash
-curl -s -X POST http://localhost:3000/api/auth/login -H "Content-Type: application/json" -d '{"email":"karen.opazo@goldfields.com","password":"AureliaLocalOnly"}'
+curl -s -X POST http://localhost:3000/api/auth/login -H "Content-Type: application/json" -d '{"email":"karen.opazo@goldfields.com","password":"AureliaDemo123!"}'
 ```
 
 Guardar token inspector en PowerShell:
 
 ```bash
-$login = Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/auth/login -ContentType "application/json" -Body '{"email":"karen.opazo@goldfields.com","password":"AureliaLocalOnly"}'
+$login = Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/auth/login -ContentType "application/json" -Body '{"email":"karen.opazo@goldfields.com","password":"AureliaDemo123!"}'
 $token = $login.token
 ```
 
@@ -475,12 +475,19 @@ Resultado esperado:
 Login admin y validación de permisos reales:
 
 ```bash
-$adminLogin = Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/auth/login -ContentType "application/json" -Body '{"email":"carlos.aguirre@goldfields.com","password":"AureliaLocalOnly"}'
+$adminLogin = Invoke-RestMethod -Method Post -Uri http://localhost:3000/api/auth/login -ContentType "application/json" -Body '{"email":"carlos.aguirre@goldfields.com","password":"AureliaDemo123!"}'
 $adminToken = $adminLogin.token
 $adminMe = Invoke-RestMethod -Method Get -Uri http://localhost:3000/api/me -Headers @{ Authorization = "Bearer $adminToken" }
 $adminMe.permissions
 Invoke-RestMethod -Method Get -Uri http://localhost:3000/api/users -Headers @{ Authorization = "Bearer $adminToken" }
 ```
+
+## Actualización bloque 1 - credenciales reales por usuario
+
+- Se reemplazó la contraseña compartida por validación de hash por usuario en `users.password_hash`.
+- `API_LOGIN_PASSWORD` y `DEMO_LOGIN_PASSWORD` dejan de ser el mecanismo principal de autenticación.
+- Los usuarios demo usan `AURELIA_DEMO_USER_PASSWORD` para generar y validar `password_hash`.
+- Se agregó control de `failed_login_attempts` y bloqueo temporal con `locked_until` tras intentos fallidos.
 
 Smoke test:
 

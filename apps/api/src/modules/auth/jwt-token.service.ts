@@ -8,6 +8,7 @@ export interface AccessTokenPayload {
   fullName: string;
   roles: string[];
   permissions: string[];
+  sid?: string;
   iat: number;
   exp: number;
 }
@@ -93,6 +94,7 @@ export class JwtTokenService {
       value.roles.every((role) => typeof role === 'string') &&
       Array.isArray(value.permissions) &&
       value.permissions.every((permission) => typeof permission === 'string') &&
+      (typeof value.sid === 'undefined' || typeof value.sid === 'string') &&
       typeof value.iat === 'number' &&
       typeof value.exp === 'number'
     );
@@ -105,4 +107,3 @@ export class JwtTokenService {
     return timingSafeEqual(leftBuffer, rightBuffer);
   }
 }
-

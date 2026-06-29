@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { config } from 'dotenv';
 import { DataSource } from 'typeorm';
+import { UserSessionEntity } from '../modules/auth/entities/user-session.entity';
 import { AuditLogEntity } from '../modules/audit/entities/audit-log.entity';
 import { CommentEntity } from '../modules/comments/entities/comment.entity';
 import { EntityReferenceTypeEntity } from '../modules/evidences/entities/entity-reference-type.entity';
@@ -74,6 +75,7 @@ export const AppDataSource = new DataSource({
     LocationEntity,
     CompanyEntity,
     UserEntity,
+    UserSessionEntity,
     RoleEntity,
     PermissionEntity,
     UserRoleEntity,

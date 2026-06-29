@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { getRequestId } from './request-id.middleware';
 
 interface SanitizedErrorResponse {
   statusCode: number;
@@ -14,6 +15,7 @@ interface SanitizedErrorResponse {
   error: string;
   path: string;
   timestamp: string;
+  requestId?: string;
 }
 
 const sensitivePatterns = [
@@ -43,20 +45,24 @@ export class SanitizedExceptionFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
     const response = ctx.getResponse<Response>();
     const statusCode = this.resolveStatusCode(exception);
+    const requestId = getRequestId(request);
 
     if (statusCode >= 500) {
       const message = exception instanceof Error ? exception.message : 'Unknown error';
       const stack = exception instanceof Error ? exception.stack : undefined;
-      this.logger.error(message, stack);
+      this.logger.error(`[${requestId ?? 'no-request-id'}] ${message}`, stack);
     }
 
-    response.status(statusCode).json({
+    const body: SanitizedErrorResponse = {
       statusCode,
       message: this.resolveMessage(exception, statusCode),
       error: this.resolveError(statusCode),
       path: request.originalUrl.split('?')[0],
       timestamp: new Date().toISOString(),
-    } satisfies SanitizedErrorResponse);
+    };
+
+    if (requestId) body.requestId = requestId;
+    response.status(statusCode).json(body);
   }
 
   private resolveStatusCode(exception: unknown): number {

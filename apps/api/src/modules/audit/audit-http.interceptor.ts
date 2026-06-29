@@ -21,8 +21,8 @@ const rules: AuditRule[] = [
   { method: 'POST', pattern: /^\/api\/auth\/refresh$/, action: 'auth.refresh' },
   { method: 'POST', pattern: /^\/api\/auth\/logout$/, action: 'auth.logout' },
   { method: 'POST', pattern: /^\/api\/auth\/logout-all$/, action: 'auth.logout_all' },
-  { method: 'GET', pattern: /^\/api\/mobile\/sync(?:\/.*)?$/, action: 'mobile.sync', entityType: 'mobile_sync' },
-  { method: 'POST', pattern: /^\/api\/mobile\/sync$/, action: 'mobile.sync', entityType: 'mobile_sync' },
+  { method: 'GET', pattern: /^\/api\/mobile\/sync(?:\/.*)?$/, action: 'mobile.sync' },
+  { method: 'POST', pattern: /^\/api\/mobile\/sync$/, action: 'mobile.sync' },
   { method: 'POST', pattern: /^\/api\/inspections(?:\/.*)?$/, action: 'inspection.created', entityType: 'inspection' },
   { method: 'PATCH', pattern: /^\/api\/inspections(?:\/.*)?$/, action: 'inspection.updated', entityType: 'inspection' },
   { method: 'POST', pattern: /^\/api\/incidents(?:\/.*)?$/, action: 'incident.created', entityType: 'incident' },
@@ -30,7 +30,7 @@ const rules: AuditRule[] = [
   { method: 'POST', pattern: /^\/api\/spr\/monthly-records\/[^/]+\/submit$/, action: 'spr.submitted', entityType: 'spr_record' },
   { method: 'POST', pattern: /^\/api\/spr\/monthly-records\/[^/]+\/approve$/, action: 'spr.approved', entityType: 'spr_record' },
   { method: 'POST', pattern: /^\/api\/spr\/monthly-records\/[^/]+\/reject$/, action: 'spr.rejected', entityType: 'spr_record' },
-  { method: 'PATCH', pattern: /^\/api\/evidences\/[^/]+\/validate$/, action: 'evidence.validated', entityType: 'evidence' },
+  { method: 'PATCH', pattern: /^\/api\/evidences\/[^/]+\/validate$/, action: 'evidence.validated' },
 ];
 
 @Injectable()

@@ -11,6 +11,7 @@ export default () => ({
   security: {
     tokenKey: process.env.API_TOKEN_KEY,
     tokenTtlSeconds: parseInt(process.env.API_TOKEN_TTL_SECONDS ?? '3600', 10),
+    sessionTtlSeconds: parseInt(process.env.API_SESSION_TTL_SECONDS ?? '2592000', 10),
   },
   auth: {
     loginPassword: process.env.API_LOGIN_PASSWORD ?? process.env.DEMO_LOGIN_PASSWORD,

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { CredentialHashService } from '../auth/credential-hash.service';
 import { AreaEntity } from '../organization/entities/area.entity';
 import { CompanyEntity } from '../organization/entities/company.entity';
 import { RoleEntity } from '../roles/entities/role.entity';
@@ -23,7 +24,7 @@ import { UsersService } from './users.service';
     ]),
   ],
   controllers: [UsersController],
-  providers: [UsersService],
+  providers: [UsersService, CredentialHashService],
   exports: [UsersService],
 })
 export class UsersModule {}

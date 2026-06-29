@@ -45,4 +45,10 @@ export class CreateUserDto implements CreateUserRequest {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(12)
+  @MaxLength(128)
+  password?: string;
 }

@@ -15,6 +15,7 @@ import {
   MemoryRateLimitStore,
   securityHeaders,
 } from './shared/security/http-security';
+import { requestIdMiddleware } from './shared/security/request-id.middleware';
 import { SanitizedExceptionFilter } from './shared/security/sanitized-exception.filter';
 
 function parseOrigins(value: string | undefined): string[] {
@@ -42,6 +43,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.setGlobalPrefix('api');
+  app.use(requestIdMiddleware);
   app.use(securityHeaders);
 
   const config = app.get(ConfigService);

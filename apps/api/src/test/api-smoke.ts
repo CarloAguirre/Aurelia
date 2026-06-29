@@ -28,6 +28,7 @@ type SprParameterRow = CatalogRow & {
 
 type LoginSmokeResponse = JsonObject & {
   token: string;
+  refreshToken: string;
 };
 
 type PermissionSeed = {
@@ -250,14 +251,19 @@ async function request(baseUrl: string, method: string, path: string, body?: Jso
   return text;
 }
 
-async function loginAs(baseUrl: string, email: string, password: string): Promise<string> {
+async function loginWithSession(baseUrl: string, email: string, password: string): Promise<LoginSmokeResponse> {
   accessToken = null;
   const login = asObject<LoginSmokeResponse>(
     await request(baseUrl, 'POST', '/auth/login', { email, password }),
-    'login',
+    'login with session',
   );
-  if (typeof login.token !== 'string' || login.token.length === 0) throw new Error('login did not return a token');
-  return login.token;
+  if (typeof login.token !== 'string' || login.token.length === 0) {
+    throw new Error('login with session did not return a token');
+  }
+  if (typeof login.refreshToken !== 'string' || login.refreshToken.length === 0) {
+    throw new Error('login with session did not return a refresh token');
+  }
+  return login;
 }
 
 function assertIncludesAll(values: string[], expected: string[], label: string): void {
@@ -281,10 +287,39 @@ async function runAuthBoundaryChecks(baseUrl: string, password: string): Promise
     password: 'invalid-password',
   }, 401);
 
-  accessToken = await loginAs(baseUrl, 'karen.opazo@goldfields.com', password);
+  const inspectorLogin = await loginWithSession(baseUrl, 'karen.opazo@goldfields.com', password);
+  accessToken = inspectorLogin.token;
 
   const me = asObject<JsonObject>(await request(baseUrl, 'GET', '/me'), 'me');
   if (me.email !== 'karen.opazo@goldfields.com') throw new Error('/me did not return the authenticated user');
+
+  const refreshed = asObject<LoginSmokeResponse>(
+    await request(baseUrl, 'POST', '/auth/refresh', { refreshToken: inspectorLogin.refreshToken }),
+    'refresh response',
+  );
+  if (typeof refreshed.token !== 'string' || refreshed.token.length === 0) {
+    throw new Error('refresh did not return a token');
+  }
+  if (typeof refreshed.refreshToken !== 'string' || refreshed.refreshToken.length === 0) {
+    throw new Error('refresh did not return a refresh token');
+  }
+
+  await request(baseUrl, 'POST', '/auth/refresh', { refreshToken: inspectorLogin.refreshToken }, 401);
+
+  accessToken = refreshed.token;
+  await request(baseUrl, 'GET', '/me');
+
+  await request(baseUrl, 'POST', '/auth/logout', undefined, 204);
+  accessToken = null;
+  await request(baseUrl, 'POST', '/auth/refresh', { refreshToken: refreshed.refreshToken }, 401);
+
+  const inspectorLoginAfterLogout = await loginWithSession(baseUrl, 'karen.opazo@goldfields.com', password);
+  accessToken = inspectorLoginAfterLogout.token;
+  await request(baseUrl, 'POST', '/auth/logout-all', undefined, 204);
+  accessToken = null;
+  await request(baseUrl, 'POST', '/auth/refresh', { refreshToken: inspectorLoginAfterLogout.refreshToken }, 401);
+
+  accessToken = (await loginWithSession(baseUrl, 'karen.opazo@goldfields.com', password)).token;
   const inspectorPermissions = ensureStringArray(me.permissions, 'inspector permissions');
   assertIncludesAll(
     inspectorPermissions,
@@ -303,7 +338,7 @@ async function runAuthBoundaryChecks(baseUrl: string, password: string): Promise
   await request(baseUrl, 'GET', '/roles', undefined, 403);
   await request(baseUrl, 'GET', '/permissions', undefined, 403);
 
-  accessToken = await loginAs(baseUrl, 'carlos.aguirre@goldfields.com', password);
+  accessToken = (await loginWithSession(baseUrl, 'carlos.aguirre@goldfields.com', password)).token;
   const adminMe = asObject<JsonObject>(await request(baseUrl, 'GET', '/me'), 'admin me');
   const adminPermissions = ensureStringArray(adminMe.permissions, 'admin permissions');
   if (adminPermissions.includes('*')) throw new Error('admin token should not include wildcard permissions');

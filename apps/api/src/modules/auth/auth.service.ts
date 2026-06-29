@@ -5,6 +5,7 @@ import { Role } from '@aurelia/contracts';
 import { UserEntity } from '../users/entities/user.entity';
 import { CredentialHashService } from './credential-hash.service';
 import { JwtTokenService } from './jwt-token.service';
+import { SessionRegistryService } from './session-registry.service';
 
 export interface LoginRequest {
   email: string;
@@ -13,6 +14,7 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   token: string;
+  refreshToken: string;
   user: {
     id: string;
     email: string;
@@ -29,6 +31,15 @@ export interface LoginResponse {
   };
 }
 
+export interface SessionRenewRequest {
+  refreshToken: string;
+}
+
+export interface AuthClientContext {
+  userAgent: string | null;
+  ipAddress: string | null;
+}
+
 @Injectable()
 export class AuthService {
   private static readonly MAX_FAILED_ATTEMPTS = 5;
@@ -40,9 +51,10 @@ export class AuthService {
     private readonly usersRepository: Repository<UserEntity>,
     private readonly jwtTokenService: JwtTokenService,
     private readonly credentialHashService: CredentialHashService,
+    private readonly sessionRegistryService: SessionRegistryService,
   ) {}
 
-  async login(payload: LoginRequest): Promise<LoginResponse> {
+  async login(payload: LoginRequest, context: AuthClientContext): Promise<LoginResponse> {
     const email = payload?.email?.trim().toLowerCase();
 
     if (!email || !payload?.password) {
@@ -94,6 +106,53 @@ export class AuthService {
       lastLoginAt: new Date(),
     });
 
+    const issued = await this.sessionRegistryService.issue(user, context);
+    const updatedUser = await this.findActiveUserById(user.id);
+
+    const roles = updatedUser.userRoles?.map((userRole) => userRole.role.code) ?? [];
+    const permissions = this.resolvePermissions(updatedUser);
+    const isGoldFieldsUser = updatedUser.email.endsWith('@goldfields.com');
+    const fullName = `${updatedUser.firstName} ${updatedUser.lastName}`.trim();
+    const companyName = updatedUser.company?.name ?? (isGoldFieldsUser ? 'Gold Fields' : null);
+    const areaName = updatedUser.area?.name ?? (isGoldFieldsUser ? 'Medio Ambiente' : null);
+    const token = this.jwtTokenService.sign({
+      sub: updatedUser.id,
+      email: updatedUser.email,
+      fullName,
+      roles,
+      permissions,
+      sid: issued.session.id,
+    });
+
+    return {
+      token,
+      refreshToken: issued.key,
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        fullName,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        position: updatedUser.position,
+        companyId: updatedUser.companyId,
+        companyName,
+        areaId: updatedUser.areaId,
+        areaName,
+        roles,
+        permissions,
+      },
+    };
+  }
+
+  async renew(payload: SessionRenewRequest, context: AuthClientContext): Promise<LoginResponse> {
+    const refreshToken = payload?.refreshToken;
+    if (!refreshToken) {
+      throw new UnauthorizedException('Invalid session');
+    }
+
+    const issued = await this.sessionRegistryService.rotate(refreshToken, context);
+    const user = await this.findActiveUserById(issued.session.userId);
+
     const roles = user.userRoles?.map((userRole) => userRole.role.code) ?? [];
     const permissions = this.resolvePermissions(user);
     const isGoldFieldsUser = user.email.endsWith('@goldfields.com');
@@ -106,10 +165,12 @@ export class AuthService {
       fullName,
       roles,
       permissions,
+      sid: issued.session.id,
     });
 
     return {
       token,
+      refreshToken: issued.key,
       user: {
         id: user.id,
         email: user.email,
@@ -125,6 +186,37 @@ export class AuthService {
         permissions,
       },
     };
+  }
+
+  async logout(sessionId: string | undefined): Promise<void> {
+    await this.sessionRegistryService.revoke(sessionId);
+  }
+
+  async logoutAll(userId: string): Promise<void> {
+    await this.sessionRegistryService.revokeAll(userId);
+  }
+
+  private async findActiveUserById(id: string): Promise<UserEntity> {
+    const user = await this.usersRepository.findOne({
+      where: { id, isActive: true },
+      relations: {
+        company: true,
+        area: true,
+        userRoles: {
+          role: {
+            rolePermissions: {
+              permission: true,
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Invalid session');
+    }
+
+    return user;
   }
 
   private resolvePermissions(user: UserEntity): string[] {

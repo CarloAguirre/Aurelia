@@ -9,6 +9,7 @@ import { UserSessionEntity } from './entities/user-session.entity';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { JwtTokenService } from './jwt-token.service';
 import { PermissionsGuard } from './permissions.guard';
+import { SessionRegistryService } from './session-registry.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([UserEntity, UserSessionEntity])],
@@ -17,6 +18,7 @@ import { PermissionsGuard } from './permissions.guard';
     AuthService,
     JwtTokenService,
     CredentialHashService,
+    SessionRegistryService,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
@@ -26,6 +28,6 @@ import { PermissionsGuard } from './permissions.guard';
       useClass: PermissionsGuard,
     },
   ],
-  exports: [JwtTokenService, CredentialHashService],
+  exports: [JwtTokenService, CredentialHashService, SessionRegistryService],
 })
 export class AuthModule {}

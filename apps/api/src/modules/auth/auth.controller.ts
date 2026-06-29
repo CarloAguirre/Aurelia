@@ -1,7 +1,14 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req } from '@nestjs/common';
 import { MeResponse, Role } from '@aurelia/contracts';
+import type { Request } from 'express';
 import type { AuthenticatedRequest } from './authenticated-request';
-import { AuthService, LoginRequest, LoginResponse } from './auth.service';
+import {
+  AuthClientContext,
+  AuthService,
+  LoginRequest,
+  LoginResponse,
+  SessionRenewRequest,
+} from './auth.service';
 import { Public } from './public.decorator';
 
 @Controller()
@@ -11,8 +18,27 @@ export class AuthController {
   @Public()
   @Post('auth/login')
   @HttpCode(HttpStatus.OK)
-  login(@Body() payload: LoginRequest): Promise<LoginResponse> {
-    return this.authService.login(payload);
+  login(@Body() payload: LoginRequest, @Req() request: Request): Promise<LoginResponse> {
+    return this.authService.login(payload, this.getClientContext(request));
+  }
+
+  @Public()
+  @Post('auth/refresh')
+  @HttpCode(HttpStatus.OK)
+  renew(@Body() payload: SessionRenewRequest, @Req() request: Request): Promise<LoginResponse> {
+    return this.authService.renew(payload, this.getClientContext(request));
+  }
+
+  @Post('auth/logout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async logout(@Req() request: AuthenticatedRequest): Promise<void> {
+    await this.authService.logout(request.user.sid);
+  }
+
+  @Post('auth/logout-all')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async logoutAll(@Req() request: AuthenticatedRequest): Promise<void> {
+    await this.authService.logoutAll(request.user.sub);
   }
 
   @Get('me')
@@ -24,6 +50,17 @@ export class AuthController {
       roles: request.user.roles as Role[],
       permissions: request.user.permissions,
       isPlaceholder: false,
+    };
+  }
+
+  private getClientContext(request: Request): AuthClientContext {
+    const userAgentHeader = request.headers['user-agent'];
+
+    return {
+      userAgent: Array.isArray(userAgentHeader)
+        ? (userAgentHeader[0] ?? null)
+        : (userAgentHeader ?? null),
+      ipAddress: request.ip ?? null,
     };
   }
 }

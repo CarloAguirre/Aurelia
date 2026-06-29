@@ -489,6 +489,17 @@ Invoke-RestMethod -Method Get -Uri http://localhost:3000/api/users -Headers @{ A
 - Los usuarios demo usan `AURELIA_DEMO_USER_PASSWORD` para generar y validar `password_hash`.
 - Se agregó control de `failed_login_attempts` y bloqueo temporal con `locked_until` tras intentos fallidos.
 
+## Bloque 2: sesiones y refresh tokens
+
+- El login crea una sesión persistida en `user_sessions`.
+- El access token incluye `sid` para identificar la sesión activa.
+- El refresh token se entrega al cliente una sola vez por emisión.
+- En base de datos se guarda solo el hash del refresh token (`session_key_hash`).
+- El refresh rota la sesión, revoca la anterior y registra `replaced_by_session_id`.
+- El logout revoca la sesión actual asociada al `sid` del access token.
+- El logout-all revoca todas las sesiones activas del usuario.
+- `API_SESSION_TTL_SECONDS` controla la duración de cada sesión.
+
 Smoke test:
 
 ```bash

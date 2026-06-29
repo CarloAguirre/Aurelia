@@ -50,8 +50,12 @@ export class ResourceScopeService {
     const row = await this.users.findOne({
       where: { id: user.sub, isActive: true },
       relations: {
-        userCompanies: true,
-        userAreas: true,
+        userCompanies: {
+          company: true,
+        },
+        userAreas: {
+          area: true,
+        },
       },
     });
 
@@ -59,9 +63,9 @@ export class ResourceScopeService {
     const areaIds = new Set<string>();
 
     if (row?.companyId) companyIds.add(row.companyId);
-    for (const userCompany of row?.userCompanies ?? []) companyIds.add(userCompany.companyId);
+    for (const userCompany of row?.userCompanies ?? []) companyIds.add(userCompany.company.id);
     if (row?.areaId) areaIds.add(row.areaId);
-    for (const userArea of row?.userAreas ?? []) areaIds.add(userArea.areaId);
+    for (const userArea of row?.userAreas ?? []) areaIds.add(userArea.area.id);
 
     return { isAdmin, companyIds, areaIds };
   }

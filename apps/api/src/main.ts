@@ -15,6 +15,7 @@ import {
   MemoryRateLimitStore,
   securityHeaders,
 } from './shared/security/http-security';
+import { SanitizedExceptionFilter } from './shared/security/sanitized-exception.filter';
 
 function parseOrigins(value: string | undefined): string[] {
   return (value ?? 'http://localhost:8081,http://localhost:3001,http://localhost:5173')
@@ -52,6 +53,7 @@ async function bootstrap() {
     store: createRateLimitStore(config, dataSource),
   }));
 
+  app.useGlobalFilters(new SanitizedExceptionFilter());
   app.useGlobalInterceptors(createResourceScopeInterceptor(dataSource));
   app.useGlobalPipes(
     new ValidationPipe({

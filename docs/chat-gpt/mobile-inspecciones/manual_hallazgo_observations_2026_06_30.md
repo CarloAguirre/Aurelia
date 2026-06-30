@@ -85,7 +85,12 @@ catalogs.findingTypes
 catalogs.findingSeverities
 ```
 
-Este catálogo queda disponible para flujos offline, pero el selector visual de `Tipo de hallazgo` ahora llama directamente al endpoint de tipos para que se vea la petición al backend en Network.
+Este catálogo queda disponible para flujos offline. El selector usa estrategia `fresh-first`:
+
+```txt
+1. Online: llama GET /api/inspections/finding-catalogs/types
+2. Offline o error de red: lee catalogs.findingTypes desde mobile bootstrap local
+```
 
 ## Frontend mobile
 
@@ -104,8 +109,10 @@ apps/mobile-inspecciones/src/modules/inspection/ManualFindingObservationsScreen.
 ya no usa opciones hardcodeadas para `Tipo de hallazgo`. Ahora carga mediante:
 
 ```txt
-GET /api/inspections/finding-catalogs/types
+fetchInspectionFindingTypesLocalFirst()
 ```
+
+que intenta endpoint directo y luego fallback al bootstrap offline.
 
 El selector guarda en el draft:
 
@@ -122,7 +129,7 @@ seleccionar Hallazgo
 Continuar
 manual/observations
 presionar Tipo de hallazgo
-modal con opciones desde base de datos
+modal con opciones desde base de datos o bootstrap offline
 seleccionar tipo
 Agregar observación habilitado
 presionar Agregar observación
@@ -147,11 +154,13 @@ curl http://localhost:3000/api/inspections/finding-catalogs/severities
 curl http://localhost:3000/api/mobile/bootstrap
 ```
 
-En `/inspection/manual/observations`, al abrir la pantalla debe verse en Network:
+En `/inspection/manual/observations`, online debe verse en Network:
 
 ```txt
 GET http://localhost:3000/api/inspections/finding-catalogs/types
 ```
+
+Offline debe seguir mostrando tipos si el bootstrap local ya fue sincronizado antes.
 
 ## Pendiente siguiente
 

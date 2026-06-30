@@ -1,7 +1,8 @@
-import type { MueType } from '../../enums';
-
 export interface CreateMueRequest {
-  name: string;
   code: string;
-  type: MueType;
+  name: string;
+  description?: string | null;
+  predominantControlType?: string | null;
+  expectedMainEvidence?: string | null;
+  isActive?: boolean;
 }

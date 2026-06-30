@@ -1,20 +1,24 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, fontWeight } from '../../shared/theme/tokens';
 import { OfflineBanner } from '../../shared/components/form/ManualFormUi';
 import { ManualFlowFooter, ManualFlowHeader } from '../../shared/components/form/ManualFlowScaffold';
-import { ManualFormStepper, SelectSheet, type SelectSheetOption } from './ManualSelectionUi';
+import { ManualFormStepper, type SelectSheetOption } from './ManualSelectionUi';
 import { useManualConnectivityStatus } from './useManualConnectivityStatus';
 import { useManualInspectionDraft } from './manualInspection.store';
 import { useManualInspectionFlowStore } from './manualInspectionFlow.store';
 
 const findingTypeOptions: SelectSheetOption[] = [
-  { id: 'substandard-condition', label: 'Condición subestándar', description: 'Condición detectada en terreno que requiere gestión' },
-  { id: 'environmental-deviation', label: 'Desviación ambiental', description: 'Desviación o incumplimiento ambiental observado' },
-  { id: 'improvement-opportunity', label: 'Oportunidad de mejora', description: 'Observación preventiva o recomendación de mejora' },
+  { id: 'atmospheric-emissions', label: 'Desviación en emisiones atmosféricas' },
+  { id: 'substance-containment', label: 'Desviación en contención de sustancias' },
+  { id: 'soil-or-heritage-sites', label: 'Desviación sobre suelo o sitios patrimoniales' },
+  { id: 'vegetation-flora-fauna', label: 'Desviación en seguimiento de medidas de vegetación, flora y fauna' },
+  { id: 'waste-management', label: 'Desviación en la gestión o eliminación de residuos' },
+  { id: 'equipment-infrastructure', label: 'Desviación en el funcionamiento de equipos e infraestructura' },
+  { id: 'water-resource', label: 'Desviación en manejo de recurso hídrico' },
 ];
 
 function EmptyObservationsCard() {
@@ -35,6 +39,34 @@ function AddObservationButton({ disabled }: { disabled: boolean }) {
       <FontAwesome5 name="plus" size={13} color={disabled ? '#D1D1D1' : colors.goldDark} />
       <Text style={[styles.addButtonText, disabled && styles.addButtonTextDisabled]}>Agregar observación</Text>
     </TouchableOpacity>
+  );
+}
+
+function FindingTypeModal({ visible, selectedId, onClose, onSelect }: { visible: boolean; selectedId: string | null; onClose: () => void; onSelect: (option: SelectSheetOption) => void }) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalRoot}>
+        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
+        <View style={styles.modalPanel}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Tipo de hallazgo</Text>
+            <TouchableOpacity style={styles.modalClose} activeOpacity={0.7} onPress={onClose}>
+              <FontAwesome5 name="times" size={24} color="#131313" />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
+            {findingTypeOptions.map((option) => {
+              const selected = option.id === selectedId;
+              return (
+                <TouchableOpacity key={option.id} style={[styles.modalOption, selected && styles.modalOptionSelected]} activeOpacity={0.72} onPress={() => onSelect(option)}>
+                  <Text style={styles.modalOptionText}>{option.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -87,7 +119,7 @@ export function ManualFindingObservationsScreen() {
             <AddObservationButton disabled />
           </ScrollView>
           <ManualFlowFooter secondaryLabel="Atrás" secondaryIcon="arrow-left" onSecondary={back} onPrimary={() => undefined} primaryDisabled />
-          <SelectSheet visible={activePicker === 'findingType'} title="Tipo de hallazgo" subtitle="Clasifica la condición detectada" options={findingTypeOptions} selectedId={draft.findingTypeId} onClose={closePicker} onSelect={selectFindingType} />
+          <FindingTypeModal visible={activePicker === 'findingType'} selectedId={draft.findingTypeId} onClose={closePicker} onSelect={selectFindingType} />
         </View>
       </SafeAreaView>
     </SafeAreaProvider>
@@ -114,4 +146,14 @@ const styles = StyleSheet.create({
   addButtonDisabled: { opacity: 1 },
   addButtonText: { fontSize: 13, fontWeight: fontWeight.semibold, color: colors.goldDark },
   addButtonTextDisabled: { color: '#D1D1D1' },
+  modalRoot: { flex: 1, justifyContent: 'flex-end' },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.68)' },
+  modalPanel: { maxHeight: '78%', minHeight: 540, backgroundColor: colors.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },
+  modalHeader: { minHeight: 76, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 22, paddingRight: 22, paddingTop: 8 },
+  modalTitle: { flex: 1, fontSize: 18, lineHeight: 22, fontWeight: fontWeight.bold, color: colors.primary },
+  modalClose: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
+  modalList: { flex: 1 },
+  modalOption: { minHeight: 80, justifyContent: 'center', borderTopWidth: 1, borderTopColor: '#E0E0E0', paddingHorizontal: 22, paddingVertical: 14 },
+  modalOptionSelected: { backgroundColor: '#FAFAFA' },
+  modalOptionText: { fontSize: 16, lineHeight: 24, color: colors.primary },
 });

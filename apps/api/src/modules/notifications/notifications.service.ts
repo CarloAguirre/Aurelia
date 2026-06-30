@@ -1,30 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { MarkAllNotificationsReadResponse, NotificationRecipientResponse, NotificationResponse } from '@aurelia/contracts';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { NotificationRecipientEntity } from './entities/notification-recipient.entity';
 import { NotificationEntity } from './entities/notification.entity';
-
-export interface NotificationRecipientResponse {
-  id: string;
-  userId: string;
-  readAt: string | null;
-  dismissedAt: string | null;
-}
-
-export interface NotificationResponse {
-  id: string;
-  title: string;
-  body: string | null;
-  category: string;
-  entityType: string | null;
-  entityId: string | null;
-  triggeredByUserId: string | null;
-  metadata: Record<string, unknown> | null;
-  createdAt: string;
-  readAt: string | null;
-  recipients?: NotificationRecipientResponse[];
-}
 
 @Injectable()
 export class NotificationsService {
@@ -84,7 +64,7 @@ export class NotificationsService {
     return this.toResponse(recipient.notification, recipient);
   }
 
-  async markAllRead(userId: string): Promise<{ updated: number }> {
+  async markAllRead(userId: string): Promise<MarkAllNotificationsReadResponse> {
     const rows = await this.recipientsRepository.find({ where: { userId } });
     const unread = rows.filter((row) => row.readAt === null);
     const now = new Date();

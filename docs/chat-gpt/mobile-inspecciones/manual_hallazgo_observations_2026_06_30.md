@@ -118,6 +118,36 @@ apps/mobile-inspecciones/app/inspection/manual/observations.tsx
 
 Ahora exporta `ManualObservationsRouter`.
 
+### 7. Modal de tipo de hallazgo
+
+Se actualizó:
+
+```txt
+apps/mobile-inspecciones/src/modules/inspection/ManualFindingObservationsScreen.tsx
+```
+
+El selector de `Tipo de hallazgo` ya no usa el `SelectSheet` genérico. Ahora usa un modal propio equivalente al nodo Figma:
+
+```txt
+Overlay oscuro
+Panel blanco desde abajo
+Bordes superiores redondeados
+Header Tipo de hallazgo + X
+Lista con filas altas y separadores
+```
+
+Opciones implementadas:
+
+```txt
+Desviación en emisiones atmosféricas
+Desviación en contención de sustancias
+Desviación sobre suelo o sitios patrimoniales
+Desviación en seguimiento de medidas de vegetación, flora y fauna
+Desviación en la gestión o eliminación de residuos
+Desviación en el funcionamiento de equipos e infraestructura
+Desviación en manejo de recurso hídrico
+```
+
 ## Estado actual
 
 La navegación inicial de Hallazgo queda lista:
@@ -128,6 +158,8 @@ seleccionar Hallazgo
 Continuar
 manual/observations
 vista de tipo de hallazgo + empty state
+presionar selector de tipo de hallazgo
+modal de opciones estilo Figma
 ```
 
 ## Pendiente siguiente

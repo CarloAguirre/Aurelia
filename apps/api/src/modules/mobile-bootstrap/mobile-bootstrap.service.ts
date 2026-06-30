@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { MobileBootstrapResponse, UserResponse } from '@aurelia/contracts';
+import { InspectionFindingCatalogService } from '../inspections/inspection-finding-catalog.service';
 import { InspectionsService } from '../inspections/inspections.service';
 import { OrganizationService } from '../organization/organization.service';
 import { UsersService } from '../users/users.service';
@@ -10,23 +11,26 @@ export class MobileBootstrapService {
   constructor(
     private readonly organizationService: OrganizationService,
     private readonly inspectionsService: InspectionsService,
+    private readonly findingCatalogService: InspectionFindingCatalogService,
     private readonly usersService: UsersService,
     private readonly configService: ConfigService,
   ) {}
 
   async buildBootstrap(): Promise<MobileBootstrapResponse> {
     const generatedAt = new Date();
-    const [areas, sectors, companies, inspectionTypes, inspectionTemplates] = await Promise.all([
+    const [areas, sectors, companies, inspectionTypes, inspectionTemplates, findingTypes, findingSeverities] = await Promise.all([
       this.organizationService.findAreas(),
       this.organizationService.findSectors(),
       this.organizationService.findCompanies(),
       this.inspectionsService.findTypes(),
       this.inspectionsService.findTemplates(),
+      this.findingCatalogService.findTypes(),
+      this.findingCatalogService.findSeverities(),
     ]);
     const users = await this.findAvailableUsers();
     const maxOfflineDays = this.getNumber('MOBILE_BOOTSTRAP_MAX_OFFLINE_DAYS', 7);
     const expiresAt = new Date(generatedAt.getTime() + maxOfflineDays * 24 * 60 * 60 * 1000);
-    const catalogs = { areas, sectors, companies, users, inspectionTypes, inspectionTemplates };
+    const catalogs = { areas, sectors, companies, users, inspectionTypes, inspectionTemplates, findingTypes, findingSeverities };
 
     return {
       bootstrapVersion: this.createBootstrapVersion(catalogs),
@@ -60,6 +64,8 @@ export class MobileBootstrapService {
       ...catalogs.inspectionTemplates.map((item) => item.updatedAt),
       ...catalogs.inspectionTemplates.flatMap((template) => template.sections.map((section) => section.updatedAt)),
       ...catalogs.inspectionTemplates.flatMap((template) => template.sections.flatMap((section) => section.items.map((item) => item.updatedAt))),
+      ...catalogs.findingTypes.map((item) => item.updatedAt),
+      ...catalogs.findingSeverities.map((item) => item.updatedAt),
     ].sort();
     const latest = timestamps.length > 0 ? timestamps[timestamps.length - 1] : 'empty';
     const counts = [
@@ -69,6 +75,8 @@ export class MobileBootstrapService {
       catalogs.users.length,
       catalogs.inspectionTypes.length,
       catalogs.inspectionTemplates.length,
+      catalogs.findingTypes.length,
+      catalogs.findingSeverities.length,
     ].join('-');
 
     return `mobile-bootstrap:${latest}:${counts}`;

@@ -128,7 +128,7 @@ export class NotificationsService {
       category: 'workflow',
       entityType: input.entityType,
       entityId: input.entityId,
-      triggeredByUserId: input.completedByUserId,
+      triggeredByUserId: input.completedByUserId ?? undefined,
       recipientUserIds,
       metadata: { workflowInstanceId: input.workflowInstanceId, action: input.action, event: 'workflow.advanced' },
     });

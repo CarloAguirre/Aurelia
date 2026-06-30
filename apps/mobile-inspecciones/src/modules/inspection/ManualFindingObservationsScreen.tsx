@@ -1,5 +1,6 @@
 import React from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
@@ -8,7 +9,7 @@ import { OfflineBanner } from '../../shared/components/form/ManualFormUi';
 import { ManualFlowFooter, ManualFlowHeader } from '../../shared/components/form/ManualFlowScaffold';
 import { ManualFormStepper, type SelectSheetOption } from './ManualSelectionUi';
 import { useManualConnectivityStatus } from './useManualConnectivityStatus';
-import { useManualInspectionDraft } from './manualInspection.store';
+import { type ManualFindingObservationDraft, useManualInspectionDraft } from './manualInspection.store';
 import { useManualInspectionFlowStore } from './manualInspectionFlow.store';
 
 const findingTypeOptions: SelectSheetOption[] = [
@@ -19,6 +20,16 @@ const findingTypeOptions: SelectSheetOption[] = [
   { id: 'waste-management', label: 'Desviación en la gestión o eliminación de residuos' },
   { id: 'equipment-infrastructure', label: 'Desviación en el funcionamiento de equipos e infraestructura' },
   { id: 'water-resource', label: 'Desviación en manejo de recurso hídrico' },
+];
+
+const probabilities = ['Muy improbable', 'Improbable', 'Posible', 'Probable', 'Casi seguro'];
+const consequences = ['Insignificante', 'Menor', 'Moderado', 'Mayor', 'Catastrófico'];
+const matrix = [
+  [5, 10, 15, 20, 25],
+  [4, 8, 12, 16, 20],
+  [3, 6, 9, 12, 15],
+  [2, 4, 6, 8, 10],
+  [1, 2, 3, 4, 5],
 ];
 
 function EmptyObservationsCard() {
@@ -33,12 +44,122 @@ function EmptyObservationsCard() {
   );
 }
 
-function AddObservationButton({ disabled }: { disabled: boolean }) {
+function AddObservationButton({ disabled, onPress }: { disabled: boolean; onPress: () => void }) {
   return (
-    <TouchableOpacity activeOpacity={0.78} disabled={disabled} style={[styles.addButton, disabled && styles.addButtonDisabled]}>
-      <FontAwesome5 name="plus" size={13} color={disabled ? '#D1D1D1' : colors.goldDark} />
+    <TouchableOpacity activeOpacity={0.78} disabled={disabled} onPress={onPress} style={[styles.addButton, disabled && styles.addButtonDisabled]}>
+      <FontAwesome5 name="plus" size={13} color={disabled ? '#D1D1D1' : '#1E5A92'} />
       <Text style={[styles.addButtonText, disabled && styles.addButtonTextDisabled]}>Agregar observación</Text>
     </TouchableOpacity>
+  );
+}
+
+function assetName(uri: string) {
+  const name = uri.split('/').pop();
+  return name && name.includes('.') ? name : 'foto_obs1.jpg';
+}
+
+async function pickEvidence(onPick: (uri: string) => void) {
+  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (permission.status !== 'granted') {
+    Alert.alert('Permiso requerido', 'Activa el permiso de galería para adjuntar imágenes.');
+    return;
+  }
+  const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8, allowsEditing: false, selectionLimit: 1 });
+  if (!result.canceled && result.assets[0]?.uri) onPick(result.assets[0].uri);
+}
+
+function nextOption(current: string | null, options: string[]) {
+  if (!current) return options[2] ?? options[0];
+  const index = options.indexOf(current);
+  return options[(index + 1) % options.length];
+}
+
+function riskScore(observation: ManualFindingObservationDraft) {
+  const p = observation.probability ? probabilities.indexOf(observation.probability) + 1 : 0;
+  const c = observation.consequence ? consequences.indexOf(observation.consequence) + 1 : 0;
+  return p && c ? p * c : 0;
+}
+
+function riskLevel(score: number) {
+  if (score >= 15) return 'Crítico';
+  if (score >= 9) return 'Alto';
+  if (score >= 6) return 'Medio';
+  if (score > 0) return 'Bajo';
+  return null;
+}
+
+function riskColor(score: number) {
+  if (score >= 15) return '#F8C6D3';
+  if (score >= 9) return '#F7BE8A';
+  if (score >= 6) return '#FFE7A9';
+  return '#CFF9C9';
+}
+
+function ObservationForm({ index, observation, onUpdate, onRemove }: { index: number; observation: ManualFindingObservationDraft; onUpdate: (patch: Partial<Omit<ManualFindingObservationDraft, 'id'>>) => void; onRemove: () => void }) {
+  const score = riskScore(observation);
+  const level = riskLevel(score);
+  const complete = Boolean(observation.detectedCondition.trim() && observation.correctiveAction.trim() && observation.evidence && observation.probability && observation.consequence);
+
+  function setEvidence(uri: string) {
+    onUpdate({ evidence: { uri, name: assetName(uri) } });
+  }
+
+  return (
+    <View style={styles.observationCard}>
+      <View style={styles.observationHeader}>
+        <FontAwesome5 name="plus-circle" size={12} color="#9B7440" />
+        <Text style={styles.observationTitle}>NUEVA OBSERVACIÓN {index + 1}</Text>
+      </View>
+      <Text style={styles.fieldLabel}>Condición detectada *</Text>
+      <TextInput multiline value={observation.detectedCondition} onChangeText={(value) => onUpdate({ detectedCondition: value })} placeholder="Describe la condición subestándar, su ubicación exacta y la norma que incumple..." placeholderTextColor="#8A8A8A" style={styles.textArea} textAlignVertical="top" />
+      <Text style={styles.fieldLabel}>Fotografía "Antes" *</Text>
+      <TouchableOpacity activeOpacity={0.75} onPress={() => pickEvidence(setEvidence)} style={[styles.photoBox, observation.evidence && styles.photoBoxDone]}>
+        {observation.evidence ? <View style={styles.photoIconDone}><FontAwesome5 name="camera" size={15} color={colors.white} /></View> : <Text style={styles.photoEmoji}>📷</Text>}
+        <View style={styles.photoCopy}>
+          <Text style={[styles.photoTitle, observation.evidence && styles.photoTitleDone]}>{observation.evidence?.name ?? 'Tomar foto o galería'}</Text>
+          {!observation.evidence ? <Text style={styles.photoSub}>Fecha, hora y GPS automáticos</Text> : null}
+        </View>
+      </TouchableOpacity>
+      <Text style={styles.fieldLabel}>Medidas correctivas propuestas</Text>
+      <TextInput multiline value={observation.correctiveAction} onChangeText={(value) => onUpdate({ correctiveAction: value })} placeholder="Qué debe hacer la EECC para corregir esta condición..." placeholderTextColor="#8A8A8A" style={styles.textAreaSmall} textAlignVertical="top" />
+      <Text style={styles.riskTitle}>Criticidad de la inspección</Text>
+      <Text style={styles.riskSubtitle}>Califica el riesgo global de esta visita · aplica a las observaciones registradas</Text>
+      <View style={styles.riskRow}>
+        <View style={styles.riskSelectCard}>
+          <Text style={styles.riskLabel}>PROBABILIDAD</Text>
+          <TouchableOpacity style={styles.riskSelect} activeOpacity={0.75} onPress={() => onUpdate({ probability: nextOption(observation.probability, probabilities) })}>
+            <Text style={styles.riskValue}>{observation.probability ?? 'Seleccionar'}</Text>
+            <FontAwesome5 name="caret-down" size={15} color={colors.primary} />
+          </TouchableOpacity>
+          <Text style={styles.riskHelp}>Frecuencia esperada del evento</Text>
+        </View>
+        <View style={styles.riskSelectCard}>
+          <Text style={styles.riskLabel}>CONSECUENCIA</Text>
+          <TouchableOpacity style={styles.riskSelect} activeOpacity={0.75} onPress={() => onUpdate({ consequence: nextOption(observation.consequence, consequences) })}>
+            <Text style={styles.riskValue}>{observation.consequence ?? 'Seleccionar'}</Text>
+            <FontAwesome5 name="caret-down" size={15} color={colors.primary} />
+          </TouchableOpacity>
+          <Text style={styles.riskHelp}>Severidad del impacto ambiental</Text>
+        </View>
+      </View>
+      {level ? <View style={styles.levelBox}><View><Text style={styles.levelLabel}>NIVEL CALCULADO</Text><Text style={styles.levelValue}>{level}</Text></View><Text style={styles.levelText}>Cierre prioritario. SLA configurable por Admin GF.</Text></View> : <View style={styles.pendingLevel}><Text style={styles.pendingText}>Selecciona ambos campos para calcular</Text></View>}
+      {level ? <View style={styles.slaBox}><View><Text style={styles.slaLabel}>SLA CALCULADO</Text><Text style={styles.slaValue}>5 Días</Text></View><TouchableOpacity style={styles.slaButton} activeOpacity={0.75}><Text style={styles.slaButtonText}>Reasignar SLA</Text></TouchableOpacity></View> : null}
+      <View style={styles.matrixCard}>
+        <Text style={styles.matrixTitle}>Matriz 5×5 · referencia visual</Text>
+        <View style={styles.matrixTopLabels}><Text style={styles.axisSpacer} />{[1, 2, 3, 4, 5].map((value) => <Text key={value} style={styles.matrixAxis}>{value}</Text>)}</View>
+        {matrix.map((row, rowIndex) => (
+          <View key={rowIndex} style={styles.matrixRow}>
+            <Text style={styles.matrixAxis}>{5 - rowIndex}</Text>
+            {row.map((value) => <View key={value} style={[styles.matrixCell, { backgroundColor: riskColor(value) }, value === score && styles.matrixCellSelected]}><Text style={styles.matrixCellText}>{value}</Text></View>)}
+          </View>
+        ))}
+        <View style={styles.legendRow}><Text style={styles.legendLow}>■ Bajo</Text><Text style={styles.legendMid}>■ Medio</Text><Text style={styles.legendHigh}>■ Alto</Text><Text style={styles.legendCritical}>■ Crítico</Text></View>
+      </View>
+      <View style={styles.formActions}>
+        <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.75} onPress={onRemove}><Text style={styles.cancelText}>Cancelar</Text></TouchableOpacity>
+        <TouchableOpacity disabled={!complete} style={[styles.saveObservationBtn, !complete && styles.saveObservationBtnDisabled]} activeOpacity={0.75} onPress={() => onUpdate({ saved: true })}><Text style={styles.saveObservationText}>✓ Guardar observación</Text></TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
@@ -74,6 +195,9 @@ export function ManualFindingObservationsScreen() {
   const { online, hasSession } = useManualConnectivityStatus();
   const draft = useManualInspectionDraft();
   const setFindingType = useManualInspectionDraft((state) => state.setFindingType);
+  const addFindingObservation = useManualInspectionDraft((state) => state.addFindingObservation);
+  const updateFindingObservation = useManualInspectionDraft((state) => state.updateFindingObservation);
+  const removeFindingObservation = useManualInspectionDraft((state) => state.removeFindingObservation);
   const activePicker = useManualInspectionFlowStore((state) => state.activePicker);
   const openPicker = useManualInspectionFlowStore((state) => state.openPicker);
   const closePicker = useManualInspectionFlowStore((state) => state.closePicker);
@@ -93,6 +217,11 @@ export function ManualFindingObservationsScreen() {
   function selectFindingType(option: SelectSheetOption) {
     setFindingType(option.id, option.label);
     closePicker();
+  }
+
+  function addObservation() {
+    if (!draft.findingTypeId) return;
+    addFindingObservation();
   }
 
   return (
@@ -115,8 +244,9 @@ export function ManualFindingObservationsScreen() {
               <Text style={styles.title}>Observaciones</Text>
               <Text style={styles.subtitle}>Registra cada condición detectada en esta visita · una a una</Text>
             </View>
-            <EmptyObservationsCard />
-            <AddObservationButton disabled />
+            {draft.findingObservations.length === 0 ? <EmptyObservationsCard /> : null}
+            {draft.findingObservations.length === 0 ? <AddObservationButton disabled={!draft.findingTypeId} onPress={addObservation} /> : null}
+            {draft.findingObservations.map((observation, index) => <ObservationForm key={observation.id} index={index} observation={observation} onUpdate={(patch) => updateFindingObservation(observation.id, patch)} onRemove={() => removeFindingObservation(observation.id)} />)}
           </ScrollView>
           <ManualFlowFooter secondaryLabel="Atrás" secondaryIcon="arrow-left" onSecondary={back} onPrimary={() => undefined} primaryDisabled />
           <FindingTypeModal visible={activePicker === 'findingType'} selectedId={draft.findingTypeId} onClose={closePicker} onSelect={selectFindingType} />
@@ -134,7 +264,7 @@ const styles = StyleSheet.create({
   copyBlock: { gap: 4 },
   title: { fontSize: 18, lineHeight: 21.6, fontWeight: fontWeight.bold, color: colors.primary },
   subtitle: { fontSize: 12, lineHeight: 16.8, color: colors.muted },
-  selectBox: { height: 48, borderRadius: 10, borderWidth: 1, borderColor: '#D1D1D1', backgroundColor: '#F6FAFF', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14 },
+  selectBox: { minHeight: 48, borderRadius: 10, borderWidth: 1, borderColor: '#D1D1D1', backgroundColor: '#F6FAFF', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 8, gap: 8 },
   selectText: { flex: 1, fontSize: 14, lineHeight: 18, fontWeight: fontWeight.medium, color: colors.primary },
   selectPlaceholder: { color: colors.primary },
   emptyCard: { minHeight: 90, borderRadius: 12, backgroundColor: '#4A90C4', flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingLeft: 14, paddingRight: 12, paddingVertical: 12 },
@@ -144,8 +274,61 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 11, lineHeight: 15.4, color: 'rgba(255,255,255,0.88)' },
   addButton: { height: 48, borderRadius: 10, borderWidth: 2, borderStyle: 'dashed', borderColor: '#D1D1D1', backgroundColor: '#F6FAFF', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   addButtonDisabled: { opacity: 1 },
-  addButtonText: { fontSize: 13, fontWeight: fontWeight.semibold, color: colors.goldDark },
+  addButtonText: { fontSize: 13, fontWeight: fontWeight.semibold, color: '#1E5A92' },
   addButtonTextDisabled: { color: '#D1D1D1' },
+  observationCard: { borderWidth: 1.5, borderColor: colors.gold, borderRadius: 12, backgroundColor: colors.white, padding: 12, gap: 8 },
+  observationHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
+  observationTitle: { color: '#9B7440', fontSize: 12, lineHeight: 16, fontWeight: fontWeight.bold, letterSpacing: 0.3 },
+  fieldLabel: { color: colors.primary, fontSize: 13, lineHeight: 17, fontWeight: fontWeight.bold },
+  textArea: { minHeight: 78, borderWidth: 1.5, borderColor: '#D1D1D1', borderRadius: 10, backgroundColor: '#F6FAFF', paddingHorizontal: 14, paddingVertical: 12, fontSize: 13, lineHeight: 18, color: colors.primary },
+  textAreaSmall: { minHeight: 76, borderWidth: 1.5, borderColor: '#D1D1D1', borderRadius: 10, backgroundColor: '#F6FAFF', paddingHorizontal: 14, paddingVertical: 12, fontSize: 13, lineHeight: 18, color: colors.primary },
+  photoBox: { minHeight: 90, borderWidth: 1.5, borderStyle: 'dashed', borderColor: '#D1D1D1', borderRadius: 10, backgroundColor: '#F6FAFF', alignItems: 'center', justifyContent: 'center', padding: 12, gap: 4 },
+  photoBoxDone: { minHeight: 58, borderWidth: 0, borderStyle: 'solid', backgroundColor: '#35A137', flexDirection: 'row', justifyContent: 'flex-start', paddingHorizontal: 14 },
+  photoEmoji: { fontSize: 22 },
+  photoCopy: { alignItems: 'center' },
+  photoIconDone: { width: 42, height: 42, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.24)', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  photoTitle: { color: colors.muted, fontSize: 13, fontWeight: fontWeight.bold, textAlign: 'center' },
+  photoTitleDone: { color: colors.white, textAlign: 'left' },
+  photoSub: { color: '#B7B7B7', fontSize: 11, marginTop: 3 },
+  riskTitle: { color: colors.primary, fontSize: 18, lineHeight: 22, fontWeight: fontWeight.bold, marginTop: 4 },
+  riskSubtitle: { color: colors.muted, fontSize: 12, lineHeight: 16 },
+  riskRow: { flexDirection: 'row', gap: 10 },
+  riskSelectCard: { flex: 1, borderWidth: 1, borderColor: '#E1E1E1', borderRadius: 10, backgroundColor: colors.white, padding: 9, gap: 6 },
+  riskLabel: { color: colors.muted, fontSize: 10, lineHeight: 13, fontWeight: fontWeight.bold, letterSpacing: 0.8 },
+  riskSelect: { minHeight: 48, borderWidth: 1.5, borderColor: '#D1D1D1', borderRadius: 10, backgroundColor: '#F6FAFF', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 10, gap: 6 },
+  riskValue: { flex: 1, color: colors.primary, fontSize: 14, lineHeight: 18, fontWeight: fontWeight.medium },
+  riskHelp: { color: '#B0B0B0', fontSize: 11, lineHeight: 14 },
+  pendingLevel: { height: 64, borderWidth: 1.5, borderStyle: 'dashed', borderColor: '#E1E1E1', borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAFAFA' },
+  pendingText: { color: '#B0B0B0', fontSize: 12 },
+  levelBox: { borderWidth: 1.5, borderColor: '#F29A5B', borderRadius: 10, backgroundColor: '#FFDCC4', flexDirection: 'row', alignItems: 'center', gap: 18, padding: 12 },
+  levelLabel: { color: '#5E3B24', fontSize: 10, lineHeight: 12, fontWeight: fontWeight.bold, letterSpacing: 0.7 },
+  levelValue: { color: '#5E3B24', fontSize: 21, lineHeight: 24, fontWeight: fontWeight.bold },
+  levelText: { flex: 1, color: '#5E3B24', fontSize: 12, lineHeight: 16 },
+  slaBox: { borderWidth: 1.5, borderColor: '#D1D1D1', borderRadius: 10, backgroundColor: '#F7F7F7', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12 },
+  slaLabel: { color: colors.primary, fontSize: 10, lineHeight: 12, fontWeight: fontWeight.bold, letterSpacing: 0.7 },
+  slaValue: { color: colors.primary, fontSize: 22, lineHeight: 25, fontWeight: fontWeight.bold },
+  slaButton: { borderWidth: 1.5, borderColor: '#D1D1D1', borderRadius: 10, backgroundColor: colors.white, minHeight: 45, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
+  slaButtonText: { color: colors.primary, fontSize: 13, fontWeight: fontWeight.bold },
+  matrixCard: { borderWidth: 1, borderColor: '#E1E1E1', borderRadius: 10, backgroundColor: colors.white, padding: 10, gap: 5 },
+  matrixTitle: { color: colors.primary, fontSize: 11, fontWeight: fontWeight.bold, marginBottom: 4 },
+  matrixTopLabels: { flexDirection: 'row', gap: 3, alignItems: 'center' },
+  axisSpacer: { width: 16 },
+  matrixAxis: { width: 16, color: '#A0A0A0', fontSize: 9, textAlign: 'center' },
+  matrixRow: { flexDirection: 'row', gap: 3, alignItems: 'center' },
+  matrixCell: { flex: 1, height: 23, borderRadius: 3, alignItems: 'center', justifyContent: 'center' },
+  matrixCellSelected: { borderWidth: 2, borderColor: colors.primary },
+  matrixCellText: { color: '#3A2A1F', fontSize: 10, fontWeight: fontWeight.bold },
+  legendRow: { flexDirection: 'row', gap: 8, marginTop: 4, flexWrap: 'wrap' },
+  legendLow: { color: '#86D57E', fontSize: 10 },
+  legendMid: { color: '#F1C45E', fontSize: 10 },
+  legendHigh: { color: '#EE9A61', fontSize: 10 },
+  legendCritical: { color: '#D97999', fontSize: 10 },
+  formActions: { flexDirection: 'row', gap: 10, marginTop: 8 },
+  cancelBtn: { flex: 1, height: 44, borderWidth: 1.5, borderColor: colors.gold, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white },
+  cancelText: { color: colors.goldDark, fontSize: 13, fontWeight: fontWeight.bold },
+  saveObservationBtn: { flex: 1.35, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.gold },
+  saveObservationBtnDisabled: { backgroundColor: '#D1D1D1' },
+  saveObservationText: { color: colors.white, fontSize: 13, fontWeight: fontWeight.bold },
   modalRoot: { flex: 1, justifyContent: 'flex-end' },
   modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.68)' },
   modalPanel: { maxHeight: '78%', minHeight: 540, backgroundColor: colors.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },

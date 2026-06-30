@@ -5,6 +5,7 @@ export * from './users';
 export * from './roles';
 export * from './mue';
 export * from './critical-controls';
+export * from './notifications';
 export * from './inspections';
 export * from './incidents';
 export * from './spr';

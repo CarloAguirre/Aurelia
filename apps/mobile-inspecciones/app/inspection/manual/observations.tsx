@@ -1,3 +1,3 @@
-import { ManualChecklistTemplateScreen } from '../../../src/modules/inspection/ManualChecklistTemplateScreen';
+import { ManualObservationsRouter } from '../../../src/modules/inspection/ManualObservationsRouter';
 
-export default ManualChecklistTemplateScreen;
+export default ManualObservationsRouter;

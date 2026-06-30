@@ -19,3 +19,6 @@ export function fetchInspectionFindingTypes(): Promise<InspectionFindingTypeResp
 export function fetchInspectionFindingSeverities(): Promise<InspectionFindingSeverityResponse[]> {
   return httpGet<InspectionFindingSeverityResponse[]>('/inspections/finding-catalogs/severities');
 }
+
+export const fetchInspectionFindingTypesFromApi = fetchInspectionFindingTypes;
+export const fetchInspectionFindingSeveritiesFromApi = fetchInspectionFindingSeverities;

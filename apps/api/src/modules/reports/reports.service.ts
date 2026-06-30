@@ -58,8 +58,7 @@ export interface OpenItemsReport {
 
 type ReportFilters = ReportFilterRequest & {
   companyId?: string;
-  incidentTypeId?: string;
-  incidentLevelId?: string;
+  status?: string;
 };
 
 type QueryParts = {
@@ -89,31 +88,21 @@ export class ReportsService {
 
   async inspectionsSummary(filter: ReportFilters): Promise<InspectionSummaryReport> {
     const where = this.buildWhere('i', filter, 'created_at');
-    const findingsWhere = this.buildJoinedInspectionFindingWhere(filter);
+    const findingsWhere = this.buildWhere('i', filter, 'created_at');
+    const openWhere = this.withExtra(where, 'i.status NOT IN ($next, $next)', [InspectionStatus.CLOSED, InspectionStatus.CANCELLED]);
+    const closedWhere = this.withExtra(where, 'i.status = $next', [InspectionStatus.CLOSED]);
+    const cancelledWhere = this.withExtra(where, 'i.status = $next', [InspectionStatus.CANCELLED]);
+    const openFindingsWhere = this.withExtra(findingsWhere, 'f.status NOT IN ($next, $next)', [InspectionFindingStatus.CLOSED, InspectionFindingStatus.CANCELLED]);
+    const overdueFindingsWhere = this.withExtra(findingsWhere, 'f.due_at IS NOT NULL AND f.due_at < NOW() AND f.status NOT IN ($next, $next)', [InspectionFindingStatus.CLOSED, InspectionFindingStatus.CANCELLED]);
     const byStatus = await this.countByStatus('inspections', 'i', filter, 'created_at');
 
     const [total, open, closed, cancelled, openFindings, overdueFindings] = await Promise.all([
       this.countScalar(`SELECT COUNT(*)::int AS count FROM inspections i ${where.sql}`, where.params),
-      this.countScalar(
-        `SELECT COUNT(*)::int AS count FROM inspections i ${where.sqlWithExtra('i.status NOT IN ($next, $next)', [InspectionStatus.CLOSED, InspectionStatus.CANCELLED])}`,
-        where.params,
-      ),
-      this.countScalar(
-        `SELECT COUNT(*)::int AS count FROM inspections i ${where.sqlWithExtra('i.status = $next', [InspectionStatus.CLOSED])}`,
-        where.params,
-      ),
-      this.countScalar(
-        `SELECT COUNT(*)::int AS count FROM inspections i ${where.sqlWithExtra('i.status = $next', [InspectionStatus.CANCELLED])}`,
-        where.params,
-      ),
-      this.countScalar(
-        `SELECT COUNT(*)::int AS count FROM inspection_findings f JOIN inspections i ON i.id = f.inspection_id ${findingsWhere.sqlWithExtra('f.status NOT IN ($next, $next)', [InspectionFindingStatus.CLOSED, InspectionFindingStatus.CANCELLED])}`,
-        findingsWhere.params,
-      ),
-      this.countScalar(
-        `SELECT COUNT(*)::int AS count FROM inspection_findings f JOIN inspections i ON i.id = f.inspection_id ${findingsWhere.sqlWithExtra('f.due_at IS NOT NULL AND f.due_at < NOW() AND f.status NOT IN ($next, $next)', [InspectionFindingStatus.CLOSED, InspectionFindingStatus.CANCELLED])}`,
-        findingsWhere.params,
-      ),
+      this.countScalar(`SELECT COUNT(*)::int AS count FROM inspections i ${openWhere.sql}`, openWhere.params),
+      this.countScalar(`SELECT COUNT(*)::int AS count FROM inspections i ${closedWhere.sql}`, closedWhere.params),
+      this.countScalar(`SELECT COUNT(*)::int AS count FROM inspections i ${cancelledWhere.sql}`, cancelledWhere.params),
+      this.countScalar(`SELECT COUNT(*)::int AS count FROM inspection_findings f JOIN inspections i ON i.id = f.inspection_id ${openFindingsWhere.sql}`, openFindingsWhere.params),
+      this.countScalar(`SELECT COUNT(*)::int AS count FROM inspection_findings f JOIN inspections i ON i.id = f.inspection_id ${overdueFindingsWhere.sql}`, overdueFindingsWhere.params),
     ]);
 
     return { total, open, closed, cancelled, openFindings, overdueFindings, byStatus };
@@ -121,41 +110,27 @@ export class ReportsService {
 
   async incidentsSummary(filter: ReportFilters): Promise<IncidentSummaryReport> {
     const where = this.buildWhere('i', filter, 'reported_at');
-    const actionPlanWhere = this.buildJoinedIncidentActionPlanWhere(filter);
+    const actionPlanWhere = this.buildWhere('i', filter, 'reported_at');
+    const openWhere = this.withExtra(where, 'i.status NOT IN ($next, $next)', [IncidentStatus.CLOSED, IncidentStatus.CANCELLED]);
+    const closedWhere = this.withExtra(where, 'i.status = $next', [IncidentStatus.CLOSED]);
+    const cancelledWhere = this.withExtra(where, 'i.status = $next', [IncidentStatus.CANCELLED]);
+    const overdueSlaWhere = this.withExtra(where, 'i.sla_due_at IS NOT NULL AND i.sla_due_at < NOW() AND i.status NOT IN ($next, $next)', [IncidentStatus.CLOSED, IncidentStatus.CANCELLED]);
+    const dueSoonWhere = this.withExtra(where, "i.sla_due_at IS NOT NULL AND i.sla_due_at >= NOW() AND i.sla_due_at <= NOW() + INTERVAL '24 hours' AND i.status NOT IN ($next, $next)", [IncidentStatus.CLOSED, IncidentStatus.CANCELLED]);
+    const openActionPlansWhere = this.withExtra(actionPlanWhere, 'ap.status NOT IN ($next, $next)', [IncidentActionPlanStatus.COMPLETED, IncidentActionPlanStatus.CANCELLED]);
+    const overdueActionPlansWhere = this.withExtra(actionPlanWhere, 'ap.due_at IS NOT NULL AND ap.due_at < NOW() AND ap.status NOT IN ($next, $next)', [IncidentActionPlanStatus.COMPLETED, IncidentActionPlanStatus.CANCELLED]);
     const byStatus = await this.countByStatus('incidents', 'i', filter, 'reported_at');
     const actionPlanByStatus = await this.countActionPlansByStatus(filter);
 
     const [total, open, closed, cancelled, overdueSla, dueSoonNext24Hours, actionPlansTotal, actionPlansOpen, actionPlansOverdue] = await Promise.all([
       this.countScalar(`SELECT COUNT(*)::int AS count FROM incidents i ${where.sql}`, where.params),
-      this.countScalar(
-        `SELECT COUNT(*)::int AS count FROM incidents i ${where.sqlWithExtra('i.status NOT IN ($next, $next)', [IncidentStatus.CLOSED, IncidentStatus.CANCELLED])}`,
-        where.params,
-      ),
-      this.countScalar(
-        `SELECT COUNT(*)::int AS count FROM incidents i ${where.sqlWithExtra('i.status = $next', [IncidentStatus.CLOSED])}`,
-        where.params,
-      ),
-      this.countScalar(
-        `SELECT COUNT(*)::int AS count FROM incidents i ${where.sqlWithExtra('i.status = $next', [IncidentStatus.CANCELLED])}`,
-        where.params,
-      ),
-      this.countScalar(
-        `SELECT COUNT(*)::int AS count FROM incidents i ${where.sqlWithExtra('i.sla_due_at IS NOT NULL AND i.sla_due_at < NOW() AND i.status NOT IN ($next, $next)', [IncidentStatus.CLOSED, IncidentStatus.CANCELLED])}`,
-        where.params,
-      ),
-      this.countScalar(
-        `SELECT COUNT(*)::int AS count FROM incidents i ${where.sqlWithExtra('i.sla_due_at IS NOT NULL AND i.sla_due_at >= NOW() AND i.sla_due_at <= NOW() + INTERVAL '24 hours' AND i.status NOT IN ($next, $next)', [IncidentStatus.CLOSED, IncidentStatus.CANCELLED])}`,
-        where.params,
-      ),
+      this.countScalar(`SELECT COUNT(*)::int AS count FROM incidents i ${openWhere.sql}`, openWhere.params),
+      this.countScalar(`SELECT COUNT(*)::int AS count FROM incidents i ${closedWhere.sql}`, closedWhere.params),
+      this.countScalar(`SELECT COUNT(*)::int AS count FROM incidents i ${cancelledWhere.sql}`, cancelledWhere.params),
+      this.countScalar(`SELECT COUNT(*)::int AS count FROM incidents i ${overdueSlaWhere.sql}`, overdueSlaWhere.params),
+      this.countScalar(`SELECT COUNT(*)::int AS count FROM incidents i ${dueSoonWhere.sql}`, dueSoonWhere.params),
       this.countScalar(`SELECT COUNT(*)::int AS count FROM incident_action_plans ap JOIN incidents i ON i.id = ap.incident_id ${actionPlanWhere.sql}`, actionPlanWhere.params),
-      this.countScalar(
-        `SELECT COUNT(*)::int AS count FROM incident_action_plans ap JOIN incidents i ON i.id = ap.incident_id ${actionPlanWhere.sqlWithExtra('ap.status NOT IN ($next, $next)', [IncidentActionPlanStatus.COMPLETED, IncidentActionPlanStatus.CANCELLED])}`,
-        actionPlanWhere.params,
-      ),
-      this.countScalar(
-        `SELECT COUNT(*)::int AS count FROM incident_action_plans ap JOIN incidents i ON i.id = ap.incident_id ${actionPlanWhere.sqlWithExtra('ap.due_at IS NOT NULL AND ap.due_at < NOW() AND ap.status NOT IN ($next, $next)', [IncidentActionPlanStatus.COMPLETED, IncidentActionPlanStatus.CANCELLED])}`,
-        actionPlanWhere.params,
-      ),
+      this.countScalar(`SELECT COUNT(*)::int AS count FROM incident_action_plans ap JOIN incidents i ON i.id = ap.incident_id ${openActionPlansWhere.sql}`, openActionPlansWhere.params),
+      this.countScalar(`SELECT COUNT(*)::int AS count FROM incident_action_plans ap JOIN incidents i ON i.id = ap.incident_id ${overdueActionPlansWhere.sql}`, overdueActionPlansWhere.params),
     ]);
 
     return {
@@ -270,7 +245,7 @@ export class ReportsService {
   }
 
   private async countActionPlansByStatus(filter: ReportFilters): Promise<Record<string, number>> {
-    const where = this.buildJoinedIncidentActionPlanWhere(filter);
+    const where = this.buildWhere('i', filter, 'reported_at');
     const rows = await this.dataSource.query(
       `SELECT ap.status AS key, COUNT(*)::int AS count
        FROM incident_action_plans ap
@@ -292,7 +267,7 @@ export class ReportsService {
     return Number(rows[0]?.count ?? 0);
   }
 
-  private buildWhere(alias: string, filter: ReportFilters, dateColumn: string): QueryParts & { sqlWithExtra: (condition: string, values?: unknown[]) => string } {
+  private buildWhere(alias: string, filter: ReportFilters, dateColumn: string): QueryParts {
     const conditions: string[] = [];
     const params: unknown[] = [];
 
@@ -306,6 +281,11 @@ export class ReportsService {
       conditions.push(`${alias}.area_id = $${params.length}`);
     }
 
+    if (filter.status) {
+      params.push(filter.status);
+      conditions.push(`${alias}.status = $${params.length}`);
+    }
+
     if (filter.from) {
       params.push(filter.from);
       conditions.push(`${alias}.${dateColumn} >= $${params.length}`);
@@ -316,37 +296,24 @@ export class ReportsService {
       conditions.push(`${alias}.${dateColumn} <= $${params.length}`);
     }
 
-    return this.withExtraConditions(conditions, params);
+    return {
+      sql: conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '',
+      params,
+    };
   }
 
-  private buildJoinedInspectionFindingWhere(filter: ReportFilters): QueryParts & { sqlWithExtra: (condition: string, values?: unknown[]) => string } {
-    return this.buildWhere('i', filter, 'created_at');
-  }
+  private withExtra(parts: QueryParts, condition: string, values: unknown[] = []): QueryParts {
+    const params = [...parts.params];
+    let renderedCondition = condition;
 
-  private buildJoinedIncidentActionPlanWhere(filter: ReportFilters): QueryParts & { sqlWithExtra: (condition: string, values?: unknown[]) => string } {
-    return this.buildWhere('i', filter, 'reported_at');
-  }
-
-  private withExtraConditions(conditions: string[], params: unknown[]): QueryParts & { sqlWithExtra: (condition: string, values?: unknown[]) => string } {
-    const sql = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    for (const value of values) {
+      params.push(value);
+      renderedCondition = renderedCondition.replace('$next', `$${params.length}`);
+    }
 
     return {
-      sql,
+      sql: parts.sql ? `${parts.sql} AND ${renderedCondition}` : `WHERE ${renderedCondition}`,
       params,
-      sqlWithExtra: (condition: string, values: unknown[] = []) => {
-        const extraConditions = [...conditions];
-        const localParams = [...params];
-        let renderedCondition = condition;
-
-        for (const value of values) {
-          localParams.push(value);
-          renderedCondition = renderedCondition.replace('$next', `$${localParams.length}`);
-        }
-
-        extraConditions.push(renderedCondition);
-        params.splice(0, params.length, ...localParams);
-        return `WHERE ${extraConditions.join(' AND ')}`;
-      },
     };
   }
 

@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req } from '@nestjs/common';
+import { ControlSelfAssessment } from '@aurelia/contracts';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { RequirePermissions } from '../auth/require-permissions.decorator';
-import { ControlSelfAssessmentEntity } from '../mue/entities/control-self-assessment.entity';
 import { CriticalControlsService } from './critical-controls.service';
 import { CreateControlSelfAssessmentDto, UpsertControlSelfAssessmentAnswersDto } from './dto/create-control-self-assessment.dto';
 
@@ -14,12 +14,12 @@ export class CriticalControlsController {
   findAssessments(
     @Query('mueId') mueId?: string,
     @Query('status') status?: string,
-  ): Promise<ControlSelfAssessmentEntity[]> {
+  ): Promise<ControlSelfAssessment[]> {
     return this.criticalControlsService.findAssessments(mueId, status);
   }
 
   @Get('self-assessments/:id')
-  findAssessment(@Param('id', ParseUUIDPipe) id: string): Promise<ControlSelfAssessmentEntity> {
+  findAssessment(@Param('id', ParseUUIDPipe) id: string): Promise<ControlSelfAssessment> {
     return this.criticalControlsService.findAssessment(id);
   }
 
@@ -28,7 +28,7 @@ export class CriticalControlsController {
   createAssessment(
     @Req() request: AuthenticatedRequest,
     @Body() dto: CreateControlSelfAssessmentDto,
-  ): Promise<ControlSelfAssessmentEntity> {
+  ): Promise<ControlSelfAssessment> {
     return this.criticalControlsService.createAssessment(dto, request.user.sub);
   }
 
@@ -37,7 +37,7 @@ export class CriticalControlsController {
   upsertAnswers(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpsertControlSelfAssessmentAnswersDto,
-  ): Promise<ControlSelfAssessmentEntity> {
+  ): Promise<ControlSelfAssessment> {
     return this.criticalControlsService.upsertAnswers(id, dto);
   }
 
@@ -46,7 +46,7 @@ export class CriticalControlsController {
   submitAssessment(
     @Req() request: AuthenticatedRequest,
     @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<ControlSelfAssessmentEntity> {
+  ): Promise<ControlSelfAssessment> {
     return this.criticalControlsService.submitAssessment(id, request.user.sub);
   }
 }

@@ -6,6 +6,7 @@ import { AiModule } from './modules/ai/ai.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { CommentsModule } from './modules/comments/comments.module';
+import { CriticalControlsModule } from './modules/critical-controls/critical-controls.module';
 import { EvidencesModule } from './modules/evidences/evidences.module';
 import { FilesModule } from './modules/files/files.module';
 import { HealthModule } from './modules/health/health.module';
@@ -13,6 +14,7 @@ import { IncidentsModule } from './modules/incidents/incidents.module';
 import { InspectionsModule } from './modules/inspections/inspections.module';
 import { MobileBootstrapModule } from './modules/mobile-bootstrap/mobile-bootstrap.module';
 import { MobileSyncModule } from './modules/mobile-sync/mobile-sync.module';
+import { MueModule } from './modules/mue/mue.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { OrganizationModule } from './modules/organization/organization.module';
 import { ReportsModule } from './modules/reports/reports.module';
@@ -43,6 +45,8 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
     IncidentsModule,
     ReportsModule,
     NotificationsModule,
+    MueModule,
+    CriticalControlsModule,
     MobileBootstrapModule,
     MobileSyncModule,
     SprModule,

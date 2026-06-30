@@ -3,6 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuditModule } from '../audit/audit.module';
 import { CommentsModule } from '../comments/comments.module';
 import { EvidencesModule } from '../evidences/evidences.module';
+import { InspectionFindingSeverityEntity } from './entities/inspection-finding-severity.entity';
+import { InspectionFindingTypeEntity } from './entities/inspection-finding-type.entity';
 import { InspectionFindingEntity } from './entities/inspection-finding.entity';
 import { InspectionFollowupEntity } from './entities/inspection-followup.entity';
 import { InspectionFormItemEntity } from './entities/inspection-form-item.entity';
@@ -24,6 +26,8 @@ import { InspectionsService } from './inspections.service';
     EvidencesModule,
     TypeOrmModule.forFeature([
       InspectionTypeEntity,
+      InspectionFindingTypeEntity,
+      InspectionFindingSeverityEntity,
       InspectionFormTemplateEntity,
       InspectionFormSectionEntity,
       InspectionFormItemEntity,

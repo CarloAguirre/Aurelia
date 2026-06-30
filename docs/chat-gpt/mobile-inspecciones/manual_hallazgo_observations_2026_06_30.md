@@ -16,192 +16,138 @@ y continúe hacia:
 
 mostrando la vista de observaciones de hallazgo basada en Figma.
 
-## Cambios aplicados
+## Catálogo desde base de datos
 
-### 1. Tipo de inspección
+Se agregó persistencia para los datos del Excel `Clasificación Hallazgos.xlsx`.
 
-Se actualizó:
-
-```txt
-apps/mobile-inspecciones/src/modules/inspection/ManualInspectionTypeScreen.tsx
-```
-
-Antes `Continuar` solo se habilitaba para `Checklist normativo`.
-
-Ahora `Continuar` se habilita cuando existe `draft.inspectionType`, por lo que `Hallazgo` también puede avanzar a observaciones.
-
-### 2. Estado del draft
-
-Se actualizó:
+La hoja `Criterios` contenía:
 
 ```txt
-apps/mobile-inspecciones/src/modules/inspection/manualInspection.store.ts
+Gravedades: Menor, Moderado, Grave
+Tipos de hallazgo: 7 desviaciones ambientales
 ```
 
-Se agregaron campos:
+Se crearon tablas:
 
 ```txt
-findingTypeId
-findingTypeLabel
-findingObservations
+inspection_finding_types
+inspection_finding_severities
 ```
 
-Y acciones:
+Se crearon entidades:
 
 ```txt
-setFindingType(id, label)
-addFindingObservation()
-updateFindingObservation(id, patch)
-removeFindingObservation(id)
+apps/api/src/modules/inspections/entities/inspection-finding-type.entity.ts
+apps/api/src/modules/inspections/entities/inspection-finding-severity.entity.ts
 ```
 
-Esto permite que la vista de observaciones de hallazgo registre el tipo de hallazgo y el borrador de observación libre.
-
-### 3. Picker de tipo de hallazgo
-
-Se actualizó:
+Se creó migración:
 
 ```txt
-apps/mobile-inspecciones/src/modules/inspection/manualInspectionFlow.store.ts
+apps/api/src/database/migrations/1782880000000-CreateInspectionFindingClassifications.ts
 ```
 
-Se agregó el picker:
+Se creó seed:
 
 ```txt
-findingType
+apps/api/src/database/seeds/003-seed-finding-classifications.ts
 ```
 
-### 4. Vista nueva de observaciones de hallazgo
+Script:
+
+```bash
+pnpm --filter api seed:finding-classifications
+```
+
+## Endpoints
 
 Se creó:
+
+```txt
+apps/api/src/modules/inspections/inspection-finding-catalog.controller.ts
+apps/api/src/modules/inspections/inspection-finding-catalog.service.ts
+```
+
+Endpoints:
+
+```txt
+GET /api/inspections/finding-catalogs
+GET /api/inspections/finding-catalogs/types
+GET /api/inspections/finding-catalogs/severities
+```
+
+## Bootstrap mobile
+
+El bootstrap offline ahora incluye:
+
+```txt
+catalogs.findingTypes
+catalogs.findingSeverities
+```
+
+Esto permite que el selector mobile trabaje local-first y consuma base de datos cuando hay conexión.
+
+## Frontend mobile
+
+Se creó:
+
+```txt
+apps/mobile-inspecciones/src/shared/services/api/inspection-finding-catalogs.api.ts
+```
+
+La pantalla:
 
 ```txt
 apps/mobile-inspecciones/src/modules/inspection/ManualFindingObservationsScreen.tsx
 ```
 
-Incluye:
+ya no usa opciones hardcodeadas para `Tipo de hallazgo`. Ahora carga:
 
 ```txt
-Título: Tipo de hallazgo
-Texto: Seleccione el tipo de hallazgo antes de continuar con las observaciones para esta inspección.
-Select: Seleccione
-Título: Observaciones
-Texto: Registra cada condición detectada en esta visita · una a una
-Card azul: Sin observaciones aún
-Botón dashed: Agregar observación
+fetchInspectionFindingTypesLocalFirst()
 ```
 
-El diseño replica el contenido interior de Figma, dejando header, stepper y footer con los componentes existentes del flujo manual.
-
-### 5. Router de observaciones
-
-Se creó:
+El selector guarda en el draft:
 
 ```txt
-apps/mobile-inspecciones/src/modules/inspection/ManualObservationsRouter.tsx
+findingTypeId = id real de base de datos
+findingTypeLabel = nombre visible del tipo
 ```
 
-Este decide qué pantalla renderizar:
-
-```txt
-InspectionType.ENVIRONMENTAL -> ManualFindingObservationsScreen
-InspectionType.REGULATORY -> ManualChecklistTemplateScreen
-```
-
-### 6. Ruta Expo
-
-Se actualizó:
-
-```txt
-apps/mobile-inspecciones/app/inspection/manual/observations.tsx
-```
-
-Ahora exporta `ManualObservationsRouter`.
-
-### 7. Modal de tipo de hallazgo
-
-Se actualizó:
-
-```txt
-apps/mobile-inspecciones/src/modules/inspection/ManualFindingObservationsScreen.tsx
-```
-
-El selector de `Tipo de hallazgo` ya no usa el `SelectSheet` genérico. Ahora usa un modal propio equivalente al nodo Figma:
-
-```txt
-Overlay oscuro
-Panel blanco desde abajo
-Bordes superiores redondeados
-Header Tipo de hallazgo + X
-Lista con filas altas y separadores
-```
-
-Opciones implementadas:
-
-```txt
-Desviación en emisiones atmosféricas
-Desviación en contención de sustancias
-Desviación sobre suelo o sitios patrimoniales
-Desviación en seguimiento de medidas de vegetación, flora y fauna
-Desviación en la gestión o eliminación de residuos
-Desviación en el funcionamiento de equipos e infraestructura
-Desviación en manejo de recurso hídrico
-```
-
-### 8. Formulario de nueva observación
-
-Se implementó el comportamiento pedido:
-
-```txt
-1. Seleccionar tipo de hallazgo.
-2. Se habilita Agregar observación.
-3. Al presionar Agregar observación, se muestra la card NUEVA OBSERVACIÓN 1.
-```
-
-La card incluye:
-
-```txt
-Condición detectada
-Fotografía Antes
-Medidas correctivas propuestas
-Criticidad de la inspección
-Selector de Probabilidad
-Selector de Consecuencia
-Nivel calculado
-SLA calculado
-Matriz 5x5
-Cancelar
-Guardar observación
-```
-
-Estado implementado:
-
-```txt
-condition text -> findingObservations[].detectedCondition
-corrective action text -> findingObservations[].correctiveAction
-photo asset -> findingObservations[].evidence
-probability -> findingObservations[].probability
-consequence -> findingObservations[].consequence
-saved -> findingObservations[].saved
-```
-
-## Estado actual
-
-La navegación inicial de Hallazgo queda lista:
+## Flujo visual implementado
 
 ```txt
 manual/type
 seleccionar Hallazgo
 Continuar
 manual/observations
-vista de tipo de hallazgo + empty state
-presionar selector de tipo de hallazgo
-modal de opciones estilo Figma
+presionar Tipo de hallazgo
+modal con opciones desde base de datos/bootstrap
 seleccionar tipo
-botón Agregar observación habilitado
+Agregar observación habilitado
 presionar Agregar observación
 formulario de observación libre
 ```
+
+## Validación recomendada
+
+```bash
+pnpm --filter api migration:run
+pnpm --filter api seed:finding-classifications
+pnpm --filter @aurelia/contracts build
+pnpm --filter api dev
+pnpm web -- --clear
+```
+
+Verificar API:
+
+```bash
+curl http://localhost:3000/api/inspections/finding-catalogs/types
+curl http://localhost:3000/api/inspections/finding-catalogs/severities
+curl http://localhost:3000/api/mobile/bootstrap
+```
+
+En `/inspection/manual/observations`, el modal de tipo de hallazgo debe listar los 7 tipos desde `catalogs.findingTypes`.
 
 ## Pendiente siguiente
 

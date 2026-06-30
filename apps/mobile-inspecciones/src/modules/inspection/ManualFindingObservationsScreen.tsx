@@ -8,19 +8,10 @@ import { colors, fontWeight } from '../../shared/theme/tokens';
 import { OfflineBanner } from '../../shared/components/form/ManualFormUi';
 import { ManualFlowFooter, ManualFlowHeader } from '../../shared/components/form/ManualFlowScaffold';
 import { ManualFormStepper, type SelectSheetOption } from './ManualSelectionUi';
+import { fetchInspectionFindingTypesLocalFirst } from '../../shared/services/api/inspection-finding-catalogs.api';
 import { useManualConnectivityStatus } from './useManualConnectivityStatus';
 import { type ManualFindingObservationDraft, useManualInspectionDraft } from './manualInspection.store';
 import { useManualInspectionFlowStore } from './manualInspectionFlow.store';
-
-const findingTypeOptions: SelectSheetOption[] = [
-  { id: 'atmospheric-emissions', label: 'Desviación en emisiones atmosféricas' },
-  { id: 'substance-containment', label: 'Desviación en contención de sustancias' },
-  { id: 'soil-or-heritage-sites', label: 'Desviación sobre suelo o sitios patrimoniales' },
-  { id: 'vegetation-flora-fauna', label: 'Desviación en seguimiento de medidas de vegetación, flora y fauna' },
-  { id: 'waste-management', label: 'Desviación en la gestión o eliminación de residuos' },
-  { id: 'equipment-infrastructure', label: 'Desviación en el funcionamiento de equipos e infraestructura' },
-  { id: 'water-resource', label: 'Desviación en manejo de recurso hídrico' },
-];
 
 const probabilities = ['Muy improbable', 'Improbable', 'Posible', 'Probable', 'Casi seguro'];
 const consequences = ['Insignificante', 'Menor', 'Moderado', 'Mayor', 'Catastrófico'];
@@ -163,7 +154,7 @@ function ObservationForm({ index, observation, onUpdate, onRemove }: { index: nu
   );
 }
 
-function FindingTypeModal({ visible, selectedId, onClose, onSelect }: { visible: boolean; selectedId: string | null; onClose: () => void; onSelect: (option: SelectSheetOption) => void }) {
+function FindingTypeModal({ visible, selectedId, options, loading, errorMessage, onClose, onSelect }: { visible: boolean; selectedId: string | null; options: SelectSheetOption[]; loading: boolean; errorMessage: string | null; onClose: () => void; onSelect: (option: SelectSheetOption) => void }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalRoot}>
@@ -176,7 +167,10 @@ function FindingTypeModal({ visible, selectedId, onClose, onSelect }: { visible:
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
-            {findingTypeOptions.map((option) => {
+            {loading ? <View style={styles.modalEmpty}><Text style={styles.modalEmptyText}>Cargando tipos de hallazgo...</Text></View> : null}
+            {!loading && errorMessage ? <View style={styles.modalEmpty}><Text style={styles.modalEmptyText}>{errorMessage}</Text></View> : null}
+            {!loading && !errorMessage && options.length === 0 ? <View style={styles.modalEmpty}><Text style={styles.modalEmptyText}>No hay tipos de hallazgo disponibles. Sincroniza catálogos.</Text></View> : null}
+            {!loading && !errorMessage && options.map((option) => {
               const selected = option.id === selectedId;
               return (
                 <TouchableOpacity key={option.id} style={[styles.modalOption, selected && styles.modalOptionSelected]} activeOpacity={0.72} onPress={() => onSelect(option)}>
@@ -203,10 +197,35 @@ export function ManualFindingObservationsScreen() {
   const closePicker = useManualInspectionFlowStore((state) => state.closePicker);
   const goToType = useManualInspectionFlowStore((state) => state.goToType);
   const goToObservations = useManualInspectionFlowStore((state) => state.goToObservations);
+  const [findingTypeOptions, setFindingTypeOptions] = React.useState<SelectSheetOption[]>([]);
+  const [findingTypeLoading, setFindingTypeLoading] = React.useState(true);
+  const [findingTypeError, setFindingTypeError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     goToObservations();
   }, [goToObservations]);
+
+  React.useEffect(() => {
+    let mounted = true;
+    setFindingTypeLoading(true);
+    setFindingTypeError(null);
+    fetchInspectionFindingTypesLocalFirst()
+      .then((items) => {
+        if (!mounted) return;
+        setFindingTypeOptions(items.map((item) => ({ id: item.id, label: item.name, description: item.code })));
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setFindingTypeOptions([]);
+        setFindingTypeError('No se pudieron cargar los tipos de hallazgo desde catálogos.');
+      })
+      .finally(() => {
+        if (mounted) setFindingTypeLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   function back() {
     closePicker();
@@ -249,7 +268,7 @@ export function ManualFindingObservationsScreen() {
             {draft.findingObservations.map((observation, index) => <ObservationForm key={observation.id} index={index} observation={observation} onUpdate={(patch) => updateFindingObservation(observation.id, patch)} onRemove={() => removeFindingObservation(observation.id)} />)}
           </ScrollView>
           <ManualFlowFooter secondaryLabel="Atrás" secondaryIcon="arrow-left" onSecondary={back} onPrimary={() => undefined} primaryDisabled />
-          <FindingTypeModal visible={activePicker === 'findingType'} selectedId={draft.findingTypeId} onClose={closePicker} onSelect={selectFindingType} />
+          <FindingTypeModal visible={activePicker === 'findingType'} selectedId={draft.findingTypeId} options={findingTypeOptions} loading={findingTypeLoading} errorMessage={findingTypeError} onClose={closePicker} onSelect={selectFindingType} />
         </View>
       </SafeAreaView>
     </SafeAreaProvider>
@@ -339,4 +358,6 @@ const styles = StyleSheet.create({
   modalOption: { minHeight: 80, justifyContent: 'center', borderTopWidth: 1, borderTopColor: '#E0E0E0', paddingHorizontal: 22, paddingVertical: 14 },
   modalOptionSelected: { backgroundColor: '#FAFAFA' },
   modalOptionText: { fontSize: 16, lineHeight: 24, color: colors.primary },
+  modalEmpty: { minHeight: 120, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, borderTopWidth: 1, borderTopColor: '#E0E0E0' },
+  modalEmptyText: { color: colors.muted, fontSize: 14, lineHeight: 20, textAlign: 'center' },
 });

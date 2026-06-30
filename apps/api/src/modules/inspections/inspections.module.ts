@@ -14,6 +14,8 @@ import { InspectionItemResponseEntity } from './entities/inspection-item-respons
 import { InspectionStateEntity } from './entities/inspection-state.entity';
 import { InspectionTypeEntity } from './entities/inspection-type.entity';
 import { InspectionEntity } from './entities/inspection.entity';
+import { InspectionFindingCatalogController } from './inspection-finding-catalog.controller';
+import { InspectionFindingCatalogService } from './inspection-finding-catalog.service';
 import { InspectionTransversalController } from './inspection-transversal.controller';
 import { InspectionTransversalService } from './inspection-transversal.service';
 import { InspectionsController } from './inspections.controller';
@@ -38,8 +40,8 @@ import { InspectionsService } from './inspections.service';
       InspectionStateEntity,
     ]),
   ],
-  controllers: [InspectionsController, InspectionTransversalController],
-  providers: [InspectionsService, InspectionTransversalService],
-  exports: [InspectionsService],
+  controllers: [InspectionsController, InspectionTransversalController, InspectionFindingCatalogController],
+  providers: [InspectionsService, InspectionTransversalService, InspectionFindingCatalogService],
+  exports: [InspectionsService, InspectionFindingCatalogService],
 })
 export class InspectionsModule {}

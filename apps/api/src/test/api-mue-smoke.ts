@@ -142,7 +142,7 @@ async function assertMueFlow(baseUrl: string): Promise<void> {
     ],
   }), 'control assessment answers');
 
-  if (answered.complianceScore !== '100.00') throw new Error('Compliance score was not recalculated');
+  if (answered.complianceScore !== 100) throw new Error('Compliance score was not recalculated');
 
   const submitted = asObject<JsonObject>(await request(baseUrl, 'POST', `/critical-controls/self-assessments/${assessment.id}/submit`, undefined, 201), 'control assessment submit');
   if (submitted.status !== 'submitted') throw new Error('Control assessment was not submitted');

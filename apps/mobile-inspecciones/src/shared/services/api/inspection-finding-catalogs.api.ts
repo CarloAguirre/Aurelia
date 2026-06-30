@@ -1,4 +1,5 @@
 import type { InspectionFindingSeverityResponse, InspectionFindingTypeResponse } from '@aurelia/contracts';
+import { getMobileBootstrapLocalFirst } from '../../offline/local-catalogs';
 import { httpGet } from '../http-client';
 
 export function fetchInspectionFindingTypes(): Promise<InspectionFindingTypeResponse[]> {
@@ -9,7 +10,29 @@ export function fetchInspectionFindingSeverities(): Promise<InspectionFindingSev
   return httpGet<InspectionFindingSeverityResponse[]>('/inspections/finding-catalogs/severities');
 }
 
-export const fetchInspectionFindingTypesLocalFirst = fetchInspectionFindingTypes;
-export const fetchInspectionFindingSeveritiesLocalFirst = fetchInspectionFindingSeverities;
+export async function fetchInspectionFindingTypesLocalFirst(): Promise<InspectionFindingTypeResponse[]> {
+  const remote = await fetchInspectionFindingTypes().then(
+    (items) => items,
+    () => null,
+  );
+
+  if (remote) return remote;
+
+  const bootstrap = await getMobileBootstrapLocalFirst();
+  return bootstrap.catalogs.findingTypes ?? [];
+}
+
+export async function fetchInspectionFindingSeveritiesLocalFirst(): Promise<InspectionFindingSeverityResponse[]> {
+  const remote = await fetchInspectionFindingSeverities().then(
+    (items) => items,
+    () => null,
+  );
+
+  if (remote) return remote;
+
+  const bootstrap = await getMobileBootstrapLocalFirst();
+  return bootstrap.catalogs.findingSeverities ?? [];
+}
+
 export const fetchInspectionFindingTypesFromApi = fetchInspectionFindingTypes;
 export const fetchInspectionFindingSeveritiesFromApi = fetchInspectionFindingSeverities;

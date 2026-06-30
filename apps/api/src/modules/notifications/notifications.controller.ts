@@ -1,8 +1,9 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req } from '@nestjs/common';
+import { NotificationResponse } from '@aurelia/contracts';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { RequirePermissions } from '../auth/require-permissions.decorator';
 import { CreateNotificationDto } from './dto/create-notification.dto';
-import { NotificationResponse, NotificationsService } from './notifications.service';
+import { NotificationsService } from './notifications.service';
 
 @RequirePermissions('notifications:read')
 @Controller('notifications')

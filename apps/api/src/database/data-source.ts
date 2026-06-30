@@ -33,6 +33,13 @@ import { InspectionItemResponseEntity } from '../modules/inspections/entities/in
 import { InspectionStateEntity } from '../modules/inspections/entities/inspection-state.entity';
 import { InspectionTypeEntity } from '../modules/inspections/entities/inspection-type.entity';
 import { InspectionEntity } from '../modules/inspections/entities/inspection.entity';
+import { ControlAreaAssignmentEntity } from '../modules/mue/entities/control-area-assignment.entity';
+import { ControlEvidenceEntity } from '../modules/mue/entities/control-evidence.entity';
+import { ControlSelfAssessmentAnswerEntity } from '../modules/mue/entities/control-self-assessment-answer.entity';
+import { ControlSelfAssessmentEntity } from '../modules/mue/entities/control-self-assessment.entity';
+import { ControlVerificationItemEntity } from '../modules/mue/entities/control-verification-item.entity';
+import { CriticalControlEntity } from '../modules/mue/entities/critical-control.entity';
+import { MueEntity } from '../modules/mue/entities/mue.entity';
 import { NotificationRecipientEntity } from '../modules/notifications/entities/notification-recipient.entity';
 import { NotificationEntity } from '../modules/notifications/entities/notification.entity';
 import { AreaEntity } from '../modules/organization/entities/area.entity';
@@ -92,6 +99,13 @@ export const AppDataSource = new DataSource({
     AuditLogEntity,
     NotificationEntity,
     NotificationRecipientEntity,
+    MueEntity,
+    CriticalControlEntity,
+    ControlVerificationItemEntity,
+    ControlAreaAssignmentEntity,
+    ControlSelfAssessmentEntity,
+    ControlSelfAssessmentAnswerEntity,
+    ControlEvidenceEntity,
     WorkflowDefinitionEntity,
     WorkflowDefinitionStepEntity,
     WorkflowInstanceEntity,

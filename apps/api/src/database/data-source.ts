@@ -33,6 +33,8 @@ import { InspectionItemResponseEntity } from '../modules/inspections/entities/in
 import { InspectionStateEntity } from '../modules/inspections/entities/inspection-state.entity';
 import { InspectionTypeEntity } from '../modules/inspections/entities/inspection-type.entity';
 import { InspectionEntity } from '../modules/inspections/entities/inspection.entity';
+import { NotificationRecipientEntity } from '../modules/notifications/entities/notification-recipient.entity';
+import { NotificationEntity } from '../modules/notifications/entities/notification.entity';
 import { AreaEntity } from '../modules/organization/entities/area.entity';
 import { BusinessUnitEntity } from '../modules/organization/entities/business-unit.entity';
 import { CompanyEntity } from '../modules/organization/entities/company.entity';
@@ -88,6 +90,8 @@ export const AppDataSource = new DataSource({
     EvidenceLinkEntity,
     CommentEntity,
     AuditLogEntity,
+    NotificationEntity,
+    NotificationRecipientEntity,
     WorkflowDefinitionEntity,
     WorkflowDefinitionStepEntity,
     WorkflowInstanceEntity,

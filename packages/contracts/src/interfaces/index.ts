@@ -15,3 +15,4 @@ export * from './evidence-record.interface';
 export * from './comment.interface';
 export * from './audit-log.interface';
 export * from './workflow-record.interface';
+export * from './notification.interface';

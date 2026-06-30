@@ -78,14 +78,14 @@ GET /api/inspections/finding-catalogs/severities
 
 ## Bootstrap mobile
 
-El bootstrap offline ahora incluye:
+El bootstrap offline incluye:
 
 ```txt
 catalogs.findingTypes
 catalogs.findingSeverities
 ```
 
-Esto permite que el selector mobile trabaje local-first y consuma base de datos cuando hay conexión.
+Este catálogo queda disponible para flujos offline, pero el selector visual de `Tipo de hallazgo` ahora llama directamente al endpoint de tipos para que se vea la petición al backend en Network.
 
 ## Frontend mobile
 
@@ -101,10 +101,10 @@ La pantalla:
 apps/mobile-inspecciones/src/modules/inspection/ManualFindingObservationsScreen.tsx
 ```
 
-ya no usa opciones hardcodeadas para `Tipo de hallazgo`. Ahora carga:
+ya no usa opciones hardcodeadas para `Tipo de hallazgo`. Ahora carga mediante:
 
 ```txt
-fetchInspectionFindingTypesLocalFirst()
+GET /api/inspections/finding-catalogs/types
 ```
 
 El selector guarda en el draft:
@@ -122,7 +122,7 @@ seleccionar Hallazgo
 Continuar
 manual/observations
 presionar Tipo de hallazgo
-modal con opciones desde base de datos/bootstrap
+modal con opciones desde base de datos
 seleccionar tipo
 Agregar observación habilitado
 presionar Agregar observación
@@ -147,7 +147,11 @@ curl http://localhost:3000/api/inspections/finding-catalogs/severities
 curl http://localhost:3000/api/mobile/bootstrap
 ```
 
-En `/inspection/manual/observations`, el modal de tipo de hallazgo debe listar los 7 tipos desde `catalogs.findingTypes`.
+En `/inspection/manual/observations`, al abrir la pantalla debe verse en Network:
+
+```txt
+GET http://localhost:3000/api/inspections/finding-catalogs/types
+```
 
 ## Pendiente siguiente
 

@@ -1,65 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import {
+  CountReportRowResponse,
   IncidentActionPlanStatus,
   IncidentStatus,
+  IncidentSummaryReportResponse,
   InspectionFindingStatus,
   InspectionStatus,
+  InspectionSummaryReportResponse,
+  OpenItemsReportResponse,
+  PeriodReportRowResponse,
   ReportFilterRequest,
   ReportSummaryResponse,
 } from '@aurelia/contracts';
 import { DataSource } from 'typeorm';
-
-export interface CountReportRow {
-  key: string;
-  label: string | null;
-  count: number;
-}
-
-export interface PeriodReportRow {
-  period: string;
-  count: number;
-}
-
-export interface InspectionSummaryReport {
-  total: number;
-  open: number;
-  closed: number;
-  cancelled: number;
-  openFindings: number;
-  overdueFindings: number;
-  byStatus: Record<string, number>;
-}
-
-export interface IncidentSummaryReport {
-  total: number;
-  open: number;
-  closed: number;
-  cancelled: number;
-  overdueSla: number;
-  dueSoonNext24Hours: number;
-  byStatus: Record<string, number>;
-  actionPlans: {
-    total: number;
-    open: number;
-    overdue: number;
-    byStatus: Record<string, number>;
-  };
-}
-
-export interface OpenItemsReport {
-  inspectionsOpen: number;
-  inspectionFindingsOpen: number;
-  inspectionFindingsOverdue: number;
-  incidentsOpen: number;
-  incidentSlaOverdue: number;
-  incidentActionPlansOpen: number;
-  incidentActionPlansOverdue: number;
-}
-
-type ReportFilters = ReportFilterRequest & {
-  companyId?: string;
-  status?: string;
-};
 
 type QueryParts = {
   sql: string;
@@ -70,7 +23,7 @@ type QueryParts = {
 export class ReportsService {
   constructor(private readonly dataSource: DataSource) {}
 
-  async summary(filter: ReportFilters): Promise<ReportSummaryResponse> {
+  async summary(filter: ReportFilterRequest): Promise<ReportSummaryResponse> {
     const [inspections, incidents, byLevel] = await Promise.all([
       this.inspectionsSummary(filter),
       this.incidentsSummary(filter),
@@ -86,7 +39,7 @@ export class ReportsService {
     };
   }
 
-  async inspectionsSummary(filter: ReportFilters): Promise<InspectionSummaryReport> {
+  async inspectionsSummary(filter: ReportFilterRequest): Promise<InspectionSummaryReportResponse> {
     const where = this.buildWhere('i', filter, 'created_at');
     const findingsWhere = this.buildWhere('i', filter, 'created_at');
     const openWhere = this.withExtra(where, 'i.status NOT IN ($next, $next)', [InspectionStatus.CLOSED, InspectionStatus.CANCELLED]);
@@ -108,7 +61,7 @@ export class ReportsService {
     return { total, open, closed, cancelled, openFindings, overdueFindings, byStatus };
   }
 
-  async incidentsSummary(filter: ReportFilters): Promise<IncidentSummaryReport> {
+  async incidentsSummary(filter: ReportFilterRequest): Promise<IncidentSummaryReportResponse> {
     const where = this.buildWhere('i', filter, 'reported_at');
     const actionPlanWhere = this.buildWhere('i', filter, 'reported_at');
     const openWhere = this.withExtra(where, 'i.status NOT IN ($next, $next)', [IncidentStatus.CLOSED, IncidentStatus.CANCELLED]);
@@ -150,7 +103,7 @@ export class ReportsService {
     };
   }
 
-  async incidentsByLevel(filter: ReportFilters): Promise<CountReportRow[]> {
+  async incidentsByLevel(filter: ReportFilterRequest): Promise<CountReportRowResponse[]> {
     const where = this.buildWhere('i', filter, 'reported_at');
     const rows = await this.dataSource.query(
       `SELECT l.code AS key,
@@ -167,7 +120,7 @@ export class ReportsService {
     return this.normalizeCountRows(rows);
   }
 
-  async incidentsByType(filter: ReportFilters): Promise<CountReportRow[]> {
+  async incidentsByType(filter: ReportFilterRequest): Promise<CountReportRowResponse[]> {
     const where = this.buildWhere('i', filter, 'reported_at');
     const rows = await this.dataSource.query(
       `SELECT t.code AS key,
@@ -184,7 +137,7 @@ export class ReportsService {
     return this.normalizeCountRows(rows);
   }
 
-  async incidentsByCompany(filter: ReportFilters): Promise<CountReportRow[]> {
+  async incidentsByCompany(filter: ReportFilterRequest): Promise<CountReportRowResponse[]> {
     const where = this.buildWhere('i', filter, 'reported_at');
     const rows = await this.dataSource.query(
       `SELECT COALESCE(c.code, 'NO_COMPANY') AS key,
@@ -201,7 +154,7 @@ export class ReportsService {
     return this.normalizeCountRows(rows);
   }
 
-  async incidentsByPeriod(filter: ReportFilters): Promise<PeriodReportRow[]> {
+  async incidentsByPeriod(filter: ReportFilterRequest): Promise<PeriodReportRowResponse[]> {
     const where = this.buildWhere('i', filter, 'reported_at');
     const rows = await this.dataSource.query(
       `SELECT TO_CHAR(DATE_TRUNC('month', i.reported_at), 'YYYY-MM') AS period,
@@ -216,7 +169,7 @@ export class ReportsService {
     return rows.map((row) => ({ period: row.period, count: Number(row.count) }));
   }
 
-  async openItems(filter: ReportFilters): Promise<OpenItemsReport> {
+  async openItems(filter: ReportFilterRequest): Promise<OpenItemsReportResponse> {
     const inspections = await this.inspectionsSummary(filter);
     const incidents = await this.incidentsSummary(filter);
 
@@ -231,7 +184,7 @@ export class ReportsService {
     };
   }
 
-  private async countByStatus(table: string, alias: string, filter: ReportFilters, dateColumn: string): Promise<Record<string, number>> {
+  private async countByStatus(table: string, alias: string, filter: ReportFilterRequest, dateColumn: string): Promise<Record<string, number>> {
     const where = this.buildWhere(alias, filter, dateColumn);
     const rows = await this.dataSource.query(
       `SELECT ${alias}.status AS key, COUNT(*)::int AS count FROM ${table} ${alias} ${where.sql} GROUP BY ${alias}.status ORDER BY ${alias}.status ASC`,
@@ -244,7 +197,7 @@ export class ReportsService {
     }, {});
   }
 
-  private async countActionPlansByStatus(filter: ReportFilters): Promise<Record<string, number>> {
+  private async countActionPlansByStatus(filter: ReportFilterRequest): Promise<Record<string, number>> {
     const where = this.buildWhere('i', filter, 'reported_at');
     const rows = await this.dataSource.query(
       `SELECT ap.status AS key, COUNT(*)::int AS count
@@ -267,7 +220,7 @@ export class ReportsService {
     return Number(rows[0]?.count ?? 0);
   }
 
-  private buildWhere(alias: string, filter: ReportFilters, dateColumn: string): QueryParts {
+  private buildWhere(alias: string, filter: ReportFilterRequest, dateColumn: string): QueryParts {
     const conditions: string[] = [];
     const params: unknown[] = [];
 
@@ -317,11 +270,11 @@ export class ReportsService {
     };
   }
 
-  private normalizeCountRows(rows: Array<{ key: string; label: string | null; count: string | number }>): CountReportRow[] {
+  private normalizeCountRows(rows: Array<{ key: string; label: string | null; count: string | number }>): CountReportRowResponse[] {
     return rows.map((row) => ({ key: row.key, label: row.label, count: Number(row.count) }));
   }
 
-  private rowsToRecord(rows: CountReportRow[]): Record<string, number> {
+  private rowsToRecord(rows: CountReportRowResponse[]): Record<string, number> {
     return rows.reduce<Record<string, number>>((acc, row) => {
       acc[row.key] = row.count;
       return acc;

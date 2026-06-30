@@ -30,6 +30,12 @@ const deriveKey = promisify(pbkdf2);
 const FORMAT = 'pbkdf2_sha256';
 const ITERATIONS = 210000;
 const KEY_LENGTH = 32;
+const reportSmokePermissions = [
+  { code: 'inspections:read', name: 'Ver inspecciones', module: 'inspections', action: 'read' },
+  { code: 'inspections:write', name: 'Editar inspecciones', module: 'inspections', action: 'write' },
+  { code: 'incidents:read', name: 'Ver incidentes', module: 'incidents', action: 'read' },
+  { code: 'incidents:write', name: 'Editar incidentes', module: 'incidents', action: 'write' },
+];
 
 function configureReportsSmokeAuthEnv(): string {
   process.env.API_TOKEN_KEY ??= `api-reports-smoke-token-key-${Date.now()}`;
@@ -57,15 +63,14 @@ async function ensureReportsSmokeAuth(dataSource: DataSource, password: string):
     [passwordHash, 'carlos.aguirre@goldfields.com'],
   );
 
-  await dataSource.query(
-    `INSERT INTO permissions (code, name, module, action)
-     VALUES ($1, $2, $3, $4), ($5, $6, $7, $8)
-     ON CONFLICT (code) DO NOTHING`,
-    [
-      'inspections:read', 'Ver inspecciones', 'inspections', 'read',
-      'incidents:read', 'Ver incidentes', 'incidents', 'read',
-    ],
-  );
+  for (const permission of reportSmokePermissions) {
+    await dataSource.query(
+      `INSERT INTO permissions (code, name, module, action)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (code) DO NOTHING`,
+      [permission.code, permission.name, permission.module, permission.action],
+    );
+  }
 
   await dataSource.query(
     `INSERT INTO role_permissions (role_id, permission_id)
@@ -74,7 +79,7 @@ async function ensureReportsSmokeAuth(dataSource: DataSource, password: string):
      WHERE r.code = 'ADMIN'
        AND p.code = ANY($1::text[])
      ON CONFLICT DO NOTHING`,
-    [['inspections:read', 'incidents:read']],
+    [reportSmokePermissions.map((permission) => permission.code)],
   );
 }
 

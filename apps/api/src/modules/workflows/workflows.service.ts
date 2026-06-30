@@ -8,14 +8,15 @@ import {
   WorkflowStepStatus,
 } from '@aurelia/contracts';
 import { Repository } from 'typeorm';
-import { WorkflowDefinitionEntity } from './entities/workflow-definition.entity';
-import { WorkflowDefinitionStepEntity } from './entities/workflow-definition-step.entity';
-import { WorkflowInstanceEntity } from './entities/workflow-instance.entity';
-import { WorkflowInstanceStepEntity } from './entities/workflow-instance-step.entity';
 import { EntityReferenceTypeEntity } from '../evidences/entities/entity-reference-type.entity';
+import { NotificationsService } from '../notifications/notifications.service';
+import { AdvanceWorkflowStepDto } from './dto/advance-workflow-step.dto';
 import { CreateWorkflowDefinitionDto } from './dto/create-workflow-definition.dto';
 import { StartWorkflowDto } from './dto/start-workflow.dto';
-import { AdvanceWorkflowStepDto } from './dto/advance-workflow-step.dto';
+import { WorkflowDefinitionStepEntity } from './entities/workflow-definition-step.entity';
+import { WorkflowDefinitionEntity } from './entities/workflow-definition.entity';
+import { WorkflowInstanceStepEntity } from './entities/workflow-instance-step.entity';
+import { WorkflowInstanceEntity } from './entities/workflow-instance.entity';
 
 @Injectable()
 export class WorkflowsService {
@@ -30,6 +31,7 @@ export class WorkflowsService {
     private readonly instanceSteps: Repository<WorkflowInstanceStepEntity>,
     @InjectRepository(EntityReferenceTypeEntity)
     private readonly entityRefTypes: Repository<EntityReferenceTypeEntity>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async findDefinitions(): Promise<WorkflowDefinitionResponse[]> {
@@ -99,12 +101,17 @@ export class WorkflowsService {
         name: defStep.name,
         status: WorkflowStepStatus.PENDING,
         assignedRoleId: defStep.requiredRoleId ?? null,
-        dueAt: defStep.slaHours
-          ? new Date(Date.now() + defStep.slaHours * 3600 * 1000)
-          : null,
+        dueAt: defStep.slaHours ? new Date(Date.now() + defStep.slaHours * 3600 * 1000) : null,
       }),
     );
     await this.instanceSteps.save(instanceSteps);
+
+    await this.notificationsService.notifyWorkflowStarted({
+      workflowInstanceId: savedInstance.id,
+      entityType: savedInstance.entityType,
+      entityId: savedInstance.entityId,
+      startedByUserId: savedInstance.startedByUserId,
+    });
 
     return this.toInstanceResponse(await this.findInstanceEntity(savedInstance.id));
   }

@@ -41,6 +41,8 @@ export interface ManualInspectionDraft {
   locationCapturedAt: string | null;
   inspectionType: InspectionType;
   inspectionTypeLabel: string;
+  findingTypeId: string | null;
+  findingTypeLabel: string | null;
   templateId: string | null;
   templateName: string | null;
   templateCode: string | null;
@@ -68,6 +70,7 @@ interface ManualInspectionState extends ManualInspectionDraft {
   setInspectionDate: (value: string) => void;
   setLocation: (input: ManualInspectionLocationInput) => void;
   setInspectionType: (type: InspectionType, label: string) => void;
+  setFindingType: (id: string | null, label: string | null) => void;
   setTemplate: (input: { id: string; name: string; code: string; itemsCount: number }) => void;
   setAnswer: (itemId: string, value: InspectionAnswerValue) => void;
   setItemDetail: (itemId: string, detail: Partial<ManualChecklistItemDetail>) => void;
@@ -95,6 +98,8 @@ const initialDraft: ManualInspectionDraft = {
   locationCapturedAt: null,
   inspectionType: InspectionType.REGULATORY,
   inspectionTypeLabel: 'Checklist normativo',
+  findingTypeId: null,
+  findingTypeLabel: null,
   templateId: null,
   templateName: null,
   templateCode: null,
@@ -124,7 +129,8 @@ export const useManualInspectionDraft = create<ManualInspectionState>((set) => (
       locationCapturedAt: new Date().toISOString(),
     }),
   setInspectionType: (inspectionType, inspectionTypeLabel) =>
-    set({ inspectionType, inspectionTypeLabel, templateId: null, templateName: null, templateCode: null, templateItemsCount: null, answersByItemId: {}, detailsByItemId: {}, generalPhoto: null }),
+    set({ inspectionType, inspectionTypeLabel, findingTypeId: null, findingTypeLabel: null, templateId: null, templateName: null, templateCode: null, templateItemsCount: null, answersByItemId: {}, detailsByItemId: {}, generalPhoto: null }),
+  setFindingType: (findingTypeId, findingTypeLabel) => set({ findingTypeId, findingTypeLabel }),
   setTemplate: ({ id, name, code, itemsCount }) => set({ templateId: id, templateName: name, templateCode: code, templateItemsCount: itemsCount, answersByItemId: {}, detailsByItemId: {}, generalPhoto: null }),
   setAnswer: (itemId, value) => set((state) => ({ answersByItemId: { ...state.answersByItemId, [itemId]: value } })),
   setItemDetail: (itemId, detail) => set((state) => ({ detailsByItemId: { ...state.detailsByItemId, [itemId]: { ...state.detailsByItemId[itemId], ...detail } } })),

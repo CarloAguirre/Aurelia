@@ -1,25 +1,31 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUUID, Max, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsInt, IsOptional, IsString, IsUUID, Max, Min, ValidateNested } from 'class-validator';
+import {
+  ControlAnswerValue,
+  CreateControlSelfAssessmentRequest,
+  UpsertControlSelfAssessmentAnswerRequest,
+  UpsertControlSelfAssessmentAnswersRequest,
+} from '@aurelia/contracts';
 
-export class CreateControlSelfAssessmentDto {
+export class CreateControlSelfAssessmentDto implements CreateControlSelfAssessmentRequest {
   @IsUUID()
   mueId: string;
 
   @IsOptional()
   @IsUUID()
-  criticalControlId?: string;
+  criticalControlId?: string | null;
 
   @IsOptional()
   @IsUUID()
-  areaId?: string;
+  areaId?: string | null;
 
   @IsOptional()
   @IsUUID()
-  gerenciaId?: string;
+  gerenciaId?: string | null;
 
   @IsOptional()
   @IsUUID()
-  companyId?: string;
+  companyId?: string | null;
 
   @IsInt()
   @Min(2000)
@@ -32,28 +38,27 @@ export class CreateControlSelfAssessmentDto {
   periodMonth: number;
 }
 
-export class UpsertControlSelfAssessmentAnswerDto {
+export class UpsertControlSelfAssessmentAnswerDto implements UpsertControlSelfAssessmentAnswerRequest {
   @IsUUID()
   verificationItemId: string;
 
-  @IsString()
-  @IsIn(['yes', 'no', 'partial', 'not_applicable', 'not_observed'])
-  answer: string;
+  @IsEnum(ControlAnswerValue)
+  answer: ControlAnswerValue;
 
   @IsOptional()
   @IsString()
-  comment?: string;
+  comment?: string | null;
 
   @IsOptional()
   @IsString()
-  riskLevel?: string;
+  riskLevel?: string | null;
 
   @IsOptional()
   @IsBoolean()
   actionRequired?: boolean;
 }
 
-export class UpsertControlSelfAssessmentAnswersDto {
+export class UpsertControlSelfAssessmentAnswersDto implements UpsertControlSelfAssessmentAnswersRequest {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => UpsertControlSelfAssessmentAnswerDto)

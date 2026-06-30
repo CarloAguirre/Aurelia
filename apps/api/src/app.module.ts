@@ -13,6 +13,7 @@ import { IncidentsModule } from './modules/incidents/incidents.module';
 import { InspectionsModule } from './modules/inspections/inspections.module';
 import { MobileBootstrapModule } from './modules/mobile-bootstrap/mobile-bootstrap.module';
 import { MobileSyncModule } from './modules/mobile-sync/mobile-sync.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { OrganizationModule } from './modules/organization/organization.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { RolesModule } from './modules/roles/roles.module';
@@ -41,6 +42,7 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
     InspectionsModule,
     IncidentsModule,
     ReportsModule,
+    NotificationsModule,
     MobileBootstrapModule,
     MobileSyncModule,
     SprModule,

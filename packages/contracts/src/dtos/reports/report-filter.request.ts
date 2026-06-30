@@ -4,8 +4,9 @@ import type { ID, ISODateString } from '../../types/common';
 export interface ReportFilterRequest {
   mueId?: ID;
   areaId?: ID;
+  companyId?: ID;
   responsibleId?: ID;
-  status?: InspectionStatus;
+  status?: InspectionStatus | string;
   riskLevel?: IncidentRiskLevel;
   from?: ISODateString;
   to?: ISODateString;

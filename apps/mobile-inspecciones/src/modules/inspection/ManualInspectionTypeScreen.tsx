@@ -65,7 +65,7 @@ export function ManualInspectionTypeScreen() {
   const templatesQuery = useInspectionChecklistTemplates();
   const templateCount = templatesQuery.data?.length ?? null;
   const typeOptions = React.useMemo(() => buildTypeOptions(templateCount, templatesQuery.isLoading), [templateCount, templatesQuery.isLoading]);
-  const canContinue = draft.inspectionType === InspectionType.REGULATORY;
+  const canContinue = Boolean(draft.inspectionType);
 
   React.useEffect(() => {
     goToType();

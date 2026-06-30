@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { NotificationRecipientEntity } from './entities/notification-recipient.entity';
 import { NotificationEntity } from './entities/notification.entity';
@@ -59,9 +59,8 @@ export class NotificationsService {
   }
 
   async findForUser(userId: string, unreadOnly = false): Promise<NotificationResponse[]> {
-    const where = unreadOnly ? { userId, readAt: undefined } : { userId };
     const rows = await this.recipientsRepository.find({
-      where,
+      where: { userId },
       relations: { notification: { recipients: true } },
       order: { createdAt: 'DESC' },
     });

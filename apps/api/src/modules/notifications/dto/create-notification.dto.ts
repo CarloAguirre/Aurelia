@@ -1,13 +1,14 @@
+import { CreateNotificationRequest } from '@aurelia/contracts';
 import { IsArray, IsObject, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
-export class CreateNotificationDto {
+export class CreateNotificationDto implements CreateNotificationRequest {
   @IsString()
   @MaxLength(140)
   title: string;
 
   @IsOptional()
   @IsString()
-  body?: string;
+  body?: string | null;
 
   @IsOptional()
   @IsString()
@@ -17,15 +18,15 @@ export class CreateNotificationDto {
   @IsOptional()
   @IsString()
   @MaxLength(80)
-  entityType?: string;
+  entityType?: string | null;
 
   @IsOptional()
   @IsUUID()
-  entityId?: string;
+  entityId?: string | null;
 
   @IsOptional()
   @IsUUID()
-  triggeredByUserId?: string;
+  triggeredByUserId?: string | null;
 
   @IsArray()
   @IsUUID('4', { each: true })
@@ -33,5 +34,5 @@ export class CreateNotificationDto {
 
   @IsOptional()
   @IsObject()
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, unknown> | null;
 }

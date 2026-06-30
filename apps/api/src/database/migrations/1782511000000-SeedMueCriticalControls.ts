@@ -132,9 +132,9 @@ export class SeedMueCriticalControls1782511000000 implements MigrationInterface 
     for (const [code, name, controlType, evidence] of mues) {
       await queryRunner.query(
         `INSERT INTO mues (code, name, description, predominant_control_type, expected_main_evidence, is_active)
-         VALUES ($1, $2, $2, $3, $4, true)
+         VALUES ($1, $2, $3, $4, $5, true)
          ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description, predominant_control_type = EXCLUDED.predominant_control_type, expected_main_evidence = EXCLUDED.expected_main_evidence, is_active = true, updated_at = now()`,
-        [code, name, controlType, evidence],
+        [code, name, name, controlType, evidence],
       );
     }
 

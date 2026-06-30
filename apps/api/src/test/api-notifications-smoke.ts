@@ -15,10 +15,6 @@ type LoginSmokeResponse = JsonObject & {
   token: string;
 };
 
-type WorkflowDefinitionResponse = JsonObject & {
-  id: string;
-};
-
 let accessToken: string | null = null;
 
 const deriveKey = promisify(pbkdf2);

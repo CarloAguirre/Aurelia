@@ -21,3 +21,27 @@ export interface InspectionFindingSeverityResponse {
   createdAt: ISODateString;
   updatedAt: ISODateString;
 }
+
+export interface InspectionRiskProbabilityResponse {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  score: number;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: ISODateString;
+  updatedAt: ISODateString;
+}
+
+export interface InspectionRiskConsequenceResponse {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  score: number;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: ISODateString;
+  updatedAt: ISODateString;
+}

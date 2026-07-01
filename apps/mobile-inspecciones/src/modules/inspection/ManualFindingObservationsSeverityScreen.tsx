@@ -87,15 +87,12 @@ function CatalogModal({ visible, title, selectedId, options, loading, errorMessa
             {loading ? <View style={styles.modalEmpty}><Text style={styles.modalEmptyText}>Cargando opciones...</Text></View> : null}
             {!loading && errorMessage ? <View style={styles.modalEmpty}><Text style={styles.modalEmptyText}>{errorMessage}</Text></View> : null}
             {!loading && !errorMessage && options.length === 0 ? <View style={styles.modalEmpty}><Text style={styles.modalEmptyText}>No hay opciones disponibles. Sincroniza catálogos.</Text></View> : null}
-            {!loading && !errorMessage && options.map((option) => {
-              const selected = option.id === selectedId;
-              return (
-                <TouchableOpacity key={option.id} style={[styles.modalOption, selected && styles.modalOptionSelected]} activeOpacity={0.72} onPress={() => onSelect(option)}>
-                  <Text style={styles.modalOptionText}>{option.label}</Text>
-                  {option.description ? <Text style={styles.modalOptionDescription}>{option.description}</Text> : null}
-                </TouchableOpacity>
-              );
-            })}
+            {!loading && !errorMessage && options.map((option) => (
+              <TouchableOpacity key={option.id} style={[styles.modalOption, option.id === selectedId && styles.modalOptionSelected]} activeOpacity={0.72} onPress={() => onSelect(option)}>
+                <Text style={styles.modalOptionText}>{option.label}</Text>
+                {option.description ? <Text style={styles.modalOptionDescription}>{option.description}</Text> : null}
+              </TouchableOpacity>
+            ))}
           </ScrollView>
         </View>
       </View>
@@ -109,19 +106,25 @@ function PhotoSourceModal({ visible, onClose, onCamera, onGallery }: { visible: 
       <View style={styles.modalRoot}>
         <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
         <View style={styles.photoSourcePanel}>
-          <View style={styles.modalHeaderCompact}>
-            <Text style={styles.modalTitle}>Seleccione el método</Text>
-            <TouchableOpacity style={styles.modalClose} activeOpacity={0.7} onPress={onClose}>
-              <FontAwesome5 name="times" size={22} color="#131313" />
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity style={styles.photoSourceOption} activeOpacity={0.75} onPress={onCamera}>
-            <View style={styles.photoSourceIcon}><FontAwesome5 name="camera" size={15} color={colors.primary} /></View>
-            <View style={styles.photoSourceCopy}><Text style={styles.photoSourceTitle}>Tomar una foto</Text><Text style={styles.photoSourceSub}>Sacar una foto directamente con la cámara</Text></View>
+          <View style={styles.photoSourceHandle} />
+          <Text style={styles.photoSourceHeading}>Seleccione el método</Text>
+          <Text style={styles.photoSourceDescription}>Seleccione entre subir una foto desde la galería o tomar una foto</Text>
+          <TouchableOpacity style={styles.photoSourceCard} activeOpacity={0.75} onPress={onGallery}>
+            <View style={styles.photoSourceIconBox}><FontAwesome5 name="image" size={20} color="#666666" /></View>
+            <View style={styles.photoSourceTextBox}>
+              <Text style={styles.photoSourceTitle}>Subir una imagen</Text>
+              <Text style={styles.photoSourceSub}>Seleccione la imagen desde su galería</Text>
+            </View>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.photoSourceOption} activeOpacity={0.75} onPress={onGallery}>
-            <View style={styles.photoSourceIcon}><FontAwesome5 name="image" size={15} color={colors.primary} /></View>
-            <View style={styles.photoSourceCopy}><Text style={styles.photoSourceTitle}>Subir una imagen</Text><Text style={styles.photoSourceSub}>Selecciona una imagen desde la galería</Text></View>
+          <TouchableOpacity style={styles.photoSourceCard} activeOpacity={0.75} onPress={onCamera}>
+            <View style={styles.photoSourceIconBox}><FontAwesome5 name="camera" size={20} color="#666666" /></View>
+            <View style={styles.photoSourceTextBox}>
+              <Text style={styles.photoSourceTitle}>Tomar una foto</Text>
+              <Text style={styles.photoSourceSub}>Sacar una foto directamente con la cámara</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.photoSourceCancel} activeOpacity={0.75} onPress={onClose}>
+            <Text style={styles.photoSourceCancelText}>Cancelar</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -339,7 +342,6 @@ const styles = StyleSheet.create({
   modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.68)' },
   modalPanel: { maxHeight: '78%', minHeight: 540, backgroundColor: colors.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },
   modalHeader: { minHeight: 76, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 22, paddingRight: 22, paddingTop: 8 },
-  modalHeaderCompact: { minHeight: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 22, paddingRight: 22, paddingTop: 4 },
   modalTitle: { flex: 1, fontSize: 18, lineHeight: 22, fontWeight: fontWeight.bold, color: colors.primary },
   modalClose: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
   modalList: { flex: 1 },
@@ -349,10 +351,15 @@ const styles = StyleSheet.create({
   modalOptionDescription: { color: colors.primary, fontSize: 15, lineHeight: 22, marginTop: 12 },
   modalEmpty: { minHeight: 120, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, borderTopWidth: 1, borderTopColor: '#E0E0E0' },
   modalEmptyText: { color: colors.muted, fontSize: 14, lineHeight: 20, textAlign: 'center' },
-  photoSourcePanel: { backgroundColor: colors.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden', paddingBottom: 18 },
-  photoSourceOption: { minHeight: 74, borderTopWidth: 1, borderTopColor: '#E0E0E0', flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 22 },
-  photoSourceIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#F6FAFF', alignItems: 'center', justifyContent: 'center' },
-  photoSourceCopy: { flex: 1, gap: 2 },
-  photoSourceTitle: { color: colors.primary, fontSize: 16, fontWeight: fontWeight.bold },
-  photoSourceSub: { color: colors.muted, fontSize: 12 },
+  photoSourcePanel: { backgroundColor: colors.white, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingHorizontal: 22, paddingTop: 14, paddingBottom: 30 },
+  photoSourceHandle: { alignSelf: 'center', width: 42, height: 4, borderRadius: 2, backgroundColor: '#D1D1D1', marginBottom: 28 },
+  photoSourceHeading: { color: colors.primary, fontSize: 22, lineHeight: 26, fontWeight: fontWeight.bold, marginBottom: 14 },
+  photoSourceDescription: { color: colors.muted, fontSize: 16, lineHeight: 22, marginBottom: 22 },
+  photoSourceCard: { minHeight: 82, borderWidth: 1.5, borderColor: '#E1E1E1', borderRadius: 12, backgroundColor: colors.white, flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 12, shadowColor: '#000000', shadowOpacity: 0.08, shadowRadius: 5, shadowOffset: { width: 0, height: 2 } },
+  photoSourceIconBox: { width: 44, height: 44, borderRadius: 10, backgroundColor: '#F4F4F4', alignItems: 'center', justifyContent: 'center' },
+  photoSourceTextBox: { flex: 1, gap: 3 },
+  photoSourceTitle: { color: colors.primary, fontSize: 18, lineHeight: 22, fontWeight: fontWeight.bold },
+  photoSourceSub: { color: colors.muted, fontSize: 14, lineHeight: 18 },
+  photoSourceCancel: { minHeight: 54, borderWidth: 1.5, borderColor: colors.gold, borderRadius: 14, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center', marginTop: 18 },
+  photoSourceCancelText: { color: colors.goldDark, fontSize: 17, lineHeight: 22, fontWeight: fontWeight.bold },
 });

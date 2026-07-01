@@ -148,18 +148,19 @@ function PhotoSourceModal({ visible, onClose, onCamera, onGallery }: { visible: 
         <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
         <View style={styles.photoSourcePanel}>
           <View style={styles.modalHeaderCompact}>
-            <Text style={styles.modalTitle}>Fotografía "Antes"</Text>
+            <Text style={styles.modalTitle}>Seleccione el método</Text>
+            {/* <Text style={styles.photoSourceSub}>Seleccione entre subir una foto desde la galería o tomar ona foto</Text> */}
             <TouchableOpacity style={styles.modalClose} activeOpacity={0.7} onPress={onClose}>
               <FontAwesome5 name="times" size={22} color="#131313" />
             </TouchableOpacity>
           </View>
           <TouchableOpacity style={styles.photoSourceOption} activeOpacity={0.75} onPress={onCamera}>
             <View style={styles.photoSourceIcon}><FontAwesome5 name="camera" size={15} color={colors.primary} /></View>
-            <View style={styles.photoSourceCopy}><Text style={styles.photoSourceTitle}>Tomar foto</Text><Text style={styles.photoSourceSub}>Usa la cámara del dispositivo</Text></View>
+            <View style={styles.photoSourceCopy}><Text style={styles.photoSourceTitle}>Tomar una foto</Text><Text style={styles.photoSourceSub}>Sacar una foto directamente con la cámara</Text></View>
           </TouchableOpacity>
           <TouchableOpacity style={styles.photoSourceOption} activeOpacity={0.75} onPress={onGallery}>
             <View style={styles.photoSourceIcon}><FontAwesome5 name="image" size={15} color={colors.primary} /></View>
-            <View style={styles.photoSourceCopy}><Text style={styles.photoSourceTitle}>Cargar desde galería</Text><Text style={styles.photoSourceSub}>Selecciona una imagen existente</Text></View>
+            <View style={styles.photoSourceCopy}><Text style={styles.photoSourceTitle}>Subir una imagen</Text><Text style={styles.photoSourceSub}>Usa la cámara del dispositivo</Text></View>
           </TouchableOpacity>
         </View>
       </View>

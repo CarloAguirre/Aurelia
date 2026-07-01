@@ -39,24 +39,57 @@ const findingTypes = [
   { code: 'DESVIACION_RECURSO_HIDRICO', name: 'Desviación en manejo de recurso hídrico', sortOrder: 7 },
 ];
 
+const probabilities = [
+  { code: 'MUY_IMPROBABLE', name: 'Muy improbable', description: 'Ocurrencia excepcional o altamente improbable.', score: 1, sortOrder: 1 },
+  { code: 'IMPROBABLE', name: 'Improbable', description: 'Podría ocurrir, pero no se espera en condiciones normales.', score: 2, sortOrder: 2 },
+  { code: 'POSIBLE', name: 'Posible', description: 'Puede ocurrir bajo condiciones operacionales habituales.', score: 3, sortOrder: 3 },
+  { code: 'PROBABLE', name: 'Probable', description: 'Es esperable que ocurra si no se corrige la condición.', score: 4, sortOrder: 4 },
+  { code: 'CASI_SEGURO', name: 'Casi seguro', description: 'Alta frecuencia esperada o condición recurrente.', score: 5, sortOrder: 5 },
+];
+
+const consequences = [
+  { code: 'INSIGNIFICANTE', name: 'Insignificante', description: 'Impacto ambiental menor o sin afectación relevante.', score: 1, sortOrder: 1 },
+  { code: 'MENOR', name: 'Menor', description: 'Impacto acotado, reversible y controlable en terreno.', score: 2, sortOrder: 2 },
+  { code: 'MODERADO', name: 'Moderado', description: 'Impacto ambiental moderado que requiere gestión y seguimiento.', score: 3, sortOrder: 3 },
+  { code: 'MAYOR', name: 'Mayor', description: 'Impacto relevante con potencial afectación operacional o regulatoria.', score: 4, sortOrder: 4 },
+  { code: 'CATASTROFICO', name: 'Catastrófico', description: 'Impacto severo o crítico con alta exposición ambiental/regulatoria.', score: 5, sortOrder: 5 },
+];
+
+async function upsertSimple(qr: any, table: string, item: { code: string; name: string; sortOrder: number }) {
+  await qr.query(
+    `INSERT INTO ${table} (code, name, sort_order, is_active)
+     VALUES ($1, $2, $3, true)
+     ON CONFLICT (code) DO UPDATE SET
+       name = EXCLUDED.name,
+       sort_order = EXCLUDED.sort_order,
+       is_active = true,
+       updated_at = NOW()`,
+    [item.code, item.name, item.sortOrder],
+  );
+}
+
+async function upsertScored(qr: any, table: string, item: { code: string; name: string; description: string; score: number; sortOrder: number }) {
+  await qr.query(
+    `INSERT INTO ${table} (code, name, description, score, sort_order, is_active)
+     VALUES ($1, $2, $3, $4, $5, true)
+     ON CONFLICT (code) DO UPDATE SET
+       name = EXCLUDED.name,
+       description = EXCLUDED.description,
+       score = EXCLUDED.score,
+       sort_order = EXCLUDED.sort_order,
+       is_active = true,
+       updated_at = NOW()`,
+    [item.code, item.name, item.description, item.score, item.sortOrder],
+  );
+}
+
 async function seed(ds: DataSource): Promise<void> {
   const qr = ds.createQueryRunner();
   await qr.connect();
   await qr.startTransaction();
 
   try {
-    for (const item of findingTypes) {
-      await qr.query(
-        `INSERT INTO inspection_finding_types (code, name, sort_order, is_active)
-         VALUES ($1, $2, $3, true)
-         ON CONFLICT (code) DO UPDATE SET
-           name = EXCLUDED.name,
-           sort_order = EXCLUDED.sort_order,
-           is_active = true,
-           updated_at = NOW()`,
-        [item.code, item.name, item.sortOrder],
-      );
-    }
+    for (const item of findingTypes) await upsertSimple(qr, 'inspection_finding_types', item);
 
     for (const item of severities) {
       await qr.query(
@@ -72,6 +105,9 @@ async function seed(ds: DataSource): Promise<void> {
         [item.code, item.name, item.description, item.closureTimeLabel, item.sortOrder],
       );
     }
+
+    for (const item of probabilities) await upsertScored(qr, 'inspection_risk_probabilities', item);
+    for (const item of consequences) await upsertScored(qr, 'inspection_risk_consequences', item);
 
     await qr.commitTransaction();
   } catch (error) {

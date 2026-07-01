@@ -16,27 +16,6 @@ import { useManualInspectionFlowStore } from './manualInspectionFlow.store';
 
 type CatalogStatus = { loading: boolean; error: string | null };
 
-function EmptyObservationsCard() {
-  return (
-    <View style={styles.emptyCard}>
-      <View style={styles.infoIcon}><FontAwesome5 name="info" size={11} color="#4A90C4" /></View>
-      <View style={styles.emptyCopy}>
-        <Text style={styles.emptyTitle}>Sin observaciones aún</Text>
-        <Text style={styles.emptyText}>Agrega al menos una observación para continuar. Puedes agregar todas las que encontraste en esta visita.</Text>
-      </View>
-    </View>
-  );
-}
-
-function AddObservationButton({ disabled, onPress }: { disabled: boolean; onPress: () => void }) {
-  return (
-    <TouchableOpacity activeOpacity={0.78} disabled={disabled} onPress={onPress} style={[styles.addButton, disabled && styles.addButtonDisabled]}>
-      <FontAwesome5 name="plus" size={13} color={disabled ? '#D1D1D1' : '#1E5A92'} />
-      <Text style={[styles.addButtonText, disabled && styles.addButtonTextDisabled]}>Agregar observación</Text>
-    </TouchableOpacity>
-  );
-}
-
 function assetName(uri: string) {
   const name = uri.split('/').pop();
   return name && name.includes('.') ? name : 'foto_obs1.jpg';
@@ -63,12 +42,45 @@ async function pickEvidenceFromCamera(onPick: (uri: string) => void) {
 }
 
 function selectedSeverity(observation: ManualFindingObservationDraft, severities: InspectionFindingSeverityResponse[]) {
-  return severities.find((item) => item.name === observation.probability) ?? null;
+  return severities.find((item) => item.id === observation.severityId || item.name === observation.severityLabel || item.name === observation.probability) ?? null;
 }
 
-function severitySlaLabel(severity: InspectionFindingSeverityResponse | null) {
-  if (!severity) return null;
-  return severity.closureTimeLabel || '5 Días';
+function severitySlaLabel(severity: InspectionFindingSeverityResponse | null, observation?: ManualFindingObservationDraft) {
+  return observation?.severityClosureTimeLabel || severity?.closureTimeLabel || '5 Días';
+}
+
+function pluralizeObservation(count: number) {
+  return count === 1 ? '1 observación' : `${count} observaciones`;
+}
+
+function ObservationCountBanner({ count }: { count: number }) {
+  return (
+    <View style={styles.countBanner}>
+      <View style={styles.countIcon}><FontAwesome5 name="info" size={12} color="#4A90C4" /></View>
+      <Text style={styles.countText}>La inspección contiene: {pluralizeObservation(count)}</Text>
+    </View>
+  );
+}
+
+function EmptyObservationsCard() {
+  return (
+    <View style={styles.emptyCard}>
+      <View style={styles.infoIcon}><FontAwesome5 name="info" size={11} color="#4A90C4" /></View>
+      <View style={styles.emptyCopy}>
+        <Text style={styles.emptyTitle}>Sin observaciones aún</Text>
+        <Text style={styles.emptyText}>Agrega al menos una observación para continuar. Puedes agregar todas las que encontraste en esta visita.</Text>
+      </View>
+    </View>
+  );
+}
+
+function AddObservationButton({ disabled, onPress }: { disabled: boolean; onPress: () => void }) {
+  return (
+    <TouchableOpacity activeOpacity={0.78} disabled={disabled} onPress={onPress} style={[styles.addButton, disabled && styles.addButtonDisabled]}>
+      <FontAwesome5 name="plus" size={15} color={disabled ? '#D1D1D1' : '#1E5A92'} />
+      <Text style={[styles.addButtonText, disabled && styles.addButtonTextDisabled]}>Agregar observación</Text>
+    </TouchableOpacity>
+  );
 }
 
 function CatalogModal({ visible, title, selectedId, options, loading, errorMessage, onClose, onSelect }: { visible: boolean; title: string; selectedId: string | null; options: SelectSheetOption[]; loading: boolean; errorMessage: string | null; onClose: () => void; onSelect: (option: SelectSheetOption) => void }) {
@@ -163,8 +175,9 @@ function ObservationForm({ index, observation, severities, severityStatus, onUpd
   const [photoPickerOpen, setPhotoPickerOpen] = React.useState(false);
   const [cancelModalOpen, setCancelModalOpen] = React.useState(false);
   const severity = selectedSeverity(observation, severities);
-  const slaLabel = severitySlaLabel(severity);
+  const slaLabel = severitySlaLabel(severity, observation);
   const complete = Boolean(observation.detectedCondition.trim() && observation.correctiveAction.trim() && observation.evidence && severity);
+  const severityOptions = severities.map((item) => ({ id: item.id, label: item.name, description: item.description }));
 
   function setEvidence(uri: string) {
     onUpdate({ evidence: { uri, name: assetName(uri) } });
@@ -184,8 +197,6 @@ function ObservationForm({ index, observation, severities, severityStatus, onUpd
     setCancelModalOpen(false);
     onCancelInspection();
   }
-
-  const severityOptions = severities.map((item) => ({ id: item.id, label: item.name, description: item.description }));
 
   return (
     <View style={styles.observationCard}>
@@ -216,9 +227,60 @@ function ObservationForm({ index, observation, severities, severityStatus, onUpd
         <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.75} onPress={() => setCancelModalOpen(true)}><Text style={styles.cancelText}>Cancelar</Text></TouchableOpacity>
         <TouchableOpacity disabled={!complete} style={[styles.saveObservationBtn, !complete && styles.saveObservationBtnDisabled]} activeOpacity={0.75} onPress={() => onUpdate({ saved: true })}><Text style={styles.saveObservationText}>✓ Guardar observación</Text></TouchableOpacity>
       </View>
-      <CatalogModal visible={severityPickerOpen} title="Criticidad" selectedId={severity?.id ?? null} options={severityOptions} loading={severityStatus.loading} errorMessage={severityStatus.error} onClose={() => setSeverityPickerOpen(false)} onSelect={(option) => { const found = severities.find((item) => item.id === option.id); onUpdate({ probability: option.label, consequence: found?.description ?? null }); setSeverityPickerOpen(false); }} />
+      <CatalogModal visible={severityPickerOpen} title="Criticidad" selectedId={severity?.id ?? null} options={severityOptions} loading={severityStatus.loading} errorMessage={severityStatus.error} onClose={() => setSeverityPickerOpen(false)} onSelect={(option) => { const found = severities.find((item) => item.id === option.id); onUpdate({ severityId: found?.id ?? option.id, severityLabel: option.label, severityDescription: found?.description ?? null, severityClosureTimeLabel: found?.closureTimeLabel ?? '5 Días', probability: option.label, consequence: found?.description ?? null }); setSeverityPickerOpen(false); }} />
       <PhotoSourceModal visible={photoPickerOpen} onClose={() => setPhotoPickerOpen(false)} onCamera={handleCamera} onGallery={handleGallery} />
       <CancelInspectionModal visible={cancelModalOpen} onClose={() => setCancelModalOpen(false)} onConfirm={confirmCancelInspection} />
+    </View>
+  );
+}
+
+function SavedObservationCard({ observation, index, severity, onDelete }: { observation: ManualFindingObservationDraft; index: number; severity: InspectionFindingSeverityResponse | null; onDelete: () => void }) {
+  const severityLabel = observation.severityLabel ?? severity?.name ?? observation.probability ?? 'Sin criticidad';
+  const slaLabel = severitySlaLabel(severity, observation);
+
+  return (
+    <View style={styles.savedCard}>
+      <View style={styles.savedTopRow}>
+        <View style={styles.savedBadges}>
+          <View style={styles.obsBadge}><Text style={styles.obsBadgeText}>Obs. {index + 1}</Text></View>
+          <View style={styles.severityBadge}><Text style={styles.severityBadgeText}>{severityLabel}</Text></View>
+        </View>
+        <TouchableOpacity style={styles.deleteButton} activeOpacity={0.78} onPress={onDelete}>
+          <FontAwesome5 name="trash" size={14} color="#7A0E23" />
+        </TouchableOpacity>
+      </View>
+      <View style={styles.savedFieldBox}>
+        <Text style={styles.savedFieldLabel}>CONDICIÓN DETECTADA</Text>
+        <Text style={styles.savedFieldText}>{observation.detectedCondition || 'Sin descripción'}</Text>
+      </View>
+      <View style={styles.savedMeasureBox}>
+        <Text style={styles.savedFieldLabel}>MEDIDA CORRECTIVA PROPUESTA</Text>
+        <Text style={styles.savedFieldText}>{observation.correctiveAction || 'Sin medida correctiva'}</Text>
+      </View>
+      <View style={styles.savedDivider} />
+      {observation.evidence ? <View style={styles.savedEvidence}><View style={styles.savedEvidenceIcon}><FontAwesome5 name="camera" size={16} color={colors.white} /></View><Text style={styles.savedEvidenceText}>{observation.evidence.name}</Text></View> : null}
+      <View style={styles.savedBottomRow}>
+        <Text style={styles.savedSlaLabel}>SLA calculado</Text>
+        <Text style={styles.savedSlaValue}>{slaLabel}</Text>
+      </View>
+    </View>
+  );
+}
+
+function ResponsiblesCard() {
+  return (
+    <View style={styles.responsiblesCard}>
+      <Text style={styles.responsiblesTitle}>Responsables</Text>
+      <Text style={styles.responsiblesLabel}>Empresa encargada de los hallazgos</Text>
+      <TouchableOpacity style={styles.responsibleSelect} activeOpacity={0.75}>
+        <Text style={styles.responsibleSelectText}>Seleccione empresa</Text>
+        <FontAwesome5 name="caret-down" size={16} color={colors.primary} />
+      </TouchableOpacity>
+      <Text style={styles.responsiblesLabel}>Personal encargado de los hallazgos</Text>
+      <TouchableOpacity style={styles.responsibleSelect} activeOpacity={0.75}>
+        <Text style={styles.responsibleSelectText}>Seleccione al personal</Text>
+        <FontAwesome5 name="caret-down" size={16} color={colors.primary} />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -229,6 +291,7 @@ export function ManualFindingObservationsSeverityScreen() {
   const setFindingType = useManualInspectionDraft((state) => state.setFindingType);
   const addFindingObservation = useManualInspectionDraft((state) => state.addFindingObservation);
   const updateFindingObservation = useManualInspectionDraft((state) => state.updateFindingObservation);
+  const removeFindingObservation = useManualInspectionDraft((state) => state.removeFindingObservation);
   const resetDraft = useManualInspectionDraft((state) => state.reset);
   const activePicker = useManualInspectionFlowStore((state) => state.activePicker);
   const openPicker = useManualInspectionFlowStore((state) => state.openPicker);
@@ -240,6 +303,10 @@ export function ManualFindingObservationsSeverityScreen() {
   const [findingTypeStatus, setFindingTypeStatus] = React.useState<CatalogStatus>({ loading: true, error: null });
   const [severityOptions, setSeverityOptions] = React.useState<InspectionFindingSeverityResponse[]>([]);
   const [severityStatus, setSeverityStatus] = React.useState<CatalogStatus>({ loading: true, error: null });
+  const savedObservations = draft.findingObservations.filter((observation) => observation.saved);
+  const activeObservation = draft.findingObservations.find((observation) => !observation.saved) ?? null;
+  const hasSavedObservations = savedObservations.length > 0;
+  const showInitialSelector = !hasSavedObservations && !activeObservation;
 
   React.useEffect(() => {
     goToObservations();
@@ -287,6 +354,7 @@ export function ManualFindingObservationsSeverityScreen() {
 
   function addObservation() {
     if (!draft.findingTypeId) return;
+    if (activeObservation) return;
     addFindingObservation();
   }
 
@@ -305,23 +373,19 @@ export function ManualFindingObservationsSeverityScreen() {
           <OfflineBanner online={online} hasSession={hasSession} />
           <ManualFormStepper activeStep={3} steps={['Datos', 'Tipo', 'Obs.', 'Resumen']} />
           <ScrollView style={styles.content} contentContainerStyle={styles.contentInner} showsVerticalScrollIndicator={false}>
-            <View style={styles.copyBlock}>
-              <Text style={styles.title}>Tipo de hallazgo</Text>
-              <Text style={styles.subtitle}>Seleccione el tipo de hallazgo antes de continuar con las observaciones para esta inspección.</Text>
-            </View>
-            <TouchableOpacity style={styles.selectBox} activeOpacity={0.75} onPress={() => openPicker('findingType')}>
-              <Text style={[styles.selectText, !draft.findingTypeLabel && styles.selectPlaceholder]}>{draft.findingTypeLabel ?? 'Seleccione'}</Text>
-              <FontAwesome5 name="caret-down" size={16} color={colors.primary} />
-            </TouchableOpacity>
+            {showInitialSelector ? <View style={styles.copyBlock}><Text style={styles.title}>Tipo de hallazgo</Text><Text style={styles.subtitle}>Seleccione el tipo de hallazgo antes de continuar con las observaciones para esta inspección.</Text></View> : null}
+            {showInitialSelector ? <TouchableOpacity style={styles.selectBox} activeOpacity={0.75} onPress={() => openPicker('findingType')}><Text style={[styles.selectText, !draft.findingTypeLabel && styles.selectPlaceholder]}>{draft.findingTypeLabel ?? 'Seleccione'}</Text><FontAwesome5 name="caret-down" size={16} color={colors.primary} /></TouchableOpacity> : null}
             <View style={styles.copyBlock}>
               <Text style={styles.title}>Observaciones</Text>
               <Text style={styles.subtitle}>Registra cada condición detectada en esta visita · una a una</Text>
             </View>
-            {draft.findingObservations.length === 0 ? <EmptyObservationsCard /> : null}
-            {draft.findingObservations.length === 0 ? <AddObservationButton disabled={!draft.findingTypeId} onPress={addObservation} /> : null}
-            {draft.findingObservations.map((observation, index) => <ObservationForm key={observation.id} index={index} observation={observation} severities={severityOptions} severityStatus={severityStatus} onUpdate={(patch) => updateFindingObservation(observation.id, patch)} onCancelInspection={cancelInspection} />)}
+            {!hasSavedObservations && !activeObservation ? <EmptyObservationsCard /> : null}
+            {hasSavedObservations ? <ObservationCountBanner count={savedObservations.length} /> : null}
+            {savedObservations.map((observation, index) => <SavedObservationCard key={observation.id} observation={observation} index={index} severity={selectedSeverity(observation, severityOptions)} onDelete={() => removeFindingObservation(observation.id)} />)}
+            {activeObservation ? <ObservationForm index={savedObservations.length} observation={activeObservation} severities={severityOptions} severityStatus={severityStatus} onUpdate={(patch) => updateFindingObservation(activeObservation.id, patch)} onCancelInspection={cancelInspection} /> : <AddObservationButton disabled={!draft.findingTypeId} onPress={addObservation} />}
+            {hasSavedObservations ? <ResponsiblesCard /> : null}
           </ScrollView>
-          <ManualFlowFooter secondaryLabel="Atrás" secondaryIcon="arrow-left" onSecondary={back} onPrimary={() => undefined} primaryDisabled />
+          <ManualFlowFooter secondaryLabel="Atrás" secondaryIcon="arrow-left" onSecondary={back} onPrimary={() => undefined} primaryDisabled={!hasSavedObservations || Boolean(activeObservation)} />
           <CatalogModal visible={activePicker === 'findingType'} title="Tipo de hallazgo" selectedId={draft.findingTypeId} options={findingTypeOptions} loading={findingTypeStatus.loading} errorMessage={findingTypeStatus.error} onClose={closePicker} onSelect={selectFindingType} />
         </View>
       </SafeAreaView>
@@ -340,14 +404,17 @@ const styles = StyleSheet.create({
   selectBox: { minHeight: 48, borderRadius: 10, borderWidth: 1, borderColor: '#D1D1D1', backgroundColor: '#F6FAFF', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 8, gap: 8 },
   selectText: { flex: 1, fontSize: 14, lineHeight: 18, fontWeight: fontWeight.medium, color: colors.primary },
   selectPlaceholder: { color: colors.primary },
+  countBanner: { minHeight: 58, borderRadius: 12, backgroundColor: '#4A90C4', flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 20 },
+  countIcon: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
+  countText: { flex: 1, color: colors.white, fontSize: 14, lineHeight: 18, fontWeight: fontWeight.bold },
   emptyCard: { minHeight: 90, borderRadius: 12, backgroundColor: '#4A90C4', flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingLeft: 14, paddingRight: 12, paddingVertical: 12 },
   infoIcon: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   emptyCopy: { flex: 1, gap: 2 },
   emptyTitle: { fontSize: 13, lineHeight: 16.9, fontWeight: fontWeight.bold, color: colors.white },
   emptyText: { fontSize: 11, lineHeight: 15.4, color: 'rgba(255,255,255,0.88)' },
-  addButton: { height: 48, borderRadius: 10, borderWidth: 2, borderStyle: 'dashed', borderColor: '#D1D1D1', backgroundColor: '#F6FAFF', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  addButton: { height: 58, borderRadius: 10, borderWidth: 2, borderStyle: 'dashed', borderColor: '#D1D1D1', backgroundColor: '#F6FAFF', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
   addButtonDisabled: { opacity: 1 },
-  addButtonText: { fontSize: 13, fontWeight: fontWeight.semibold, color: '#1E5A92' },
+  addButtonText: { fontSize: 16, fontWeight: fontWeight.bold, color: '#1E5A92' },
   addButtonTextDisabled: { color: '#D1D1D1' },
   observationCard: { borderWidth: 1.5, borderColor: colors.gold, borderRadius: 12, backgroundColor: colors.white, padding: 12, gap: 8 },
   observationHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
@@ -379,6 +446,30 @@ const styles = StyleSheet.create({
   saveObservationBtn: { flex: 1.35, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.gold },
   saveObservationBtnDisabled: { backgroundColor: '#D1D1D1' },
   saveObservationText: { color: colors.white, fontSize: 13, fontWeight: fontWeight.bold },
+  savedCard: { borderWidth: 1, borderColor: '#E1E1E1', borderRadius: 12, backgroundColor: colors.white, paddingHorizontal: 14, paddingTop: 14, paddingBottom: 16, gap: 10, shadowColor: '#000000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
+  savedTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  savedBadges: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  obsBadge: { borderRadius: 8, backgroundColor: '#DDF0FF', paddingHorizontal: 10, paddingVertical: 5 },
+  obsBadgeText: { color: '#1E5A92', fontSize: 12, lineHeight: 15, fontWeight: fontWeight.bold },
+  severityBadge: { borderRadius: 8, backgroundColor: '#FFE2CF', paddingHorizontal: 10, paddingVertical: 5 },
+  severityBadgeText: { color: '#5E3B24', fontSize: 12, lineHeight: 15, fontWeight: fontWeight.bold },
+  deleteButton: { width: 40, height: 40, borderRadius: 8, backgroundColor: '#FFD4E0', alignItems: 'center', justifyContent: 'center' },
+  savedFieldBox: { borderWidth: 1, borderColor: '#E1E1E1', borderRadius: 8, padding: 12, gap: 6 },
+  savedMeasureBox: { borderRadius: 8, backgroundColor: '#F4F4F4', padding: 12, gap: 6 },
+  savedFieldLabel: { color: colors.muted, fontSize: 10, lineHeight: 13, letterSpacing: 2, fontWeight: fontWeight.bold },
+  savedFieldText: { color: colors.primary, fontSize: 13, lineHeight: 18 },
+  savedDivider: { height: 2, backgroundColor: colors.gold, opacity: 0.8 },
+  savedEvidence: { minHeight: 72, borderRadius: 8, backgroundColor: '#35A137', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, gap: 12 },
+  savedEvidenceIcon: { width: 46, height: 46, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.24)', alignItems: 'center', justifyContent: 'center' },
+  savedEvidenceText: { color: colors.white, fontSize: 14, fontWeight: fontWeight.bold },
+  savedBottomRow: { borderTopWidth: 1, borderTopColor: '#E1E1E1', paddingTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 },
+  savedSlaLabel: { color: colors.muted, fontSize: 14 },
+  savedSlaValue: { color: colors.primary, fontSize: 14, fontWeight: fontWeight.bold },
+  responsiblesCard: { borderRadius: 12, backgroundColor: colors.white, borderWidth: 1, borderColor: '#E1E1E1', padding: 14, gap: 10, shadowColor: '#000000', shadowOpacity: 0.08, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
+  responsiblesTitle: { color: colors.primary, fontSize: 20, lineHeight: 24, fontWeight: fontWeight.bold, marginBottom: 4 },
+  responsiblesLabel: { color: colors.primary, fontSize: 13, lineHeight: 17, fontWeight: fontWeight.bold },
+  responsibleSelect: { minHeight: 58, borderRadius: 10, borderWidth: 1.5, borderColor: '#D1D1D1', backgroundColor: '#F6FAFF', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14 },
+  responsibleSelectText: { color: colors.primary, fontSize: 16, lineHeight: 20, fontWeight: fontWeight.medium },
   modalRoot: { flex: 1, justifyContent: 'flex-end' },
   modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.68)' },
   modalPanel: { maxHeight: '78%', minHeight: 540, backgroundColor: colors.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },

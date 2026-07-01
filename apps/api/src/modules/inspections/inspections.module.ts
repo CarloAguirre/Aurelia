@@ -11,6 +11,8 @@ import { InspectionFormItemEntity } from './entities/inspection-form-item.entity
 import { InspectionFormSectionEntity } from './entities/inspection-form-section.entity';
 import { InspectionFormTemplateEntity } from './entities/inspection-form-template.entity';
 import { InspectionItemResponseEntity } from './entities/inspection-item-response.entity';
+import { InspectionRiskConsequenceEntity } from './entities/inspection-risk-consequence.entity';
+import { InspectionRiskProbabilityEntity } from './entities/inspection-risk-probability.entity';
 import { InspectionStateEntity } from './entities/inspection-state.entity';
 import { InspectionTypeEntity } from './entities/inspection-type.entity';
 import { InspectionEntity } from './entities/inspection.entity';
@@ -30,6 +32,8 @@ import { InspectionsService } from './inspections.service';
       InspectionTypeEntity,
       InspectionFindingTypeEntity,
       InspectionFindingSeverityEntity,
+      InspectionRiskProbabilityEntity,
+      InspectionRiskConsequenceEntity,
       InspectionFormTemplateEntity,
       InspectionFormSectionEntity,
       InspectionFormItemEntity,

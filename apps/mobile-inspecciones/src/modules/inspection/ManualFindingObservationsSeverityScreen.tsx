@@ -132,9 +132,36 @@ function PhotoSourceModal({ visible, onClose, onCamera, onGallery }: { visible: 
   );
 }
 
-function ObservationForm({ index, observation, severities, severityStatus, onUpdate, onRemove }: { index: number; observation: ManualFindingObservationDraft; severities: InspectionFindingSeverityResponse[]; severityStatus: CatalogStatus; onUpdate: (patch: Partial<Omit<ManualFindingObservationDraft, 'id'>>) => void; onRemove: () => void }) {
+function CancelInspectionModal({ visible, onClose, onConfirm }: { visible: boolean; onClose: () => void; onConfirm: () => void }) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.cancelModalRoot}>
+        <View style={styles.cancelModalBackdrop} />
+        <View style={styles.cancelModalCard}>
+          <View style={styles.cancelModalTopRow}>
+            <View style={styles.cancelModalInfoIcon}><FontAwesome5 name="info" size={18} color="#1E5A92" /></View>
+            <TouchableOpacity style={styles.cancelModalClose} activeOpacity={0.7} onPress={onClose}>
+              <FontAwesome5 name="times" size={24} color="#111111" />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.cancelModalTitle}>Cancelar</Text>
+          <Text style={styles.cancelModalBody}>Usted está dando por cancelada esta inspección. Al hacer esto se borrarán todos los datos ingresados y la inspección desaparecerá.{`\n`}¿Estás de acuerdo?</Text>
+          <TouchableOpacity style={styles.cancelModalPrimary} activeOpacity={0.82} onPress={onConfirm}>
+            <Text style={styles.cancelModalPrimaryText}>Cancelar inspección</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.cancelModalSecondary} activeOpacity={0.75} onPress={onClose}>
+            <Text style={styles.cancelModalSecondaryText}>Volver al formulario</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function ObservationForm({ index, observation, severities, severityStatus, onUpdate, onCancelInspection }: { index: number; observation: ManualFindingObservationDraft; severities: InspectionFindingSeverityResponse[]; severityStatus: CatalogStatus; onUpdate: (patch: Partial<Omit<ManualFindingObservationDraft, 'id'>>) => void; onCancelInspection: () => void }) {
   const [severityPickerOpen, setSeverityPickerOpen] = React.useState(false);
   const [photoPickerOpen, setPhotoPickerOpen] = React.useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = React.useState(false);
   const severity = selectedSeverity(observation, severities);
   const slaLabel = severitySlaLabel(severity);
   const complete = Boolean(observation.detectedCondition.trim() && observation.correctiveAction.trim() && observation.evidence && severity);
@@ -151,6 +178,11 @@ function ObservationForm({ index, observation, severities, severityStatus, onUpd
   async function handleGallery() {
     setPhotoPickerOpen(false);
     await pickEvidenceFromGallery(setEvidence);
+  }
+
+  function confirmCancelInspection() {
+    setCancelModalOpen(false);
+    onCancelInspection();
   }
 
   const severityOptions = severities.map((item) => ({ id: item.id, label: item.name, description: item.description }));
@@ -181,11 +213,12 @@ function ObservationForm({ index, observation, severities, severityStatus, onUpd
       </TouchableOpacity>
       {severity ? <View style={styles.slaHighlightBox}><View><Text style={styles.slaLabel}>SLA CALCULADO</Text><Text style={styles.slaValue}>{slaLabel}</Text></View><TouchableOpacity style={styles.slaButton} activeOpacity={0.75}><Text style={styles.slaButtonText}>Reasignar SLA</Text></TouchableOpacity></View> : null}
       <View style={styles.formActions}>
-        <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.75} onPress={onRemove}><Text style={styles.cancelText}>Cancelar</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.75} onPress={() => setCancelModalOpen(true)}><Text style={styles.cancelText}>Cancelar</Text></TouchableOpacity>
         <TouchableOpacity disabled={!complete} style={[styles.saveObservationBtn, !complete && styles.saveObservationBtnDisabled]} activeOpacity={0.75} onPress={() => onUpdate({ saved: true })}><Text style={styles.saveObservationText}>✓ Guardar observación</Text></TouchableOpacity>
       </View>
       <CatalogModal visible={severityPickerOpen} title="Criticidad" selectedId={severity?.id ?? null} options={severityOptions} loading={severityStatus.loading} errorMessage={severityStatus.error} onClose={() => setSeverityPickerOpen(false)} onSelect={(option) => { const found = severities.find((item) => item.id === option.id); onUpdate({ probability: option.label, consequence: found?.description ?? null }); setSeverityPickerOpen(false); }} />
       <PhotoSourceModal visible={photoPickerOpen} onClose={() => setPhotoPickerOpen(false)} onCamera={handleCamera} onGallery={handleGallery} />
+      <CancelInspectionModal visible={cancelModalOpen} onClose={() => setCancelModalOpen(false)} onConfirm={confirmCancelInspection} />
     </View>
   );
 }
@@ -196,12 +229,13 @@ export function ManualFindingObservationsSeverityScreen() {
   const setFindingType = useManualInspectionDraft((state) => state.setFindingType);
   const addFindingObservation = useManualInspectionDraft((state) => state.addFindingObservation);
   const updateFindingObservation = useManualInspectionDraft((state) => state.updateFindingObservation);
-  const removeFindingObservation = useManualInspectionDraft((state) => state.removeFindingObservation);
+  const resetDraft = useManualInspectionDraft((state) => state.reset);
   const activePicker = useManualInspectionFlowStore((state) => state.activePicker);
   const openPicker = useManualInspectionFlowStore((state) => state.openPicker);
   const closePicker = useManualInspectionFlowStore((state) => state.closePicker);
   const goToType = useManualInspectionFlowStore((state) => state.goToType);
   const goToObservations = useManualInspectionFlowStore((state) => state.goToObservations);
+  const resetFlow = useManualInspectionFlowStore((state) => state.resetFlow);
   const [findingTypeOptions, setFindingTypeOptions] = React.useState<SelectSheetOption[]>([]);
   const [findingTypeStatus, setFindingTypeStatus] = React.useState<CatalogStatus>({ loading: true, error: null });
   const [severityOptions, setSeverityOptions] = React.useState<InspectionFindingSeverityResponse[]>([]);
@@ -256,6 +290,13 @@ export function ManualFindingObservationsSeverityScreen() {
     addFindingObservation();
   }
 
+  function cancelInspection() {
+    closePicker();
+    resetDraft();
+    resetFlow();
+    router.replace('/inspection/start');
+  }
+
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -278,7 +319,7 @@ export function ManualFindingObservationsSeverityScreen() {
             </View>
             {draft.findingObservations.length === 0 ? <EmptyObservationsCard /> : null}
             {draft.findingObservations.length === 0 ? <AddObservationButton disabled={!draft.findingTypeId} onPress={addObservation} /> : null}
-            {draft.findingObservations.map((observation, index) => <ObservationForm key={observation.id} index={index} observation={observation} severities={severityOptions} severityStatus={severityStatus} onUpdate={(patch) => updateFindingObservation(observation.id, patch)} onRemove={() => removeFindingObservation(observation.id)} />)}
+            {draft.findingObservations.map((observation, index) => <ObservationForm key={observation.id} index={index} observation={observation} severities={severityOptions} severityStatus={severityStatus} onUpdate={(patch) => updateFindingObservation(observation.id, patch)} onCancelInspection={cancelInspection} />)}
           </ScrollView>
           <ManualFlowFooter secondaryLabel="Atrás" secondaryIcon="arrow-left" onSecondary={back} onPrimary={() => undefined} primaryDisabled />
           <CatalogModal visible={activePicker === 'findingType'} title="Tipo de hallazgo" selectedId={draft.findingTypeId} options={findingTypeOptions} loading={findingTypeStatus.loading} errorMessage={findingTypeStatus.error} onClose={closePicker} onSelect={selectFindingType} />
@@ -363,4 +404,16 @@ const styles = StyleSheet.create({
   photoSourceSub: { color: colors.muted, fontSize: 14, lineHeight: 18 },
   photoSourceCancel: { minHeight: 54, borderWidth: 1.5, borderColor: colors.gold, borderRadius: 14, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center', marginTop: 18 },
   photoSourceCancelText: { color: colors.goldDark, fontSize: 17, lineHeight: 22, fontWeight: fontWeight.bold },
+  cancelModalRoot: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 26 },
+  cancelModalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.68)' },
+  cancelModalCard: { width: '100%', maxWidth: 330, borderRadius: 18, backgroundColor: colors.white, paddingHorizontal: 24, paddingTop: 22, paddingBottom: 26 },
+  cancelModalTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 48 },
+  cancelModalInfoIcon: { width: 36, height: 36, borderRadius: 18, borderWidth: 3, borderColor: '#1E5A92', alignItems: 'center', justifyContent: 'center' },
+  cancelModalClose: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
+  cancelModalTitle: { color: colors.primary, fontSize: 24, lineHeight: 30, fontWeight: fontWeight.bold, marginBottom: 12 },
+  cancelModalBody: { color: colors.primary, fontSize: 18, lineHeight: 28, marginBottom: 34 },
+  cancelModalPrimary: { minHeight: 58, borderRadius: 9, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  cancelModalPrimaryText: { color: colors.white, fontSize: 17, lineHeight: 22, fontWeight: fontWeight.bold },
+  cancelModalSecondary: { minHeight: 58, borderWidth: 1.5, borderColor: colors.gold, borderRadius: 9, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
+  cancelModalSecondaryText: { color: colors.goldDark, fontSize: 17, lineHeight: 22, fontWeight: fontWeight.bold },
 });

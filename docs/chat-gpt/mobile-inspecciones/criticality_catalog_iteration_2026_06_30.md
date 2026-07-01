@@ -51,7 +51,28 @@ Script:
 pnpm --filter api seed:finding-classifications
 ```
 
-## Frontend agregado
+## Frontend aplicado
+
+Archivo intervenido:
+
+```txt
+apps/mobile-inspecciones/src/modules/inspection/ManualFindingObservationsScreen.tsx
+```
+
+Cambios:
+
+```txt
+1. Probabilidad ya no cicla valores por click.
+2. Probabilidad abre un modal/lista de opciones.
+3. Consecuencia ya no cicla valores por click.
+4. Consecuencia abre un modal/lista de opciones.
+5. Las opciones se cargan desde los endpoints de catálogo.
+6. Si el endpoint falla, se mantiene fallback local temporal para no bloquear la demo.
+7. La foto ahora abre selector previo: Tomar foto / Cargar desde galería.
+8. Tomar foto usa cámara del dispositivo.
+9. Cargar desde galería usa selector de archivos/galería.
+10. La matriz 5x5 separa los números del eje X por celda.
+```
 
 Servicio mobile:
 
@@ -66,21 +87,27 @@ fetchInspectionRiskProbabilities()
 fetchInspectionRiskConsequences()
 ```
 
-Helper adicional:
+## DDL
+
+Se creó addendum SQL:
 
 ```txt
-apps/mobile-inspecciones/src/modules/inspection/catalog-selectors.ts
+docs/database/04-ddl-postgres-risk-catalogs-addendum.sql
 ```
 
-## Pendiente visual
-
-Queda pendiente reemplazar el comportamiento actual de los selects de `Probabilidad` y `Consecuencia`, que hoy ciclan valores por click, por un bottom sheet/lista de opciones como Figma.
-
-También queda pendiente reemplazar la carga directa de galería por un selector previo:
+Este bloque corresponde a las tablas que deben incorporarse a:
 
 ```txt
-Tomar foto
-Cargar desde galería
+docs/database/04-ddl-postgres-draft.sql
+```
+
+El DDL incluye:
+
+```txt
+inspection_risk_probabilities
+inspection_risk_consequences
+indexes active/sort
+seed idempotente para probabilidad y consecuencia
 ```
 
 ## Validación backend
@@ -97,4 +124,21 @@ Probar:
 ```bash
 curl http://localhost:3000/api/inspections/finding-catalogs/risk-probabilities
 curl http://localhost:3000/api/inspections/finding-catalogs/risk-consequences
+```
+
+## Validación frontend
+
+```bash
+pnpm web -- --clear
+```
+
+Flujo:
+
+```txt
+/inspection/manual/observations
+Agregar observación
+Presionar Probabilidad -> abre modal
+Presionar Consecuencia -> abre modal
+Presionar Fotografía Antes -> abre selector Tomar foto / Cargar desde galería
+Revisar matriz 5x5 -> encabezado X separado por celda
 ```

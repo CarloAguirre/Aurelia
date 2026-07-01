@@ -1,7 +1,7 @@
 import type { AreaResponse } from '../areas';
 import type { CompanyResponse, SectorResponse } from '../organization';
 import type { UserResponse } from '../users';
-import type { InspectionChecklistTemplateResponse, InspectionFindingSeverityResponse, InspectionFindingTypeResponse, InspectionTypeResponse } from '../inspections';
+import type { InspectionChecklistTemplateResponse, InspectionFindingSeverityResponse, InspectionFindingTypeResponse, InspectionRiskConsequenceResponse, InspectionRiskProbabilityResponse, InspectionTypeResponse } from '../inspections';
 import type { ISODateString } from '../../types/common';
 
 export interface MobileBootstrapResponse {
@@ -17,6 +17,8 @@ export interface MobileBootstrapResponse {
     inspectionTemplates: InspectionChecklistTemplateResponse[];
     findingTypes: InspectionFindingTypeResponse[];
     findingSeverities: InspectionFindingSeverityResponse[];
+    riskProbabilities: InspectionRiskProbabilityResponse[];
+    riskConsequences: InspectionRiskConsequenceResponse[];
   };
   offlinePolicy: {
     maxOfflineDays: number;

@@ -16,6 +16,7 @@ import { InspectionRiskProbabilityEntity } from './entities/inspection-risk-prob
 import { InspectionStateEntity } from './entities/inspection-state.entity';
 import { InspectionTypeEntity } from './entities/inspection-type.entity';
 import { InspectionEntity } from './entities/inspection.entity';
+import { InspectionCriticalityCatalogController } from './inspection-criticality-catalog.controller';
 import { InspectionFindingCatalogController } from './inspection-finding-catalog.controller';
 import { InspectionFindingCatalogService } from './inspection-finding-catalog.service';
 import { InspectionTransversalController } from './inspection-transversal.controller';
@@ -44,7 +45,7 @@ import { InspectionsService } from './inspections.service';
       InspectionStateEntity,
     ]),
   ],
-  controllers: [InspectionsController, InspectionTransversalController, InspectionFindingCatalogController],
+  controllers: [InspectionsController, InspectionTransversalController, InspectionFindingCatalogController, InspectionCriticalityCatalogController],
   providers: [InspectionsService, InspectionTransversalService, InspectionFindingCatalogService],
   exports: [InspectionsService, InspectionFindingCatalogService],
 })

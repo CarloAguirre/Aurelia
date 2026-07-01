@@ -9,10 +9,15 @@ Desde la iteración de consolidación (2026-06-30) existen dos artefactos SQL:
 - `04-ddl-postgres-current.sql`: DDL operativo current-only, alineado a entidades TypeORM y migraciones vigentes.
 - `04-ddl-postgres-draft.sql`: DDL expandido con contexto legacy/histórico para trazabilidad y validaciones pendientes.
 
+Addendum vigente:
+
+- `04-ddl-postgres-risk-catalogs-addendum.sql`: bloque SQL para incorporar catálogos de probabilidad y consecuencia del flujo de Hallazgo manual.
+
 Regla de uso:
 
 1. Cambios operativos o de implementación: partir desde `04-ddl-postgres-current.sql`.
 2. Análisis histórico o reconciliación de nombres: usar `04-ddl-postgres-draft.sql` + `08-ddl-legacy-to-current-mapping.md`.
+3. Para la próxima consolidación del draft, integrar el addendum `04-ddl-postgres-risk-catalogs-addendum.sql` dentro del bloque `INSPECTIONS` de `04-ddl-postgres-draft.sql`.
 
 ## Decisión principal
 
@@ -69,4 +74,5 @@ El modelo híbrido evita esa duplicidad sin sacrificar la integridad del núcleo
 Consolidar DDL v0.3 dejando explícita la frontera entre:
 
 - modelo current ejecutable;
-- tablas legacy/deprecated de referencia.
+- tablas legacy/deprecated de referencia;
+- addendum de catálogos de criticidad para inspecciones de tipo Hallazgo.

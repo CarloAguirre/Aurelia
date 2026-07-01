@@ -4,17 +4,32 @@ import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
+import type { InspectionRiskConsequenceResponse, InspectionRiskProbabilityResponse } from '@aurelia/contracts';
 import { colors, fontWeight } from '../../shared/theme/tokens';
 import { OfflineBanner } from '../../shared/components/form/ManualFormUi';
 import { ManualFlowFooter, ManualFlowHeader } from '../../shared/components/form/ManualFlowScaffold';
 import { ManualFormStepper, type SelectSheetOption } from './ManualSelectionUi';
-import { fetchInspectionFindingTypesLocalFirst } from '../../shared/services/api/inspection-finding-catalogs.api';
+import { fetchInspectionFindingTypesLocalFirst, fetchInspectionRiskConsequences, fetchInspectionRiskProbabilities } from '../../shared/services/api/inspection-finding-catalogs.api';
 import { useManualConnectivityStatus } from './useManualConnectivityStatus';
 import { type ManualFindingObservationDraft, useManualInspectionDraft } from './manualInspection.store';
 import { useManualInspectionFlowStore } from './manualInspectionFlow.store';
 
-const probabilities = ['Muy improbable', 'Improbable', 'Posible', 'Probable', 'Casi seguro'];
-const consequences = ['Insignificante', 'Menor', 'Moderado', 'Mayor', 'Catastrófico'];
+const fallbackProbabilities: InspectionRiskProbabilityResponse[] = [
+  { id: '1', code: 'MUY_IMPROBABLE', name: 'Muy improbable', description: 'Ocurrencia excepcional o altamente improbable.', score: 1, sortOrder: 1, isActive: true, createdAt: '', updatedAt: '' },
+  { id: '2', code: 'IMPROBABLE', name: 'Improbable', description: 'Podría ocurrir, pero no se espera en condiciones normales.', score: 2, sortOrder: 2, isActive: true, createdAt: '', updatedAt: '' },
+  { id: '3', code: 'POSIBLE', name: 'Posible', description: 'Puede ocurrir bajo condiciones operacionales habituales.', score: 3, sortOrder: 3, isActive: true, createdAt: '', updatedAt: '' },
+  { id: '4', code: 'PROBABLE', name: 'Probable', description: 'Es esperable que ocurra si no se corrige la condición.', score: 4, sortOrder: 4, isActive: true, createdAt: '', updatedAt: '' },
+  { id: '5', code: 'CASI_SEGURO', name: 'Casi seguro', description: 'Alta frecuencia esperada o condición recurrente.', score: 5, sortOrder: 5, isActive: true, createdAt: '', updatedAt: '' },
+];
+
+const fallbackConsequences: InspectionRiskConsequenceResponse[] = [
+  { id: '1', code: 'INSIGNIFICANTE', name: 'Insignificante', description: 'Impacto ambiental menor o sin afectación relevante.', score: 1, sortOrder: 1, isActive: true, createdAt: '', updatedAt: '' },
+  { id: '2', code: 'MENOR', name: 'Menor', description: 'Impacto acotado, reversible y controlable en terreno.', score: 2, sortOrder: 2, isActive: true, createdAt: '', updatedAt: '' },
+  { id: '3', code: 'MODERADO', name: 'Moderado', description: 'Impacto ambiental moderado que requiere gestión y seguimiento.', score: 3, sortOrder: 3, isActive: true, createdAt: '', updatedAt: '' },
+  { id: '4', code: 'MAYOR', name: 'Mayor', description: 'Impacto relevante con potencial afectación operacional o regulatoria.', score: 4, sortOrder: 4, isActive: true, createdAt: '', updatedAt: '' },
+  { id: '5', code: 'CATASTROFICO', name: 'Catastrófico', description: 'Impacto severo o crítico con alta exposición ambiental/regulatoria.', score: 5, sortOrder: 5, isActive: true, createdAt: '', updatedAt: '' },
+];
+
 const matrix = [
   [5, 10, 15, 20, 25],
   [4, 8, 12, 16, 20],
@@ -22,6 +37,9 @@ const matrix = [
   [2, 4, 6, 8, 10],
   [1, 2, 3, 4, 5],
 ];
+
+type CatalogStatus = { loading: boolean; error: string | null };
+type RiskOption = InspectionRiskProbabilityResponse | InspectionRiskConsequenceResponse;
 
 function EmptyObservationsCard() {
   return (
@@ -49,7 +67,7 @@ function assetName(uri: string) {
   return name && name.includes('.') ? name : 'foto_obs1.jpg';
 }
 
-async function pickEvidence(onPick: (uri: string) => void) {
+async function pickEvidenceFromGallery(onPick: (uri: string) => void) {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (permission.status !== 'granted') {
     Alert.alert('Permiso requerido', 'Activa el permiso de galería para adjuntar imágenes.');
@@ -59,15 +77,24 @@ async function pickEvidence(onPick: (uri: string) => void) {
   if (!result.canceled && result.assets[0]?.uri) onPick(result.assets[0].uri);
 }
 
-function nextOption(current: string | null, options: string[]) {
-  if (!current) return options[2] ?? options[0];
-  const index = options.indexOf(current);
-  return options[(index + 1) % options.length];
+async function pickEvidenceFromCamera(onPick: (uri: string) => void) {
+  const permission = await ImagePicker.requestCameraPermissionsAsync();
+  if (permission.status !== 'granted') {
+    Alert.alert('Permiso requerido', 'Activa el permiso de cámara para tomar fotografías.');
+    return;
+  }
+  const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.8, allowsEditing: false });
+  if (!result.canceled && result.assets[0]?.uri) onPick(result.assets[0].uri);
 }
 
-function riskScore(observation: ManualFindingObservationDraft) {
-  const p = observation.probability ? probabilities.indexOf(observation.probability) + 1 : 0;
-  const c = observation.consequence ? consequences.indexOf(observation.consequence) + 1 : 0;
+function riskOptionScore(value: string | null, options: RiskOption[]) {
+  if (!value) return 0;
+  return options.find((option) => option.name === value)?.score ?? 0;
+}
+
+function riskScore(observation: ManualFindingObservationDraft, probabilityOptions: RiskOption[], consequenceOptions: RiskOption[]) {
+  const p = riskOptionScore(observation.probability, probabilityOptions);
+  const c = riskOptionScore(observation.consequence, consequenceOptions);
   return p && c ? p * c : 0;
 }
 
@@ -86,13 +113,79 @@ function riskColor(score: number) {
   return '#CFF9C9';
 }
 
-function ObservationForm({ index, observation, onUpdate, onRemove }: { index: number; observation: ManualFindingObservationDraft; onUpdate: (patch: Partial<Omit<ManualFindingObservationDraft, 'id'>>) => void; onRemove: () => void }) {
-  const score = riskScore(observation);
+function RiskOptionModal({ visible, title, options, selectedName, status, onClose, onSelect }: { visible: boolean; title: string; options: RiskOption[]; selectedName: string | null; status: CatalogStatus; onClose: () => void; onSelect: (option: RiskOption) => void }) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalRoot}>
+        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
+        <View style={styles.modalPanelCompact}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>{title}</Text>
+            <TouchableOpacity style={styles.modalClose} activeOpacity={0.7} onPress={onClose}>
+              <FontAwesome5 name="times" size={24} color="#131313" />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
+            {status.loading ? <View style={styles.modalEmpty}><Text style={styles.modalEmptyText}>Cargando opciones...</Text></View> : null}
+            {!status.loading && status.error ? <View style={styles.modalEmpty}><Text style={styles.modalEmptyText}>{status.error}</Text></View> : null}
+            {!status.loading && !status.error && options.map((option) => (
+              <TouchableOpacity key={option.id} style={[styles.modalOptionCompact, option.name === selectedName && styles.modalOptionSelected]} activeOpacity={0.72} onPress={() => onSelect(option)}>
+                <Text style={styles.modalOptionText}>{option.name}</Text>
+                <Text style={styles.modalOptionDescription}>{option.description}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function PhotoSourceModal({ visible, onClose, onCamera, onGallery }: { visible: boolean; onClose: () => void; onCamera: () => void; onGallery: () => void }) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalRoot}>
+        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} />
+        <View style={styles.photoSourcePanel}>
+          <View style={styles.modalHeaderCompact}>
+            <Text style={styles.modalTitle}>Fotografía "Antes"</Text>
+            <TouchableOpacity style={styles.modalClose} activeOpacity={0.7} onPress={onClose}>
+              <FontAwesome5 name="times" size={22} color="#131313" />
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity style={styles.photoSourceOption} activeOpacity={0.75} onPress={onCamera}>
+            <View style={styles.photoSourceIcon}><FontAwesome5 name="camera" size={15} color={colors.primary} /></View>
+            <View style={styles.photoSourceCopy}><Text style={styles.photoSourceTitle}>Tomar foto</Text><Text style={styles.photoSourceSub}>Usa la cámara del dispositivo</Text></View>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.photoSourceOption} activeOpacity={0.75} onPress={onGallery}>
+            <View style={styles.photoSourceIcon}><FontAwesome5 name="image" size={15} color={colors.primary} /></View>
+            <View style={styles.photoSourceCopy}><Text style={styles.photoSourceTitle}>Cargar desde galería</Text><Text style={styles.photoSourceSub}>Selecciona una imagen existente</Text></View>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function ObservationForm({ index, observation, probabilityOptions, consequenceOptions, probabilityStatus, consequenceStatus, onUpdate, onRemove }: { index: number; observation: ManualFindingObservationDraft; probabilityOptions: RiskOption[]; consequenceOptions: RiskOption[]; probabilityStatus: CatalogStatus; consequenceStatus: CatalogStatus; onUpdate: (patch: Partial<Omit<ManualFindingObservationDraft, 'id'>>) => void; onRemove: () => void }) {
+  const [riskPicker, setRiskPicker] = React.useState<'probability' | 'consequence' | null>(null);
+  const [photoPickerOpen, setPhotoPickerOpen] = React.useState(false);
+  const score = riskScore(observation, probabilityOptions, consequenceOptions);
   const level = riskLevel(score);
   const complete = Boolean(observation.detectedCondition.trim() && observation.correctiveAction.trim() && observation.evidence && observation.probability && observation.consequence);
 
   function setEvidence(uri: string) {
     onUpdate({ evidence: { uri, name: assetName(uri) } });
+  }
+
+  async function handleCamera() {
+    setPhotoPickerOpen(false);
+    await pickEvidenceFromCamera(setEvidence);
+  }
+
+  async function handleGallery() {
+    setPhotoPickerOpen(false);
+    await pickEvidenceFromGallery(setEvidence);
   }
 
   return (
@@ -104,7 +197,7 @@ function ObservationForm({ index, observation, onUpdate, onRemove }: { index: nu
       <Text style={styles.fieldLabel}>Condición detectada *</Text>
       <TextInput multiline value={observation.detectedCondition} onChangeText={(value) => onUpdate({ detectedCondition: value })} placeholder="Describe la condición subestándar, su ubicación exacta y la norma que incumple..." placeholderTextColor="#8A8A8A" style={styles.textArea} textAlignVertical="top" />
       <Text style={styles.fieldLabel}>Fotografía "Antes" *</Text>
-      <TouchableOpacity activeOpacity={0.75} onPress={() => pickEvidence(setEvidence)} style={[styles.photoBox, observation.evidence && styles.photoBoxDone]}>
+      <TouchableOpacity activeOpacity={0.75} onPress={() => setPhotoPickerOpen(true)} style={[styles.photoBox, observation.evidence && styles.photoBoxDone]}>
         {observation.evidence ? <View style={styles.photoIconDone}><FontAwesome5 name="camera" size={15} color={colors.white} /></View> : <Text style={styles.photoEmoji}>📷</Text>}
         <View style={styles.photoCopy}>
           <Text style={[styles.photoTitle, observation.evidence && styles.photoTitleDone]}>{observation.evidence?.name ?? 'Tomar foto o galería'}</Text>
@@ -118,7 +211,7 @@ function ObservationForm({ index, observation, onUpdate, onRemove }: { index: nu
       <View style={styles.riskRow}>
         <View style={styles.riskSelectCard}>
           <Text style={styles.riskLabel}>PROBABILIDAD</Text>
-          <TouchableOpacity style={styles.riskSelect} activeOpacity={0.75} onPress={() => onUpdate({ probability: nextOption(observation.probability, probabilities) })}>
+          <TouchableOpacity style={styles.riskSelect} activeOpacity={0.75} onPress={() => setRiskPicker('probability')}>
             <Text style={styles.riskValue}>{observation.probability ?? 'Seleccionar'}</Text>
             <FontAwesome5 name="caret-down" size={15} color={colors.primary} />
           </TouchableOpacity>
@@ -126,7 +219,7 @@ function ObservationForm({ index, observation, onUpdate, onRemove }: { index: nu
         </View>
         <View style={styles.riskSelectCard}>
           <Text style={styles.riskLabel}>CONSECUENCIA</Text>
-          <TouchableOpacity style={styles.riskSelect} activeOpacity={0.75} onPress={() => onUpdate({ consequence: nextOption(observation.consequence, consequences) })}>
+          <TouchableOpacity style={styles.riskSelect} activeOpacity={0.75} onPress={() => setRiskPicker('consequence')}>
             <Text style={styles.riskValue}>{observation.consequence ?? 'Seleccionar'}</Text>
             <FontAwesome5 name="caret-down" size={15} color={colors.primary} />
           </TouchableOpacity>
@@ -137,7 +230,7 @@ function ObservationForm({ index, observation, onUpdate, onRemove }: { index: nu
       {level ? <View style={styles.slaBox}><View><Text style={styles.slaLabel}>SLA CALCULADO</Text><Text style={styles.slaValue}>5 Días</Text></View><TouchableOpacity style={styles.slaButton} activeOpacity={0.75}><Text style={styles.slaButtonText}>Reasignar SLA</Text></TouchableOpacity></View> : null}
       <View style={styles.matrixCard}>
         <Text style={styles.matrixTitle}>Matriz 5×5 · referencia visual</Text>
-        <View style={styles.matrixTopLabels}><Text style={styles.axisSpacer} />{[1, 2, 3, 4, 5].map((value) => <Text key={value} style={styles.matrixAxis}>{value}</Text>)}</View>
+        <View style={styles.matrixTopLabels}><Text style={styles.matrixAxis} />{[1, 2, 3, 4, 5].map((value) => <View key={value} style={styles.matrixHeaderCell}><Text style={styles.matrixAxis}>{value}</Text></View>)}</View>
         {matrix.map((row, rowIndex) => (
           <View key={rowIndex} style={styles.matrixRow}>
             <Text style={styles.matrixAxis}>{5 - rowIndex}</Text>
@@ -150,6 +243,9 @@ function ObservationForm({ index, observation, onUpdate, onRemove }: { index: nu
         <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.75} onPress={onRemove}><Text style={styles.cancelText}>Cancelar</Text></TouchableOpacity>
         <TouchableOpacity disabled={!complete} style={[styles.saveObservationBtn, !complete && styles.saveObservationBtnDisabled]} activeOpacity={0.75} onPress={() => onUpdate({ saved: true })}><Text style={styles.saveObservationText}>✓ Guardar observación</Text></TouchableOpacity>
       </View>
+      <RiskOptionModal visible={riskPicker === 'probability'} title="Probabilidad" options={probabilityOptions} selectedName={observation.probability} status={probabilityStatus} onClose={() => setRiskPicker(null)} onSelect={(option) => { onUpdate({ probability: option.name }); setRiskPicker(null); }} />
+      <RiskOptionModal visible={riskPicker === 'consequence'} title="Consecuencia" options={consequenceOptions} selectedName={observation.consequence} status={consequenceStatus} onClose={() => setRiskPicker(null)} onSelect={(option) => { onUpdate({ consequence: option.name }); setRiskPicker(null); }} />
+      <PhotoSourceModal visible={photoPickerOpen} onClose={() => setPhotoPickerOpen(false)} onCamera={handleCamera} onGallery={handleGallery} />
     </View>
   );
 }
@@ -200,6 +296,10 @@ export function ManualFindingObservationsScreen() {
   const [findingTypeOptions, setFindingTypeOptions] = React.useState<SelectSheetOption[]>([]);
   const [findingTypeLoading, setFindingTypeLoading] = React.useState(true);
   const [findingTypeError, setFindingTypeError] = React.useState<string | null>(null);
+  const [probabilityOptions, setProbabilityOptions] = React.useState<RiskOption[]>(fallbackProbabilities);
+  const [consequenceOptions, setConsequenceOptions] = React.useState<RiskOption[]>(fallbackConsequences);
+  const [probabilityStatus, setProbabilityStatus] = React.useState<CatalogStatus>({ loading: true, error: null });
+  const [consequenceStatus, setConsequenceStatus] = React.useState<CatalogStatus>({ loading: true, error: null });
 
   React.useEffect(() => {
     goToObservations();
@@ -221,6 +321,30 @@ export function ManualFindingObservationsScreen() {
       })
       .finally(() => {
         if (mounted) setFindingTypeLoading(false);
+      });
+    setProbabilityStatus({ loading: true, error: null });
+    fetchInspectionRiskProbabilities()
+      .then((items) => {
+        if (!mounted) return;
+        setProbabilityOptions(items.length > 0 ? items : fallbackProbabilities);
+        setProbabilityStatus({ loading: false, error: null });
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setProbabilityOptions(fallbackProbabilities);
+        setProbabilityStatus({ loading: false, error: null });
+      });
+    setConsequenceStatus({ loading: true, error: null });
+    fetchInspectionRiskConsequences()
+      .then((items) => {
+        if (!mounted) return;
+        setConsequenceOptions(items.length > 0 ? items : fallbackConsequences);
+        setConsequenceStatus({ loading: false, error: null });
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setConsequenceOptions(fallbackConsequences);
+        setConsequenceStatus({ loading: false, error: null });
       });
     return () => {
       mounted = false;
@@ -265,7 +389,7 @@ export function ManualFindingObservationsScreen() {
             </View>
             {draft.findingObservations.length === 0 ? <EmptyObservationsCard /> : null}
             {draft.findingObservations.length === 0 ? <AddObservationButton disabled={!draft.findingTypeId} onPress={addObservation} /> : null}
-            {draft.findingObservations.map((observation, index) => <ObservationForm key={observation.id} index={index} observation={observation} onUpdate={(patch) => updateFindingObservation(observation.id, patch)} onRemove={() => removeFindingObservation(observation.id)} />)}
+            {draft.findingObservations.map((observation, index) => <ObservationForm key={observation.id} index={index} observation={observation} probabilityOptions={probabilityOptions} consequenceOptions={consequenceOptions} probabilityStatus={probabilityStatus} consequenceStatus={consequenceStatus} onUpdate={(patch) => updateFindingObservation(observation.id, patch)} onRemove={() => removeFindingObservation(observation.id)} />)}
           </ScrollView>
           <ManualFlowFooter secondaryLabel="Atrás" secondaryIcon="arrow-left" onSecondary={back} onPrimary={() => undefined} primaryDisabled />
           <FindingTypeModal visible={activePicker === 'findingType'} selectedId={draft.findingTypeId} options={findingTypeOptions} loading={findingTypeLoading} errorMessage={findingTypeError} onClose={closePicker} onSelect={selectFindingType} />
@@ -331,7 +455,7 @@ const styles = StyleSheet.create({
   matrixCard: { borderWidth: 1, borderColor: '#E1E1E1', borderRadius: 10, backgroundColor: colors.white, padding: 10, gap: 5 },
   matrixTitle: { color: colors.primary, fontSize: 11, fontWeight: fontWeight.bold, marginBottom: 4 },
   matrixTopLabels: { flexDirection: 'row', gap: 3, alignItems: 'center' },
-  axisSpacer: { width: 16 },
+  matrixHeaderCell: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   matrixAxis: { width: 16, color: '#A0A0A0', fontSize: 9, textAlign: 'center' },
   matrixRow: { flexDirection: 'row', gap: 3, alignItems: 'center' },
   matrixCell: { flex: 1, height: 23, borderRadius: 3, alignItems: 'center', justifyContent: 'center' },
@@ -351,13 +475,23 @@ const styles = StyleSheet.create({
   modalRoot: { flex: 1, justifyContent: 'flex-end' },
   modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.68)' },
   modalPanel: { maxHeight: '78%', minHeight: 540, backgroundColor: colors.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },
+  modalPanelCompact: { maxHeight: '78%', minHeight: 420, backgroundColor: colors.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden' },
   modalHeader: { minHeight: 76, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 22, paddingRight: 22, paddingTop: 8 },
+  modalHeaderCompact: { minHeight: 64, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 22, paddingRight: 22, paddingTop: 4 },
   modalTitle: { flex: 1, fontSize: 18, lineHeight: 22, fontWeight: fontWeight.bold, color: colors.primary },
   modalClose: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
   modalList: { flex: 1 },
   modalOption: { minHeight: 80, justifyContent: 'center', borderTopWidth: 1, borderTopColor: '#E0E0E0', paddingHorizontal: 22, paddingVertical: 14 },
+  modalOptionCompact: { minHeight: 72, justifyContent: 'center', borderTopWidth: 1, borderTopColor: '#E0E0E0', paddingHorizontal: 22, paddingVertical: 12 },
   modalOptionSelected: { backgroundColor: '#FAFAFA' },
   modalOptionText: { fontSize: 16, lineHeight: 24, color: colors.primary },
+  modalOptionDescription: { color: colors.muted, fontSize: 12, lineHeight: 16, marginTop: 4 },
   modalEmpty: { minHeight: 120, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, borderTopWidth: 1, borderTopColor: '#E0E0E0' },
   modalEmptyText: { color: colors.muted, fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  photoSourcePanel: { backgroundColor: colors.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden', paddingBottom: 18 },
+  photoSourceOption: { minHeight: 74, borderTopWidth: 1, borderTopColor: '#E0E0E0', flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 22 },
+  photoSourceIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#F6FAFF', alignItems: 'center', justifyContent: 'center' },
+  photoSourceCopy: { flex: 1, gap: 2 },
+  photoSourceTitle: { color: colors.primary, fontSize: 16, fontWeight: fontWeight.bold },
+  photoSourceSub: { color: colors.muted, fontSize: 12 },
 });

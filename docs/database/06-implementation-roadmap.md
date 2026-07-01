@@ -1,5 +1,25 @@
 # Aurelia - Roadmap de Implementación por Fases v0.4
 
+## Estado operativo actual (2026-06-30)
+
+- Fase 0 a 5: implementadas con base funcional y migraciones activas.
+- Fase 6 y 7: implementadas en iteraciones recientes, con ajustes de consolidación documental y de modelo en curso.
+- Fase 8 (SPR): fase activa actual, avanzando por iteraciones.
+- Fase 9 y 10: planificadas.
+
+### Riesgo transversal crítico abierto
+
+La brecha principal actual para mobile offline es almacenamiento persistente:
+
+- Hoy el modo offline usa `localStorage` en web y, si no existe, cae a memoria.
+- En Expo nativo no existe `localStorage`; en Android/iOS esa caída a memoria implica pérdida de datos al cerrar la app.
+
+Acción obligatoria para app real:
+
+- Migrar el driver de persistencia offline a `AsyncStorage`, `SQLite` o `SecureStore` (según criticidad del dato y estrategia de sincronización).
+- Definir este cambio como criterio de salida de la iteración móvil correspondiente (no dejarlo como mejora opcional).
+- Ejecutar el plan técnico definido en [../MOBILE_OFFLINE_STORAGE_MIGRATION_PLAN.md](../MOBILE_OFFLINE_STORAGE_MIGRATION_PLAN.md).
+
 ## 1. Propósito
 
 Este documento define una ruta de implementación incremental para construir Aurelia sin intentar desarrollar todos los dominios al mismo tiempo.
@@ -392,6 +412,10 @@ GET /api/inspections/dashboard/summary
 - Dejar registro pendiente si no hay conexión.
 - Sincronización básica posterior.
 
+Requisito técnico para MVP real en dispositivo:
+
+- Persistencia offline en almacenamiento nativo (`AsyncStorage`/`SQLite`/`SecureStore`) y no fallback exclusivo a memoria.
+
 ### Reglas
 
 - Una inspección puede tener múltiples hallazgos.
@@ -481,6 +505,10 @@ GET /api/incidents/dashboard/summary
 - Tipo de incidente.
 - Preclasificación de nivel.
 - Sincronización básica.
+
+Requisito técnico para MVP real en dispositivo:
+
+- Persistencia offline en almacenamiento nativo (`AsyncStorage`/`SQLite`/`SecureStore`) y no fallback exclusivo a memoria.
 
 ### Reglas SLA
 
@@ -650,6 +678,14 @@ spr_consolidation_rules
 - Registro mensual operativo.
 - Validación y aprobación.
 - Reporte consolidado básico.
+
+### Nota de ejecución de fase
+
+Fase actualmente en curso por iteraciones. Cualquier entrega que involucre captura o edición mobile vinculada a SPR debe heredar el requisito de persistencia offline nativa para evitar pérdida de datos en Android/iOS.
+
+Plan técnico de referencia para ejecución por iteraciones:
+
+- [../MOBILE_OFFLINE_STORAGE_MIGRATION_PLAN.md](../MOBILE_OFFLINE_STORAGE_MIGRATION_PLAN.md)
 
 ---
 

@@ -20,6 +20,7 @@ No aplica a la web como flujo offline-first. La web puede seguir usando TanStack
 ## Documentos relacionados
 
 - [mobile-offline-service-bus-architecture.md](mobile-offline-service-bus-architecture.md)
+- [MOBILE_OFFLINE_STORAGE_MIGRATION_PLAN.md](MOBILE_OFFLINE_STORAGE_MIGRATION_PLAN.md)
 - [chat-gpt/mobile-inspecciones/offline_sync_iteration_2026_06_25.md](chat-gpt/mobile-inspecciones/offline_sync_iteration_2026_06_25.md)
 - [chat-gpt/mobile-inspecciones/offline_bootstrap_catalog_iteration_2026_06_25.md](chat-gpt/mobile-inspecciones/offline_bootstrap_catalog_iteration_2026_06_25.md)
 - [STATE_MANAGEMENT.md](STATE_MANAGEMENT.md)
@@ -54,6 +55,10 @@ Pendiente:
 - SecureStore/Keychain/Keystore para sesión offline.
 - SQLite/MMKV para formularios, catálogos, cola y auditoría en native.
 - Filesystem local para evidencias grandes.
+
+Plan ejecutable de implementación:
+
+- Ver [MOBILE_OFFLINE_STORAGE_MIGRATION_PLAN.md](MOBILE_OFFLINE_STORAGE_MIGRATION_PLAN.md).
 
 ### 2. Bootstrap/cache local de catálogos
 

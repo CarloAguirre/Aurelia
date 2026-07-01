@@ -2,6 +2,18 @@
 
 Este archivo acompaña a `04-ddl-postgres-draft.sql` y explica la decisión de modelado aplicada.
 
+## Estado documental actual
+
+Desde la iteración de consolidación (2026-06-30) existen dos artefactos SQL:
+
+- `04-ddl-postgres-current.sql`: DDL operativo current-only, alineado a entidades TypeORM y migraciones vigentes.
+- `04-ddl-postgres-draft.sql`: DDL expandido con contexto legacy/histórico para trazabilidad y validaciones pendientes.
+
+Regla de uso:
+
+1. Cambios operativos o de implementación: partir desde `04-ddl-postgres-current.sql`.
+2. Análisis histórico o reconciliación de nombres: usar `04-ddl-postgres-draft.sql` + `08-ddl-legacy-to-current-mapping.md`.
+
 ## Decisión principal
 
 Se utiliza un modelo híbrido:
@@ -54,8 +66,7 @@ El modelo híbrido evita esa duplicidad sin sacrificar la integridad del núcleo
 
 ## Siguiente paso
 
-Validar este DDL como borrador y luego generar:
+Consolidar DDL v0.3 dejando explícita la frontera entre:
 
-- `05-typeorm-entities-plan.md`
-- migración inicial TypeORM
-- entidades por módulo NestJS
+- modelo current ejecutable;
+- tablas legacy/deprecated de referencia.

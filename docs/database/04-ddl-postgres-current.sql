@@ -1,4 +1,4 @@
--- Aurelia - PostgreSQL DDL Draft v0.2
+﻿-- Aurelia - PostgreSQL DDL Draft v0.2
 -- Strategy: strict foreign keys for core domain relationships and controlled polymorphic links for transversal records.
 -- Target: PostgreSQL 16+
 -- Notes:
@@ -171,12 +171,6 @@ CREATE TABLE role_permissions (
   PRIMARY KEY (role_id, permission_id)
 );
 
-CREATE TABLE user_area_assignments (
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  area_id UUID NOT NULL REFERENCES areas(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (user_id, area_id)
-);
 
 CREATE TABLE user_companies (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -428,16 +422,6 @@ CREATE TABLE critical_controls (
   UNIQUE (mue_id, code)
 );
 
-CREATE TABLE critical_control_area_assignments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  critical_control_id UUID NOT NULL REFERENCES critical_controls(id) ON DELETE CASCADE,
-  area_id UUID REFERENCES areas(id),
-  gerencia_id UUID REFERENCES gerencias(id),
-  responsible_user_id UUID REFERENCES users(id),
-  responsible_name VARCHAR(200),
-  expected_evidence TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
 
 CREATE TABLE control_verification_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -452,35 +436,7 @@ CREATE TABLE control_verification_items (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE control_assessments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  critical_control_id UUID REFERENCES critical_controls(id),
-  area_id UUID REFERENCES areas(id),
-  company_id UUID REFERENCES companies(id),
-  assessment_date DATE NOT NULL,
-  period_year INTEGER NOT NULL,
-  period_month INTEGER CHECK (period_month BETWEEN 1 AND 12),
-  status validation_status NOT NULL DEFAULT 'draft',
-  created_by_user_id UUID REFERENCES users(id),
-  validated_by_user_id UUID REFERENCES users(id),
-  validated_at TIMESTAMPTZ,
-  closed_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
 
-CREATE TABLE control_assessment_answers (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  control_assessment_id UUID NOT NULL REFERENCES control_assessments(id) ON DELETE CASCADE,
-  verification_item_id UUID NOT NULL REFERENCES control_verification_items(id),
-  answer checklist_answer_value NOT NULL,
-  comment TEXT,
-  answered_by_user_id UUID REFERENCES users(id),
-  answered_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (control_assessment_id, verification_item_id)
-);
 
 CREATE TABLE control_area_assignments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -689,14 +645,6 @@ CREATE TABLE inspection_status_history (
   changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE inspection_exports (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  inspection_id UUID NOT NULL REFERENCES inspections(id) ON DELETE CASCADE,
-  file_id UUID REFERENCES files(id),
-  export_type VARCHAR(40) NOT NULL DEFAULT 'pdf',
-  generated_by_user_id UUID REFERENCES users(id),
-  generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
 
 -- =========================================================
 -- INCIDENTS
@@ -712,23 +660,7 @@ CREATE TABLE incident_types (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE incident_level_rules (
-  level INTEGER PRIMARY KEY CHECK (level BETWEEN 0 AND 5),
-  name VARCHAR(160) NOT NULL,
-  description TEXT,
-  notification_sla_hours INTEGER NOT NULL,
-  requires_icam BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
 
-INSERT INTO incident_level_rules (level, name, description, notification_sla_hours, requires_icam) VALUES
-  (0, 'Insignificant or near miss', 'Insignificant or quasi-incident', 24, FALSE),
-  (1, 'Minor', 'Minor incident with minimal impact', 24, FALSE),
-  (2, 'Short-term impact', 'Non-compliance or incident with short-term impact', 12, FALSE),
-  (3, 'Serious', 'Serious incident requiring ICAM investigation', 12, TRUE),
-  (4, 'Major', 'Major incident requiring ICAM investigation', 6, TRUE),
-  (5, 'Catastrophic', 'Catastrophic incident requiring immediate escalation', 2, TRUE)
-ON CONFLICT (level) DO NOTHING;
 
 CREATE TABLE incident_levels (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -840,16 +772,6 @@ CREATE TABLE incident_investigations (
   UNIQUE (incident_id, investigation_type)
 );
 
-CREATE TABLE incident_investigation_team_members (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  investigation_id UUID NOT NULL REFERENCES incident_investigations(id) ON DELETE CASCADE,
-  user_id UUID REFERENCES users(id),
-  name VARCHAR(200),
-  role_description VARCHAR(200),
-  company_id UUID REFERENCES companies(id),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CHECK (user_id IS NOT NULL OR name IS NOT NULL)
-);
 
 CREATE TABLE incident_investigation_team (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -881,16 +803,6 @@ CREATE TABLE incident_timeline_events (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE incident_five_why_items (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  investigation_id UUID NOT NULL REFERENCES incident_investigations(id) ON DELETE CASCADE,
-  why_number INTEGER NOT NULL CHECK (why_number BETWEEN 1 AND 5),
-  question TEXT NOT NULL DEFAULT '¿Por qué?',
-  answer TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (investigation_id, why_number)
-);
 
 CREATE TABLE incident_five_why_analysis (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -956,14 +868,6 @@ CREATE TABLE incident_disseminations (
 -- SPR
 -- =========================================================
 
-CREATE TABLE measurement_units (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  code VARCHAR(40) NOT NULL UNIQUE,
-  name VARCHAR(120) NOT NULL,
-  description TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
 
 CREATE TABLE spr_units (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1058,125 +962,13 @@ CREATE TABLE spr_record_approvals (
 -- GREEN TAX / EMISSIONS
 -- =========================================================
 
-CREATE TABLE pollutants (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  code VARCHAR(40) NOT NULL UNIQUE,
-  name VARCHAR(120) NOT NULL,
-  unit_id UUID REFERENCES measurement_units(id),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
 
-CREATE TABLE emission_source_types (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  code VARCHAR(80) NOT NULL UNIQUE,
-  name VARCHAR(200) NOT NULL,
-  description TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
 
-CREATE TABLE emission_sources (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  rfp_identifier VARCHAR(100) NOT NULL UNIQUE,
-  internal_tag VARCHAR(100),
-  serial_number VARCHAR(120),
-  source_type_id UUID REFERENCES emission_source_types(id),
-  category VARCHAR(80),
-  installed_power_kw NUMERIC(14, 4),
-  thermal_power_mwt NUMERIC(14, 4),
-  nominal_consumption_lh NUMERIC(14, 4),
-  thermal_efficiency_percent NUMERIC(7, 4),
-  abatement_efficiency_percent NUMERIC(7, 4) NOT NULL DEFAULT 0,
-  status emission_source_status NOT NULL DEFAULT 'active',
-  gerencia_id UUID REFERENCES gerencias(id),
-  area_id UUID REFERENCES areas(id),
-  location_id UUID REFERENCES locations(id),
-  macrozone VARCHAR(120),
-  latitude NUMERIC(10, 7),
-  longitude NUMERIC(10, 7),
-  altitude_m NUMERIC(10, 2),
-  engine_brand VARCHAR(120),
-  engine_model VARCHAR(120),
-  manufacture_year INTEGER,
-  useful_life_hours NUMERIC(14, 2),
-  stack_inner_diameter_m NUMERIC(10, 4),
-  stack_outer_diameter_m NUMERIC(10, 4),
-  stack_height_m NUMERIC(10, 4),
-  gas_velocity_ms NUMERIC(10, 4),
-  gas_temperature_c NUMERIC(10, 4),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
 
-CREATE TABLE emission_activity_levels (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  emission_source_id UUID NOT NULL REFERENCES emission_sources(id) ON DELETE CASCADE,
-  period_year INTEGER NOT NULL,
-  period_month INTEGER NOT NULL CHECK (period_month BETWEEN 1 AND 12),
-  period_quarter INTEGER GENERATED ALWAYS AS (((period_month - 1) / 3) + 1) STORED,
-  fuel_consumption_liters NUMERIC(18, 6) NOT NULL DEFAULT 0,
-  operation_hours NUMERIC(18, 6) NOT NULL DEFAULT 0,
-  processed_tons NUMERIC(18, 6),
-  source_information TEXT,
-  reported_by_user_id UUID REFERENCES users(id),
-  reported_at TIMESTAMPTZ,
-  status validation_status NOT NULL DEFAULT 'draft',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (emission_source_id, period_year, period_month)
-);
 
-CREATE TABLE emission_stoppages (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  emission_source_id UUID NOT NULL REFERENCES emission_sources(id) ON DELETE CASCADE,
-  start_date DATE NOT NULL,
-  end_date DATE NOT NULL,
-  reason TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CHECK (end_date >= start_date)
-);
 
-CREATE TABLE emission_factors (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  source_type_id UUID NOT NULL REFERENCES emission_source_types(id),
-  pollutant_id UUID NOT NULL REFERENCES pollutants(id),
-  factor_value NUMERIC(18, 10) NOT NULL,
-  factor_unit VARCHAR(80) NOT NULL,
-  valid_from DATE,
-  valid_to DATE,
-  source_reference TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (source_type_id, pollutant_id, valid_from)
-);
 
-CREATE TABLE emission_calculations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  activity_level_id UUID NOT NULL REFERENCES emission_activity_levels(id) ON DELETE CASCADE,
-  emission_factor_id UUID NOT NULL REFERENCES emission_factors(id),
-  pollutant_id UUID NOT NULL REFERENCES pollutants(id),
-  calculated_value NUMERIC(18, 8) NOT NULL,
-  calculation_formula TEXT,
-  calculated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (activity_level_id, pollutant_id)
-);
 
-CREATE TABLE green_tax_thresholds (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  pollutant_id UUID REFERENCES pollutants(id),
-  code VARCHAR(80) NOT NULL,
-  name VARCHAR(200) NOT NULL,
-  threshold_value NUMERIC(18, 6) NOT NULL,
-  threshold_unit VARCHAR(80) NOT NULL,
-  period_type VARCHAR(40) NOT NULL DEFAULT 'annual',
-  valid_from DATE,
-  valid_to DATE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (pollutant_id, code, valid_from)
-);
 
 -- =========================================================
 -- MOBILE SYNC
@@ -1205,25 +997,7 @@ CREATE TABLE mobile_sync_operations (
 -- INITIAL CATALOG DATA
 -- =========================================================
 
-INSERT INTO measurement_units (code, name) VALUES
-  ('TON', 'Ton'),
-  ('KG', 'Kilogram'),
-  ('KLT', 'Kiloliter'),
-  ('MWH', 'Megawatt-hour'),
-  ('MLT', 'Megaliter'),
-  ('KM', 'Kilometer'),
-  ('USD', 'US Dollar'),
-  ('LC', 'Local Currency'),
-  ('L', 'Liter'),
-  ('H', 'Hour')
-ON CONFLICT (code) DO NOTHING;
 
-INSERT INTO pollutants (code, name) VALUES
-  ('MP', 'Material particulado'),
-  ('SO2', 'Sulfur dioxide'),
-  ('NOX', 'Nitrogen oxides'),
-  ('CO2', 'Carbon dioxide')
-ON CONFLICT (code) DO NOTHING;
 
 -- =========================================================
 -- INDEXES
@@ -1242,8 +1016,6 @@ CREATE INDEX idx_notifications_entity ON notifications(entity_type, entity_id);
 CREATE INDEX idx_workflow_instances_entity ON workflow_instances(entity_type, entity_id);
 
 CREATE INDEX idx_critical_controls_mue ON critical_controls(mue_id);
-CREATE INDEX idx_control_assessments_period ON control_assessments(period_year, period_month);
-CREATE INDEX idx_control_assessment_answers_assessment ON control_assessment_answers(control_assessment_id);
 CREATE INDEX idx_control_area_assignments_mue ON control_area_assignments(mue_id);
 CREATE INDEX idx_control_area_assignments_control ON control_area_assignments(critical_control_id);
 CREATE INDEX idx_control_self_assessments_mue ON control_self_assessments(mue_id);
@@ -1290,11 +1062,6 @@ CREATE INDEX idx_user_areas_area ON user_areas(area_id);
 CREATE INDEX idx_mobile_sync_operations_device_local ON mobile_sync_operations(device_id, local_id);
 CREATE INDEX idx_mobile_sync_operations_batch ON mobile_sync_operations(batch_id);
 
-CREATE INDEX idx_emission_sources_type ON emission_sources(source_type_id);
-CREATE INDEX idx_emission_activity_levels_period ON emission_activity_levels(period_year, period_month);
-CREATE INDEX idx_emission_activity_levels_source ON emission_activity_levels(emission_source_id);
-CREATE INDEX idx_emission_calculations_activity ON emission_calculations(activity_level_id);
-
 -- =========================================================
 -- UPDATED_AT TRIGGERS
 -- =========================================================
@@ -1304,19 +1071,74 @@ DECLARE
   t TEXT;
 BEGIN
   FOREACH t IN ARRAY ARRAY[
-    'business_units','gerencias','areas','sectors','locations','companies',
-    'users','roles','permissions',
+    'areas',
+    'audit_logs',
+    'business_units',
+    'comments',
+    'companies',
+    'control_area_assignments',
+    'control_evidences',
+    'control_self_assessment_answers',
+    'control_self_assessments',
+    'control_verification_items',
+    'critical_controls',
+    'entity_reference_types',
+    'evidence_links',
+    'evidences',
+    'files',
+    'gerencias',
+    'incident_action_evidences',
+    'incident_action_plans',
+    'incident_disseminations',
+    'incident_five_why_analysis',
+    'incident_flash_reports',
+    'incident_immediate_actions',
+    'incident_investigation_team',
+    'incident_investigations',
+    'incident_involved_people',
+    'incident_levels',
+    'incident_peepo_analysis',
+    'incident_status_history',
+    'incident_timeline_events',
+    'incident_types',
+    'incident_validations',
+    'incidents',
+    'inspection_checklist_answers',
+    'inspection_checklist_items',
+    'inspection_checklist_sections',
+    'inspection_checklist_templates',
+    'inspection_finding_severities',
+    'inspection_finding_types',
+    'inspection_findings',
+    'inspection_followups',
+    'inspection_status_history',
+    'inspection_types',
+    'inspections',
+    'locations',
+    'mobile_sync_operations',
+    'mues',
+    'notification_recipients',
+    'notifications',
+    'permissions',
+    'role_permissions',
+    'roles',
+    'sectors',
+    'spr_consolidation_rules',
+    'spr_measure_groups',
+    'spr_monthly_records',
+    'spr_parameter_area_assignments',
+    'spr_parameters',
+    'spr_record_approvals',
+    'spr_units',
+    'user_areas',
+    'user_companies',
+    'user_roles',
     'user_sessions',
-    'files','evidences','comments','notifications',
-    'workflow_definitions','workflow_definition_steps','workflow_instances','workflow_instance_steps',
-    'user_companies','user_areas',
-    'mues','critical_controls','control_verification_items','control_assessments','control_assessment_answers',
-    'control_area_assignments','control_self_assessments','control_self_assessment_answers',
-    'inspection_types','inspection_checklist_templates','inspection_checklist_sections','inspection_checklist_items','inspection_finding_types','inspection_finding_severities','inspections','inspection_checklist_answers','inspection_findings','inspection_followups',
-    'incident_types','incident_levels','incidents','incident_involved_people','incident_immediate_actions','incident_flash_reports','incident_investigations','incident_investigation_team','incident_peepo_analysis','incident_timeline_events','incident_five_why_items','incident_five_why_analysis','incident_action_plans',
-    'measurement_units','spr_units','spr_measure_groups','spr_parameters','spr_monthly_records','spr_consolidation_rules','spr_record_approvals',
-    'pollutants','emission_source_types','emission_sources','emission_activity_levels','emission_stoppages','emission_factors','green_tax_thresholds',
-    'mobile_sync_operations','control_evidences'
+    'users',
+    'workflow_definition_steps',
+    'workflow_definitions',
+    'workflow_instance_steps',
+    'workflow_instances'
   ] LOOP
     EXECUTE format('CREATE TRIGGER trg_%I_updated_at BEFORE UPDATE ON %I FOR EACH ROW EXECUTE FUNCTION set_updated_at()', t, t);
   END LOOP;
@@ -1326,14 +1148,5 @@ END $$;
 -- VALIDATION NOTES FOR NEXT ITERATION
 -- =========================================================
 
--- Pending validation:
--- 1. Confirm whether users are internal only or include contractor users with limited tenant-like access.
--- 2. Confirm official catalog values for gerencias, areas, sectors and companies.
--- 3. Confirm all MUE and critical control catalogs from the final spreadsheet.
--- 4. Confirm whether inspection checklist templates should be versioned immutably.
--- 5. Confirm exact PDF export persistence rules.
--- 6. Confirm whether mobile offline records require a dedicated sync_jobs table in the backend.
--- 7. Confirm whether evidence_links polymorphic approach is accepted by the team.
--- 8. Confirm if incident notification SLA should be stored as deadline snapshots on incidents or calculated dynamically from incident_level_rules.
--- 9. Confirm whether SPR SOX approvals require legally valid digital signatures or only application approval records.
--- 10. Confirm whether emission calculations should be materialized in emission_calculations or generated as views.
+-- Current-only DDL: pending validation points are tracked in documentation backlog.
+-- See docs/DOCS_CLEANUP_BACKLOG.md and docs/database/08-ddl-legacy-to-current-mapping.md.

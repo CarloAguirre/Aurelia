@@ -406,7 +406,7 @@ Configurar variables mínimas para levantar API manualmente:
 ```bash
 $env:API_TOKEN_KEY="dev-local-token-key-change-me-32-characters"
 $env:AURELIA_DEMO_USER_PASSWORD="AureliaDemo123!"
-$env:CORS_ORIGINS="http://localhost:8081,http://localhost:3001,http://localhost:5173"
+$env:CORS_ORIGINS="http://localhost:8081,http://localhost:8082,http://localhost:8083,http://localhost:8084,http://localhost:3001,http://localhost:5173"
 ```
 
 Actualizar seed de permisos:

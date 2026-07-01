@@ -89,7 +89,7 @@ function CatalogModal({ visible, title, selectedId, options, loading, errorMessa
             {!loading && !errorMessage && options.length === 0 ? <View style={styles.modalEmpty}><Text style={styles.modalEmptyText}>No hay opciones disponibles. Sincroniza catálogos.</Text></View> : null}
             {!loading && !errorMessage && options.map((option) => (
               <TouchableOpacity key={option.id} style={[styles.modalOption, option.id === selectedId && styles.modalOptionSelected]} activeOpacity={0.72} onPress={() => onSelect(option)}>
-                <Text style={styles.modalOptionText}>{option.label}</Text>
+                <Text style={[styles.modalOptionText, option.description ? styles.modalOptionTextStrong : null]}>{option.label}</Text>
                 {option.description ? <Text style={styles.modalOptionDescription}>{option.description}</Text> : null}
               </TouchableOpacity>
             ))}
@@ -216,7 +216,7 @@ export function ManualFindingObservationsSeverityScreen() {
     fetchInspectionFindingTypesLocalFirst()
       .then((items) => {
         if (!mounted) return;
-        setFindingTypeOptions(items.map((item) => ({ id: item.id, label: item.name, description: item.code })));
+        setFindingTypeOptions(items.map((item) => ({ id: item.id, label: item.name })));
         setFindingTypeStatus({ loading: false, error: null });
       })
       .catch(() => {
@@ -345,9 +345,10 @@ const styles = StyleSheet.create({
   modalTitle: { flex: 1, fontSize: 18, lineHeight: 22, fontWeight: fontWeight.bold, color: colors.primary },
   modalClose: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
   modalList: { flex: 1 },
-  modalOption: { minHeight: 118, justifyContent: 'center', borderTopWidth: 1, borderTopColor: '#E0E0E0', paddingHorizontal: 22, paddingVertical: 16 },
+  modalOption: { minHeight: 88, justifyContent: 'center', borderTopWidth: 1, borderTopColor: '#E0E0E0', paddingHorizontal: 22, paddingVertical: 14 },
   modalOptionSelected: { backgroundColor: '#FAFAFA' },
-  modalOptionText: { fontSize: 16, lineHeight: 24, color: colors.primary, fontWeight: fontWeight.bold },
+  modalOptionText: { fontSize: 16, lineHeight: 24, color: colors.primary, fontWeight: fontWeight.regular },
+  modalOptionTextStrong: { fontWeight: fontWeight.bold },
   modalOptionDescription: { color: colors.primary, fontSize: 15, lineHeight: 22, marginTop: 12 },
   modalEmpty: { minHeight: 120, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, borderTopWidth: 1, borderTopColor: '#E0E0E0' },
   modalEmptyText: { color: colors.muted, fontSize: 14, lineHeight: 20, textAlign: 'center' },

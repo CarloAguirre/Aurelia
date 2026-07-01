@@ -20,6 +20,10 @@ export interface ManualFindingObservationDraft {
   detectedCondition: string;
   correctiveAction: string;
   evidence: ManualPickedAsset | null;
+  severityId: string | null;
+  severityLabel: string | null;
+  severityDescription: string | null;
+  severityClosureTimeLabel: string | null;
   probability: string | null;
   consequence: string | null;
   saved: boolean;
@@ -148,11 +152,11 @@ export const useManualInspectionDraft = create<ManualInspectionState>((set) => (
       locationCapturedAt: new Date().toISOString(),
     }),
   setInspectionType: (inspectionType, inspectionTypeLabel) =>
-    set({ inspectionType, inspectionTypeLabel, findingTypeId: null, findingTypeLabel: null, findingObservations: [], templateId: null, templateName: null, templateCode: null, templateItemsCount: null, answersByItemId: {}, detailsByItemId: {}, generalPhoto: null }),
+    set({ inspectionType, inspectionTypeLabel, findingTypeId: null, findingTypeLabel: null, findingObservations: [], templateId: null, templateName: null, templateCode: null, templateItemsCount: null, answersByItemId: {}, detailsByItemId: {}, generalPhoto: null, findingCompanyId: null, findingCompanyName: null, findingResponsibleIds: [] }),
   setFindingType: (findingTypeId, findingTypeLabel) => set({ findingTypeId, findingTypeLabel }),
   addFindingObservation: () => {
     const id = newObservationId();
-    set((state) => ({ findingObservations: [...state.findingObservations, { id, detectedCondition: '', correctiveAction: '', evidence: null, probability: null, consequence: null, saved: false }] }));
+    set((state) => ({ findingObservations: [...state.findingObservations, { id, detectedCondition: '', correctiveAction: '', evidence: null, severityId: null, severityLabel: null, severityDescription: null, severityClosureTimeLabel: null, probability: null, consequence: null, saved: false }] }));
     return id;
   },
   updateFindingObservation: (id, patch) => set((state) => ({ findingObservations: state.findingObservations.map((item) => (item.id === id ? { ...item, ...patch } : item)) })),
@@ -161,7 +165,7 @@ export const useManualInspectionDraft = create<ManualInspectionState>((set) => (
   setAnswer: (itemId, value) => set((state) => ({ answersByItemId: { ...state.answersByItemId, [itemId]: value } })),
   setItemDetail: (itemId, detail) => set((state) => ({ detailsByItemId: { ...state.detailsByItemId, [itemId]: { ...state.detailsByItemId[itemId], ...detail } } })),
   setGeneralPhoto: (generalPhoto) => set({ generalPhoto }),
-  setFindingCompany: (findingCompanyId, findingCompanyName) => set({ findingCompanyId, findingCompanyName }),
+  setFindingCompany: (findingCompanyId, findingCompanyName) => set({ findingCompanyId, findingCompanyName, findingResponsibleIds: [] }),
   setFindingResponsibles: (findingResponsibleIds) => set({ findingResponsibleIds }),
   setLastSavedResult: (lastSavedResult) => set({ lastSavedResult }),
   reset: () => set(initialDraft),

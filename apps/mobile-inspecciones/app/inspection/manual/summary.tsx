@@ -1,3 +1,3 @@
-import { ManualInspectionSummaryFixedScreen } from '../../../src/modules/inspection/ManualInspectionSummaryFixedScreen';
+import { ManualSummaryRouter } from '../../../src/modules/inspection/ManualSummaryRouter';
 
-export default ManualInspectionSummaryFixedScreen;
+export default ManualSummaryRouter;

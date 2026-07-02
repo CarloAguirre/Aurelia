@@ -25,10 +25,6 @@ const CLOSED_HISTORICAL = '#b8cdd9';
 const CLOSED_CURRENT = '#2d6a7f';
 const OPEN = '#f4a460';
 const GRID = '#e5e7eb';
-const AXIS = '#9ca3af';
-const TEXT = '#131313';
-const MUTED = '#646464';
-const LABEL = '#6b7280';
 
 const INSPECTION_CONTEXT_ROWS = [
   { label: '2023', closed: 652, open: 80, closedColor: CLOSED_HISTORICAL },
@@ -55,6 +51,18 @@ function formatMonthLabel(month: string) {
   return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1, 3) : '';
 }
 
+function resolveTickHeight(totalTicks: number, index: number) {
+  if (totalTicks === 5) {
+    return [20, 40, 40, 40, 60][index] ?? 40;
+  }
+
+  if (totalTicks === 7) {
+    return [14, 19, 34, 33, 34, 33, 33][index] ?? 33;
+  }
+
+  return 200 / Math.max(totalTicks, 1);
+}
+
 function buildFindingRows(rows: DashboardMonthlySeriesRow[]) {
   const firstFiveRows = rows.slice(0, 5).map((row) => ({
     label: formatMonthLabel(row.month),
@@ -66,7 +74,7 @@ function buildFindingRows(rows: DashboardMonthlySeriesRow[]) {
   return hasRuntimeValues ? firstFiveRows : FINDING_CONTEXT_ROWS;
 }
 
-function ChartCard({ title, subtitle, rows, maxValue, yTicks, closedSwatchColor }: { title: string; subtitle: string; rows: PairedBarRow[]; maxValue: number; yTicks: number[]; closedSwatchColor: string }) {
+function ChartCard({ title, subtitle, rows, maxValue, yTicks, closedSwatchColor, barWidth }: { title: string; subtitle: string; rows: PairedBarRow[]; maxValue: number; yTicks: number[]; closedSwatchColor: string; barWidth: number }) {
   return (
     <div className="bg-white border border-[#e3e3e3] border-solid drop-shadow-[0px_1px_1.5px_rgba(0,0,0,0.05)] flex flex-col h-[339px] items-start px-[19px] py-[17px] relative rounded-[8px] w-full" data-name="Container">
       <div className="h-[18px] relative shrink-0 w-full" data-name="Container (margin)">
@@ -80,7 +88,7 @@ function ChartCard({ title, subtitle, rows, maxValue, yTicks, closedSwatchColor 
           <div className="content-stretch flex h-[200px] items-start relative shrink-0 w-full" data-name="chart-area">
             <div className="[word-break:break-word] content-stretch flex flex-col font-['Inter:Regular',sans-serif] font-normal h-full items-start leading-[0] not-italic relative shrink-0 text-[#9ca3af] text-[9px] text-right w-[36px]" data-name="y-axis">
               {yTicks.map((tick, index) => (
-                <div className="flex flex-col justify-center relative shrink-0 w-[32px]" key={`${tick}-${index}`} style={{ height: `${index === 0 ? 14 : index === yTicks.length - 1 ? 33 : 34}px` }}>
+                <div className="flex flex-col justify-center relative shrink-0 w-[32px]" key={`${tick}-${index}`} style={{ height: `${resolveTickHeight(yTicks.length, index)}px` }}>
                   <p className="leading-[normal]">{tick}</p>
                 </div>
               ))}
@@ -102,8 +110,8 @@ function ChartCard({ title, subtitle, rows, maxValue, yTicks, closedSwatchColor 
                           <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[12px] text-white">{row.tooltip.value}</p>
                         </div>
                       ) : null}
-                      <div className="rounded-[2px] w-[36px]" data-name={`${row.label}-cerradas`} style={{ backgroundColor: row.closedColor ?? CLOSED, height: `${closedHeight}px` }} />
-                      <div className="rounded-[2px] w-[36px]" data-name={`${row.label}-abiertas`} style={{ backgroundColor: OPEN, height: `${openHeight}px` }} />
+                      <div className="rounded-[2px]" data-name={`${row.label}-cerradas`} style={{ backgroundColor: row.closedColor ?? CLOSED, height: `${closedHeight}px`, width: `${barWidth}px` }} />
+                      <div className="rounded-[2px]" data-name={`${row.label}-abiertas`} style={{ backgroundColor: OPEN, height: `${openHeight}px`, width: `${barWidth}px` }} />
                     </div>
                   );
                 })}
@@ -149,9 +157,9 @@ export function DashboardFigmaAnnualInspectionsChartCard({ closedInspections, op
     },
   ];
 
-  return <ChartCard title="Inspecciones cerradas y abiertas" subtitle="Año 2026 resaltado · contexto 2023–2026" rows={rows} maxValue={800} yTicks={[800, 600, 400, 200, 0]} closedSwatchColor={CLOSED_HISTORICAL} />;
+  return <ChartCard title="Inspecciones cerradas y abiertas" subtitle="Año 2026 resaltado · contexto 2023–2026" rows={rows} maxValue={800} yTicks={[800, 600, 400, 200, 0]} closedSwatchColor={CLOSED_HISTORICAL} barWidth={36} />;
 }
 
 export function DashboardFigmaAnnualFindingsChartCard({ rows }: AnnualFindingsChartCardProps) {
-  return <ChartCard title="Observaciones cerradas y abiertas" subtitle="Acumulado por mes · año 2026" rows={buildFindingRows(rows)} maxValue={1200} yTicks={[1200, 1000, 800, 600, 400, 200, 0]} closedSwatchColor={CLOSED} />;
+  return <ChartCard title="Observaciones cerradas y abiertas" subtitle="Acumulado por mes · año 2026" rows={buildFindingRows(rows)} maxValue={1200} yTicks={[1200, 1000, 800, 600, 400, 200, 0]} closedSwatchColor={CLOSED} barWidth={28} />;
 }

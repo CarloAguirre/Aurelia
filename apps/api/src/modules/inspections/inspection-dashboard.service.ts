@@ -6,6 +6,7 @@ import type {
   InspectionDashboardChartsResponse,
 } from '@aurelia/contracts';
 import { Repository } from 'typeorm';
+import { AreaEntity } from '../organization/entities/area.entity';
 import { InspectionFindingEntity } from './entities/inspection-finding.entity';
 import { InspectionEntity } from './entities/inspection.entity';
 
@@ -16,17 +17,21 @@ export class InspectionDashboardService {
     private readonly inspections: Repository<InspectionEntity>,
     @InjectRepository(InspectionFindingEntity)
     private readonly findings: Repository<InspectionFindingEntity>,
+    @InjectRepository(AreaEntity)
+    private readonly areas: Repository<AreaEntity>,
   ) {}
 
   async getCharts(): Promise<InspectionDashboardChartsResponse> {
-    const [inspections, findings] = await Promise.all([
+    const [inspections, findings, areas] = await Promise.all([
       this.inspections.find(),
       this.findings.find(),
+      this.areas.find(),
     ]);
     const now = new Date();
     const currentYear = now.getFullYear();
     const periodMonth = now.getMonth();
     const inspectionById = new Map(inspections.map((inspection) => [inspection.id, inspection]));
+    const areaNameById = new Map(areas.map((area) => [area.id, area.name]));
     const yearRange = Array.from({ length: 4 }, (_, index) => currentYear - 3 + index);
     const annualInspections = yearRange.map((year) => ({ year, closed: 0, open: 0 }));
     const annualByYear = new Map(annualInspections.map((row) => [row.year, row]));
@@ -92,7 +97,7 @@ export class InspectionDashboardService {
       const areaKey = areaId ?? 'sin-area';
       const areaRow = areaObservations.get(areaKey) ?? {
         areaId,
-        area: this.formatAreaLabel(areaId),
+        area: this.formatAreaLabel(areaId, areaNameById),
         closed: 0,
         open: 0,
       };
@@ -127,8 +132,8 @@ export class InspectionDashboardService {
     return inspection.startedAt ?? inspection.scheduledAt ?? inspection.createdAt ?? null;
   }
 
-  private formatAreaLabel(areaId: string | null): string {
+  private formatAreaLabel(areaId: string | null, areaNameById: Map<string, string>): string {
     if (!areaId) return 'Sin Área';
-    return `Área ${areaId.slice(0, 8).toUpperCase()}`;
+    return areaNameById.get(areaId) ?? `Área ${areaId.slice(0, 8).toUpperCase()}`;
   }
 }

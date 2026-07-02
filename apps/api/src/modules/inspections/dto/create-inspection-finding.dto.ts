@@ -1,10 +1,28 @@
 import { IsEnum, IsISO8601, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 import { CreateInspectionFindingRequest, InspectionFindingSeverity } from '@aurelia/contracts';
+import { IsArray } from 'class-validator';
 
 export class CreateInspectionFindingDto implements CreateInspectionFindingRequest {
   @IsOptional()
   @IsUUID()
   checklistItemId?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  findingTypeId?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  severityId?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  responsibleCompanyId?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID(undefined, { each: true })
+  responsibleUserIds?: string[];
 
   @IsString()
   @MinLength(3)

@@ -1,4 +1,4 @@
-import type { MobileSyncStatus, MobileSyncOperationRequest, MobileSyncOperationType } from '@aurelia/contracts';
+import type { MobileSyncStatus, MobileSyncOperationType } from '@aurelia/contracts';
 import { localStorageDriver } from '../storage/local-storage';
 import type { SyncQueueItem, SyncQueueSnapshot } from './sync-status';
 
@@ -113,6 +113,10 @@ class PersistentSyncQueue {
 
   async markConflict(localId: string, reason: string): Promise<void> {
     await this.patch([localId], (item) => ({ ...item, status: CONFLICT, lastError: reason, updatedAt: now() }));
+  }
+
+  async updatePayload<TPayload>(localId: string, payload: TPayload): Promise<void> {
+    await this.patch([localId], (item) => ({ ...item, payload, updatedAt: now() }));
   }
 
   async removeSynced(): Promise<void> {

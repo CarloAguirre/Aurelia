@@ -13,6 +13,8 @@ import { useManualInspectionCatalogs } from './useManualInspectionCatalogs';
 import { useManualConnectivityStatus } from './useManualConnectivityStatus';
 import { useManualInspectionLocation } from './useManualInspectionLocation';
 import { useManualInspectionFlowStore } from './manualInspectionFlow.store';
+import { removeManualInspectionDraft } from './manualInspectionDrafts.storage';
+import { usePersistManualInspectionDraft } from './hooks/usePersistManualInspectionDraft';
 import { ManualFormStepper, SelectSheet, type SelectSheetOption } from './ManualSelectionUi';
 
 function LabeledField({ label, children }: { label: string; children: React.ReactNode }) {
@@ -37,6 +39,7 @@ function buildDateOptions(): SelectSheetOption[] {
 }
 
 export function ManualIdentificationConnected() {
+  usePersistManualInspectionDraft();
   const draft = useManualInspectionDraft();
   const user = useMobileSession((state) => state.user);
   const activePicker = useManualInspectionFlowStore((state) => state.activePicker);
@@ -62,6 +65,7 @@ export function ManualIdentificationConnected() {
 
   function cancel() {
     closePicker();
+    if (draft.draftId) void removeManualInspectionDraft(draft.draftId);
     router.replace('/inspection/start');
   }
 

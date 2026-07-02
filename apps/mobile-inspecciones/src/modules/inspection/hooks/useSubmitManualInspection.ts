@@ -110,7 +110,7 @@ export function useSubmitManualInspection() {
         closed = true;
       }
 
-      return { inspectionId: inspection.id, totalCount: items.length, yesCount, noCount, naCount, closed };
+      return { mode: 'checklist', inspectionId: inspection.id, totalCount: items.length, yesCount, noCount, naCount, closed };
     },
     onSuccess: async () => {
       await Promise.all([

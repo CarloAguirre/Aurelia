@@ -1,4 +1,11 @@
-import type { CreateInspectionFindingRequest, CreateInspectionRequest, InspectionChecklistAnswerResponse, InspectionFindingResponse, InspectionResponse, UpsertInspectionAnswerRequest } from '@aurelia/contracts';
+import type {
+  CreateInspectionFindingRequest,
+  CreateInspectionRequest,
+  InspectionChecklistAnswerResponse,
+  InspectionFindingResponse,
+  InspectionResponse,
+  UpsertInspectionAnswerRequest,
+} from '@aurelia/contracts';
 import { httpGet, httpPost } from './http-client';
 
 export function fetchInspections(): Promise<InspectionResponse[]> {
@@ -15,6 +22,10 @@ export function submitInspectionAnswer(inspectionId: string, payload: UpsertInsp
 
 export function submitInspectionFinding(inspectionId: string, payload: CreateInspectionFindingRequest): Promise<InspectionFindingResponse> {
   return httpPost<CreateInspectionFindingRequest, InspectionFindingResponse>(`/inspections/${inspectionId}/findings`, payload);
+}
+
+export function fetchInspectionFindings(inspectionId: string): Promise<InspectionFindingResponse[]> {
+  return httpGet<InspectionFindingResponse[]>(`/inspections/${inspectionId}/findings`);
 }
 
 export function closeInspection(inspectionId: string, reason?: string): Promise<InspectionResponse> {

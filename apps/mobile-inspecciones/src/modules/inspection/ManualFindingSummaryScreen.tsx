@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
@@ -9,9 +9,13 @@ import { OfflineBanner } from '../../shared/components/form/ManualFormUi';
 import { ManualFlowFooter, ManualFlowHeader } from '../../shared/components/form/ManualFlowScaffold';
 import { ManualFormStepper } from './ManualSelectionUi';
 import { fetchResponsibleUsersLocalFirst } from '../../shared/services/api/inspection-responsibles.api';
+import { useMobileSession } from '../auth/mobileSession.store';
 import { useManualConnectivityStatus } from './useManualConnectivityStatus';
 import { useManualInspectionDraft, type ManualFindingObservationDraft } from './manualInspection.store';
 import { useManualInspectionFlowStore } from './manualInspectionFlow.store';
+import { usePersistManualInspectionDraft } from './hooks/usePersistManualInspectionDraft';
+import { useSaveManualFindingInspectionOffline } from './hooks/useSaveManualFindingInspectionOffline';
+import { markManualInspectionDraftCompleted } from './manualInspectionDrafts.storage';
 
 function trimLocationLabel(value: string): string {
   return value.replace(/ ± .*/, '').trim();
@@ -44,9 +48,9 @@ function ObservationRow({ observation, index }: { observation: ManualFindingObse
   return <View style={styles.observationRow}><View style={styles.observationBadges}><View style={styles.obsBadge}><Text style={styles.obsBadgeText}>Obs. {index + 1}</Text></View><View style={[styles.severityBadge, badge.box]}><Text style={[styles.severityBadgeText, badge.text]}>{label}</Text></View></View><Text style={styles.observationText}>{observation.detectedCondition || 'Sin descripción'}</Text><View style={styles.slaRow}><Text style={styles.rowLabel}>SLA calculado</Text><Text style={styles.slaValue}>{observation.severityClosureTimeLabel ?? 'xx días hábiles'}</Text></View></View>;
 }
 
-function ResponsiblesCard({ companyName, users, selectedIds }: { companyName: string | null; users: UserResponse[]; selectedIds: string[] }) {
+function ResponsiblesCard({ companyName, users, selectedIds, currentUserId }: { companyName: string | null; users: UserResponse[]; selectedIds: string[]; currentUserId: string | null }) {
   const selected = selectedIds.map((id) => users.find((user) => user.id === id)).filter(Boolean) as UserResponse[];
-  return <SectionCard title="Responsables" icon="user-tie"><SummaryRow label="EECC" value={companyName ?? '-'} />{selected.map((user, index) => <View key={user.id} style={styles.personRow}><View style={[styles.avatar, index === 0 ? styles.avatarGold : styles.avatarBlue]}><Text style={[styles.avatarText, index === 0 ? styles.avatarGoldText : styles.avatarBlueText]}>{initials(user.fullName)}</Text></View><View style={styles.personCopy}><Text style={styles.personName}>{user.fullName}</Text><Text style={styles.personRole}>{user.position || user.roles?.[0]?.name || 'Sin perfil'}</Text></View>{index === 0 ? <View style={styles.youBadge}><Text style={styles.youBadgeText}>Tú</Text></View> : null}</View>)}</SectionCard>;
+  return <SectionCard title="Responsables" icon="user-tie"><SummaryRow label="EECC" value={companyName ?? '-'} />{selected.map((user, index) => <View key={user.id} style={styles.personRow}><View style={[styles.avatar, index === 0 ? styles.avatarGold : styles.avatarBlue]}><Text style={[styles.avatarText, index === 0 ? styles.avatarGoldText : styles.avatarBlueText]}>{initials(user.fullName)}</Text></View><View style={styles.personCopy}><Text style={styles.personName}>{user.fullName}</Text><Text style={styles.personRole}>{user.position || user.roles?.[0]?.name || 'Sin perfil'}</Text></View>{currentUserId && user.id === currentUserId ? <View style={styles.youBadge}><Text style={styles.youBadgeText}>Tú</Text></View> : null}</View>)}</SectionCard>;
 }
 
 function OfflineNotice() {
@@ -54,12 +58,16 @@ function OfflineNotice() {
 }
 
 export function ManualFindingSummaryScreen() {
+  usePersistManualInspectionDraft();
   const { online, hasSession } = useManualConnectivityStatus();
   const draft = useManualInspectionDraft();
+  const currentUserId = useMobileSession((state) => state.user?.id ?? null);
+  const setLastSavedResult = useManualInspectionDraft((state) => state.setLastSavedResult);
   const goToObservations = useManualInspectionFlowStore((state) => state.goToObservations);
   const goToSummary = useManualInspectionFlowStore((state) => state.goToSummary);
   const [users, setUsers] = React.useState<UserResponse[]>([]);
   const observations = draft.findingObservations.filter((item) => item.saved);
+  const saveMutation = useSaveManualFindingInspectionOffline();
 
   React.useEffect(() => { goToSummary(); }, [goToSummary]);
 
@@ -71,9 +79,36 @@ export function ManualFindingSummaryScreen() {
   }, [draft.findingCompanyId]);
 
   function back() { goToObservations(); router.replace('/inspection/manual/observations'); }
-  function save() { router.replace('/inspection/manual/saved'); }
+  function save() {
+    if (observations.length === 0) {
+      Alert.alert('Observación requerida', 'Debes registrar al menos una observación antes de guardar.');
+      return;
+    }
+    if (!draft.findingCompanyId) {
+      Alert.alert('Empresa requerida', 'Selecciona la empresa responsable antes de guardar.');
+      return;
+    }
+    if (draft.findingResponsibleIds.length === 0) {
+      Alert.alert('Responsables requeridos', 'Selecciona al menos un responsable antes de guardar.');
+      return;
+    }
 
-  return <SafeAreaProvider><SafeAreaView style={styles.safe} edges={['top', 'bottom']}><View style={styles.screen}><ManualFlowHeader title="Observaciones" subtitle="Paso 4 de 5" badge="GF HSE" onBack={back} /><OfflineBanner online={online} hasSession={hasSession} /><ManualFormStepper activeStep={4} steps={['Datos', 'Tipo', 'Obs.', 'Resumen']} /><ScrollView style={styles.content} contentContainerStyle={styles.contentInner} showsVerticalScrollIndicator={false}><View style={styles.copyBlock}><Text style={styles.title}>Resumen</Text><Text style={styles.subtitle}>Revisa antes de guardar · se sincronizará al recuperar red</Text></View><SectionCard title="Quién realizó la inspección" icon="user-tie"><SummaryRow label="Nombre" value={draft.inspectorName} /><SummaryRow label="Empresa" value={draft.inspectorCompanyName} /></SectionCard><SectionCard title="Donde y cuándo" icon="map-marked-alt"><SummaryRow label="Área · Sector" value={`${draft.areaName ?? '-'} · ${draft.sectorName ?? '-'}`} /><SummaryRow label="Fecha" value={draft.inspectionDate} /><SummaryRow label="Tipo" value="Hallazgo" /><SummaryRow label="Ubicación UTM" value={trimLocationLabel(draft.locationLabel)} mono /></SectionCard><SectionCard title={`Observaciones (${observations.length})`} icon="tasks">{observations.map((observation, index) => <ObservationRow key={observation.id} observation={observation} index={index} />)}</SectionCard><ResponsiblesCard companyName={draft.findingCompanyName} users={users} selectedIds={draft.findingResponsibleIds} /><OfflineNotice /></ScrollView><ManualFlowFooter secondaryLabel="Atrás" secondaryIcon="arrow-left" onSecondary={back} onPrimary={save} primaryLabel="Guardar inspección" primaryVariant="success" primaryIcon="check" /></View></SafeAreaView></SafeAreaProvider>;
+    saveMutation.mutate(
+      { draft, trySyncNow: online && hasSession },
+      {
+        onSuccess: (result) => {
+          if (draft.draftId) void markManualInspectionDraftCompleted(draft.draftId);
+          setLastSavedResult(result);
+          router.replace('/inspection/manual/saved');
+        },
+        onError: (error) => {
+          Alert.alert('No se pudo guardar', error instanceof Error ? error.message : 'Ocurrió un error al guardar la inspección.');
+        },
+      },
+    );
+  }
+
+  return <SafeAreaProvider><SafeAreaView style={styles.safe} edges={['top', 'bottom']}><View style={styles.screen}><ManualFlowHeader title="Observaciones" subtitle="Paso 4 de 5" badge="GF HSE" onBack={back} /><OfflineBanner online={online} hasSession={hasSession} /><ManualFormStepper activeStep={4} steps={['Datos', 'Tipo', 'Obs.', 'Resumen']} /><ScrollView style={styles.content} contentContainerStyle={styles.contentInner} showsVerticalScrollIndicator={false}><View style={styles.copyBlock}><Text style={styles.title}>Resumen</Text><Text style={styles.subtitle}>Revisa antes de guardar · se sincronizará al recuperar red</Text></View><SectionCard title="Quién realizó la inspección" icon="user-tie"><SummaryRow label="Nombre" value={draft.inspectorName} /><SummaryRow label="Empresa" value={draft.inspectorCompanyName} /></SectionCard><SectionCard title="Donde y cuándo" icon="map-marked-alt"><SummaryRow label="Área · Sector" value={`${draft.areaName ?? '-'} · ${draft.sectorName ?? '-'}`} /><SummaryRow label="Fecha" value={draft.inspectionDate} /><SummaryRow label="Tipo" value="Hallazgo" /><SummaryRow label="Ubicación UTM" value={trimLocationLabel(draft.locationLabel)} mono /></SectionCard><SectionCard title={`Observaciones (${observations.length})`} icon="tasks">{observations.map((observation, index) => <ObservationRow key={observation.id} observation={observation} index={index} />)}</SectionCard><ResponsiblesCard companyName={draft.findingCompanyName} users={users} selectedIds={draft.findingResponsibleIds} currentUserId={currentUserId} /><OfflineNotice /></ScrollView><ManualFlowFooter secondaryLabel="Atrás" secondaryIcon="arrow-left" onSecondary={back} onPrimary={save} primaryDisabled={saveMutation.isPending} primaryLabel={saveMutation.isPending ? 'Guardando...' : 'Guardar inspección'} primaryVariant="success" primaryIcon="check" /></View></SafeAreaView></SafeAreaProvider>;
 }
 
 const styles = StyleSheet.create({

@@ -35,11 +35,7 @@ export function InspectionModeScreen() {
   }
 
   function cancelInspection() {
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
-    router.replace('/inspection/start');
+    router.replace('/inspection/dashboard');
   }
 
   return (

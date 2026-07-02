@@ -7,6 +7,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import type { CompanyResponse, InspectionFindingSeverityResponse, UserResponse } from '@aurelia/contracts';
 import { colors, fontWeight } from '../../shared/theme/tokens';
 import { OfflineBanner } from '../../shared/components/form/ManualFormUi';
+import { PhotoSourceSheet } from '../../shared/components/form/PhotoSourceSheet';
 import { ManualFlowFooter, ManualFlowHeader } from '../../shared/components/form/ManualFlowScaffold';
 import { ManualFormStepper, type SelectSheetOption } from './ManualSelectionUi';
 import { fetchInspectionFindingSeveritiesLocalFirst, fetchInspectionFindingTypesLocalFirst } from '../../shared/services/api/inspection-finding-catalogs.api';
@@ -14,6 +15,8 @@ import { fetchResponsibleCompaniesLocalFirst, fetchResponsibleUsersLocalFirst } 
 import { type ManualFindingObservationDraft, useManualInspectionDraft } from './manualInspection.store';
 import { useManualConnectivityStatus } from './useManualConnectivityStatus';
 import { useManualInspectionFlowStore } from './manualInspectionFlow.store';
+import { removeManualInspectionDraft } from './manualInspectionDrafts.storage';
+import { usePersistManualInspectionDraft } from './hooks/usePersistManualInspectionDraft';
 
 type CatalogStatus = { loading: boolean; error: string | null };
 
@@ -142,12 +145,12 @@ function UsersPickerModal({ visible, users, loading, errorMessage, selectedIds, 
   );
 }
 
-function PhotoSourceModal({ visible, onClose, onCamera, onGallery }: { visible: boolean; onClose: () => void; onCamera: () => void; onGallery: () => void }) {
-  return <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}><View style={styles.modalRoot}><TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose} /><View style={styles.photoSourcePanel}><View style={styles.photoSourceHandle} /><Text style={styles.photoSourceHeading}>Seleccione el método</Text><Text style={styles.photoSourceDescription}>Seleccione entre subir una foto desde la galería o tomar una foto</Text><TouchableOpacity style={styles.photoSourceCard} activeOpacity={0.75} onPress={onGallery}><View style={styles.photoSourceIconBox}><FontAwesome5 name="image" size={20} color="#666666" /></View><View style={styles.photoSourceTextBox}><Text style={styles.photoSourceTitle}>Subir una imagen</Text><Text style={styles.photoSourceSub}>Seleccione la imagen desde su galería</Text></View></TouchableOpacity><TouchableOpacity style={styles.photoSourceCard} activeOpacity={0.75} onPress={onCamera}><View style={styles.photoSourceIconBox}><FontAwesome5 name="camera" size={20} color="#666666" /></View><View style={styles.photoSourceTextBox}><Text style={styles.photoSourceTitle}>Tomar una foto</Text><Text style={styles.photoSourceSub}>Sacar una foto directamente con la cámara</Text></View></TouchableOpacity><TouchableOpacity style={styles.photoSourceCancel} activeOpacity={0.75} onPress={onClose}><Text style={styles.photoSourceCancelText}>Cancelar</Text></TouchableOpacity></View></View></Modal>;
-}
-
 function CancelInspectionModal({ visible, onClose, onConfirm }: { visible: boolean; onClose: () => void; onConfirm: () => void }) {
   return <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}><View style={styles.cancelModalRoot}><View style={styles.cancelModalBackdrop} /><View style={styles.cancelModalCard}><View style={styles.cancelModalTopRow}><View style={styles.cancelModalInfoIcon}><FontAwesome5 name="info" size={18} color="#1E5A92" /></View><TouchableOpacity style={styles.cancelModalClose} activeOpacity={0.7} onPress={onClose}><FontAwesome5 name="times" size={24} color="#111111" /></TouchableOpacity></View><Text style={styles.cancelModalTitle}>Cancelar</Text><Text style={styles.cancelModalBody}>Usted está dando por cancelada esta inspección. Al hacer esto se borrarán todos los datos ingresados y la inspección desaparecerá.{`\n`}¿Estás de acuerdo?</Text><TouchableOpacity style={styles.cancelModalPrimary} activeOpacity={0.82} onPress={onConfirm}><Text style={styles.cancelModalPrimaryText}>Cancelar inspección</Text></TouchableOpacity><TouchableOpacity style={styles.cancelModalSecondary} activeOpacity={0.75} onPress={onClose}><Text style={styles.cancelModalSecondaryText}>Volver al formulario</Text></TouchableOpacity></View></View></Modal>;
+}
+
+function PhotoSourceModal({ visible, onClose, onCamera, onGallery }: { visible: boolean; onClose: () => void; onCamera: () => void; onGallery: () => void }) {
+  return <PhotoSourceSheet visible={visible} onClose={onClose} onCamera={onCamera} onGallery={onGallery} />;
 }
 
 function ObservationForm({ index, observation, severities, severityStatus, onUpdate, onCancelInspection }: { index: number; observation: ManualFindingObservationDraft; severities: InspectionFindingSeverityResponse[]; severityStatus: CatalogStatus; onUpdate: (patch: Partial<Omit<ManualFindingObservationDraft, 'id'>>) => void; onCancelInspection: () => void }) {
@@ -178,6 +181,7 @@ function ResponsiblesCard({ companyName, personnelLabel, personnelDisabled, onOp
 }
 
 export function ManualFindingObservationsSeverityScreen() {
+  usePersistManualInspectionDraft();
   const { online, hasSession } = useManualConnectivityStatus();
   const draft = useManualInspectionDraft();
   const setFindingType = useManualInspectionDraft((state) => state.setFindingType);
@@ -231,7 +235,13 @@ export function ManualFindingObservationsSeverityScreen() {
   function back() { closePicker(); goToType(); router.replace('/inspection/manual/type'); }
   function selectFindingType(option: SelectSheetOption) { setFindingType(option.id, option.label); closePicker(); }
   function addObservation() { if (!draft.findingTypeId || activeObservation) return; addFindingObservation(); }
-  function cancelInspection() { closePicker(); resetDraft(); resetFlow(); router.replace('/inspection/start'); }
+  function cancelInspection() {
+    closePicker();
+    if (draft.draftId) void removeManualInspectionDraft(draft.draftId);
+    resetDraft();
+    resetFlow();
+    router.replace('/inspection/start');
+  }
   function selectCompany(company: CompanyResponse) { setFindingCompany(company.id, company.name); setCompanyPickerOpen(false); }
   function toggleUser(userId: string) { const next = draft.findingResponsibleIds.includes(userId) ? draft.findingResponsibleIds.filter((id) => id !== userId) : [...draft.findingResponsibleIds, userId]; setFindingResponsibles(next); }
   function openUsers() { if (!draft.findingCompanyId) return; setUsersPickerOpen(true); }

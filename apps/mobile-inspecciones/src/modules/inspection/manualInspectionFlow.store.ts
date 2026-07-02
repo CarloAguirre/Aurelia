@@ -13,6 +13,7 @@ interface ManualInspectionFlowState {
   openPicker: (picker: Exclude<ManualInspectionPicker, null>) => void;
   closePicker: () => void;
   resetFlow: () => void;
+  hydrateFlow: (step: number) => void;
 }
 
 export const useManualInspectionFlowStore = create<ManualInspectionFlowState>((set) => ({
@@ -26,4 +27,5 @@ export const useManualInspectionFlowStore = create<ManualInspectionFlowState>((s
   openPicker: (activePicker) => set({ activePicker }),
   closePicker: () => set({ activePicker: null }),
   resetFlow: () => set({ currentStep: 1, activePicker: null }),
+  hydrateFlow: (currentStep) => set({ currentStep, activePicker: null }),
 }));

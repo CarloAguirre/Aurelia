@@ -1,5 +1,6 @@
 import React, { Fragment, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, fontSize, fontWeight, radius, spacing } from '../../theme/tokens';
 
 const OPTIONS = [1, 3, 7, 14];
@@ -34,6 +35,7 @@ export function SlaConfirmWidget({ initialDays, observationNumber, resolved = fa
         </View>
       </View>
       <TouchableOpacity disabled={resolved} activeOpacity={0.8} onPress={() => onSave(days)} style={[styles.saveButton, resolved && styles.saveButtonResolved]}>
+        <FontAwesome5 name={resolved ? 'lock' : 'save'} size={10} color={colors.white} solid />
         <Text style={styles.saveText}>Guardar observación {observationNumber}</Text>
       </TouchableOpacity>
     </Fragment>
@@ -116,15 +118,17 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     marginLeft: 33,
     marginTop: 8,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+    height: 36,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    gap: 6,
   },
   saveButtonResolved: {
     opacity: 0.45,
   },
   saveText: {
     color: colors.white,
-    fontSize: fontSize.sm,
+    fontSize: fontSize.xs + 1,
     fontWeight: fontWeight.bold,
   },
 });

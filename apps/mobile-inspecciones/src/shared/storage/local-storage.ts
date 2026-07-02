@@ -1,3 +1,6 @@
+import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 export interface LocalStorageDriver {
   get<T>(key: string): Promise<T | null>;
   set<T>(key: string, value: T): Promise<void>;
@@ -70,7 +73,43 @@ class BrowserLocalStorageDriver implements LocalStorageDriver {
   }
 }
 
+class AsyncStorageDriver implements LocalStorageDriver {
+  constructor(private readonly namespace: string) {}
+
+  async get<T>(key: string): Promise<T | null> {
+    const value = await AsyncStorage.getItem(this.toKey(key));
+    return value ? JSON.parse(value) as T : null;
+  }
+
+  async set<T>(key: string, value: T): Promise<void> {
+    await AsyncStorage.setItem(this.toKey(key), JSON.stringify(value));
+  }
+
+  async remove(key: string): Promise<void> {
+    await AsyncStorage.removeItem(this.toKey(key));
+  }
+
+  async keys(prefix = ''): Promise<string[]> {
+    const keys = await AsyncStorage.getAllKeys();
+    const fullPrefix = this.toKey(prefix);
+    return keys
+      .filter((key) => key.startsWith(fullPrefix))
+      .map((key) => key.replace(`${this.namespace}:`, ''));
+  }
+
+  async clear(prefix = ''): Promise<void> {
+    const keys = await this.keys(prefix);
+    if (keys.length === 0) return;
+    await AsyncStorage.multiRemove(keys.map((key) => this.toKey(key)));
+  }
+
+  private toKey(key: string): string {
+    return `${this.namespace}:${key}`;
+  }
+}
+
 function canUseBrowserStorage(): boolean {
+  if (Platform.OS !== 'web') return false;
   try {
     return typeof globalThis.localStorage !== 'undefined';
   } catch {
@@ -80,4 +119,6 @@ function canUseBrowserStorage(): boolean {
 
 export const localStorageDriver: LocalStorageDriver = canUseBrowserStorage()
   ? new BrowserLocalStorageDriver('aurelia-mobile-inspecciones')
-  : new MemoryLocalStorageDriver();
+  : Platform.OS === 'web'
+    ? new MemoryLocalStorageDriver()
+    : new AsyncStorageDriver('aurelia-mobile-inspecciones');

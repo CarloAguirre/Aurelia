@@ -85,6 +85,10 @@ export interface InspectionChecklistAnswer extends BaseEntity {
 export interface InspectionFinding extends BaseEntity {
   inspectionId: ID;
   checklistItemId: ID | null;
+  findingTypeId: ID | null;
+  severityId: ID | null;
+  responsibleCompanyId: ID | null;
+  responsibleUserIds: ID[];
   title: string;
   description: string | null;
   severity: InspectionFindingSeverity;

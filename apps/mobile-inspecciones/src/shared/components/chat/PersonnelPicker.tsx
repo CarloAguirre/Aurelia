@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -6,17 +6,27 @@ import {
   ScrollView,
   StyleSheet,
 } from 'react-native';
+import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
+import { SparklesMark } from '../icons/SparklesMark';
 import type { UserResponse } from '../../services/api/users.api';
 
 interface Props {
   users: UserResponse[];
   onConfirm: (selected: UserResponse[]) => void;
   confirmed?: boolean;
+  suggestedUserId?: string | null;
 }
 
-export function PersonnelPicker({ users, onConfirm, confirmed = false }: Props) {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+export function PersonnelPicker({ users, onConfirm, confirmed = false, suggestedUserId = null }: Props) {
+  const effectiveSuggestedUserId = useMemo(() => suggestedUserId ?? users[0]?.id ?? null, [suggestedUserId, users]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(
+    () => new Set(effectiveSuggestedUserId ? [effectiveSuggestedUserId] : []),
+  );
+
+  useEffect(() => {
+    setSelectedIds(new Set(effectiveSuggestedUserId ? [effectiveSuggestedUserId] : []));
+  }, [effectiveSuggestedUserId]);
 
   function toggle(id: string) {
     if (confirmed) return;
@@ -36,44 +46,47 @@ export function PersonnelPicker({ users, onConfirm, confirmed = false }: Props) 
   const count = selectedIds.size;
 
   return (
-    <View style={[styles.container, styles.marginLeft]}>
-      <View style={styles.header}>
-        <Text style={styles.headerText}>Personal presente</Text>
-        {count > 0 && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{count}</Text>
-          </View>
-        )}
-      </View>
-      <ScrollView style={styles.list} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+    <View style={styles.marginLeft}>
+      <View style={styles.listShell}>
+        <ScrollView style={styles.list} nestedScrollEnabled showsVerticalScrollIndicator={false}>
         {users.map((user) => {
           const isSelected = selectedIds.has(user.id);
+          const isSuggested = user.id === effectiveSuggestedUserId;
           return (
             <TouchableOpacity
               key={user.id}
               onPress={() => toggle(user.id)}
               disabled={confirmed}
-              style={[styles.row, isSelected && styles.rowSelected]}
+              style={[styles.row, isSelected && styles.rowSelected, isSuggested && styles.rowSuggested]}
               activeOpacity={0.7}
             >
-              <View style={[styles.avatar, isSelected && styles.avatarSelected]}>
-                <Text style={[styles.avatarText, isSelected && styles.avatarTextSelected]}>
+              <View style={[styles.avatar, isSuggested && styles.avatarSuggested]}>
+                <Text style={[styles.avatarText, isSuggested && styles.avatarTextSuggested]}>
                   {user.firstName[0]}{user.lastName[0]}
                 </Text>
               </View>
               <View style={styles.info}>
                 <Text style={styles.name}>{user.fullName}</Text>
-                {user.position ? (
-                  <Text style={styles.position}>{user.position}</Text>
-                ) : null}
+                <Text style={styles.position}>
+                  {`${user.companyName ?? ''}${user.position ? `${user.companyName ? ' · ' : ''}${user.position}` : ''}` || 'Responsable'}
+                </Text>
               </View>
+              {isSuggested ? (
+                <View style={styles.suggestedTag}>
+                  <SparklesMark size={10} color={colors.goldDark} />
+                  <Text style={styles.suggestedTagText}>Sugerido</Text>
+                </View>
+              ) : (
+                <View style={styles.spacer} />
+              )}
               <View style={[styles.check, isSelected && styles.checkSelected]}>
-                {isSelected && <Text style={styles.checkMark}>✓</Text>}
+                {isSelected && <FontAwesome5 name="check" size={9} color={colors.white} solid />}
               </View>
             </TouchableOpacity>
           );
         })}
-      </ScrollView>
+        </ScrollView>
+      </View>
       {!confirmed && (
         <TouchableOpacity
           onPress={handleConfirm}
@@ -81,9 +94,8 @@ export function PersonnelPicker({ users, onConfirm, confirmed = false }: Props) 
           style={[styles.confirmBtn, count === 0 && styles.confirmBtnDisabled]}
           activeOpacity={0.8}
         >
-          <Text style={styles.confirmBtnText}>
-            Confirmar {count > 0 ? `(${count})` : ''}
-          </Text>
+          <FontAwesome5 name="arrow-right" size={12} color={colors.white} solid />
+          <Text style={styles.confirmBtnText}>Confirmar y ver resumen</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -92,53 +104,32 @@ export function PersonnelPicker({ users, onConfirm, confirmed = false }: Props) 
 
 const styles = StyleSheet.create({
   marginLeft: { marginLeft: 33 },
-  container: {
+  listShell: {
     backgroundColor: colors.white,
     borderWidth: 1.5,
     borderColor: colors.borderMid,
     borderRadius: radius.md + 2,
     overflow: 'hidden',
-    maxHeight: 320,
+    maxHeight: 280,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  headerText: {
-    fontSize: 10,
-    fontWeight: fontWeight.bold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.05,
-    color: colors.muted,
-    flex: 1,
-  },
-  badge: {
-    backgroundColor: colors.teal,
-    borderRadius: radius.full,
-    minWidth: 18,
-    height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 5,
-  },
-  badgeText: { fontSize: 9, fontWeight: fontWeight.bold, color: colors.white },
   list: { maxHeight: 220 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm + 2,
     paddingHorizontal: spacing.md,
-    paddingVertical: 9,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
   rowSelected: { backgroundColor: colors.tealSurf },
+  rowSuggested: {
+    borderColor: colors.teal,
+    borderWidth: 1.5,
+    marginHorizontal: 1,
+    marginVertical: 1,
+    borderRadius: radius.md,
+  },
   avatar: {
     width: 30,
     height: 30,
@@ -148,12 +139,32 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  avatarSelected: { backgroundColor: colors.teal },
+  avatarSuggested: {
+    backgroundColor: colors.gold,
+  },
   avatarText: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.blueTxt },
-  avatarTextSelected: { color: colors.white },
+  avatarTextSuggested: { color: colors.navy },
   info: { flex: 1 },
   name: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.primary },
   position: { fontSize: fontSize.xs, color: colors.muted, marginTop: 1 },
+  suggestedTag: {
+    borderRadius: 3,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#FDF3E3',
+    marginRight: 2,
+  },
+  suggestedTagText: {
+    color: colors.goldDark,
+    fontSize: 9,
+    fontWeight: fontWeight.bold,
+  },
+  spacer: {
+    width: 54,
+  },
   check: {
     width: 20,
     height: 20,
@@ -165,7 +176,6 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   checkSelected: { borderColor: colors.teal, backgroundColor: colors.teal },
-  checkMark: { fontSize: 9, color: colors.white, fontWeight: fontWeight.bold },
   confirmBtn: {
     margin: spacing.sm + 2,
     height: 36,
@@ -173,6 +183,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.teal,
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 10,
   },
   confirmBtnDisabled: { opacity: 0.45 },
   confirmBtnText: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.white },

@@ -28,7 +28,23 @@ interface SaveManualInspectionOfflineInput {
 const CREATE_INSPECTION = 'CREATE_INSPECTION' as MobileSyncOperationType;
 const UPSERT_INSPECTION_ANSWER = 'UPSERT_INSPECTION_ANSWER' as MobileSyncOperationType;
 const CREATE_INSPECTION_FINDING = 'CREATE_INSPECTION_FINDING' as MobileSyncOperationType;
+const UPLOAD_ATTACHMENT = 'UPLOAD_ATTACHMENT' as MobileSyncOperationType;
 const CLOSE_INSPECTION = 'CLOSE_INSPECTION' as MobileSyncOperationType;
+
+interface UploadAttachmentSyncPayload {
+  inspectionLocalId: string;
+  findingLocalId: string | null;
+  localEvidenceId: string;
+  sourceUri: string | null;
+  remoteFileId: string | null;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  evidenceType: 'photo';
+  title: string;
+  capturedAt: string;
+  category: 'finding_evidence';
+}
 
 function createId(prefix: string): string {
   const random = Math.random().toString(36).slice(2, 10);
@@ -62,6 +78,11 @@ function getDueDate(): string {
   const date = new Date();
   date.setDate(date.getDate() + 7);
   return date.toISOString();
+}
+
+function buildEvidenceTitle(item: ManualTemplateItem, detail: ManualInspectionDraft['detailsByItemId'][string]): string {
+  const base = detail?.detectedCondition?.trim() || `Obs. ${item.index + 1} · ${item.code}`;
+  return `Foto: ${base}`.slice(0, 180);
 }
 
 export function useSaveManualInspectionOffline() {
@@ -104,6 +125,36 @@ export function useSaveManualInspectionOffline() {
         deviceSessionId: session.deviceSessionId,
       });
 
+      if (draft.generalPhoto) {
+        const localEvidenceId = createId('evidence');
+        const inspectionAttachmentPayload: UploadAttachmentSyncPayload = {
+          inspectionLocalId: localInspectionId,
+          findingLocalId: null,
+          localEvidenceId,
+          sourceUri: draft.generalPhoto.uri,
+          remoteFileId: null,
+          fileName: draft.generalPhoto.name,
+          mimeType: 'image/jpeg',
+          sizeBytes: 0,
+          evidenceType: 'photo',
+          title: `Foto general: ${title}`.slice(0, 180),
+          capturedAt: new Date().toISOString(),
+          category: 'finding_evidence',
+        };
+
+        await syncQueue.enqueue({
+          localId: localEvidenceId,
+          operationType: UPLOAD_ATTACHMENT,
+          entityType: 'evidence',
+          payload: inspectionAttachmentPayload,
+          createdBy,
+          deviceId: session.deviceId,
+          deviceSessionId: session.deviceSessionId,
+          evidences: [{ localEvidenceId, localEntityId: localInspectionId, fileName: draft.generalPhoto.name, mimeType: 'image/jpeg', sizeBytes: 0 }],
+          dependsOnLocalIds: [localInspectionId],
+        });
+      }
+
       for (const item of items) {
         const answer = draft.answersByItemId[item.id];
         const detail = draft.detailsByItemId[item.id] ?? {};
@@ -127,24 +178,57 @@ export function useSaveManualInspectionOffline() {
           dependsOnLocalIds: [localInspectionId],
         });
         if (answer === InspectionAnswerValue.NOT_COMPLIANT) {
+          const findingLocalId = createId('finding');
           const findingPayload: CreateInspectionFindingRequest = {
             checklistItemId: item.id,
             title: `Obs. ${item.index + 1} · ${item.code}`.slice(0, 200),
             description: buildFindingDescription(detail),
             severity: InspectionFindingSeverity.HIGH,
-            ownerUserId: null,
+            ownerUserId: draft.findingResponsibleIds[0] ?? null,
+            responsibleCompanyId: draft.findingCompanyId,
+            responsibleUserIds: draft.findingResponsibleIds,
             dueAt: getDueDate(),
           };
           await syncQueue.enqueue({
+            localId: findingLocalId,
             operationType: CREATE_INSPECTION_FINDING,
             entityType: 'inspection_finding',
             payload: { inspectionLocalId: localInspectionId, ...findingPayload },
             createdBy,
             deviceId: session.deviceId,
             deviceSessionId: session.deviceSessionId,
-            evidences: detail.evidence ? [{ localEvidenceId: createId('evidence'), localEntityId: localInspectionId, fileName: detail.evidence.name, mimeType: 'image/jpeg', sizeBytes: 0 }] : undefined,
             dependsOnLocalIds: [localInspectionId, answerLocalId],
           });
+
+          if (detail.evidence) {
+            const localEvidenceId = createId('evidence');
+            const uploadPayload: UploadAttachmentSyncPayload = {
+              inspectionLocalId: localInspectionId,
+              findingLocalId,
+              localEvidenceId,
+              sourceUri: detail.evidence.uri,
+              remoteFileId: null,
+              fileName: detail.evidence.name,
+              mimeType: 'image/jpeg',
+              sizeBytes: 0,
+              evidenceType: 'photo',
+              title: buildEvidenceTitle(item, detail),
+              capturedAt: new Date().toISOString(),
+              category: 'finding_evidence',
+            };
+
+            await syncQueue.enqueue({
+              localId: localEvidenceId,
+              operationType: UPLOAD_ATTACHMENT,
+              entityType: 'evidence',
+              payload: uploadPayload,
+              createdBy,
+              deviceId: session.deviceId,
+              deviceSessionId: session.deviceSessionId,
+              evidences: [{ localEvidenceId, localEntityId: findingLocalId, fileName: detail.evidence.name, mimeType: 'image/jpeg', sizeBytes: 0 }],
+              dependsOnLocalIds: [localInspectionId, findingLocalId],
+            });
+          }
         }
       }
 
@@ -178,7 +262,7 @@ export function useSaveManualInspectionOffline() {
       });
 
       if (trySyncNow) void syncPendingOperations();
-      return { inspectionId: localInspectionId, totalCount: items.length, yesCount, noCount, naCount, closed: noCount === 0 };
+      return { mode: 'checklist', inspectionId: localInspectionId, totalCount: items.length, yesCount, noCount, naCount, closed: noCount === 0 };
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['mobile-inspecciones', 'inspections'] });

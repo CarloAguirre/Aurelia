@@ -9,7 +9,9 @@ import { OfflineBanner } from '../../shared/components/form/ManualFormUi';
 import { ManualFlowHeader } from '../../shared/components/form/ManualFlowScaffold';
 import { ManualFormStepper } from './ManualSelectionUi';
 import { useInspectionChecklistTemplates } from './hooks/useInspectionChecklistTemplates';
+import { usePersistManualInspectionDraft } from './hooks/usePersistManualInspectionDraft';
 import { useSaveManualInspectionOffline } from './hooks/useSaveManualInspectionOffline';
+import { markManualInspectionDraftCompleted } from './manualInspectionDrafts.storage';
 import { useManualConnectivityStatus } from './useManualConnectivityStatus';
 import { useManualInspectionDraft } from './manualInspection.store';
 import { useManualInspectionFlowStore } from './manualInspectionFlow.store';
@@ -37,6 +39,7 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 }
 
 export function ManualInspectionSummaryFixedScreen() {
+  usePersistManualInspectionDraft();
   const { online, hasSession } = useManualConnectivityStatus();
   const draft = useManualInspectionDraft();
   const setLastSavedResult = useManualInspectionDraft((state) => state.setLastSavedResult);
@@ -80,6 +83,7 @@ export function ManualInspectionSummaryFixedScreen() {
       { draft, template: selectedTemplate, items: indexedItems, trySyncNow: online && hasSession },
       {
         onSuccess: (result) => {
+          if (draft.draftId) void markManualInspectionDraftCompleted(draft.draftId);
           setLastSavedResult(result);
           router.replace('/inspection/manual/saved');
         },

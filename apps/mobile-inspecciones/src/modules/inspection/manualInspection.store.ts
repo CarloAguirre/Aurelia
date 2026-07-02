@@ -30,6 +30,7 @@ export interface ManualFindingObservationDraft {
 }
 
 export interface ManualSavedInspectionResult {
+  mode: 'checklist' | 'finding';
   inspectionId: string;
   totalCount: number;
   yesCount: number;
@@ -39,6 +40,7 @@ export interface ManualSavedInspectionResult {
 }
 
 export interface ManualInspectionDraft {
+  draftId: string | null;
   inspectorName: string;
   inspectorCompanyName: string;
   areaId: string | null;
@@ -80,6 +82,7 @@ interface ManualInspectionLocationInput {
 }
 
 interface ManualInspectionState extends ManualInspectionDraft {
+  setDraftId: (draftId: string | null) => void;
   setArea: (id: string, name: string) => void;
   setSector: (id: string, name: string) => void;
   setInspectionDate: (value: string) => void;
@@ -96,10 +99,12 @@ interface ManualInspectionState extends ManualInspectionDraft {
   setFindingCompany: (id: string | null, name: string | null) => void;
   setFindingResponsibles: (ids: string[]) => void;
   setLastSavedResult: (result: ManualSavedInspectionResult) => void;
+  hydrate: (draft: ManualInspectionDraft) => void;
   reset: () => void;
 }
 
 const initialDraft: ManualInspectionDraft = {
+  draftId: null,
   inspectorName: 'Karen Opazo S.',
   inspectorCompanyName: 'Gold Fields',
   areaId: null,
@@ -138,6 +143,7 @@ function newObservationId() {
 
 export const useManualInspectionDraft = create<ManualInspectionState>((set) => ({
   ...initialDraft,
+  setDraftId: (draftId) => set({ draftId }),
   setArea: (id, name) => set({ areaId: id, areaName: name, sectorId: null, sectorName: null }),
   setSector: (id, name) => set({ sectorId: id, sectorName: name }),
   setInspectionDate: (inspectionDate) => set({ inspectionDate }),
@@ -168,5 +174,6 @@ export const useManualInspectionDraft = create<ManualInspectionState>((set) => (
   setFindingCompany: (findingCompanyId, findingCompanyName) => set({ findingCompanyId, findingCompanyName, findingResponsibleIds: [] }),
   setFindingResponsibles: (findingResponsibleIds) => set({ findingResponsibleIds }),
   setLastSavedResult: (lastSavedResult) => set({ lastSavedResult }),
+  hydrate: (draft) => set({ ...draft }),
   reset: () => set(initialDraft),
 }));

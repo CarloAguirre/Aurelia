@@ -26,6 +26,7 @@ import { UpdateInspectionDto } from './dto/update-inspection.dto';
 import { UpdateInspectionStatusDto } from './dto/update-inspection-status.dto';
 import { UpsertInspectionAnswerDto } from './dto/upsert-inspection-answer.dto';
 import { InspectionFindingEntity } from './entities/inspection-finding.entity';
+import { InspectionFindingResponsibleEntity } from './entities/inspection-finding-responsible.entity';
 import { InspectionFollowupEntity } from './entities/inspection-followup.entity';
 import { InspectionFormItemEntity } from './entities/inspection-form-item.entity';
 import { InspectionFormSectionEntity } from './entities/inspection-form-section.entity';
@@ -57,6 +58,8 @@ export class InspectionsService {
     private readonly answers: Repository<InspectionItemResponseEntity>,
     @InjectRepository(InspectionFindingEntity)
     private readonly findings: Repository<InspectionFindingEntity>,
+    @InjectRepository(InspectionFindingResponsibleEntity)
+    private readonly findingResponsibles: Repository<InspectionFindingResponsibleEntity>,
     @InjectRepository(InspectionFollowupEntity)
     private readonly followups: Repository<InspectionFollowupEntity>,
     @InjectRepository(InspectionStateEntity)
@@ -287,7 +290,7 @@ export class InspectionsService {
   async findFindings(inspectionId: string): Promise<InspectionFindingResponse[]> {
     await this.getInspectionOrThrow(inspectionId);
     const rows = await this.findings.find({ where: { inspectionId }, order: { createdAt: 'DESC' } });
-    return rows.map((row) => this.toFindingResponse(row));
+    return Promise.all(rows.map((row) => this.toFindingResponse(row)));
   }
 
   async createFinding(inspectionId: string, dto: CreateInspectionFindingDto, actorId: string | null): Promise<InspectionFindingResponse> {
@@ -297,6 +300,9 @@ export class InspectionsService {
     const entity = this.findings.create({
       inspectionId,
       checklistItemId: dto.checklistItemId ?? null,
+      findingTypeId: dto.findingTypeId ?? null,
+      severityId: dto.severityId ?? null,
+      responsibleCompanyId: dto.responsibleCompanyId ?? null,
       title: dto.title,
       description: dto.description ?? null,
       severity: dto.severity,
@@ -310,6 +316,9 @@ export class InspectionsService {
 
     try {
       const saved = await this.findings.save(entity);
+      if (dto.responsibleUserIds?.length) {
+        await this.findingResponsibles.save(dto.responsibleUserIds.map((userId) => this.findingResponsibles.create({ findingId: saved.id, userId })));
+      }
       await this.refreshFindingCounters(inspectionId);
       return this.toFindingResponse(saved);
     } catch (err) {
@@ -440,8 +449,9 @@ export class InspectionsService {
     return { id: entity.id, inspectionId: entity.inspectionId, checklistItemId: entity.checklistItemId, answerValue: entity.answerValue as InspectionAnswerValue | null, answerText: entity.answerText, numericValue: entity.numericValue, answeredByUserId: entity.answeredByUserId, answeredAt: this.toNullableIsoString(entity.answeredAt), notes: entity.notes, createdAt: entity.createdAt.toISOString(), updatedAt: entity.updatedAt.toISOString() };
   }
 
-  private toFindingResponse(entity: InspectionFindingEntity): InspectionFindingResponse {
-    return { id: entity.id, inspectionId: entity.inspectionId, checklistItemId: entity.checklistItemId, title: entity.title, description: entity.description, severity: entity.severity, status: entity.status, ownerUserId: entity.ownerUserId, createdByUserId: entity.createdByUserId, dueAt: this.toNullableIsoString(entity.dueAt), closedAt: this.toNullableIsoString(entity.closedAt), closedByUserId: entity.closedByUserId, createdAt: entity.createdAt.toISOString(), updatedAt: entity.updatedAt.toISOString() };
+  private async toFindingResponse(entity: InspectionFindingEntity): Promise<InspectionFindingResponse> {
+    const responsibleUserIds = (await this.findingResponsibles.find({ where: { findingId: entity.id } })).map((row) => row.userId);
+    return { id: entity.id, inspectionId: entity.inspectionId, checklistItemId: entity.checklistItemId, findingTypeId: entity.findingTypeId, severityId: entity.severityId, responsibleCompanyId: entity.responsibleCompanyId, responsibleUserIds, title: entity.title, description: entity.description, severity: entity.severity, status: entity.status, ownerUserId: entity.ownerUserId, createdByUserId: entity.createdByUserId, dueAt: this.toNullableIsoString(entity.dueAt), closedAt: this.toNullableIsoString(entity.closedAt), closedByUserId: entity.closedByUserId, createdAt: entity.createdAt.toISOString(), updatedAt: entity.updatedAt.toISOString() };
   }
 
   private toFollowupResponse(entity: InspectionFollowupEntity): InspectionFollowupResponse {

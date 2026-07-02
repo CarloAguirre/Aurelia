@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
+import { PhotoSourceSheet } from '../form/PhotoSourceSheet';
 
 interface Props {
   onSkip: () => void;
   onCapture: (uri: string) => void;
   resolved?: boolean;
+  resolvedTitle?: string;
+  resolvedSub?: string;
 }
 
 async function launchCamera(onCapture: (uri: string) => void) {
@@ -43,48 +46,56 @@ async function launchGallery(onCapture: (uri: string) => void) {
   }
 }
 
-export function PhotoStepWidget({ onSkip, onCapture, resolved = false }: Props) {
+export function PhotoStepWidget({
+  onSkip,
+  onCapture,
+  resolved = false,
+  resolvedTitle = 'Foto adjunta ✓',
+  resolvedSub = 'IMG.jpg · GPS ✓ · --:--',
+}: Props) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+
   if (resolved) {
     return (
       <View style={[styles.resolvedCard, styles.marginLeft]}>
         <FontAwesome5 name="check-circle" size={16} color={colors.successTxt} />
         <View>
-          <Text style={styles.resolvedTitle}>Foto procesada ✓</Text>
-          <Text style={styles.resolvedSub}>GPS y hora registrados automáticamente</Text>
+          <Text style={styles.resolvedTitle}>{resolvedTitle}</Text>
+          <Text style={styles.resolvedSub}>{resolvedSub}</Text>
         </View>
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, styles.marginLeft]}>
-      <View style={styles.iconBox}>
-        <FontAwesome5 name="camera-retro" size={18} color={colors.muted} />
-      </View>
-      <Text style={styles.title}>Adjuntar fotografía del hallazgo</Text>
-      <Text style={styles.subtitle}>Fecha, hora y GPS se registran automáticamente</Text>
-      <View style={styles.btnRow}>
-        <TouchableOpacity
-          style={styles.foOpt}
-          onPress={() => launchCamera(onCapture)}
-          activeOpacity={0.7}
-        >
+    <>
+      <TouchableOpacity style={[styles.container, styles.marginLeft]} activeOpacity={0.78} onPress={() => setPickerOpen(true)}>
+        <View style={styles.iconBox}>
+          <FontAwesome5 name="camera-retro" size={18} color={colors.muted} />
+        </View>
+        <Text style={styles.title}>Adjuntar fotografía del hallazgo</Text>
+        <Text style={styles.subtitle}>Fecha, hora y GPS se registran automáticamente</Text>
+        <View style={styles.triggerBtn}>
           <FontAwesome5 name="camera" size={11} color={colors.body} />
-          <Text style={styles.foOptText}>Tomar foto</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.foOpt}
-          onPress={() => launchGallery(onCapture)}
-          activeOpacity={0.7}
-        >
-          <FontAwesome5 name="image" size={11} color={colors.body} />
-          <Text style={styles.foOptText}>Desde galería</Text>
-        </TouchableOpacity>
-      </View>
-      <TouchableOpacity onPress={onSkip} activeOpacity={0.7} style={styles.skipBtn}>
+          <Text style={styles.triggerText}>Tomar foto o galería</Text>
+        </View>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={onSkip} activeOpacity={0.7} style={[styles.skipBtn, styles.marginLeft]}>
         <Text style={styles.skipText}>Continuar sin foto</Text>
       </TouchableOpacity>
-    </View>
+      <PhotoSourceSheet
+        visible={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onCamera={async () => {
+          setPickerOpen(false);
+          await launchCamera(onCapture);
+        }}
+        onGallery={async () => {
+          setPickerOpen(false);
+          await launchGallery(onCapture);
+        }}
+      />
+    </>
   );
 }
 
@@ -110,14 +121,9 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.body },
   subtitle: { fontSize: fontSize.xs, color: colors.placeholder, textAlign: 'center' },
-  btnRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
+  triggerBtn: {
     width: '100%',
-  },
-  foOpt: {
-    flex: 1,
-    height: 34,
+    height: 36,
     borderRadius: radius.sm + 2,
     borderWidth: 1.5,
     borderColor: colors.borderMid,
@@ -127,12 +133,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 5,
   },
-  foOptText: {
+  triggerText: {
     fontSize: fontSize.sm,
     fontWeight: fontWeight.semibold,
     color: colors.body,
   },
   skipBtn: {
+    alignSelf: 'flex-start',
     paddingVertical: spacing.xs,
   },
   skipText: {

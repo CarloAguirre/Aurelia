@@ -650,20 +650,29 @@ CREATE TABLE inspection_checklist_answers (
 CREATE TABLE inspection_findings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   inspection_id UUID NOT NULL REFERENCES inspections(id) ON DELETE CASCADE,
-  description TEXT NOT NULL,
-  corrective_measure TEXT,
-  risk_level finding_risk_level NOT NULL DEFAULT 'medium',
-  responsible_user_id UUID REFERENCES users(id),
-  responsible_company_id UUID REFERENCES companies(id),
-  sla_days INTEGER,
-  due_date DATE,
-  status validation_status NOT NULL DEFAULT 'pending_review',
-  closure_date DATE,
-  verified_by_user_id UUID REFERENCES users(id),
-  verified_at TIMESTAMPTZ,
+  checklist_item_id UUID REFERENCES inspection_checklist_items(id) ON DELETE SET NULL,
+  finding_type_id UUID REFERENCES inspection_finding_types(id) ON DELETE SET NULL,
+  severity_id UUID REFERENCES inspection_finding_severities(id) ON DELETE SET NULL,
+  responsible_company_id UUID REFERENCES companies(id) ON DELETE SET NULL,
+  title VARCHAR(200) NOT NULL,
+  description TEXT,
+  severity inspection_finding_severity NOT NULL,
+  status inspection_finding_status NOT NULL DEFAULT 'open',
+  owner_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
   created_by_user_id UUID REFERENCES users(id),
+  due_at TIMESTAMPTZ,
+  closed_at TIMESTAMPTZ,
+  closed_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE inspection_finding_responsibles (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  finding_id UUID NOT NULL REFERENCES inspection_findings(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (finding_id, user_id)
 );
 
 CREATE TABLE inspection_followups (
@@ -1256,7 +1265,11 @@ CREATE INDEX idx_inspections_date ON inspections(inspection_date);
 CREATE INDEX idx_inspections_status ON inspections(global_status);
 CREATE INDEX idx_inspections_area_company ON inspections(area_id, company_id);
 CREATE INDEX idx_inspection_findings_inspection ON inspection_findings(inspection_id);
-CREATE INDEX idx_inspection_findings_status_due ON inspection_findings(status, due_date);
+CREATE INDEX idx_inspection_findings_type ON inspection_findings(finding_type_id);
+CREATE INDEX idx_inspection_findings_severity_catalog ON inspection_findings(severity_id);
+CREATE INDEX idx_inspection_findings_responsible_company ON inspection_findings(responsible_company_id);
+CREATE INDEX idx_inspection_findings_status_due ON inspection_findings(status, due_at);
+CREATE INDEX idx_inspection_finding_responsibles_finding ON inspection_finding_responsibles(finding_id);
 CREATE INDEX idx_inspection_followups_finding ON inspection_followups(finding_id);
 CREATE INDEX idx_inspection_finding_types_active_sort ON inspection_finding_types(is_active, sort_order);
 CREATE INDEX idx_inspection_finding_severities_active_sort ON inspection_finding_severities(is_active, sort_order);
@@ -1312,7 +1325,7 @@ BEGIN
     'user_companies','user_areas',
     'mues','critical_controls','control_verification_items','control_assessments','control_assessment_answers',
     'control_area_assignments','control_self_assessments','control_self_assessment_answers',
-    'inspection_types','inspection_checklist_templates','inspection_checklist_sections','inspection_checklist_items','inspection_finding_types','inspection_finding_severities','inspections','inspection_checklist_answers','inspection_findings','inspection_followups',
+    'inspection_types','inspection_checklist_templates','inspection_checklist_sections','inspection_checklist_items','inspection_finding_types','inspection_finding_severities','inspections','inspection_checklist_answers','inspection_findings','inspection_finding_responsibles','inspection_followups',
     'incident_types','incident_levels','incidents','incident_involved_people','incident_immediate_actions','incident_flash_reports','incident_investigations','incident_investigation_team','incident_peepo_analysis','incident_timeline_events','incident_five_why_items','incident_five_why_analysis','incident_action_plans',
     'measurement_units','spr_units','spr_measure_groups','spr_parameters','spr_monthly_records','spr_consolidation_rules','spr_record_approvals',
     'pollutants','emission_source_types','emission_sources','emission_activity_levels','emission_stoppages','emission_factors','green_tax_thresholds',

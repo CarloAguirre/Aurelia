@@ -1,17 +1,20 @@
 import React, { useMemo } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { InspectionAnswerValue, type InspectionChecklistItem, type InspectionChecklistTemplateResponse } from '@aurelia/contracts';
+import { InspectionAnswerValue, type InspectionChecklistItem, type InspectionChecklistTemplateResponse, type UserResponse } from '@aurelia/contracts';
 import { colors, fontWeight } from '../../shared/theme/tokens';
 import { FieldLabel, OfflineBanner, SelectBox } from '../../shared/components/form/ManualFormUi';
+import { PhotoSourceSheet } from '../../shared/components/form/PhotoSourceSheet';
 import { ManualFlowFooter, ManualFlowHeader } from '../../shared/components/form/ManualFlowScaffold';
 import { MISSING_MOBILE_BOOTSTRAP_MESSAGE } from '../../shared/offline/local-catalogs';
 import { ManualFormStepper, SelectSheet, type SelectSheetOption } from './ManualSelectionUi';
 import { useInspectionChecklistTemplates } from './hooks/useInspectionChecklistTemplates';
 import { useManualInspectionCompanies } from './hooks/useManualInspectionCompanies';
+import { usePersistManualInspectionDraft } from './hooks/usePersistManualInspectionDraft';
+import { fetchResponsibleUsersLocalFirst } from '../../shared/services/api/inspection-responsibles.api';
 import { useManualConnectivityStatus } from './useManualConnectivityStatus';
 import { useManualInspectionDraft, type ManualChecklistItemDetail, type ManualPickedAsset } from './manualInspection.store';
 import { useManualInspectionFlowStore } from './manualInspectionFlow.store';
@@ -54,13 +57,25 @@ function getAssetName(asset: ImagePicker.ImagePickerAsset, fallback: string): st
   return uriName && uriName.includes('.') ? uriName : fallback;
 }
 
-async function pickImageAsset(fallbackName: string): Promise<ManualPickedAsset | null> {
+async function pickImageFromGallery(fallbackName: string): Promise<ManualPickedAsset | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
     Alert.alert('Permiso requerido', 'Activa el permiso de galería para adjuntar imágenes.');
     return null;
   }
   const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: false, quality: 0.75 });
+  if (result.canceled || result.assets.length === 0) return null;
+  const asset = result.assets[0];
+  return { uri: asset.uri, name: getAssetName(asset, fallbackName) };
+}
+
+async function pickImageFromCamera(fallbackName: string): Promise<ManualPickedAsset | null> {
+  const permission = await ImagePicker.requestCameraPermissionsAsync();
+  if (!permission.granted) {
+    Alert.alert('Permiso requerido', 'Activa el permiso de cámara para tomar fotografías.');
+    return null;
+  }
+  const result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: false, quality: 0.75 });
   if (result.canceled || result.assets.length === 0) return null;
   const asset = result.assets[0];
   return { uri: asset.uri, name: getAssetName(asset, fallbackName) };
@@ -118,11 +133,28 @@ function AttachmentButton({ asset, emptyTitle, onPick, compact = false }: { asse
 function ReferencePhotoBox() {
   const generalPhoto = useManualInspectionDraft((state) => state.generalPhoto);
   const setGeneralPhoto = useManualInspectionDraft((state) => state.setGeneralPhoto);
-  async function pick() {
-    const asset = await pickImageAsset('foto_general_de_inspeccion.jpg');
-    if (asset) setGeneralPhoto(asset);
-  }
-  return <View style={styles.photoWrap}>{!generalPhoto ? <Text style={styles.photoLabel}>Foto referencial general para la inspección *</Text> : null}<AttachmentButton asset={generalPhoto} emptyTitle="Tomar foto o galería" onPick={pick} /></View>;
+  const [pickerOpen, setPickerOpen] = React.useState(false);
+
+  return (
+    <View style={styles.photoWrap}>
+      {!generalPhoto ? <Text style={styles.photoLabel}>Foto referencial general para la inspección *</Text> : null}
+      <AttachmentButton asset={generalPhoto} emptyTitle="Tomar foto o galería" onPick={() => setPickerOpen(true)} />
+      <PhotoSourceSheet
+        visible={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onGallery={async () => {
+          setPickerOpen(false);
+          const asset = await pickImageFromGallery('foto_general_de_inspeccion.jpg');
+          if (asset) setGeneralPhoto(asset);
+        }}
+        onCamera={async () => {
+          setPickerOpen(false);
+          const asset = await pickImageFromCamera('foto_general_de_inspeccion.jpg');
+          if (asset) setGeneralPhoto(asset);
+        }}
+      />
+    </View>
+  );
 }
 
 function ChecklistAnswerButton({ label, value, selected, onPress }: { label: string; value: InspectionAnswerValue; selected: boolean; onPress: () => void }) {
@@ -135,17 +167,29 @@ function OptionalCommentBox({ detail, onChange }: { detail: ManualChecklistItemD
 }
 
 function FindingDetailBox({ index, detail, onChange }: { index: number; detail: ManualChecklistItemDetail; onChange: (detail: Partial<ManualChecklistItemDetail>) => void }) {
-  async function pick() {
-    const asset = await pickImageAsset(`foto_obs${index + 1}.jpg`);
-    if (asset) onChange({ evidence: asset });
-  }
+  const [pickerOpen, setPickerOpen] = React.useState(false);
+
   return (
     <View style={styles.findingBox}>
       <View style={styles.findingHeader}><View style={styles.findingBadges}><View style={styles.obsBadge}><Text style={styles.obsBadgeText}>Obs. {index + 1}</Text></View><View style={styles.highBadge}><Text style={styles.highBadgeText}>Alto</Text></View></View><View style={styles.deleteBadge}><FontAwesome5 name="trash" size={12} color="#C4365A" /></View></View>
       <View style={styles.inputGroupWhite}><Text style={styles.upperLabel}>Condición detectada *</Text><TextInput style={styles.detailTextArea} multiline value={detail.detectedCondition ?? ''} placeholder="Describa la condición detectada." placeholderTextColor="#757575" onChangeText={(detectedCondition) => onChange({ detectedCondition })} /></View>
       <View style={styles.inputGroupGray}><Text style={styles.upperLabel}>Medida correctiva propuesta *</Text><TextInput style={styles.detailTextArea} multiline value={detail.correctiveAction ?? ''} placeholder="Indique la medida correctiva propuesta." placeholderTextColor="#757575" onChangeText={(correctiveAction) => onChange({ correctiveAction })} /></View>
-      <View style={styles.evidenceWrap}><AttachmentButton asset={detail.evidence} emptyTitle="Adjuntar foto" onPick={pick} compact /></View>
+      <View style={styles.evidenceWrap}><AttachmentButton asset={detail.evidence} emptyTitle="Adjuntar foto" onPick={() => setPickerOpen(true)} compact /></View>
       <View style={styles.slaRow}><Text style={styles.slaLabel}>SLA calculado</Text><Text style={styles.slaValue}>xx días hábiles</Text></View>
+      <PhotoSourceSheet
+        visible={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onGallery={async () => {
+          setPickerOpen(false);
+          const asset = await pickImageFromGallery(`foto_obs${index + 1}.jpg`);
+          if (asset) onChange({ evidence: asset });
+        }}
+        onCamera={async () => {
+          setPickerOpen(false);
+          const asset = await pickImageFromCamera(`foto_obs${index + 1}.jpg`);
+          if (asset) onChange({ evidence: asset });
+        }}
+      />
     </View>
   );
 }
@@ -177,10 +221,46 @@ function ChecklistItemsCard({ template, items }: { template: InspectionChecklist
   );
 }
 
-function ResponsibleBlock({ onOpenCompany, companiesLoading }: { onOpenCompany: () => void; companiesLoading: boolean }) {
+function responsibleUserLabel(user: UserResponse) {
+  const profile = user.position || user.roles?.[0]?.name || 'Sin perfil';
+  return `${user.fullName} - ${profile}`;
+}
+
+function selectedUsersLabel(users: UserResponse[], selectedIds: string[]) {
+  const selected = users.filter((user) => selectedIds.includes(user.id));
+  if (selected.length === 0) return 'Seleccione personal responsable';
+  if (selected.length === 1) return selected[0].fullName;
+  return `${selected.length} responsables seleccionados`;
+}
+
+function UsersPickerModal({ visible, users, loading, errorMessage, selectedIds, companySelected, onClose, onToggle }: { visible: boolean; users: UserResponse[]; loading: boolean; errorMessage: string | null; selectedIds: string[]; companySelected: boolean; onClose: () => void; onToggle: (userId: string) => void }) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalRoot}>
+        <TouchableOpacity style={styles.modalBackdropLight} activeOpacity={1} onPress={onClose} />
+        <View style={styles.responsibleSheet}>
+          <View style={styles.responsibleHandle} />
+          <Text style={styles.responsibleSheetTitle}>Seleccione al personal encargado</Text>
+          <ScrollView style={styles.responsibleList} showsVerticalScrollIndicator={false}>
+            {!companySelected ? <Text style={styles.responsibleEmpty}>Seleccione una empresa para cargar el personal.</Text> : null}
+            {companySelected && loading ? <Text style={styles.responsibleEmpty}>Cargando personal...</Text> : null}
+            {companySelected && !loading && errorMessage ? <Text style={styles.responsibleEmpty}>{errorMessage}</Text> : null}
+            {companySelected && !loading && !errorMessage && users.length === 0 ? <Text style={styles.responsibleEmpty}>No hay personal asociado a la empresa seleccionada.</Text> : null}
+            {companySelected && !loading && !errorMessage && users.map((user) => {
+              const checked = selectedIds.includes(user.id);
+              return <TouchableOpacity key={user.id} style={styles.userOption} activeOpacity={0.72} onPress={() => onToggle(user.id)}><View style={[styles.checkbox, checked && styles.checkboxChecked]}>{checked ? <FontAwesome5 name="check" size={11} color={colors.white} /> : null}</View><Text style={styles.userOptionText}>{responsibleUserLabel(user)}</Text></TouchableOpacity>;
+            })}
+          </ScrollView>
+          <View style={styles.responsibleSheetFooter}><TouchableOpacity style={styles.responsibleDone} activeOpacity={0.75} onPress={onClose}><Text style={styles.responsibleDoneText}>Listo</Text></TouchableOpacity></View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function ResponsibleBlock({ onOpenCompany, onOpenUsers, companiesLoading, usersLoading, usersDisabled, responsibleText }: { onOpenCompany: () => void; onOpenUsers: () => void; companiesLoading: boolean; usersLoading: boolean; usersDisabled: boolean; responsibleText: string }) {
   const draft = useManualInspectionDraft();
-  const responsibleText = draft.findingResponsibleIds.length > 0 ? `${draft.findingResponsibleIds.length} responsables seleccionados` : 'Pendiente endpoint de responsables';
-  return <View style={styles.responsibleCard}><Text style={styles.responsibleTitle}>Responsables</Text><View style={styles.fieldGroup}><FieldLabel>Empresa encargada de los hallazgos</FieldLabel><SelectBox value={draft.findingCompanyName ?? 'Seleccione empresa'} loading={companiesLoading} onPress={onOpenCompany} /></View><View style={styles.fieldGroup}><FieldLabel>Personal encargado de los hallazgos</FieldLabel><SelectBox value={responsibleText} disabled /></View></View>;
+  return <View style={styles.responsibleCard}><Text style={styles.responsibleTitle}>Responsables</Text><View style={styles.fieldGroup}><FieldLabel>Empresa encargada de los hallazgos</FieldLabel><SelectBox value={draft.findingCompanyName ?? 'Seleccione empresa'} loading={companiesLoading} onPress={onOpenCompany} /></View><View style={styles.fieldGroup}><FieldLabel>Personal encargado de los hallazgos</FieldLabel><SelectBox value={responsibleText} loading={usersLoading} disabled={usersDisabled} onPress={onOpenUsers} /></View></View>;
 }
 
 function hasRequiredFindingDetail(detail: ManualChecklistItemDetail | undefined) {
@@ -188,10 +268,12 @@ function hasRequiredFindingDetail(detail: ManualChecklistItemDetail | undefined)
 }
 
 export function ManualChecklistTemplateScreen() {
+  usePersistManualInspectionDraft();
   const { online, hasSession } = useManualConnectivityStatus();
   const draft = useManualInspectionDraft();
   const setTemplate = useManualInspectionDraft((state) => state.setTemplate);
   const setFindingCompany = useManualInspectionDraft((state) => state.setFindingCompany);
+  const setFindingResponsibles = useManualInspectionDraft((state) => state.setFindingResponsibles);
   const activePicker = useManualInspectionFlowStore((state) => state.activePicker) as PickerKind | null;
   const openPicker = useManualInspectionFlowStore((state) => state.openPicker);
   const closePicker = useManualInspectionFlowStore((state) => state.closePicker);
@@ -200,6 +282,10 @@ export function ManualChecklistTemplateScreen() {
   const goToSummary = useManualInspectionFlowStore((state) => state.goToSummary);
   const templatesQuery = useInspectionChecklistTemplates();
   const companiesQuery = useManualInspectionCompanies();
+  const [userOptions, setUserOptions] = React.useState<UserResponse[]>([]);
+  const [usersPickerOpen, setUsersPickerOpen] = React.useState(false);
+  const [usersLoading, setUsersLoading] = React.useState(false);
+  const [usersError, setUsersError] = React.useState<string | null>(null);
   const templates = templatesQuery.data ?? [];
   const companies = companiesQuery.data ?? [];
   const selectedTemplate = templates.find((template) => template.id === draft.templateId);
@@ -209,20 +295,53 @@ export function ManualChecklistTemplateScreen() {
   const answeredCount = items.filter((item) => Boolean(draft.answersByItemId[item.id])).length;
   const hasFindings = items.some((item) => draft.answersByItemId[item.id] === InspectionAnswerValue.NOT_COMPLIANT);
   const missingFindingDetails = items.some((item) => draft.answersByItemId[item.id] === InspectionAnswerValue.NOT_COMPLIANT && !hasRequiredFindingDetail(draft.detailsByItemId[item.id]));
-  const canContinue = Boolean(selectedTemplate && draft.generalPhoto && items.length > 0 && answeredCount === items.length && !missingFindingDetails && (!hasFindings || draft.findingCompanyId));
+  const responsibleText = selectedUsersLabel(userOptions, draft.findingResponsibleIds);
+  const canContinue = Boolean(selectedTemplate && draft.generalPhoto && items.length > 0 && answeredCount === items.length && !missingFindingDetails && (!hasFindings || (draft.findingCompanyId && draft.findingResponsibleIds.length > 0)));
   const catalogErrorMessage = templatesQuery.error instanceof Error ? templatesQuery.error.message : null;
   const catalogEmptyText = catalogErrorMessage ?? MISSING_MOBILE_BOOTSTRAP_MESSAGE;
 
   React.useEffect(() => { goToObservations(); }, [goToObservations]);
 
+  React.useEffect(() => {
+    let mounted = true;
+    if (!draft.findingCompanyId) {
+      setUserOptions([]);
+      setUsersLoading(false);
+      setUsersError(null);
+      return () => { mounted = false; };
+    }
+    setUsersLoading(true);
+    setUsersError(null);
+    fetchResponsibleUsersLocalFirst(draft.findingCompanyId)
+      .then((users) => {
+        if (!mounted) return;
+        setUserOptions(users);
+        setUsersLoading(false);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setUserOptions([]);
+        setUsersError('No se pudo cargar el personal asociado.');
+        setUsersLoading(false);
+      });
+    return () => { mounted = false; };
+  }, [draft.findingCompanyId]);
+
   function back() { closePicker(); goToType(); router.replace('/inspection/manual/type'); }
   function selectTemplate(option: SelectSheetOption) { const template = templates.find((item) => item.id === option.id); if (!template) return; setTemplate({ id: template.id, name: template.name, code: template.code, itemsCount: getItemsCount(template) }); closePicker(); }
-  function selectCompany(option: SelectSheetOption) { setFindingCompany(option.id, option.label); closePicker(); }
+  function selectCompany(option: SelectSheetOption) { setFindingCompany(option.id, option.label); closePicker(); setUsersPickerOpen(false); }
+  function toggleUser(userId: string) {
+    const next = draft.findingResponsibleIds.includes(userId)
+      ? draft.findingResponsibleIds.filter((id) => id !== userId)
+      : [...draft.findingResponsibleIds, userId];
+    setFindingResponsibles(next);
+  }
   function next() {
     if (!draft.generalPhoto) { Alert.alert('Foto requerida', 'Adjunta la foto referencial general antes de continuar.'); return; }
     if (answeredCount !== items.length) { Alert.alert('Ítems pendientes', 'Responde todos los ítems antes de continuar.'); return; }
     if (missingFindingDetails) { Alert.alert('Hallazgos incompletos', 'Cada ítem marcado como NO requiere condición detectada, medida correctiva y foto.'); return; }
     if (hasFindings && !draft.findingCompanyId) { Alert.alert('Responsable requerido', 'Selecciona la empresa encargada de los hallazgos.'); return; }
+    if (hasFindings && draft.findingResponsibleIds.length === 0) { Alert.alert('Responsables requeridos', 'Selecciona al menos un responsable para los hallazgos.'); return; }
     goToSummary(); router.push('/inspection/manual/summary');
   }
 
@@ -236,11 +355,12 @@ export function ManualChecklistTemplateScreen() {
           <ScrollView style={styles.content} contentContainerStyle={styles.contentInner} showsVerticalScrollIndicator={false}>
             <View style={styles.copyBlock}><Text style={styles.title}>Checklist normativo</Text><Text style={styles.subtitle}>Responde todos los ítems · los NO quedarán registrados como observaciones</Text></View>
             <TemplateCard loading={templatesQuery.isLoading} error={templatesQuery.isError} empty={!templatesQuery.isLoading && !templatesQuery.isError && templates.length === 0} errorMessage={catalogErrorMessage} onOpen={() => openPicker('template')} onRetry={templatesQuery.refetch} />
-            {selectedTemplate ? <><ProgressCard answeredCount={answeredCount} totalCount={items.length} /><ReferencePhotoBox /><ChecklistItemsCard template={selectedTemplate} items={items} />{hasFindings ? <ResponsibleBlock onOpenCompany={() => openPicker('company')} companiesLoading={companiesQuery.isLoading} /> : null}</> : null}
+            {selectedTemplate ? <><ProgressCard answeredCount={answeredCount} totalCount={items.length} /><ReferencePhotoBox /><ChecklistItemsCard template={selectedTemplate} items={items} />{hasFindings ? <ResponsibleBlock onOpenCompany={() => openPicker('company')} onOpenUsers={() => setUsersPickerOpen(true)} companiesLoading={companiesQuery.isLoading} usersLoading={usersLoading} usersDisabled={!draft.findingCompanyId} responsibleText={responsibleText} /> : null}</> : null}
           </ScrollView>
           <ManualFlowFooter secondaryLabel="Atrás" secondaryIcon="arrow-left" onSecondary={back} onPrimary={next} primaryDisabled={!canContinue} />
           <SelectSheet visible={activePicker === 'template'} title="Seleccione la plantilla" subtitle="Plantillas normativas disponibles" options={templateOptions} selectedId={draft.templateId} loading={templatesQuery.isLoading} emptyText={catalogEmptyText} onClose={closePicker} onSelect={selectTemplate} />
           <SelectSheet visible={activePicker === 'company'} title="Empresa encargada" subtitle="Empresas contratistas disponibles" options={companyOptions} selectedId={draft.findingCompanyId} loading={companiesQuery.isLoading} emptyText={catalogEmptyText} onClose={closePicker} onSelect={selectCompany} />
+          <UsersPickerModal visible={usersPickerOpen} users={userOptions} loading={usersLoading} errorMessage={usersError} selectedIds={draft.findingResponsibleIds} companySelected={Boolean(draft.findingCompanyId)} onClose={() => setUsersPickerOpen(false)} onToggle={toggleUser} />
         </View>
       </SafeAreaView>
     </SafeAreaProvider>
@@ -316,5 +436,19 @@ const styles = StyleSheet.create({
   slaValue: { fontSize: 12, lineHeight: 15, fontWeight: fontWeight.bold, color: colors.primary },
   responsibleCard: { backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.border, borderRadius: 10, padding: 13.5, gap: 12, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 1.5, shadowOffset: { width: 0, height: 1 } },
   responsibleTitle: { fontSize: 18, lineHeight: 21.6, fontWeight: fontWeight.bold, color: colors.primary },
+  modalRoot: { flex: 1, justifyContent: 'flex-end' },
+  modalBackdropLight: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.32)' },
+  responsibleSheet: { maxHeight: '86%', backgroundColor: colors.white, borderTopLeftRadius: 16, borderTopRightRadius: 16, overflow: 'hidden', shadowColor: '#131313', shadowOpacity: 0.24, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
+  responsibleHandle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: '#D1D1D1', marginTop: 22, marginBottom: 22 },
+  responsibleSheetTitle: { color: colors.primary, fontSize: 14, lineHeight: 18, fontWeight: fontWeight.bold, paddingHorizontal: 22, paddingBottom: 14 },
+  responsibleList: { paddingHorizontal: 8, paddingVertical: 8 },
+  responsibleEmpty: { color: colors.muted, fontSize: 14, lineHeight: 20, paddingHorizontal: 14, paddingVertical: 16 },
+  userOption: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 8, paddingVertical: 8, borderRadius: 8 },
+  checkbox: { width: 18, height: 18, borderRadius: 5, borderWidth: 1.5, borderColor: colors.primary, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
+  checkboxChecked: { borderColor: colors.gold, backgroundColor: colors.gold },
+  userOptionText: { flex: 1, color: colors.primary, fontSize: 14, lineHeight: 22.7, letterSpacing: 0.28 },
+  responsibleSheetFooter: { borderTopWidth: 1, borderTopColor: '#E3E3E3', paddingHorizontal: 20, paddingTop: 15, paddingBottom: 14 },
+  responsibleDone: { height: 44, borderRadius: 14, borderWidth: 2, borderColor: colors.gold, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' },
+  responsibleDoneText: { color: colors.goldDark, fontSize: 13, fontWeight: fontWeight.bold },
   emptyItemsBox: { padding: 14 },
 });

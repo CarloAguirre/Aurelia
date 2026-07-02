@@ -12,6 +12,15 @@ export class InspectionFindingEntity {
   @Column({ name: 'checklist_item_id', type: 'uuid', nullable: true })
   checklistItemId: string | null;
 
+  @Column({ name: 'finding_type_id', type: 'uuid', nullable: true })
+  findingTypeId: string | null;
+
+  @Column({ name: 'severity_id', type: 'uuid', nullable: true })
+  severityId: string | null;
+
+  @Column({ name: 'responsible_company_id', type: 'uuid', nullable: true })
+  responsibleCompanyId: string | null;
+
   @Column({ type: 'varchar', length: 200 })
   title: string;
 

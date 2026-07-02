@@ -4,6 +4,7 @@ import type { CreateInspectionFindingRequest, CreateInspectionRequest, MobileSyn
 import { InspectionStatus } from '@aurelia/contracts';
 import { Repository } from 'typeorm';
 import { InMemoryMobileSyncBroker } from '../../shared/messaging/in-memory-mobile-sync-broker';
+import { EvidencesService } from '../evidences/evidences.service';
 import { InspectionsService } from '../inspections/inspections.service';
 import { MobileSyncOperationEntity } from './entities/mobile-sync-operation.entity';
 
@@ -13,6 +14,14 @@ const ERROR = 'ERROR' as MobileSyncStatus;
 const SUPPORTED = new Set(['CREATE_INSPECTION', 'UPSERT_INSPECTION_ANSWER', 'CREATE_INSPECTION_FINDING', 'CLOSE_INSPECTION', 'CREATE_INCIDENT', 'UPLOAD_ATTACHMENT']);
 
 type LocalPayload = { inspectionLocalId?: string; localEvidenceId?: string };
+type UploadAttachmentPayload = {
+  inspectionLocalId?: string;
+  findingLocalId?: string;
+  remoteFileId?: string | null;
+  title?: string | null;
+  evidenceType?: string | null;
+  capturedAt?: string | null;
+};
 
 function getPayloadId(payload: unknown, key: keyof LocalPayload): string | null {
   if (!payload || typeof payload !== 'object') return null;
@@ -22,6 +31,11 @@ function getPayloadId(payload: unknown, key: keyof LocalPayload): string | null 
 
 function toActor(value: string): string | null {
   return value.includes('-') ? value : null;
+}
+
+function toUploadAttachmentPayload(payload: unknown): UploadAttachmentPayload {
+  if (!payload || typeof payload !== 'object') return {};
+  return payload as UploadAttachmentPayload;
 }
 
 function getBatchStatus(results: MobileSyncOperationResult[]): MobileSyncStatus {
@@ -39,6 +53,7 @@ export class MobileSyncService {
 
   constructor(
     private readonly inspectionsService: InspectionsService,
+    private readonly evidencesService: EvidencesService,
     @InjectRepository(MobileSyncOperationEntity) private readonly operations: Repository<MobileSyncOperationEntity>,
   ) {}
 
@@ -104,18 +119,62 @@ export class MobileSyncService {
       const closed = await this.inspectionsService.updateStatus(inspectionId, { status: InspectionStatus.CLOSED, comment: 'Closed from mobile sync' }, toActor(operation.createdBy));
       return this.done(operation, closed.id);
     }
-    if (type === 'UPLOAD_ATTACHMENT') return this.done(operation, getPayloadId(operation.payload, 'localEvidenceId') ?? operation.localId);
+    if (type === 'UPLOAD_ATTACHMENT') return this.materializeAttachment(operation);
     return { localId: operation.localId, remoteId: null, status: PROCESSING, syncedAt: null };
+  }
+
+  private async materializeAttachment(operation: MobileSyncOperationRequest): Promise<MobileSyncOperationResult> {
+    const payload = toUploadAttachmentPayload(operation.payload);
+    const findingLocalId = payload.findingLocalId;
+    const inspectionLocalId = payload.inspectionLocalId ?? getPayloadId(operation.payload, 'inspectionLocalId');
+
+    const fileId = payload.remoteFileId ?? null;
+    if (!fileId) return this.fail(operation.localId, 'MISSING_REMOTE_FILE_ID', 'Attachment upload is pending and did not produce a remote file id');
+
+    const evidence = await this.evidencesService.create({
+      fileId,
+      title: payload.title ?? undefined,
+      evidenceType: payload.evidenceType ?? 'photo',
+      capturedAt: payload.capturedAt ?? undefined,
+      createdByUserId: toActor(operation.createdBy) ?? undefined,
+    });
+
+    if (findingLocalId) {
+      const findingId = await this.resolveLocalReference(operation.deviceId, findingLocalId);
+      if (!findingId) return this.fail(operation.localId, 'MISSING_FINDING_REMOTE_ID', 'Finding dependency was not materialized');
+
+      await this.evidencesService.link(evidence.id, {
+        entityType: 'inspection_finding',
+        entityId: findingId,
+        relationType: 'supporting_evidence',
+      });
+    } else {
+      if (!inspectionLocalId) return this.fail(operation.localId, 'MISSING_INSPECTION_LOCAL_ID', 'Inspection dependency is missing for attachment materialization');
+      const inspectionId = await this.resolveLocalReference(operation.deviceId, inspectionLocalId);
+      if (!inspectionId) return this.fail(operation.localId, 'MISSING_INSPECTION_REMOTE_ID', 'Inspection dependency was not materialized');
+
+      await this.evidencesService.link(evidence.id, {
+        entityType: 'inspection',
+        entityId: inspectionId,
+        relationType: 'supporting_evidence',
+      });
+    }
+
+    return this.done(operation, evidence.id);
   }
 
   private async resolveInspection(operation: MobileSyncOperationRequest): Promise<string | null> {
     const localId = getPayloadId(operation.payload, 'inspectionLocalId');
     if (!localId) return null;
-    const cached = this.localToRemote.get(this.key(operation.deviceId, localId));
+    return this.resolveLocalReference(operation.deviceId, localId);
+  }
+
+  private async resolveLocalReference(deviceId: string, localId: string): Promise<string | null> {
+    const cached = this.localToRemote.get(this.key(deviceId, localId));
     if (cached) return cached;
-    const stored = await this.operations.findOne({ where: { deviceId: operation.deviceId, localId } });
+    const stored = await this.operations.findOne({ where: { deviceId, localId } });
     if (!stored?.remoteId) return null;
-    this.localToRemote.set(this.key(operation.deviceId, localId), stored.remoteId);
+    this.localToRemote.set(this.key(deviceId, localId), stored.remoteId);
     return stored.remoteId;
   }
 

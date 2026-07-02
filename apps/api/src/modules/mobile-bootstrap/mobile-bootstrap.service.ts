@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { MobileBootstrapResponse, UserResponse } from '@aurelia/contracts';
+import type { AccessTokenPayload } from '../auth/jwt-token.service';
+import { ResourceScopeService } from '../access-control/resource-scope.service';
 import { InspectionFindingCatalogService } from '../inspections/inspection-finding-catalog.service';
 import { InspectionsService } from '../inspections/inspections.service';
 import { OrganizationService } from '../organization/organization.service';
@@ -13,10 +15,11 @@ export class MobileBootstrapService {
     private readonly inspectionsService: InspectionsService,
     private readonly findingCatalogService: InspectionFindingCatalogService,
     private readonly usersService: UsersService,
+    private readonly resourceScope: ResourceScopeService,
     private readonly configService: ConfigService,
   ) {}
 
-  async buildBootstrap(): Promise<MobileBootstrapResponse> {
+  async buildBootstrap(user?: AccessTokenPayload): Promise<MobileBootstrapResponse> {
     const generatedAt = new Date();
     const [areas, sectors, companies, inspectionTypes, inspectionTemplates, findingTypes, findingSeverities] = await Promise.all([
       this.organizationService.findAreas(),
@@ -28,9 +31,24 @@ export class MobileBootstrapService {
       this.findingCatalogService.findSeverities(),
     ]);
     const users = await this.findAvailableUsers();
+    const scoped = await this.applyScope(user, {
+      areas,
+      sectors,
+      companies,
+      users,
+    });
     const maxOfflineDays = this.getNumber('MOBILE_BOOTSTRAP_MAX_OFFLINE_DAYS', 7);
     const expiresAt = new Date(generatedAt.getTime() + maxOfflineDays * 24 * 60 * 60 * 1000);
-    const catalogs = { areas, sectors, companies, users, inspectionTypes, inspectionTemplates, findingTypes, findingSeverities };
+    const catalogs = {
+      areas: scoped.areas,
+      sectors: scoped.sectors,
+      companies: scoped.companies,
+      users: scoped.users,
+      inspectionTypes,
+      inspectionTemplates,
+      findingTypes,
+      findingSeverities,
+    };
 
     return {
       bootstrapVersion: this.createBootstrapVersion(catalogs),
@@ -52,6 +70,46 @@ export class MobileBootstrapService {
     } catch {
       return [];
     }
+  }
+
+  private async applyScope(
+    user: AccessTokenPayload | undefined,
+    catalogs: Pick<MobileBootstrapResponse['catalogs'], 'areas' | 'sectors' | 'companies' | 'users'>,
+  ): Promise<Pick<MobileBootstrapResponse['catalogs'], 'areas' | 'sectors' | 'companies' | 'users'>> {
+    if (!user) return catalogs;
+
+    const areas = await this.filterAsync(catalogs.areas, (area) =>
+      this.resourceScope.canAccess(user, { areaId: area.id }),
+    );
+    const areaIds = new Set(areas.map((area) => area.id));
+
+    const sectors = await this.filterAsync(catalogs.sectors, (sector) => {
+      if (sector.areaId && !areaIds.has(sector.areaId)) return Promise.resolve(false);
+      return this.resourceScope.canAccess(user, { areaId: sector.areaId ?? undefined });
+    });
+
+    const companies = await this.filterAsync(catalogs.companies, (company) =>
+      this.resourceScope.canAccess(user, { companyId: company.id }),
+    );
+    const companyIds = new Set(companies.map((company) => company.id));
+
+    const users = await this.filterAsync(catalogs.users, (catalogUser) => {
+      const primaryCompanyAllowed = catalogUser.companyId ? companyIds.has(catalogUser.companyId) : false;
+      const linkedCompanyAllowed = (catalogUser.companies ?? []).some((company) => companyIds.has(company.id));
+      const companyAllowed = !catalogUser.companyId && (catalogUser.companies?.length ?? 0) === 0
+        ? true
+        : primaryCompanyAllowed || linkedCompanyAllowed;
+
+      const areaAllowed = catalogUser.areaId ? areaIds.has(catalogUser.areaId) : true;
+      return Promise.resolve(companyAllowed && areaAllowed);
+    });
+
+    return { areas, sectors, companies, users };
+  }
+
+  private async filterAsync<T>(items: T[], predicate: (item: T) => Promise<boolean>): Promise<T[]> {
+    const accepted = await Promise.all(items.map(predicate));
+    return items.filter((_, index) => accepted[index]);
   }
 
   private createBootstrapVersion(catalogs: MobileBootstrapResponse['catalogs']): string {

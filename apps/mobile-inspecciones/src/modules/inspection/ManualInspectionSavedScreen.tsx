@@ -9,6 +9,7 @@ import { ManualFlowHeader } from '../../shared/components/form/ManualFlowScaffol
 import { useManualConnectivityStatus } from './useManualConnectivityStatus';
 import { useManualInspectionDraft } from './manualInspection.store';
 import { useManualInspectionFlowStore } from './manualInspectionFlow.store';
+import { removeManualInspectionDraft } from './manualInspectionDrafts.storage';
 
 function CompletionLine() {
   return (
@@ -25,19 +26,27 @@ export function ManualInspectionSavedScreen() {
   const areaName = useManualInspectionDraft((state) => state.areaName);
   const sectorId = useManualInspectionDraft((state) => state.sectorId);
   const sectorName = useManualInspectionDraft((state) => state.sectorName);
+  const draftId = useManualInspectionDraft((state) => state.draftId);
   const resetDraft = useManualInspectionDraft((state) => state.reset);
   const setArea = useManualInspectionDraft((state) => state.setArea);
   const setSector = useManualInspectionDraft((state) => state.setSector);
   const resetFlow = useManualInspectionFlowStore((state) => state.resetFlow);
   const goToIdentification = useManualInspectionFlowStore((state) => state.goToIdentification);
+  const mode = result?.mode ?? 'checklist';
   const yesCount = result?.yesCount ?? 0;
+  const totalCount = result?.totalCount ?? 0;
   const closed = result?.closed ?? false;
-  const title = closed ? 'Inspección guardada y cerrada' : 'Inspección guardada';
-  const description = closed
-    ? `Guardada con ${yesCount} ítems marcados en “Sí”. Esta inspección podrá ser revisada en inspecciones cerradas.`
-    : 'Guardada con observaciones abiertas. Esta inspección podrá ser revisada en gestión de inspecciones.';
+  const title = mode === 'finding'
+    ? 'Hallazgo guardado'
+    : closed ? 'Inspección guardada y cerrada' : 'Inspección guardada';
+  const description = mode === 'finding'
+    ? `Guardado con ${totalCount} observaciones. Aparecerá de inmediato en gestión de inspecciones y se sincronizará al recuperar red.`
+    : closed
+      ? `Guardada con ${yesCount} ítems marcados en “Sí”. Esta inspección podrá ser revisada en inspecciones cerradas.`
+      : 'Guardada con observaciones abiertas. Esta inspección podrá ser revisada en gestión de inspecciones.';
 
   function newInspection() {
+    if (draftId) void removeManualInspectionDraft(draftId);
     resetDraft();
     resetFlow();
     router.replace('/inspection/start');
@@ -48,6 +57,7 @@ export function ManualInspectionSavedScreen() {
     const nextAreaName = areaName;
     const nextSectorId = sectorId;
     const nextSectorName = sectorName;
+    if (draftId) void removeManualInspectionDraft(draftId);
     resetDraft();
     resetFlow();
     if (nextAreaId && nextAreaName) setArea(nextAreaId, nextAreaName);

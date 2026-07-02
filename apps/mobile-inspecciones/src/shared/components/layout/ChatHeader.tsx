@@ -33,7 +33,7 @@ export function ChatHeader({ currentStep, agentStatus = 'active' }: Props) {
         <View style={styles.agentLeft}>
           <View style={styles.avatarWrapper}>
             <View style={styles.avatar}>
-              <SparklesMark size={14} color={colors.navy} />
+              <SparklesMark size={28} color={colors.navy} />
             </View>
             <View style={[styles.statusDot, agentStatus === 'thinking' && styles.statusDotThinking]} />
           </View>
@@ -98,9 +98,9 @@ const styles = StyleSheet.create({
   },
   avatarWrapper: { position: 'relative', flexShrink: 0 },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',

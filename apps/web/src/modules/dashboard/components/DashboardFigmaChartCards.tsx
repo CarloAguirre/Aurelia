@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { DashboardMonthlySeriesRow } from '../dashboardRuntime';
 
 type AnnualInspectionChartCardProps = {
@@ -14,10 +15,27 @@ type PairedBarRow = {
   closed: number;
   open: number;
   closedColor?: string;
-  tooltip?: {
-    label: string;
-    value: string;
-  };
+};
+
+type ChartCardProps = {
+  title: string;
+  subtitle: string;
+  rows: PairedBarRow[];
+  maxValue: number;
+  yTicks: number[];
+  closedSwatchColor: string;
+  barWidth: number;
+  closedTooltipLabel: string;
+  openTooltipLabel: string;
+};
+
+type BarWithTooltipProps = {
+  color: string;
+  height: number;
+  label: string;
+  name: string;
+  value: number;
+  width: number;
 };
 
 const CLOSED = '#1e4d5c';
@@ -25,6 +43,7 @@ const CLOSED_HISTORICAL = '#b8cdd9';
 const CLOSED_CURRENT = '#2d6a7f';
 const OPEN = '#f4a460';
 const GRID = '#e5e7eb';
+const numberFormatter = new Intl.NumberFormat('es-CL');
 
 const INSPECTION_CONTEXT_ROWS = [
   { label: '2023', closed: 652, open: 80, closedColor: CLOSED_HISTORICAL },
@@ -74,7 +93,32 @@ function buildFindingRows(rows: DashboardMonthlySeriesRow[]) {
   return hasRuntimeValues ? firstFiveRows : FINDING_CONTEXT_ROWS;
 }
 
-function ChartCard({ title, subtitle, rows, maxValue, yTicks, closedSwatchColor, barWidth }: { title: string; subtitle: string; rows: PairedBarRow[]; maxValue: number; yTicks: number[]; closedSwatchColor: string; barWidth: number }) {
+function formatTooltipValue(value: number) {
+  return numberFormatter.format(Math.max(0, Math.round(value)));
+}
+
+function BarWithTooltip({ color, height, label, name, value, width }: BarWithTooltipProps) {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <div
+      className="relative rounded-[2px]"
+      data-name={name}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{ backgroundColor: color, height: `${height}px`, width: `${width}px` }}
+    >
+      {isHovered ? (
+        <div className="absolute left-1/2 z-[2] -translate-x-1/2 overflow-clip rounded-[6px] bg-[rgba(33,48,64,0.92)] px-[8px] py-[6px] text-center" style={{ bottom: `${height + 8}px` }}>
+          <p className="relative shrink-0 whitespace-nowrap font-['Inter:Regular',sans-serif] text-[9px] font-normal leading-[normal] text-[rgba(255,255,255,0.75)]">{label}</p>
+          <p className="relative shrink-0 whitespace-nowrap font-['Inter:Medium',sans-serif] text-[12px] font-medium leading-[normal] text-white">{formatTooltipValue(value)}</p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ChartCard({ title, subtitle, rows, maxValue, yTicks, closedSwatchColor, barWidth, closedTooltipLabel, openTooltipLabel }: ChartCardProps) {
   return (
     <div className="bg-white border border-[#e3e3e3] border-solid drop-shadow-[0px_1px_1.5px_rgba(0,0,0,0.05)] flex flex-col h-[339px] items-start px-[19px] py-[17px] relative rounded-[8px] w-full" data-name="Container">
       <div className="h-[18px] relative shrink-0 w-full" data-name="Container (margin)">
@@ -104,14 +148,8 @@ function ChartCard({ title, subtitle, rows, maxValue, yTicks, closedSwatchColor,
 
                   return (
                     <div className="relative flex h-full flex-1 items-end justify-center gap-[4px]" key={row.label}>
-                      {row.tooltip ? (
-                        <div className="[word-break:break-word] absolute bg-[rgba(33,48,64,0.92)] content-stretch flex flex-col gap-[2px] items-center justify-center leading-[normal] not-italic overflow-clip px-[8px] py-[6px] rounded-[6px] top-[54px] whitespace-nowrap z-[1]" data-name="tooltip-2026">
-                          <p className="font-['Inter:Regular',sans-serif] font-normal relative shrink-0 text-[9px] text-[rgba(255,255,255,0.75)]">{row.tooltip.label}</p>
-                          <p className="font-['Inter:Medium',sans-serif] font-medium relative shrink-0 text-[12px] text-white">{row.tooltip.value}</p>
-                        </div>
-                      ) : null}
-                      <div className="rounded-[2px]" data-name={`${row.label}-cerradas`} style={{ backgroundColor: row.closedColor ?? CLOSED, height: `${closedHeight}px`, width: `${barWidth}px` }} />
-                      <div className="rounded-[2px]" data-name={`${row.label}-abiertas`} style={{ backgroundColor: OPEN, height: `${openHeight}px`, width: `${barWidth}px` }} />
+                      <BarWithTooltip color={row.closedColor ?? CLOSED} height={closedHeight} label={closedTooltipLabel} name={`${row.label}-cerradas`} value={row.closed} width={barWidth} />
+                      <BarWithTooltip color={OPEN} height={openHeight} label={openTooltipLabel} name={`${row.label}-abiertas`} value={row.open} width={barWidth} />
                     </div>
                   );
                 })}
@@ -150,16 +188,12 @@ export function DashboardFigmaAnnualInspectionsChartCard({ closedInspections, op
       closed,
       open,
       closedColor: CLOSED_CURRENT,
-      tooltip: {
-        label: 'Inspecciones cerradas',
-        value: closedInspections,
-      },
     },
   ];
 
-  return <ChartCard title="Inspecciones cerradas y abiertas" subtitle="Año 2026 resaltado · contexto 2023–2026" rows={rows} maxValue={800} yTicks={[800, 600, 400, 200, 0]} closedSwatchColor={CLOSED_HISTORICAL} barWidth={36} />;
+  return <ChartCard title="Inspecciones cerradas y abiertas" subtitle="Año 2026 resaltado · contexto 2023–2026" rows={rows} maxValue={800} yTicks={[800, 600, 400, 200, 0]} closedSwatchColor={CLOSED_HISTORICAL} barWidth={36} closedTooltipLabel="Inspecciones cerradas" openTooltipLabel="Inspecciones abiertas" />;
 }
 
 export function DashboardFigmaAnnualFindingsChartCard({ rows }: AnnualFindingsChartCardProps) {
-  return <ChartCard title="Observaciones cerradas y abiertas" subtitle="Acumulado por mes · año 2026" rows={buildFindingRows(rows)} maxValue={1200} yTicks={[1200, 1000, 800, 600, 400, 200, 0]} closedSwatchColor={CLOSED} barWidth={28} />;
+  return <ChartCard title="Observaciones cerradas y abiertas" subtitle="Acumulado por mes · año 2026" rows={buildFindingRows(rows)} maxValue={1200} yTicks={[1200, 1000, 800, 600, 400, 200, 0]} closedSwatchColor={CLOSED} barWidth={28} closedTooltipLabel="Observaciones cerradas" openTooltipLabel="Observaciones abiertas" />;
 }

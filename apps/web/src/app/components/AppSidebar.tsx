@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { LoginResponse } from '@aurelia/contracts';
 import { NavLink } from 'react-router-dom';
 import type { NavigationItem } from '../navigation';
@@ -13,6 +13,15 @@ interface AppSidebarProps {
   sidebarCollapsed: boolean;
   user: LoginResponse['user'] | null;
 }
+
+interface RouterNavLinkProps {
+  children?: ReactNode;
+  end?: boolean;
+  style?: (state: { isActive: boolean }) => CSSProperties;
+  to: string;
+}
+
+const RouterNavLink = NavLink as unknown as (props: RouterNavLinkProps) => JSX.Element;
 
 export function AppSidebar({
   activeModule,
@@ -89,7 +98,7 @@ export function AppSidebar({
 
 function SidebarItem({ item, activeModule, sidebarCollapsed }: { item: NavigationItem; activeModule: string; sidebarCollapsed: boolean }) {
   return (
-    <NavLink
+    <RouterNavLink
       to={item.to}
       end={item.to === '/'}
       style={({ isActive }) => ({
@@ -112,7 +121,7 @@ function SidebarItem({ item, activeModule, sidebarCollapsed }: { item: Navigatio
           <span style={{ display: 'block', marginTop: 3, fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.2 }}>{item.hint}</span>
         </span>
       ) : null}
-    </NavLink>
+    </RouterNavLink>
   );
 }
 

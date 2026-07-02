@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
+import { InspectionFindingStatus, InspectionStatus } from '@aurelia/contracts';
+import type {
   InspectionDashboardAreaObservationRowResponse,
   InspectionDashboardChartsResponse,
-  InspectionFindingStatus,
-  InspectionStatus,
 } from '@aurelia/contracts';
 import { Repository } from 'typeorm';
 import { InspectionFindingEntity } from './entities/inspection-finding.entity';

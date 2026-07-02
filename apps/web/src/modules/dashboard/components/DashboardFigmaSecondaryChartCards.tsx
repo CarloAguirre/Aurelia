@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { DashboardMonthlySeriesRow } from '../dashboardRuntime';
 
 type ClosureGaugeCardProps = {
@@ -14,6 +15,11 @@ type ChartPoint = {
   x: number;
   y: number;
 };
+
+type GaugeHoverState = {
+  label: string;
+  value: number;
+} | null;
 
 const CLOSED = '#1f6f8b';
 const OPEN = '#e07a3f';
@@ -49,15 +55,15 @@ function buildSmoothPath(points: ChartPoint[]) {
 }
 
 function buildEvolutionRows(rows: DashboardMonthlySeriesRow[]) {
-  const monthLabels = ['Ene', 'Feb', 'Mar', 'Abr', 'May'];
-  return monthLabels.map((label, index) => {
-    const row = rows[index];
-    return {
-      label,
-      closed: Math.max(0, row?.closedFindings ?? 0),
-      open: Math.max(0, row?.openFindings ?? 0),
-    };
-  });
+  const currentMonthIndex = new Date().getMonth();
+  const lastDataIndex = rows.reduce((lastIndex, row, index) => (row.closedFindings > 0 || row.openFindings > 0 ? index : lastIndex), -1);
+  const visibleMonths = Math.min(12, Math.max(5, currentMonthIndex + 1, lastDataIndex + 1));
+
+  return rows.slice(0, visibleMonths).map((row) => ({
+    label: row.month.replace('.', '').slice(0, 3),
+    closed: Math.max(0, row.closedFindings),
+    open: Math.max(0, row.openFindings),
+  }));
 }
 
 function LegendItem({ color, label, outlined = false }: { color: string; label: string; outlined?: boolean }) {
@@ -70,8 +76,11 @@ function LegendItem({ color, label, outlined = false }: { color: string; label: 
 }
 
 export function DashboardFigmaClosureGaugeChartCard({ rate, title, subtitle }: ClosureGaugeCardProps) {
+  const [hoveredSegment, setHoveredSegment] = useState<GaugeHoverState>(null);
   const clampedRate = clampRate(rate);
-  const radius = 60;
+  const openRate = 100 - clampedRate;
+  const radius = 58;
+  const strokeWidth = 20;
   const circumference = 2 * Math.PI * radius;
   const closedStroke = (clampedRate / 100) * circumference;
   const openStroke = circumference - closedStroke;
@@ -82,18 +91,24 @@ export function DashboardFigmaClosureGaugeChartCard({ rate, title, subtitle }: C
         <p className="[word-break:break-word] font-['Inter:Bold',sans-serif] font-bold leading-[normal] not-italic text-[#131313] text-[13px] whitespace-nowrap">{title}</p>
         <p className="[word-break:break-word] font-['Inter:Regular',sans-serif] font-normal leading-[normal] mt-[2px] not-italic text-[#646464] text-[11px] whitespace-nowrap">{subtitle}</p>
       </div>
-      <div className="mt-[14px] relative shrink-0 size-[160px]" data-name="Container">
+      <div className="mt-[12px] relative shrink-0 size-[160px]" data-name="Container" onMouseLeave={() => setHoveredSegment(null)}>
         <svg className="absolute inset-0 size-full" viewBox="0 0 160 160" fill="none">
-          <circle cx="80" cy="80" r={radius} stroke="#f2f2f2" strokeWidth="16" />
-          <circle cx="80" cy="80" r={radius} stroke={CLOSED} strokeWidth="16" strokeDasharray={`${closedStroke} ${circumference}`} transform="rotate(-90 80 80)" strokeLinecap="butt" />
-          <circle cx="80" cy="80" r={radius} stroke={OPEN} strokeWidth="16" strokeDasharray={`${openStroke} ${circumference}`} strokeDashoffset={-closedStroke} transform="rotate(-90 80 80)" strokeLinecap="butt" />
+          <circle cx="80" cy="80" r={radius} stroke="#f2f2f2" strokeWidth={strokeWidth} />
+          <circle cx="80" cy="80" r={radius} stroke={CLOSED} strokeWidth={strokeWidth} strokeDasharray={`${closedStroke} ${circumference}`} transform="rotate(-90 80 80)" strokeLinecap="butt" onMouseEnter={() => setHoveredSegment({ label: 'Cerradas', value: clampedRate })} />
+          <circle cx="80" cy="80" r={radius} stroke={OPEN} strokeWidth={strokeWidth} strokeDasharray={`${openStroke} ${circumference}`} strokeDashoffset={-closedStroke} transform="rotate(-90 80 80)" strokeLinecap="butt" onMouseEnter={() => setHoveredSegment({ label: 'Abiertas', value: openRate })} />
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
+        {hoveredSegment ? (
+          <div className="absolute left-1/2 top-[18px] z-[2] -translate-x-1/2 overflow-clip rounded-[6px] bg-[rgba(33,48,64,0.92)] px-[9px] py-[7px] text-center shadow-[0_8px_20px_rgba(12,31,56,0.18)]">
+            <p className="whitespace-nowrap font-['Inter:Regular',sans-serif] text-[9px] font-normal leading-[normal] text-[rgba(255,255,255,0.75)]">{hoveredSegment.label}</p>
+            <p className="whitespace-nowrap font-['Inter:Medium',sans-serif] text-[12px] font-medium leading-[normal] text-white">{formatPercent(hoveredSegment.value)}</p>
+          </div>
+        ) : null}
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <p className="font-['Inter:Bold',sans-serif] font-bold text-[#001e39] text-[30px] leading-[30px]">{formatPercent(clampedRate)}</p>
           <p className="font-['Inter:Regular',sans-serif] font-normal text-[#646464] text-[10px] leading-[normal] mt-[2px]">cerradas</p>
         </div>
       </div>
-      <div className="mt-[14px] flex items-center justify-center gap-[16px] text-[#333] text-[11px] font-['Inter:Regular',sans-serif] font-normal">
+      <div className="mt-[12px] flex items-center justify-center gap-[16px] text-[#333] text-[11px] font-['Inter:Regular',sans-serif] font-normal">
         <LegendItem color={CLOSED} label="Cerradas" />
         <LegendItem color={OPEN} label="Abiertas" />
       </div>
@@ -134,8 +149,8 @@ export function DashboardFigmaFindingsEvolutionChartCard({ rows }: FindingsEvolu
       <div className="h-[27px] relative shrink-0 w-full" data-name="Container (margin)">
         <p className="[word-break:break-word] font-['Inter:Regular',sans-serif] font-normal leading-[normal] not-italic relative shrink-0 text-[#646464] text-[11px] whitespace-nowrap">Tendencia mensual · abiertas vs cerradas</p>
       </div>
-      <div className="relative w-full flex-1 min-h-px" data-name="Canvas">
-        <svg className="absolute inset-0 size-full" viewBox={`0 0 ${chartWidth} ${chartHeight}`} fill="none" preserveAspectRatio="none">
+      <div className="relative mx-auto w-full max-w-[328px] flex-1 min-h-px" data-name="Canvas">
+        <svg className="absolute inset-0 size-full" viewBox={`0 0 ${chartWidth} ${chartHeight}`} fill="none" preserveAspectRatio="xMidYMid meet">
           {yTicks.map((tick) => {
             const y = bottom - (tick / maxValue) * plotHeight;
             return (

@@ -37,6 +37,13 @@ export interface InspectionDashboardMonthlyFindingRowResponse {
   open: number;
 }
 
+export interface InspectionDashboardAreaObservationRowResponse {
+  areaId: string | null;
+  area: string;
+  closed: number;
+  open: number;
+}
+
 export interface InspectionDashboardClosureResponse {
   historicalRate: number;
   periodRate: number;
@@ -46,6 +53,7 @@ export interface InspectionDashboardClosureResponse {
 export interface InspectionDashboardChartsResponse {
   annualInspections: InspectionDashboardAnnualInspectionRowResponse[];
   monthlyFindings: InspectionDashboardMonthlyFindingRowResponse[];
+  areaObservations: InspectionDashboardAreaObservationRowResponse[];
   closure: InspectionDashboardClosureResponse;
 }
 

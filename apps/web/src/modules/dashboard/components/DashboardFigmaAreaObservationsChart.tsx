@@ -4,11 +4,19 @@ type DashboardFigmaAreaObservationsChartProps = {
   rows: DashboardAreaObservationRow[];
 };
 
+type BarWithTooltipProps = {
+  color: string;
+  label: string;
+  value: number;
+  width: string;
+};
+
 const CLOSED = '#27677c';
 const OPEN = '#d87b40';
 const GRID = '#e3e3e3';
 const AXIS_MAX = 1400;
 const AXIS_TICKS = [0, 200, 400, 600, 800, 1000, 1200, 1400];
+const numberFormatter = new Intl.NumberFormat('es-CL');
 
 function clampRatio(value: number) {
   return Math.max(0, Math.min(1, value / AXIS_MAX));
@@ -20,7 +28,18 @@ function barWidth(value: number) {
 }
 
 function formatTick(value: number) {
-  return new Intl.NumberFormat('es-CL').format(value);
+  return numberFormatter.format(value);
+}
+
+function BarWithTooltip({ color, label, value, width }: BarWithTooltipProps) {
+  return (
+    <div className="group relative h-[6px] rounded-[1px]" data-name="bar-with-tooltip" style={{ width, backgroundColor: color }}>
+      <div className="pointer-events-none absolute bottom-[calc(100%+8px)] left-1/2 z-[3] hidden -translate-x-1/2 overflow-clip rounded-[6px] bg-[rgba(33,48,64,0.92)] px-[8px] py-[6px] text-center shadow-[0_8px_20px_rgba(12,31,56,0.18)] group-hover:block">
+        <p className="whitespace-nowrap font-['Inter:Regular',sans-serif] text-[9px] font-normal leading-[normal] text-[rgba(255,255,255,0.75)]">{label}</p>
+        <p className="whitespace-nowrap font-['Inter:Medium',sans-serif] text-[12px] font-medium leading-[normal] text-white">{formatTick(value)}</p>
+      </div>
+    </div>
+  );
 }
 
 export function DashboardFigmaAreaObservationsChart({ rows }: DashboardFigmaAreaObservationsChartProps) {
@@ -57,8 +76,8 @@ export function DashboardFigmaAreaObservationsChart({ rows }: DashboardFigmaArea
               {visibleRows.map((row, index) => (
                 <div className="flex min-h-[28px] items-center" data-name="chart-row" key={`${row.area}-${index}`}>
                   <div className="flex w-full flex-col gap-[2px] items-start" data-name="bar-pair">
-                    <div className="h-[6px] rounded-[1px]" data-name="bar-cerradas" style={{ width: barWidth(row.closedFindings), backgroundColor: CLOSED }} />
-                    <div className="h-[6px] rounded-[1px]" data-name="bar-abiertas" style={{ width: barWidth(row.openFindings), backgroundColor: OPEN }} />
+                    <BarWithTooltip color={CLOSED} label="Cerradas" value={row.closedFindings} width={barWidth(row.closedFindings)} />
+                    <BarWithTooltip color={OPEN} label="Abiertas" value={row.openFindings} width={barWidth(row.openFindings)} />
                   </div>
                 </div>
               ))}

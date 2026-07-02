@@ -54,13 +54,18 @@ function buildSmoothPath(points: ChartPoint[]) {
   return [`M ${firstPoint!.x} ${firstPoint!.y}`, ...segments].join(' ');
 }
 
+function formatMonthLabel(label: string) {
+  const normalized = label.replace('.', '').trim().toLowerCase().slice(0, 3);
+  return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1) : '';
+}
+
 function buildEvolutionRows(rows: DashboardMonthlySeriesRow[]) {
   const currentMonthIndex = new Date().getMonth();
   const lastDataIndex = rows.reduce((lastIndex, row, index) => (row.closedFindings > 0 || row.openFindings > 0 ? index : lastIndex), -1);
   const visibleMonths = Math.min(12, Math.max(5, currentMonthIndex + 1, lastDataIndex + 1));
 
   return rows.slice(0, visibleMonths).map((row) => ({
-    label: row.month.replace('.', '').slice(0, 3),
+    label: formatMonthLabel(row.month),
     closed: Math.max(0, row.closedFindings),
     open: Math.max(0, row.openFindings),
   }));

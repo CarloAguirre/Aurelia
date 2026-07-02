@@ -10,6 +10,7 @@ import {
 export function useDashboardCharts() {
   const summaryQuery = useInspectionDashboardSummary();
   const inspectionsQuery = useInspectionsList();
+  const inspections = inspectionsQuery.data ?? [];
 
   const monthlySeriesRows = useMemo(
     () => buildMonthlySeriesRows(inspectionsQuery.data),
@@ -27,6 +28,7 @@ export function useDashboardCharts() {
   );
 
   return {
+    inspections,
     monthlySeriesRows,
     areaObservationRows,
     closureMetrics,

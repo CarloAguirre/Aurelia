@@ -21,6 +21,13 @@ type GaugeHoverState = {
   value: number;
 } | null;
 
+type EvolutionHoverState = {
+  label: string;
+  value: number;
+  x: number;
+  y: number;
+} | null;
+
 const CLOSED = '#1f6f8b';
 const OPEN = '#e07a3f';
 const TEAL = '#00b398';
@@ -80,6 +87,21 @@ function LegendItem({ color, label, outlined = false }: { color: string; label: 
   );
 }
 
+function EvolutionTooltip({ point, chartWidth }: { point: Exclude<EvolutionHoverState, null>; chartWidth: number }) {
+  const tooltipWidth = 78;
+  const tooltipHeight = 32;
+  const x = Math.max(tooltipWidth / 2, Math.min(chartWidth - tooltipWidth / 2, point.x));
+  const y = Math.max(tooltipHeight + 4, point.y - 14);
+
+  return (
+    <g pointerEvents="none">
+      <rect x={x - tooltipWidth / 2} y={y - tooltipHeight} width={tooltipWidth} height={tooltipHeight} rx="6" fill="#213040" opacity="0.94" />
+      <text x={x} y={y - 18} textAnchor="middle" fill="rgba(255,255,255,0.75)" fontSize="9" fontFamily="Inter, sans-serif">{point.label}</text>
+      <text x={x} y={y - 6} textAnchor="middle" fill="#ffffff" fontSize="12" fontWeight="500" fontFamily="Inter, sans-serif">{formatAxisValue(point.value)}</text>
+    </g>
+  );
+}
+
 export function DashboardFigmaClosureGaugeChartCard({ rate, title, subtitle }: ClosureGaugeCardProps) {
   const [hoveredSegment, setHoveredSegment] = useState<GaugeHoverState>(null);
   const clampedRate = clampRate(rate);
@@ -122,6 +144,7 @@ export function DashboardFigmaClosureGaugeChartCard({ rate, title, subtitle }: C
 }
 
 export function DashboardFigmaFindingsEvolutionChartCard({ rows }: FindingsEvolutionChartCardProps) {
+  const [hoveredPoint, setHoveredPoint] = useState<EvolutionHoverState>(null);
   const series = buildEvolutionRows(rows);
   const maxValue = 1200;
   const chartWidth = 328;
@@ -155,7 +178,7 @@ export function DashboardFigmaFindingsEvolutionChartCard({ rows }: FindingsEvolu
         <p className="[word-break:break-word] font-['Inter:Regular',sans-serif] font-normal leading-[normal] not-italic relative shrink-0 text-[#646464] text-[11px] whitespace-nowrap">Tendencia mensual · abiertas vs cerradas</p>
       </div>
       <div className="relative mx-auto w-full max-w-[328px] flex-1 min-h-px" data-name="Canvas">
-        <svg className="absolute inset-0 size-full" viewBox={`0 0 ${chartWidth} ${chartHeight}`} fill="none" preserveAspectRatio="xMidYMid meet">
+        <svg className="absolute inset-0 size-full" viewBox={`0 0 ${chartWidth} ${chartHeight}`} fill="none" preserveAspectRatio="xMidYMid meet" onMouseLeave={() => setHoveredPoint(null)}>
           {yTicks.map((tick) => {
             const y = bottom - (tick / maxValue) * plotHeight;
             return (
@@ -168,8 +191,19 @@ export function DashboardFigmaFindingsEvolutionChartCard({ rows }: FindingsEvolu
           <path d={areaPath} fill={AREA_FILL} />
           <path d={closedPath} fill="none" stroke={TEAL} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
           <path d={openPath} fill="none" stroke={OPEN} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-          {closedPoints.map((point, index) => <circle key={`closed-${series[index]!.label}`} cx={point.x} cy={point.y} r="4" fill={TEAL} />)}
-          {openPoints.map((point, index) => <circle key={`open-${series[index]!.label}`} cx={point.x} cy={point.y} r="3.5" fill={OPEN} />)}
+          {closedPoints.map((point, index) => (
+            <g key={`closed-${series[index]!.label}`} onMouseEnter={() => setHoveredPoint({ label: 'Cerradas', value: series[index]!.closed, x: point.x, y: point.y })}>
+              <circle cx={point.x} cy={point.y} r="9" fill="transparent" />
+              <circle cx={point.x} cy={point.y} r="4" fill={TEAL} />
+            </g>
+          ))}
+          {openPoints.map((point, index) => (
+            <g key={`open-${series[index]!.label}`} onMouseEnter={() => setHoveredPoint({ label: 'Abiertas', value: series[index]!.open, x: point.x, y: point.y })}>
+              <circle cx={point.x} cy={point.y} r="9" fill="transparent" />
+              <circle cx={point.x} cy={point.y} r="3.5" fill={OPEN} />
+            </g>
+          ))}
+          {hoveredPoint ? <EvolutionTooltip point={hoveredPoint} chartWidth={chartWidth} /> : null}
           {series.map((row, index) => {
             const x = left + index * step;
             return <text key={row.label} x={x} y="163" textAnchor="middle" fill="#646464" fontSize="12" fontFamily="Inter, sans-serif">{row.label}</text>;

@@ -4,7 +4,6 @@ import { useDashboardKpis } from './hooks/useDashboardKpis';
 import { useDashboardOpenFindings } from './hooks/useDashboardOpenFindings';
 import {
   DashboardAreaObservationsCard,
-  DashboardAreaObservationsBarsChartDynamic,
   DashboardAreaObservationsHeaderPrimary,
   DashboardAreaObservationsHeaderSecondary,
   DashboardAnnualKpiClosedCard,
@@ -50,6 +49,7 @@ import {
   DashboardFigmaClosureGaugeChartCard,
   DashboardFigmaFindingsEvolutionChartCard,
 } from './components/DashboardFigmaSecondaryChartCards';
+import { DashboardFigmaAreaObservationsChart } from './components/DashboardFigmaAreaObservationsChart';
 
 export function DashboardPage() {
   const { runtimeModel: kpisRuntimeModel, isLoading: isKpisLoading, isError: isKpisError } = useDashboardKpis();
@@ -106,7 +106,7 @@ export function DashboardPage() {
                         <DashboardFigmaClosureGaugeChartCard rate={closureMetrics.periodClosureRate} title="% Cierre del período" subtitle={closureMetrics.periodLabel} />
                         {isChartsError ? <div className="bg-white rounded-[8px] border border-[#ffd0db] h-[278.5px] flex items-center justify-center text-[12px] text-[#570b1d]">Error al cargar evolución</div> : <DashboardFigmaFindingsEvolutionChartCard rows={monthlySeriesRows} />}
                       </DashboardChartsSecondaryGrid>
-                      <DashboardAreaObservationsCard headerPrimary={<DashboardAreaObservationsHeaderPrimary />} headerSecondary={<DashboardAreaObservationsHeaderSecondary />} chart={isChartsLoading ? <div className="h-[320px] w-full flex items-center justify-center text-[12px] text-[#646464]">Cargando observaciones por área...</div> : <DashboardAreaObservationsBarsChartDynamic rows={areaObservationRows} />} />
+                      <DashboardAreaObservationsCard headerPrimary={<DashboardAreaObservationsHeaderPrimary />} headerSecondary={<DashboardAreaObservationsHeaderSecondary />} chart={isChartsLoading ? <div className="h-[320px] w-full flex items-center justify-center text-[12px] text-[#646464]">Cargando observaciones por área...</div> : <DashboardFigmaAreaObservationsChart rows={areaObservationRows} />} />
                     </DashboardChartsBlock>
                   }
                 />

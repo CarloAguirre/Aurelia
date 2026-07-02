@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuditModule } from '../audit/audit.module';
 import { CommentsModule } from '../comments/comments.module';
 import { EvidencesModule } from '../evidences/evidences.module';
+import { AreaEntity } from '../organization/entities/area.entity';
 import { InspectionFindingSeverityEntity } from './entities/inspection-finding-severity.entity';
 import { InspectionFindingResponsibleEntity } from './entities/inspection-finding-responsible.entity';
 import { InspectionFindingTypeEntity } from './entities/inspection-finding-type.entity';
@@ -47,6 +48,7 @@ import { InspectionsService } from './inspections.service';
       InspectionFindingResponsibleEntity,
       InspectionFollowupEntity,
       InspectionStateEntity,
+      AreaEntity,
     ]),
   ],
   controllers: [InspectionsController, InspectionDashboardController, InspectionTransversalController, InspectionFindingCatalogController, InspectionCriticalityCatalogController],

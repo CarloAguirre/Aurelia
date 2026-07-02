@@ -10,8 +10,6 @@ const GRID = '#e3e3e3';
 const AXIS_MAX = 1400;
 const AXIS_TICKS = [0, 200, 400, 600, 800, 1000, 1200, 1400];
 const PLOT_WIDTH = 840;
-const LABEL_WIDTH = 160;
-const ROW_GAP = 12;
 
 function clampRatio(value: number) {
   return Math.max(0, Math.min(1, value / AXIS_MAX));

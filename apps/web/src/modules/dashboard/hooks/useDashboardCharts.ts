@@ -24,7 +24,7 @@ function buildMonthlySeriesRowsFromCharts(data: InspectionDashboardChartsRespons
 }
 
 function buildAreaObservationRowsFromCharts(data: InspectionDashboardChartsResponse | undefined): DashboardAreaObservationRow[] {
-  return data?.areaObservations.map((row) => ({
+  return data?.areaObservations?.map((row) => ({
     area: row.area,
     closedFindings: row.closed,
     openFindings: row.open,

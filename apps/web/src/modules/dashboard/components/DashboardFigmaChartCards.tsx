@@ -85,7 +85,6 @@ function formatTooltipValue(value: number) {
 
 function BarWithTooltip({ color, height, label, name, value, width }: BarWithTooltipProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const tooltipBottom = Math.min(height + 8, 154);
 
   return (
     <div
@@ -96,7 +95,7 @@ function BarWithTooltip({ color, height, label, name, value, width }: BarWithToo
       style={{ backgroundColor: color, height: `${height}px`, width: `${width}px` }}
     >
       {isHovered ? (
-        <div className="absolute left-1/2 z-[2] -translate-x-1/2 overflow-clip rounded-[6px] bg-[rgba(33,48,64,0.92)] px-[8px] py-[6px] text-center" style={{ bottom: `${tooltipBottom}px` }}>
+        <div className="absolute left-1/2 z-[60] -translate-x-1/2 overflow-clip rounded-[6px] bg-[rgba(33,48,64,0.94)] px-[8px] py-[6px] text-center shadow-[0_8px_20px_rgba(12,31,56,0.18)]" style={{ bottom: `${height + 8}px` }}>
           <p className="relative shrink-0 whitespace-nowrap font-['Inter:Regular',sans-serif] text-[9px] font-normal leading-[normal] text-[rgba(255,255,255,0.75)]">{label}</p>
           <p className="relative shrink-0 whitespace-nowrap font-['Inter:Medium',sans-serif] text-[12px] font-medium leading-[normal] text-white">{formatTooltipValue(value)}</p>
         </div>
@@ -115,13 +114,14 @@ function ChartCard({ title, subtitle, rows, maxValue, yTicks, closedSwatchColor,
         <p className="[word-break:break-word] font-['Inter:Regular',sans-serif] font-normal leading-[normal] not-italic relative shrink-0 text-[#646464] text-[11px] whitespace-nowrap">{subtitle}</p>
       </div>
       <div className="bg-white flex-[1_0_0] min-h-px relative w-full" data-name="Canvas">
-        <div className="bg-clip-padding border-0 border-[transparent] border-solid content-stretch flex flex-col items-start overflow-clip pb-[12px] pt-[16px] px-[12px] relative rounded-[inherit] size-full">
+        <div className="bg-clip-padding border-0 border-[transparent] border-solid content-stretch flex flex-col items-start overflow-visible pb-[12px] pt-[16px] px-[12px] relative rounded-[inherit] size-full">
           <div className="content-stretch flex h-[200px] items-start relative shrink-0 w-full" data-name="chart-area">
             <div className="[word-break:break-word] font-['Inter:Regular',sans-serif] font-normal h-full leading-[0] not-italic relative shrink-0 text-[#9ca3af] text-[9px] text-right w-[36px]" data-name="y-axis">
               {yTicks.map((tick) => {
                 const bottom = (tick / maxValue) * CHART_HEIGHT;
+                const transform = tick === 0 ? 'translateY(0)' : 'translateY(50%)';
                 return (
-                  <div className="absolute right-[4px] w-[32px]" key={tick} style={{ bottom: `${bottom}px`, transform: 'translateY(50%)' }}>
+                  <div className="absolute right-[4px] w-[32px]" key={tick} style={{ bottom: `${bottom}px`, transform }}>
                     <p className="leading-[normal]">{tick}</p>
                   </div>
                 );
@@ -138,7 +138,7 @@ function ChartCard({ title, subtitle, rows, maxValue, yTicks, closedSwatchColor,
                   const openHeight = Math.max(0, Math.min(CHART_HEIGHT, (row.open / maxValue) * CHART_HEIGHT));
 
                   return (
-                    <div className="relative flex h-full flex-1 items-end justify-center gap-[4px]" key={row.label}>
+                    <div className="relative z-[1] flex h-full flex-1 items-end justify-center gap-[4px]" key={row.label}>
                       <BarWithTooltip color={row.closedColor ?? CLOSED} height={closedHeight} label={closedTooltipLabel} name={`${row.label}-cerradas`} value={row.closed} width={barWidth} />
                       <BarWithTooltip color={OPEN} height={openHeight} label={openTooltipLabel} name={`${row.label}-abiertas`} value={row.open} width={barWidth} />
                     </div>

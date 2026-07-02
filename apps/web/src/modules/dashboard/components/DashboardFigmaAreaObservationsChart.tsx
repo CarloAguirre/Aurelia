@@ -9,15 +9,14 @@ const OPEN = '#d87b40';
 const GRID = '#e3e3e3';
 const AXIS_MAX = 1400;
 const AXIS_TICKS = [0, 200, 400, 600, 800, 1000, 1200, 1400];
-const PLOT_WIDTH = 840;
 
 function clampRatio(value: number) {
   return Math.max(0, Math.min(1, value / AXIS_MAX));
 }
 
 function barWidth(value: number) {
-  if (value <= 0) return 1;
-  return Math.max(1, Math.round(clampRatio(value) * PLOT_WIDTH));
+  if (value <= 0) return '1px';
+  return `${Math.max(0.25, clampRatio(value) * 100)}%`;
 }
 
 function formatTick(value: number) {
@@ -37,32 +36,47 @@ export function DashboardFigmaAreaObservationsChart({ rows }: DashboardFigmaArea
 
   return (
     <div className="bg-white min-h-[400px] relative shrink-0 w-full" data-name="bar-chart-editable">
-      <div className="bg-clip-padding border-0 border-[transparent] border-solid content-stretch flex flex-col items-start min-h-[inherit] relative size-full">
-        <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full" data-name="plot-container">
-          <div className="absolute bottom-0 content-stretch flex items-start justify-between left-[176px] top-0 w-[840px]" data-name="grid-lines">
-            {AXIS_TICKS.map((tick) => (
-              <div className="relative h-full w-px shrink-0" data-name={`grid-${tick}`} key={tick} style={{ backgroundColor: GRID }} />
+      <div className="bg-clip-padding border-0 border-[transparent] border-solid flex min-h-[400px] flex-col items-start relative size-full">
+        <div className="relative flex min-h-[320px] w-full shrink-0 items-stretch" data-name="plot-container">
+          <div className="flex w-[176px] shrink-0 flex-col justify-between py-[6px]" data-name="y-axis-labels">
+            {visibleRows.map((row, index) => (
+              <div className="flex min-h-[28px] items-center justify-end pr-[16px]" key={`${row.area}-${index}`}>
+                <p className="[word-break:break-word] font-['Inter:Regular',sans-serif] font-normal leading-[normal] not-italic text-[#646464] text-[12px] text-right">{row.area}</p>
+              </div>
             ))}
           </div>
 
-          {visibleRows.map((row, index) => (
-            <div className="content-stretch flex gap-[16px] items-center relative shrink-0 w-full" data-name="chart-row" key={`${row.area}-${index}`}>
-              <div className="content-stretch flex items-start justify-end relative shrink-0 w-[160px]" data-name="y-axis-label">
-                <p className="[word-break:break-word] flex-[1_0_0] font-['Inter:Regular',sans-serif] font-normal leading-[normal] min-w-px not-italic relative text-[#646464] text-[12px] text-right">{row.area}</p>
-              </div>
-              <div className="content-stretch flex flex-col gap-[2px] items-start relative shrink-0 w-[840px]" data-name="bar-pair">
-                <div className="h-[6px] relative rounded-[1px] shrink-0" data-name="bar-cerradas" style={{ width: `${barWidth(row.closedFindings)}px`, backgroundColor: CLOSED }} />
-                <div className="h-[6px] relative rounded-[1px] shrink-0" data-name="bar-abiertas" style={{ width: `${barWidth(row.openFindings)}px`, backgroundColor: OPEN }} />
-              </div>
-            </div>
-          ))}
-
-          <div className="content-stretch flex h-[40px] items-start relative shrink-0 w-full" data-name="footer-spacer">
-            <div className="[word-break:break-word] absolute bottom-0 content-stretch flex font-['Inter:Regular',sans-serif] font-normal items-start justify-between leading-[normal] left-[170px] not-italic pt-[8px] text-[#646464] text-[11px] text-center w-[780px]" data-name="x-axis">
+          <div className="relative min-w-0 flex-1" data-name="plot-area">
+            <div className="absolute inset-0 flex justify-between" data-name="grid-lines">
               {AXIS_TICKS.map((tick) => (
-                <p className="relative shrink-0 w-[30px]" key={tick}>{formatTick(tick)}</p>
+                <div className="h-full w-px shrink-0" data-name={`grid-${tick}`} key={tick} style={{ backgroundColor: GRID }} />
               ))}
             </div>
+
+            <div className="relative z-[1] flex h-full flex-col justify-between py-[6px]" data-name="bars">
+              {visibleRows.map((row, index) => (
+                <div className="flex min-h-[28px] items-center" data-name="chart-row" key={`${row.area}-${index}`}>
+                  <div className="flex w-full flex-col gap-[2px] items-start" data-name="bar-pair">
+                    <div className="h-[6px] rounded-[1px]" data-name="bar-cerradas" style={{ width: barWidth(row.closedFindings), backgroundColor: CLOSED }} />
+                    <div className="h-[6px] rounded-[1px]" data-name="bar-abiertas" style={{ width: barWidth(row.openFindings), backgroundColor: OPEN }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex h-[40px] w-full shrink-0" data-name="footer-spacer">
+          <div className="w-[176px] shrink-0" />
+          <div className="relative min-w-0 flex-1" data-name="x-axis">
+            {AXIS_TICKS.map((tick) => {
+              const left = `${clampRatio(tick) * 100}%`;
+              return (
+                <p className="absolute top-[8px] -translate-x-1/2 [word-break:break-word] font-['Inter:Regular',sans-serif] font-normal leading-[normal] not-italic text-[#646464] text-[11px] text-center whitespace-nowrap" key={tick} style={{ left }}>
+                  {formatTick(tick)}
+                </p>
+              );
+            })}
           </div>
         </div>
 

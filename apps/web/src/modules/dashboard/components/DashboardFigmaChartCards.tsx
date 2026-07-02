@@ -1,9 +1,9 @@
 import { useState } from 'react';
+import { InspectionStatus, type InspectionResponse } from '@aurelia/contracts';
 import type { DashboardMonthlySeriesRow } from '../dashboardRuntime';
 
 type AnnualInspectionChartCardProps = {
-  closedInspections: string;
-  openInspections: string;
+  inspections: InspectionResponse[];
 };
 
 type AnnualFindingsChartCardProps = {
@@ -43,26 +43,49 @@ const CLOSED_HISTORICAL = '#b8cdd9';
 const CLOSED_CURRENT = '#2d6a7f';
 const OPEN = '#f4a460';
 const GRID = '#e5e7eb';
+const CHART_HEIGHT = 200;
 const numberFormatter = new Intl.NumberFormat('es-CL');
 
-const INSPECTION_CONTEXT_ROWS = [
-  { label: '2023', closed: 652, open: 80, closedColor: CLOSED_HISTORICAL },
-  { label: '2024', closed: 680, open: 76, closedColor: CLOSED_HISTORICAL },
-  { label: '2025', closed: 728, open: 64, closedColor: CLOSED_HISTORICAL },
-];
+const FINDING_MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May'];
 
-const FINDING_CONTEXT_ROWS = [
-  { label: 'Ene', closed: 860, open: 80 },
-  { label: 'Feb', closed: 380, open: 45 },
-  { label: 'Mar', closed: 600, open: 60 },
-  { label: 'Abr', closed: 980, open: 50 },
-  { label: 'May', closed: 150, open: 95 },
-];
+function resolveInspectionDate(inspection: InspectionResponse) {
+  return inspection.startedAt ?? inspection.scheduledAt ?? inspection.createdAt;
+}
 
-function parseMetric(value: string) {
-  const normalized = value.replace(/\./g, '').replace(',', '.').match(/[0-9.]+/)?.[0];
-  const parsed = normalized ? Number(normalized) : 0;
-  return Number.isFinite(parsed) ? parsed : 0;
+function buildInspectionRows(inspections: InspectionResponse[]) {
+  const currentYear = new Date().getFullYear();
+  const yearRows = Array.from({ length: 4 }, (_, index) => {
+    const year = currentYear - 3 + index;
+    return {
+      label: `${year}`,
+      closed: 0,
+      open: 0,
+      closedColor: year === currentYear ? CLOSED_CURRENT : CLOSED_HISTORICAL,
+    };
+  });
+  const rowsByYear = new Map(yearRows.map((row) => [Number(row.label), row]));
+
+  inspections.forEach((inspection) => {
+    const candidateDate = resolveInspectionDate(inspection);
+    if (!candidateDate) return;
+
+    const parsed = new Date(candidateDate);
+    if (Number.isNaN(parsed.getTime())) return;
+
+    const row = rowsByYear.get(parsed.getFullYear());
+    if (!row) return;
+
+    if (inspection.status === InspectionStatus.CLOSED) {
+      row.closed += 1;
+      return;
+    }
+
+    if (inspection.status !== InspectionStatus.CANCELLED) {
+      row.open += 1;
+    }
+  });
+
+  return yearRows;
 }
 
 function formatMonthLabel(month: string) {
@@ -70,27 +93,14 @@ function formatMonthLabel(month: string) {
   return normalized ? normalized.charAt(0).toUpperCase() + normalized.slice(1, 3) : '';
 }
 
-function resolveTickHeight(totalTicks: number, index: number) {
-  if (totalTicks === 5) {
-    return [20, 40, 40, 40, 60][index] ?? 40;
-  }
-
-  if (totalTicks === 7) {
-    return [14, 19, 34, 33, 34, 33, 33][index] ?? 33;
-  }
-
-  return 200 / Math.max(totalTicks, 1);
-}
-
 function buildFindingRows(rows: DashboardMonthlySeriesRow[]) {
-  const firstFiveRows = rows.slice(0, 5).map((row) => ({
+  const mappedRows = rows.slice(0, 5).map((row) => ({
     label: formatMonthLabel(row.month),
     closed: Math.max(0, row.closedFindings),
     open: Math.max(0, row.openFindings),
   }));
 
-  const hasRuntimeValues = firstFiveRows.some((row) => row.closed > 0 || row.open > 0);
-  return hasRuntimeValues ? firstFiveRows : FINDING_CONTEXT_ROWS;
+  return FINDING_MONTH_LABELS.map((label, index) => mappedRows[index] ?? { label, closed: 0, open: 0 });
 }
 
 function formatTooltipValue(value: number) {
@@ -99,6 +109,7 @@ function formatTooltipValue(value: number) {
 
 function BarWithTooltip({ color, height, label, name, value, width }: BarWithTooltipProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const tooltipBottom = Math.min(height + 8, 154);
 
   return (
     <div
@@ -109,7 +120,7 @@ function BarWithTooltip({ color, height, label, name, value, width }: BarWithToo
       style={{ backgroundColor: color, height: `${height}px`, width: `${width}px` }}
     >
       {isHovered ? (
-        <div className="absolute left-1/2 z-[2] -translate-x-1/2 overflow-clip rounded-[6px] bg-[rgba(33,48,64,0.92)] px-[8px] py-[6px] text-center" style={{ bottom: `${height + 8}px` }}>
+        <div className="absolute left-1/2 z-[2] -translate-x-1/2 overflow-clip rounded-[6px] bg-[rgba(33,48,64,0.92)] px-[8px] py-[6px] text-center" style={{ bottom: `${tooltipBottom}px` }}>
           <p className="relative shrink-0 whitespace-nowrap font-['Inter:Regular',sans-serif] text-[9px] font-normal leading-[normal] text-[rgba(255,255,255,0.75)]">{label}</p>
           <p className="relative shrink-0 whitespace-nowrap font-['Inter:Medium',sans-serif] text-[12px] font-medium leading-[normal] text-white">{formatTooltipValue(value)}</p>
         </div>
@@ -130,21 +141,25 @@ function ChartCard({ title, subtitle, rows, maxValue, yTicks, closedSwatchColor,
       <div className="bg-white flex-[1_0_0] min-h-px relative w-full" data-name="Canvas">
         <div className="bg-clip-padding border-0 border-[transparent] border-solid content-stretch flex flex-col items-start overflow-clip pb-[12px] pt-[16px] px-[12px] relative rounded-[inherit] size-full">
           <div className="content-stretch flex h-[200px] items-start relative shrink-0 w-full" data-name="chart-area">
-            <div className="[word-break:break-word] content-stretch flex flex-col font-['Inter:Regular',sans-serif] font-normal h-full items-start leading-[0] not-italic relative shrink-0 text-[#9ca3af] text-[9px] text-right w-[36px]" data-name="y-axis">
-              {yTicks.map((tick, index) => (
-                <div className="flex flex-col justify-center relative shrink-0 w-[32px]" key={`${tick}-${index}`} style={{ height: `${resolveTickHeight(yTicks.length, index)}px` }}>
-                  <p className="leading-[normal]">{tick}</p>
-                </div>
-              ))}
+            <div className="[word-break:break-word] font-['Inter:Regular',sans-serif] font-normal h-full leading-[0] not-italic relative shrink-0 text-[#9ca3af] text-[9px] text-right w-[36px]" data-name="y-axis">
+              {yTicks.map((tick) => {
+                const bottom = (tick / maxValue) * CHART_HEIGHT;
+                return (
+                  <div className="absolute right-[4px] w-[32px]" key={tick} style={{ bottom: `${bottom}px`, transform: 'translateY(50%)' }}>
+                    <p className="leading-[normal]">{tick}</p>
+                  </div>
+                );
+              })}
             </div>
-            <div className="bg-white flex-[1_0_0] h-full min-w-px overflow-clip relative" data-name="plot">
-              {yTicks.map((tick, index) => (
-                <div className="absolute h-px left-0 right-0" data-name={`grid-${tick}`} key={`${tick}-${index}`} style={{ backgroundColor: GRID, top: `${(index / Math.max(yTicks.length - 1, 1)) * 199}px` }} />
-              ))}
+            <div className="bg-white flex-[1_0_0] h-full min-w-px overflow-visible relative" data-name="plot">
+              {yTicks.map((tick) => {
+                const bottom = (tick / maxValue) * CHART_HEIGHT;
+                return <div className="absolute h-px left-0 right-0" data-name={`grid-${tick}`} key={tick} style={{ backgroundColor: GRID, bottom: `${bottom}px` }} />;
+              })}
               <div className="absolute inset-0 flex items-end justify-between gap-[14px]">
                 {rows.map((row) => {
-                  const closedHeight = Math.max(0, Math.min(200, (row.closed / maxValue) * 200));
-                  const openHeight = Math.max(0, Math.min(200, (row.open / maxValue) * 200));
+                  const closedHeight = Math.max(0, Math.min(CHART_HEIGHT, (row.closed / maxValue) * CHART_HEIGHT));
+                  const openHeight = Math.max(0, Math.min(CHART_HEIGHT, (row.open / maxValue) * CHART_HEIGHT));
 
                   return (
                     <div className="relative flex h-full flex-1 items-end justify-center gap-[4px]" key={row.label}>
@@ -178,20 +193,9 @@ function ChartCard({ title, subtitle, rows, maxValue, yTicks, closedSwatchColor,
   );
 }
 
-export function DashboardFigmaAnnualInspectionsChartCard({ closedInspections, openInspections }: AnnualInspectionChartCardProps) {
-  const closed = parseMetric(closedInspections);
-  const open = parseMetric(openInspections);
-  const rows = [
-    ...INSPECTION_CONTEXT_ROWS,
-    {
-      label: '2026',
-      closed,
-      open,
-      closedColor: CLOSED_CURRENT,
-    },
-  ];
-
-  return <ChartCard title="Inspecciones cerradas y abiertas" subtitle="Año 2026 resaltado · contexto 2023–2026" rows={rows} maxValue={800} yTicks={[800, 600, 400, 200, 0]} closedSwatchColor={CLOSED_HISTORICAL} barWidth={36} closedTooltipLabel="Inspecciones cerradas" openTooltipLabel="Inspecciones abiertas" />;
+export function DashboardFigmaAnnualInspectionsChartCard({ inspections }: AnnualInspectionChartCardProps) {
+  const currentYear = new Date().getFullYear();
+  return <ChartCard title="Inspecciones cerradas y abiertas" subtitle={`Año ${currentYear} resaltado · contexto ${currentYear - 3}–${currentYear}`} rows={buildInspectionRows(inspections)} maxValue={800} yTicks={[800, 600, 400, 200, 0]} closedSwatchColor={CLOSED_HISTORICAL} barWidth={36} closedTooltipLabel="Inspecciones cerradas" openTooltipLabel="Inspecciones abiertas" />;
 }
 
 export function DashboardFigmaAnnualFindingsChartCard({ rows }: AnnualFindingsChartCardProps) {

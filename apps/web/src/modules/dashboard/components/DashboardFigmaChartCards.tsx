@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { InspectionStatus, type InspectionResponse } from '@aurelia/contracts';
+import type { InspectionDashboardAnnualInspectionRowResponse } from '@aurelia/contracts';
 import type { DashboardMonthlySeriesRow } from '../dashboardRuntime';
 
 type AnnualInspectionChartCardProps = {
-  inspections: InspectionResponse[];
+  rows: InspectionDashboardAnnualInspectionRowResponse[];
 };
 
 type AnnualFindingsChartCardProps = {
@@ -48,44 +48,20 @@ const numberFormatter = new Intl.NumberFormat('es-CL');
 
 const FINDING_MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May'];
 
-function resolveInspectionDate(inspection: InspectionResponse) {
-  return inspection.startedAt ?? inspection.scheduledAt ?? inspection.createdAt;
-}
-
-function buildInspectionRows(inspections: InspectionResponse[]) {
+function buildInspectionRows(rows: InspectionDashboardAnnualInspectionRowResponse[]) {
   const currentYear = new Date().getFullYear();
-  const yearRows = Array.from({ length: 4 }, (_, index) => {
+  const rowByYear = new Map(rows.map((row) => [row.year, row]));
+
+  return Array.from({ length: 4 }, (_, index) => {
     const year = currentYear - 3 + index;
+    const row = rowByYear.get(year);
     return {
       label: `${year}`,
-      closed: 0,
-      open: 0,
+      closed: row?.closed ?? 0,
+      open: row?.open ?? 0,
       closedColor: year === currentYear ? CLOSED_CURRENT : CLOSED_HISTORICAL,
     };
   });
-  const rowsByYear = new Map(yearRows.map((row) => [Number(row.label), row]));
-
-  inspections.forEach((inspection) => {
-    const candidateDate = resolveInspectionDate(inspection);
-    if (!candidateDate) return;
-
-    const parsed = new Date(candidateDate);
-    if (Number.isNaN(parsed.getTime())) return;
-
-    const row = rowsByYear.get(parsed.getFullYear());
-    if (!row) return;
-
-    if (inspection.status === InspectionStatus.CLOSED) {
-      row.closed += 1;
-      return;
-    }
-
-    if (inspection.status !== InspectionStatus.CANCELLED) {
-      row.open += 1;
-    }
-  });
-
-  return yearRows;
 }
 
 function formatMonthLabel(month: string) {
@@ -193,9 +169,9 @@ function ChartCard({ title, subtitle, rows, maxValue, yTicks, closedSwatchColor,
   );
 }
 
-export function DashboardFigmaAnnualInspectionsChartCard({ inspections }: AnnualInspectionChartCardProps) {
+export function DashboardFigmaAnnualInspectionsChartCard({ rows }: AnnualInspectionChartCardProps) {
   const currentYear = new Date().getFullYear();
-  return <ChartCard title="Inspecciones cerradas y abiertas" subtitle={`Año ${currentYear} resaltado · contexto ${currentYear - 3}–${currentYear}`} rows={buildInspectionRows(inspections)} maxValue={800} yTicks={[800, 600, 400, 200, 0]} closedSwatchColor={CLOSED_HISTORICAL} barWidth={36} closedTooltipLabel="Inspecciones cerradas" openTooltipLabel="Inspecciones abiertas" />;
+  return <ChartCard title="Inspecciones cerradas y abiertas" subtitle={`Año ${currentYear} resaltado · contexto ${currentYear - 3}–${currentYear}`} rows={buildInspectionRows(rows)} maxValue={800} yTicks={[800, 600, 400, 200, 0]} closedSwatchColor={CLOSED_HISTORICAL} barWidth={36} closedTooltipLabel="Inspecciones cerradas" openTooltipLabel="Inspecciones abiertas" />;
 }
 
 export function DashboardFigmaAnnualFindingsChartCard({ rows }: AnnualFindingsChartCardProps) {

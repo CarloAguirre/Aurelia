@@ -1,12 +1,7 @@
 import { useMemo } from 'react';
 import type { InspectionDashboardChartsResponse } from '@aurelia/contracts';
 import { useInspectionDashboardCharts } from '../../../shared/hooks/useInspectionDashboardCharts';
-import { useInspectionsList } from '../../../shared/hooks/useInspectionsList';
-import {
-  buildAreaObservationsRows,
-  buildClosureMetrics,
-  type DashboardMonthlySeriesRow,
-} from '../dashboardRuntime';
+import type { DashboardAreaObservationRow, DashboardMonthlySeriesRow } from '../dashboardRuntime';
 
 function buildMonthlySeriesRowsFromCharts(data: InspectionDashboardChartsResponse | undefined): DashboardMonthlySeriesRow[] {
   if (!data) {
@@ -28,10 +23,16 @@ function buildMonthlySeriesRowsFromCharts(data: InspectionDashboardChartsRespons
   }));
 }
 
+function buildAreaObservationRowsFromCharts(data: InspectionDashboardChartsResponse | undefined): DashboardAreaObservationRow[] {
+  return data?.areaObservations.map((row) => ({
+    area: row.area,
+    closedFindings: row.closed,
+    openFindings: row.open,
+  })) ?? [];
+}
+
 export function useDashboardCharts() {
   const chartsQuery = useInspectionDashboardCharts();
-  const inspectionsQuery = useInspectionsList();
-  const inspections = inspectionsQuery.data ?? [];
 
   const annualInspectionRows = useMemo(
     () => chartsQuery.data?.annualInspections ?? [],
@@ -44,28 +45,25 @@ export function useDashboardCharts() {
   );
 
   const areaObservationRows = useMemo(
-    () => buildAreaObservationsRows(inspectionsQuery.data),
-    [inspectionsQuery.data],
+    () => buildAreaObservationRowsFromCharts(chartsQuery.data),
+    [chartsQuery.data],
   );
 
   const closureMetrics = useMemo(
-    () => chartsQuery.data
-      ? {
-          historicalClosureRate: chartsQuery.data.closure.historicalRate,
-          periodClosureRate: chartsQuery.data.closure.periodRate,
-          periodLabel: chartsQuery.data.closure.periodLabel,
-        }
-      : buildClosureMetrics(undefined, inspectionsQuery.data),
-    [chartsQuery.data, inspectionsQuery.data],
+    () => ({
+      historicalClosureRate: chartsQuery.data?.closure.historicalRate ?? 0,
+      periodClosureRate: chartsQuery.data?.closure.periodRate ?? 0,
+      periodLabel: chartsQuery.data?.closure.periodLabel ?? new Intl.DateTimeFormat('es-CL', { month: 'long', year: 'numeric' }).format(new Date()),
+    }),
+    [chartsQuery.data],
   );
 
   return {
-    inspections,
     annualInspectionRows,
     monthlySeriesRows,
     areaObservationRows,
     closureMetrics,
-    isLoading: chartsQuery.isLoading || inspectionsQuery.isLoading,
-    isError: chartsQuery.isError || inspectionsQuery.isError,
+    isLoading: chartsQuery.isLoading,
+    isError: chartsQuery.isError,
   };
 }

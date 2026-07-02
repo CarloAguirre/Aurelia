@@ -9,11 +9,9 @@ import {
   DashboardAreaObservationsHeaderSecondary,
   DashboardAnnualKpiClosedCard,
   DashboardAnnualKpiFindingsCard,
-  DashboardAnnualFindingsChartCardDynamic,
   DashboardCoreAnalysisSection,
   DashboardAnnualHeaderLeft,
   DashboardAnnualHeaderRight,
-  DashboardAnnualInspectionsChartCardDynamic,
   DashboardAnnualKpiHistoricalClosureCard,
   DashboardAnnualKpiInspectionsCard,
   DashboardAnnualKpiOpenCard,
@@ -46,6 +44,10 @@ import {
   DashboardTopKpis,
   DashboardTopKpisGrid,
 } from './components/DashboardSections';
+import {
+  DashboardFigmaAnnualFindingsChartCard,
+  DashboardFigmaAnnualInspectionsChartCard,
+} from './components/DashboardFigmaChartCards';
 
 export function DashboardPage() {
   const { runtimeModel: kpisRuntimeModel, isLoading: isKpisLoading, isError: isKpisError } = useDashboardKpis();
@@ -94,8 +96,8 @@ export function DashboardPage() {
                   charts={
                     <DashboardChartsBlock>
                       <DashboardChartsPrimaryGrid>
-                        {isChartsLoading ? <div className="bg-white rounded-[10px] border border-[#e3e3e3] min-h-[320px] flex items-center justify-center text-[12px] text-[#646464]">Cargando gráfico de inspecciones...</div> : <DashboardAnnualInspectionsChartCardDynamic rows={monthlySeriesRows} />}
-                        {isChartsError ? <div className="bg-white rounded-[10px] border border-[#ffd0db] min-h-[320px] flex items-center justify-center text-[12px] text-[#570b1d]">Error al cargar gráfico de hallazgos</div> : <DashboardAnnualFindingsChartCardDynamic rows={monthlySeriesRows} />}
+                        {isChartsLoading ? <div className="bg-white rounded-[10px] border border-[#e3e3e3] min-h-[320px] flex items-center justify-center text-[12px] text-[#646464]">Cargando gráfico de inspecciones...</div> : <DashboardFigmaAnnualInspectionsChartCard closedInspections={kpisRuntimeModel.closedInspections} openInspections={kpisRuntimeModel.openInspections} />}
+                        {isChartsError ? <div className="bg-white rounded-[10px] border border-[#ffd0db] min-h-[320px] flex items-center justify-center text-[12px] text-[#570b1d]">Error al cargar gráfico de observaciones</div> : <DashboardFigmaAnnualFindingsChartCard rows={monthlySeriesRows} />}
                       </DashboardChartsPrimaryGrid>
                       <DashboardChartsSecondaryGrid>
                         <DashboardClosureGaugeChartCardDynamic rate={closureMetrics.historicalClosureRate} title="% Cierre histórico" subtitle="2023-2026" />

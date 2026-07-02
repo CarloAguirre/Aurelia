@@ -24,6 +24,31 @@ export interface InspectionChecklistTemplateResponse extends InspectionChecklist
   sections: InspectionChecklistSectionResponse[];
 }
 
+export interface InspectionDashboardAnnualInspectionRowResponse {
+  year: number;
+  closed: number;
+  open: number;
+}
+
+export interface InspectionDashboardMonthlyFindingRowResponse {
+  month: number;
+  label: string;
+  closed: number;
+  open: number;
+}
+
+export interface InspectionDashboardClosureResponse {
+  historicalRate: number;
+  periodRate: number;
+  periodLabel: string;
+}
+
+export interface InspectionDashboardChartsResponse {
+  annualInspections: InspectionDashboardAnnualInspectionRowResponse[];
+  monthlyFindings: InspectionDashboardMonthlyFindingRowResponse[];
+  closure: InspectionDashboardClosureResponse;
+}
+
 export interface InspectionDashboardSummaryResponse {
   inspections: {
     total: number;

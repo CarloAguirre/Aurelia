@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import { InspectionDashboardChartsResponse } from '@aurelia/contracts';
+import type { InspectionDashboardChartsResponse } from '@aurelia/contracts';
 import { RequirePermissions } from '../auth/require-permissions.decorator';
 import { InspectionDashboardService } from './inspection-dashboard.service';
 

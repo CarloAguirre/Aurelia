@@ -17,7 +17,6 @@ import {
   DashboardAnnualKpiInspectionsCard,
   DashboardAnnualKpiOpenCard,
   DashboardAnnualKpiYearClosureCard,
-  DashboardAnnualHeaderSection,
   DashboardAlertsHeaderLeft,
   DashboardAlertsHeaderRight,
   DashboardFrameShell,
@@ -76,12 +75,13 @@ export function DashboardPage() {
               primaryPanel={
                 <DashboardCoreAnalysisSection
                   annualHeader={
-                    <DashboardAnnualHeaderSection>
-                      <div className="flex w-full flex-wrap items-center justify-between gap-[12px]">
+                    <div className="h-auto min-h-[59.5px] relative shrink-0 w-full" data-name="Container">
+                      <div aria-hidden className="absolute border-[#e3e3e3] border-b-2 border-solid inset-0 pointer-events-none" />
+                      <div className="bg-clip-padding border-0 border-[transparent] border-solid content-stretch flex flex-wrap items-center justify-between gap-[12px] px-[1px] py-[6px] relative size-full min-h-[59.5px]">
                         <DashboardAnnualHeaderLeft iconPath={svgPaths.p26a85e00} />
                         <DashboardPeriodLite value={dashboardQuery} onChange={setDashboardQuery} clearIconPath={svgPaths.p12771800} caretIconPath={svgPaths.pf36e620} />
                       </div>
-                    </DashboardAnnualHeaderSection>
+                    </div>
                   }
                   topKpis={
                     <DashboardTopKpis>

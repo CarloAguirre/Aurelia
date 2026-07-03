@@ -4,6 +4,7 @@ import type {
   InspectionDashboardCompanyAnalysisResponse,
   InspectionDashboardOpenFindingsResponse,
   InspectionDashboardSummaryResponse,
+  InspectionManagementKpisResponse,
 } from '@aurelia/contracts';
 import { RequirePermissions } from '../auth/require-permissions.decorator';
 import { InspectionDashboardService } from './inspection-dashboard.service';
@@ -13,6 +14,11 @@ import type { DashboardQuery } from './inspection-dashboard-period';
 @Controller('inspections/dashboard')
 export class InspectionDashboardController {
   constructor(private readonly inspectionDashboardService: InspectionDashboardService) {}
+
+  @Get('management-kpis')
+  getManagementKpis(): Promise<InspectionManagementKpisResponse> {
+    return this.inspectionDashboardService.getManagementKpis();
+  }
 
   @Get('filtered-summary')
   getSummary(@Query() query: DashboardQuery): Promise<InspectionDashboardSummaryResponse> {

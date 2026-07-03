@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type CSSProperties, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LoginResponse } from '@aurelia/contracts';
 import svgPaths from './svg-login';
@@ -163,7 +163,7 @@ export function LoginPage() {
     }
   }
 
-  const inputStyle: React.CSSProperties = {
+  const inputStyle: CSSProperties = {
     height: 40,
     background: '#f6faff',
     border: '1px solid #d1d1d1',
@@ -179,7 +179,7 @@ export function LoginPage() {
     lineHeight: '22.7px',
   };
 
-  const labelStyle: React.CSSProperties = {
+  const labelStyle: CSSProperties = {
     fontFamily: 'Calibri, Inter, system-ui, sans-serif',
     fontSize: 14,
     fontWeight: 700,

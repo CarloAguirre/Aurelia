@@ -26,3 +26,7 @@ export function login(email: string, password: string): Promise<LoginResponse> {
     password,
   });
 }
+
+export function exchangeDesktopLaunch(code: string): Promise<LoginResponse> {
+  return httpPost<{ ticket: string }, LoginResponse>('/auth/iframe-session', { ticket: code });
+}

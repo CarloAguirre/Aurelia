@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import type {
   InspectionDashboardChartsResponse,
   InspectionDashboardCompanyAnalysisResponse,
@@ -6,6 +6,7 @@ import type {
 } from '@aurelia/contracts';
 import { RequirePermissions } from '../auth/require-permissions.decorator';
 import { InspectionDashboardService } from './inspection-dashboard.service';
+import type { DashboardQuery } from './inspection-dashboard-period';
 
 @RequirePermissions('inspections:read')
 @Controller('inspections/dashboard')
@@ -13,17 +14,17 @@ export class InspectionDashboardController {
   constructor(private readonly inspectionDashboardService: InspectionDashboardService) {}
 
   @Get('charts')
-  getCharts(): Promise<InspectionDashboardChartsResponse> {
-    return this.inspectionDashboardService.getCharts();
+  getCharts(@Query() query: DashboardQuery): Promise<InspectionDashboardChartsResponse> {
+    return this.inspectionDashboardService.getCharts(query);
   }
 
   @Get('company-analysis')
-  getCompanyAnalysis(): Promise<InspectionDashboardCompanyAnalysisResponse> {
-    return this.inspectionDashboardService.getCompanyAnalysis();
+  getCompanyAnalysis(@Query() query: DashboardQuery): Promise<InspectionDashboardCompanyAnalysisResponse> {
+    return this.inspectionDashboardService.getCompanyAnalysis(query);
   }
 
   @Get('open-findings')
-  getOpenFindings(): Promise<InspectionDashboardOpenFindingsResponse> {
-    return this.inspectionDashboardService.getOpenFindings();
+  getOpenFindings(@Query() query: DashboardQuery): Promise<InspectionDashboardOpenFindingsResponse> {
+    return this.inspectionDashboardService.getOpenFindings(query);
   }
 }

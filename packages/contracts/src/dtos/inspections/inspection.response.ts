@@ -57,6 +57,16 @@ export interface InspectionDashboardChartsResponse {
   closure: InspectionDashboardClosureResponse;
 }
 
+export interface InspectionDashboardCompanyAnalysisResponse {
+  companiesWithOpenFindings: number;
+  openFindings: number;
+  openInspections: number;
+  openDays: {
+    max: number;
+    average: number;
+  };
+}
+
 export interface InspectionDashboardSummaryResponse {
   inspections: {
     total: number;

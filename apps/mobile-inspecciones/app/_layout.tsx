@@ -27,5 +27,5 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
+  root: { flex: 1, height: '100%', minHeight: '100%', backgroundColor: '#F7F7F7' },
 });

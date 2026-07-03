@@ -1,5 +1,8 @@
+type KpiIconKind = 'total' | 'open' | 'approval' | 'closed';
+
 type KpiCardProps = {
-  icon: string;
+  icon: KpiIconKind;
+  iconColor: string;
   label: string;
   value: string;
   helper: string;
@@ -33,15 +36,90 @@ const rows: Row[] = [
   { id: '#376', date: '01-06-26', inspector: 'Janina S. T.', area: 'Serv. Generales · Sect. Norte', company: 'GOLD FIELDS', type: 'Checklist', urgency: 'Abierta · Menor', urgencyTone: 'green', count: 15, obs: ['3 Abier.', '12 Cer'], days: 11, closure: 80 },
 ];
 
-function KpiCard({ icon, label, value, helper, valueClass = 'text-[#131313]' }: KpiCardProps) {
+function KpiIcon({ kind, color }: { kind: KpiIconKind; color: string }) {
+  if (kind === 'total') {
+    return (
+      <svg className="h-[11px] w-[13.75px] shrink-0" fill="none" viewBox="0 0 14 11" aria-hidden>
+        <rect x="2.25" y="0.75" width="7.5" height="9.5" rx="1.2" stroke={color} strokeWidth="1.5" />
+        <path d="M4.25 3.2h3.4M4.25 5.4h3.4M4.25 7.6h2" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (kind === 'open') {
+    return (
+      <svg className="h-[11px] w-[13.75px] shrink-0" fill="none" viewBox="0 0 14 11" aria-hidden>
+        <circle cx="6.5" cy="5.5" r="4.5" fill={color} />
+        <path d="M6.5 2.8v2.9l2.1 1.2" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  if (kind === 'approval') {
+    return (
+      <svg className="h-[11px] w-[13.75px] shrink-0" fill="none" viewBox="0 0 14 11" aria-hidden>
+        <circle cx="6.5" cy="5.5" r="4.7" fill={color} />
+        <path d="M6.5 2.9v3" stroke="white" strokeWidth="1.3" strokeLinecap="round" />
+        <circle cx="6.5" cy="8" r="0.65" fill="white" />
+      </svg>
+    );
+  }
+
   return (
-    <div className="bg-white border border-[#e3e3e3] border-solid drop-shadow-[0px_1px_1.5px_rgba(0,0,0,0.05)] flex h-[92.5px] min-w-[210px] flex-1 flex-col items-start rounded-[8px] px-[17px] py-[15px]">
-      <div className="flex items-center gap-[6px]">
-        <span className="text-[11px] leading-none">{icon}</span>
-        <p className="font-['Inter:Semi_Bold',sans-serif] text-[11px] font-semibold uppercase tracking-[0.44px] text-[#646464]">{label}</p>
+    <svg className="h-[11px] w-[13.75px] shrink-0" fill="none" viewBox="0 0 14 11" aria-hidden>
+      <circle cx="6.5" cy="5.5" r="4.7" fill={color} />
+      <path d="M4.4 5.6l1.35 1.35 2.95-3.1" stroke="white" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg className="h-[16px] w-[20px] shrink-0" fill="none" viewBox="0 0 20 16" aria-hidden>
+      <circle cx="8" cy="7" r="4.25" stroke="#131313" strokeWidth="2" />
+      <path d="M11.2 10.2L15 14" stroke="#131313" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function CaretIcon() {
+  return (
+    <svg className="h-[10px] w-[12.5px] shrink-0" fill="none" viewBox="0 0 13 10" aria-hidden>
+      <path d="M3 3.5L6.25 6.5L9.5 3.5" stroke="#131313" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function FileIcon() {
+  return (
+    <svg className="h-[12px] w-[15px] shrink-0" fill="none" viewBox="0 0 15 12" aria-hidden>
+      <path d="M4 1.2h4.4L11 3.8v7H4z" fill="#333" />
+      <path d="M8.4 1.2v2.6H11" stroke="white" strokeWidth="0.8" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg className="h-[12px] w-[15px] shrink-0" fill="none" viewBox="0 0 15 12" aria-hidden>
+      <path d="M7.5 2.3v7.4M3.8 6h7.4" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function KpiCard({ icon, iconColor, label, value, helper, valueClass = 'text-[#131313]' }: KpiCardProps) {
+  return (
+    <div className="bg-white border border-[#e3e3e3] border-solid drop-shadow-[0px_1px_1.5px_rgba(0,0,0,0.05)] flex h-[92.5px] min-w-0 flex-col items-start rounded-[8px] px-[17px] py-[15px]">
+      <div className="flex w-full items-center gap-[6px]">
+        <KpiIcon kind={icon} color={iconColor} />
+        <p className="font-['Inter:Semi_Bold',sans-serif] text-[11px] font-semibold uppercase leading-[normal] tracking-[0.44px] text-[#646464] whitespace-nowrap">{label}</p>
       </div>
-      <p className={`pt-[4px] font-['Inter:Bold',sans-serif] text-[24px] font-bold leading-[normal] ${valueClass}`}>{value}</p>
-      <p className="pt-[3px] font-['Inter:Regular',sans-serif] text-[11px] font-normal text-[#646464]">{helper}</p>
+      <div className="h-[33px] w-full pt-[4px]">
+        <p className={`font-['Inter:Bold',sans-serif] text-[24px] font-bold leading-[normal] whitespace-nowrap ${valueClass}`}>{value}</p>
+      </div>
+      <div className="h-[16px] w-full pt-[3px]">
+        <p className="font-['Inter:Regular',sans-serif] text-[11px] font-normal leading-[normal] text-[#646464] whitespace-nowrap">{helper}</p>
+      </div>
     </div>
   );
 }
@@ -49,17 +127,17 @@ function KpiCard({ icon, label, value, helper, valueClass = 'text-[#131313]' }: 
 function SearchFilter() {
   return (
     <div className="bg-white border border-[#d1d1d1] border-solid flex h-[33px] w-[250px] shrink-0 items-center gap-[12px] overflow-hidden rounded-[6px] px-[15px] py-[9px]">
-      <span className="text-[15px] text-[#131313]">⌕</span>
-      <span className="min-w-0 flex-1 truncate font-['Inter:Regular',sans-serif] text-[13px] text-[#acacac]">Buscar por N°, empresa, insp…</span>
+      <SearchIcon />
+      <span className="min-w-0 flex-1 truncate font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] text-[#acacac]">Buscar por N°, empresa, insp…</span>
     </div>
   );
 }
 
 function DropdownMock({ label, width }: { label: string; width: string }) {
   return (
-    <button className={`bg-white border border-[#d1d1d1] border-solid flex h-[36px] ${width} shrink-0 items-center justify-between rounded-[8px] px-[12px]`} type="button">
-      <span className="truncate font-['Inter:Regular',sans-serif] text-[13px] text-[#131313]">{label}</span>
-      <span className="ml-[8px] text-[11px] text-[#131313]">⌄</span>
+    <button className={`bg-white border border-[#d1d1d1] border-solid relative h-[36px] ${width} shrink-0 rounded-[8px]`} type="button">
+      <span className="absolute left-[9px] top-[9px] whitespace-nowrap font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] text-[#131313]">{label}</span>
+      <span className="absolute right-[10px] top-[13px]"><CaretIcon /></span>
     </button>
   );
 }
@@ -177,22 +255,22 @@ function InspectionTable() {
 export function InspectionsManagementView() {
   return (
     <div className="bg-[#f7f7f7] flex h-[calc(100vh-56px)] w-full flex-col items-start overflow-y-auto overflow-x-hidden px-[24px] py-[20px]">
-      <div className="grid w-full grid-cols-1 gap-[12px] lg:grid-cols-2 2xl:grid-cols-4">
-        <KpiCard icon="▣" label="Total 2026" value="XXXX" helper="↑ 12% vs 2025" />
-        <KpiCard icon="◔" label="Inspecciones abiertas" value="XX" helper="111 observaciones pendientes" valueClass="text-[#463100]" />
-        <KpiCard icon="●" label="Pend. de aprobación" value="X" helper="Ejecutadas esperando Admin GF" valueClass="text-[#bd3b5b]" />
-        <KpiCard icon="●" label="% Obs. cerradas" value="XX%" helper="Meta >99%" valueClass="text-[#2a5c16]" />
+      <div className="grid w-full grid-cols-[repeat(auto-fit,minmax(244px,1fr))] gap-[12px]">
+        <KpiCard icon="total" iconColor="#24588b" label="Total 2026" value="XXXX" helper="↑ 12% vs 2025" />
+        <KpiCard icon="open" iconColor="#806000" label="Inspecciones abiertas" value="XX" helper="111 observaciones pendientes" valueClass="text-[#463100]" />
+        <KpiCard icon="approval" iconColor="#bd3b5b" label="Pend. de aprobación" value="X" helper="Ejecutadas esperando Admin GF" valueClass="text-[#bd3b5b]" />
+        <KpiCard icon="closed" iconColor="#53bd49" label="% Obs. cerradas" value="XX%" helper="Meta >99%" valueClass="text-[#2a5c16]" />
       </div>
-      <div className="flex w-full flex-wrap items-center justify-between gap-[12px] pt-[16px]">
-        <div className="flex flex-wrap items-center gap-[8px]">
+      <div className="flex min-h-[38px] w-full flex-wrap items-center justify-between gap-[12px] pt-[16px]">
+        <div className="flex min-w-0 flex-wrap items-center gap-[8px]">
           <SearchFilter />
           <DropdownMock label="Todas las áreas" width="w-[130px]" />
           <DropdownMock label="Todas las empresas" width="w-[163px]" />
           <DropdownMock label="Todo 2026" width="w-[110px]" />
         </div>
-        <div className="flex items-center gap-[8px]">
-          <button className="bg-white border-[#d1d1d1] border-[1.5px] border-solid flex h-[36px] items-center gap-[6px] rounded-[8px] px-[13.5px] text-[12px] font-semibold text-[#333]" type="button">▣ Exportar ⌄</button>
-          <button className="flex h-[36px] items-center gap-[7px] rounded-[6px] bg-[#c8a064] px-[16px] text-[12px] font-bold text-white" type="button">＋ Nueva inspección</button>
+        <div className="flex shrink-0 items-center gap-[8px]">
+          <button className="bg-white border-[#d1d1d1] border-[1.5px] border-solid flex h-[36px] w-[117.5px] shrink-0 items-center gap-[6px] rounded-[8px] px-[13.5px] py-[1.5px] text-[12px] font-semibold text-[#333]" type="button"><FileIcon /><span className="font-['Inter:Semi_Bold',sans-serif]">Exportar</span><CaretIcon /></button>
+          <button className="flex h-[36px] w-[159px] shrink-0 items-center gap-[7px] rounded-[6px] bg-[#c8a064] px-[16px] py-[10.5px] text-[12px] font-bold text-white" type="button"><PlusIcon /><span className="font-['Inter:Bold',sans-serif]">Nueva inspección</span></button>
         </div>
       </div>
       <div className="w-full pt-[16px]">

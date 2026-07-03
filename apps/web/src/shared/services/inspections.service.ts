@@ -1,6 +1,7 @@
 import type {
   CreateInspectionRequest,
   InspectionDashboardChartsResponse,
+  InspectionDashboardCompanyAnalysisResponse,
   InspectionDashboardSummaryResponse,
   InspectionResponse,
 } from '@aurelia/contracts';
@@ -12,6 +13,10 @@ export function getInspectionDashboardSummary(): Promise<InspectionDashboardSumm
 
 export function getInspectionDashboardCharts(): Promise<InspectionDashboardChartsResponse> {
   return httpGet<InspectionDashboardChartsResponse>('/inspections/dashboard/charts');
+}
+
+export function getInspectionDashboardCompanyAnalysis(): Promise<InspectionDashboardCompanyAnalysisResponse> {
+  return httpGet<InspectionDashboardCompanyAnalysisResponse>('/inspections/dashboard/company-analysis');
 }
 
 export function listInspections(): Promise<InspectionResponse[]> {

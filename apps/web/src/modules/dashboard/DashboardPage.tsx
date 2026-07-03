@@ -12,7 +12,6 @@ import {
   DashboardAnnualKpiClosedCard,
   DashboardAnnualKpiFindingsCard,
   DashboardCoreAnalysisSection,
-  DashboardAnnualHeaderLeft,
   DashboardAnnualKpiHistoricalClosureCard,
   DashboardAnnualKpiInspectionsCard,
   DashboardAnnualKpiOpenCard,
@@ -56,6 +55,22 @@ import {
 
 const currentYear = new Date().getFullYear();
 
+function AnnualDashboardHeaderTitle() {
+  return (
+    <div className="flex min-w-[320px] shrink-0 items-center gap-[12px]">
+      <div className="flex size-[36px] shrink-0 items-center justify-center rounded-[8px] bg-[#e6f3ff]">
+        <svg className="size-[18px]" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
+          <path d={svgPaths.p26a85e00} fill="#1f5f91" />
+        </svg>
+      </div>
+      <div className="flex shrink-0 flex-col items-start justify-center">
+        <p className="font-['Inter:Bold',sans-serif] text-[16px] font-bold leading-[normal] text-[#131313]">Análisis anual de hallazgos</p>
+        <p className="font-['Inter:Regular',sans-serif] text-[11px] font-normal leading-[normal] text-[#646464]">Cumplimiento, evolución temporal y distribución por área</p>
+      </div>
+    </div>
+  );
+}
+
 export function DashboardPage() {
   const [dashboardQuery, setDashboardQuery] = useState({ year: currentYear, period: 'q1' as InspectionDashboardPeriod });
   const { runtimeModel: kpisRuntimeModel, isLoading: isKpisLoading, isError: isKpisError } = useDashboardKpisFiltered(dashboardQuery);
@@ -77,8 +92,8 @@ export function DashboardPage() {
                   annualHeader={
                     <div className="h-auto min-h-[59.5px] relative shrink-0 w-full" data-name="Container">
                       <div aria-hidden className="absolute border-[#e3e3e3] border-b-2 border-solid inset-0 pointer-events-none" />
-                      <div className="bg-clip-padding border-0 border-[transparent] border-solid content-stretch flex flex-wrap items-center justify-between gap-[12px] px-[1px] py-[6px] relative size-full min-h-[59.5px]">
-                        <DashboardAnnualHeaderLeft iconPath={svgPaths.p26a85e00} />
+                      <div className="bg-clip-padding border-0 border-[transparent] border-solid content-stretch flex items-center justify-between gap-[12px] px-[1px] py-[6px] relative size-full min-h-[59.5px]">
+                        <AnnualDashboardHeaderTitle />
                         <DashboardPeriodLite value={dashboardQuery} onChange={setDashboardQuery} clearIconPath={svgPaths.p12771800} caretIconPath={svgPaths.pf36e620} />
                       </div>
                     </div>

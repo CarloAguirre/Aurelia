@@ -6,6 +6,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, fontWeight } from '../../shared/theme/tokens';
 import { OfflineBanner } from '../../shared/components/form/ManualFormUi';
 import { ManualFlowHeader } from '../../shared/components/form/ManualFlowScaffold';
+import { notifyDesktop } from '../../shared/bridge/desktop-launch-bridge';
 import { useManualConnectivityStatus } from './useManualConnectivityStatus';
 import { useManualInspectionDraft } from './manualInspection.store';
 import { useManualInspectionFlowStore } from './manualInspectionFlow.store';
@@ -44,6 +45,11 @@ export function ManualInspectionSavedScreen() {
     : closed
       ? `Guardada con ${yesCount} ítems marcados en “Sí”. Esta inspección podrá ser revisada en inspecciones cerradas.`
       : 'Guardada con observaciones abiertas. Esta inspección podrá ser revisada en gestión de inspecciones.';
+
+  React.useEffect(() => {
+    if (!result) return;
+    notifyDesktop('aurelia:inspection:saved', { inspectionId: result.inspectionId, mode: result.mode });
+  }, [result]);
 
   function newInspection() {
     if (draftId) void removeManualInspectionDraft(draftId);

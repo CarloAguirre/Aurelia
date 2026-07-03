@@ -1,55 +1,22 @@
 import { useMemo } from 'react';
-import { useInspectionDashboardSummary } from '../../../shared/hooks/useInspectionDashboardSummary';
-import { useInspectionsList } from '../../../shared/hooks/useInspectionsList';
-import {
-  buildDashboardRuntimeModel,
-  DASHBOARD_OPEN_DETAILS_ROW_COUNT,
-  getOpenDetailRow,
-} from '../dashboardRuntime';
+import { useInspectionDashboardOpenFindings } from '../../../shared/hooks/useInspectionDashboardOpenFindings';
+
+const integerFormatter = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 0 });
+
+function formatInteger(value: number | undefined) {
+  return integerFormatter.format(value ?? 0);
+}
 
 export function useDashboardOpenFindings() {
-  const summaryQuery = useInspectionDashboardSummary();
-  const inspectionsQuery = useInspectionsList();
+  const query = useInspectionDashboardOpenFindings();
 
-  const runtimeModel = useMemo(
-    () => buildDashboardRuntimeModel(summaryQuery.data, inspectionsQuery.data),
-    [inspectionsQuery.data, summaryQuery.data],
-  );
-
-  const inspectionNumbers = useMemo(
-    () => Array.from({ length: DASHBOARD_OPEN_DETAILS_ROW_COUNT }, (_, index) => getOpenDetailRow(runtimeModel, index).inspectionNumber),
-    [runtimeModel],
-  );
-
-  const companyNames = useMemo(
-    () => Array.from({ length: DASHBOARD_OPEN_DETAILS_ROW_COUNT }, (_, index) => getOpenDetailRow(runtimeModel, index).company),
-    [runtimeModel],
-  );
-
-  const areaNames = useMemo(
-    () => Array.from({ length: DASHBOARD_OPEN_DETAILS_ROW_COUNT }, (_, index) => getOpenDetailRow(runtimeModel, index).area),
-    [runtimeModel],
-  );
-
-  const ageDays = useMemo(
-    () => Array.from({ length: DASHBOARD_OPEN_DETAILS_ROW_COUNT }, (_, index) => getOpenDetailRow(runtimeModel, index).ageDays),
-    [runtimeModel],
-  );
-
-  const openFindingsValues = useMemo(
-    () => Array.from({ length: DASHBOARD_OPEN_DETAILS_ROW_COUNT }, (_, index) => getOpenDetailRow(runtimeModel, index).openFindings),
-    [runtimeModel],
-  );
+  const rows = useMemo(() => query.data?.rows ?? [], [query.data]);
 
   return {
-    runtimeModel,
-    inspectionNumbers,
-    companyNames,
-    areaNames,
-    ageDays,
-    openFindingsValues,
-    openDetailsRowCount: DASHBOARD_OPEN_DETAILS_ROW_COUNT,
-    isLoading: summaryQuery.isLoading || inspectionsQuery.isLoading,
-    isError: summaryQuery.isError || inspectionsQuery.isError,
+    rows,
+    severeOpenFindings: query.data?.severeOpenFindings ?? 0,
+    openInspections: formatInteger(query.data?.openInspections),
+    isLoading: query.isLoading,
+    isError: query.isError,
   };
 }

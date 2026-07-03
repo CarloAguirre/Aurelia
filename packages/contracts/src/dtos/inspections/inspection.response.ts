@@ -75,6 +75,26 @@ export interface InspectionDashboardCompanyAnalysisResponse {
   chartRows: InspectionDashboardCompanyChartRowResponse[];
 }
 
+export interface InspectionDashboardOpenFindingRowResponse {
+  inspectionId: string;
+  inspectionNumber: string;
+  companyId: string | null;
+  company: string;
+  areaId: string | null;
+  area: string;
+  ageDays: number;
+  openFindings: number;
+  severeOpenFindings: number;
+  hasSevereOpenFindings: boolean;
+  maxSeverity: InspectionFindingSeverity | null;
+}
+
+export interface InspectionDashboardOpenFindingsResponse {
+  severeOpenFindings: number;
+  openInspections: number;
+  rows: InspectionDashboardOpenFindingRowResponse[];
+}
+
 export interface InspectionDashboardSummaryResponse {
   inspections: {
     total: number;

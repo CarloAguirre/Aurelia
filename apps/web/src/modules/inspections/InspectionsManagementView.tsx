@@ -208,9 +208,9 @@ function KpiCard({ icon, iconColor, label, value, helper, valueClass = 'text-[#1
 
 function ActiveFilterChip({ label }: { label: string }) {
   return (
-    <button className="flex h-[18px] items-center gap-[5px] rounded-[3px] border border-[#a7ccea] bg-[#dcecff] px-[9px] py-[3px] font-['Inter:Medium',sans-serif] text-[10px] font-medium leading-[12px] text-[#24588b]" type="button">
-      <span>{label}</span>
-      <span className="font-['Inter:Regular',sans-serif] text-[10px] font-normal leading-[10px] text-[#24588b]">×</span>
+    <button className="flex h-[18px] items-center gap-[5px] rounded-[4px] border border-[#b4d1ed] bg-[#e6f3ff] px-[9px] py-[3px] font-['Inter:Semi_Bold',sans-serif] text-[10px] font-semibold leading-[normal] text-[#0d3862]" type="button">
+      <span className="whitespace-nowrap">{label}</span>
+      <span className="font-['Arial:Regular',sans-serif] text-[10px] font-normal leading-[10px] text-[#0d3862]">×</span>
     </button>
   );
 }

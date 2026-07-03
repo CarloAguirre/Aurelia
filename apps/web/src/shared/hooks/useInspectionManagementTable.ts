@@ -5,6 +5,5 @@ export function useInspectionManagementTable(params: InspectionManagementTablePa
   return useQuery({
     queryKey: ['inspections', 'management', 'table', params],
     queryFn: () => getInspectionManagementTable(params),
-    placeholderData: (previousData) => previousData,
   });
 }

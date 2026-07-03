@@ -77,8 +77,10 @@ export function DashboardPage() {
                 <DashboardCoreAnalysisSection
                   annualHeader={
                     <DashboardAnnualHeaderSection>
-                      <DashboardAnnualHeaderLeft iconPath={svgPaths.p26a85e00} />
-                      <DashboardPeriodLite value={dashboardQuery} onChange={setDashboardQuery} clearIconPath={svgPaths.p12771800} />
+                      <div className="flex w-full flex-wrap items-center justify-between gap-[12px]">
+                        <DashboardAnnualHeaderLeft iconPath={svgPaths.p26a85e00} />
+                        <DashboardPeriodLite value={dashboardQuery} onChange={setDashboardQuery} clearIconPath={svgPaths.p12771800} caretIconPath={svgPaths.pf36e620} />
+                      </div>
                     </DashboardAnnualHeaderSection>
                   }
                   topKpis={

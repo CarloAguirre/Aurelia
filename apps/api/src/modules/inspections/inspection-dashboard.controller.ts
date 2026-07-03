@@ -5,6 +5,7 @@ import type {
   InspectionDashboardOpenFindingsResponse,
   InspectionDashboardSummaryResponse,
   InspectionManagementKpisResponse,
+  InspectionManagementTableResponse,
 } from '@aurelia/contracts';
 import { RequirePermissions } from '../auth/require-permissions.decorator';
 import { InspectionDashboardService } from './inspection-dashboard.service';
@@ -18,6 +19,11 @@ export class InspectionDashboardController {
   @Get('management-kpis')
   getManagementKpis(): Promise<InspectionManagementKpisResponse> {
     return this.inspectionDashboardService.getManagementKpis();
+  }
+
+  @Get('management-table')
+  getManagementTable(): Promise<InspectionManagementTableResponse> {
+    return this.inspectionDashboardService.getManagementTable();
   }
 
   @Get('filtered-summary')

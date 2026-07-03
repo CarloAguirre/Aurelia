@@ -102,11 +102,6 @@ export interface InspectionDashboardOpenFindingsResponse {
   rows: InspectionDashboardOpenFindingRowResponse[];
 }
 
-export interface InspectionDashboardFilterOptionsResponse {
-  years: number[];
-  monthsByYear: Record<string, number[]>;
-}
-
 export interface InspectionDashboardSummaryResponse {
   inspections: {
     total: number;

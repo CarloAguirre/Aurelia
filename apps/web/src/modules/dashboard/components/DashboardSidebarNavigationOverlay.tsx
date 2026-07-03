@@ -43,19 +43,19 @@ function SubmenuItem({ to, top, height, label, multiline = false, end = false }:
 
 function SubmenuPanel() {
   return (
-    <div className="absolute left-[10px] top-[151px] z-[1] h-[128px] w-[200px] bg-[#003154] pointer-events-auto">
+    <div className="absolute left-[10px] top-[151px] z-[1] h-[116px] w-[200px] bg-[#003154] pointer-events-auto">
       <SubmenuItem to="/" top={0} height={26.5} label="Dashboard" end />
       <SubmenuItem to="/inspections" top={26.5} height={41} label="Gestión de inspecciones" multiline end />
       <SubmenuItem top={67.5} height={26.5} label="Historial" />
-      <div className="absolute left-[38px] right-[10px] top-[98px] h-px bg-[rgba(255,255,255,0.06)]" />
-      <div className="absolute left-0 top-[103px] h-[25px] w-full rounded-[6px] transition-colors duration-150 hover:bg-[rgba(255,255,255,0.04)]">
-        <div className="absolute left-[38px] top-[7px] h-[10px] w-[12px] opacity-30">
+      <div className="absolute left-[38px] right-[10px] top-[96px] h-px bg-[rgba(255,255,255,0.06)]" />
+      <div className="absolute left-0 top-[99px] h-[17px] w-full rounded-[6px] transition-colors duration-150 hover:bg-[rgba(255,255,255,0.04)]">
+        <div className="absolute left-[38px] top-[4px] h-[9px] w-[12px] opacity-30">
           <svg className="block size-full" fill="none" viewBox="0 0 12 10" aria-hidden>
             <path d="M2 8h8M3 5h6M4 2h4" stroke="white" strokeWidth="1.2" strokeLinecap="round" />
           </svg>
         </div>
-        <div className="absolute left-[58px] top-[10px] size-[4px] rounded-[2px] bg-[rgba(255,255,255,0.12)]" />
-        <span className="absolute left-[70px] top-[5px] font-['Inter:Medium',sans-serif] text-[11px] font-medium leading-[14px] text-[rgba(255,255,255,0.32)]">Administración</span>
+        <div className="absolute left-[58px] top-[6.5px] size-[4px] rounded-[2px] bg-[rgba(255,255,255,0.12)]" />
+        <span className="absolute left-[70px] top-[1.5px] font-['Inter:Medium',sans-serif] text-[11px] font-medium leading-[14px] text-[rgba(255,255,255,0.32)]">Administración</span>
       </div>
     </div>
   );

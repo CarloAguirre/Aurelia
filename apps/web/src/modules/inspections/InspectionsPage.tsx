@@ -3,6 +3,7 @@ import {
   DashboardSidebar,
   DashboardSidebarTopBrandBar,
 } from '../dashboard/components/DashboardSections';
+import { DashboardSidebarNavigationOverlay } from '../dashboard/components/DashboardSidebarNavigationOverlay';
 import { InspectionsManagementView } from './InspectionsManagementView';
 
 function InspectionsManagementHeader() {
@@ -24,6 +25,7 @@ export function InspectionsPage() {
     <div className="relative h-screen w-full overflow-hidden" data-name="Gestion de inspecciones">
       <DashboardSidebarTopBrandBar />
       <DashboardSidebar />
+      <DashboardSidebarNavigationOverlay />
       <DashboardFrameShell
         header={<InspectionsManagementHeader />}
         content={<InspectionsManagementView />}

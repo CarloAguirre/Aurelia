@@ -5,9 +5,11 @@ import type {
   InspectionDashboardAreaObservationRowResponse,
   InspectionDashboardChartsResponse,
   InspectionDashboardCompanyAnalysisResponse,
+  InspectionDashboardCompanyChartRowResponse,
 } from '@aurelia/contracts';
 import { Repository } from 'typeorm';
 import { AreaEntity } from '../organization/entities/area.entity';
+import { CompanyEntity } from '../organization/entities/company.entity';
 import { InspectionFindingEntity } from './entities/inspection-finding.entity';
 import { InspectionEntity } from './entities/inspection.entity';
 
@@ -20,6 +22,8 @@ export class InspectionDashboardService {
     private readonly findings: Repository<InspectionFindingEntity>,
     @InjectRepository(AreaEntity)
     private readonly areas: Repository<AreaEntity>,
+    @InjectRepository(CompanyEntity)
+    private readonly companies: Repository<CompanyEntity>,
   ) {}
 
   async getCharts(): Promise<InspectionDashboardChartsResponse> {
@@ -130,28 +134,54 @@ export class InspectionDashboardService {
   }
 
   async getCompanyAnalysis(): Promise<InspectionDashboardCompanyAnalysisResponse> {
-    const [inspections, findings] = await Promise.all([
+    const [inspections, findings, companies] = await Promise.all([
       this.inspections.find(),
       this.findings.find(),
+      this.companies.find(),
     ]);
     const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
     const inspectionById = new Map(inspections.map((inspection) => [inspection.id, inspection]));
+    const companyNameById = new Map(companies.map((company) => [company.id, company.name]));
     const companiesWithOpenFindings = new Set<string>();
     const openInspections = new Set<string>();
     const openAges: number[] = [];
+    const chartRowsByCompany = new Map<string, InspectionDashboardCompanyChartRowResponse>();
 
     findings.forEach((finding) => {
-      if (!this.isOpenFinding(finding)) return;
-
       const inspection = inspectionById.get(finding.inspectionId);
       const companyId = finding.responsibleCompanyId ?? inspection?.companyId ?? null;
+      const date = finding.createdAt;
 
-      if (companyId) {
-        companiesWithOpenFindings.add(companyId);
+      if (this.isOpenFinding(finding)) {
+        if (companyId) {
+          companiesWithOpenFindings.add(companyId);
+        }
+
+        openInspections.add(finding.inspectionId);
+        openAges.push(this.daysBetween(finding.createdAt, now));
       }
 
-      openInspections.add(finding.inspectionId);
-      openAges.push(this.daysBetween(finding.createdAt, now));
+      if (finding.status === InspectionFindingStatus.CANCELLED || date.getFullYear() !== currentYear || date.getMonth() !== currentMonth) {
+        return;
+      }
+
+      const companyKey = companyId ?? 'sin-empresa';
+      const row = chartRowsByCompany.get(companyKey) ?? {
+        companyId,
+        company: this.formatCompanyLabel(companyId, companyNameById),
+        closed: 0,
+        open: 0,
+      };
+
+      if (finding.status === InspectionFindingStatus.CLOSED) {
+        row.closed += 1;
+      } else {
+        row.open += 1;
+      }
+
+      chartRowsByCompany.set(companyKey, row);
     });
 
     const openFindings = openAges.length;
@@ -166,6 +196,9 @@ export class InspectionDashboardService {
         max: maxOpenDays,
         average: averageOpenDays,
       },
+      chartRows: Array.from(chartRowsByCompany.values())
+        .sort((a, b) => b.closed + b.open - (a.closed + a.open))
+        .slice(0, 8),
     };
   }
 
@@ -176,6 +209,11 @@ export class InspectionDashboardService {
   private formatAreaLabel(areaId: string | null, areaNameById: Map<string, string>): string {
     if (!areaId) return 'Sin Área';
     return areaNameById.get(areaId) ?? `Área ${areaId.slice(0, 8).toUpperCase()}`;
+  }
+
+  private formatCompanyLabel(companyId: string | null, companyNameById: Map<string, string>): string {
+    if (!companyId) return 'Sin Empresa';
+    return companyNameById.get(companyId) ?? `Empresa ${companyId.slice(0, 8).toUpperCase()}`;
   }
 
   private isOpenFinding(finding: InspectionFindingEntity): boolean {

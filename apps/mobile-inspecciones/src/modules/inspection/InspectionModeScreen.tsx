@@ -11,6 +11,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, fontSize, fontWeight, spacing } from '../../shared/theme/tokens';
+import { notifyDesktop } from '../../shared/bridge/desktop-launch-bridge';
 import BackArrowIcon from '../../../assets/icons/back-arrow.svg';
 import FigmaAiChipIcon from '../../../assets/icons/figma-ai-chip.svg';
 import FigmaSparklesSmallIcon from '../../../assets/icons/figma-sparkles-small.svg';
@@ -35,6 +36,7 @@ export function InspectionModeScreen() {
   }
 
   function cancelInspection() {
+    notifyDesktop('aurelia:inspection:cancelled');
     router.replace('/inspection/dashboard');
   }
 
@@ -166,6 +168,7 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     marginTop: 1,
     fontSize: fontSize.sm,
+    lineHeight: 14,
     fontWeight: fontWeight.regular,
     color: 'rgba(255,255,255,0.55)',
   },
@@ -258,45 +261,44 @@ const styles = StyleSheet.create({
   },
   assistantBody: {
     marginTop: 12,
-    fontSize: fontSize.md,
-    lineHeight: 19.2,
+    fontSize: fontSize.sm,
+    lineHeight: 18,
     fontWeight: fontWeight.regular,
-    color: colors.body,
+    color: colors.muted,
   },
   featureList: {
-    marginTop: 12,
-    gap: 5,
+    marginTop: 16,
+    gap: 8,
   },
   featureRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 8,
   },
   featureText: {
     fontSize: fontSize.sm,
+    lineHeight: 14,
     fontWeight: fontWeight.regular,
-    color: colors.successTxt,
+    color: colors.muted,
   },
   assistantButton: {
-    marginTop: 14,
-    height: 46,
-    width: '100%',
+    height: 52,
+    borderRadius: 14,
     backgroundColor: colors.gold,
-    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 20,
   },
   assistantButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+    gap: 10,
   },
   assistantButtonText: {
-    fontSize: fontSize.lg,
+    fontSize: 15,
+    lineHeight: 18,
     fontWeight: fontWeight.bold,
     color: colors.navy,
-    textAlign: 'center',
   },
   manualCard: {
     width: '100%',
@@ -304,80 +306,74 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.border,
     borderRadius: 16,
-    padding: 21.5,
+    padding: 22,
   },
   manualIconBox: {
     width: 48,
     height: 48,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#E9F2FF',
   },
   manualTitleBlock: {
     flex: 1,
   },
   manualTitle: {
     fontSize: 15,
+    lineHeight: 17,
     fontWeight: fontWeight.bold,
     color: colors.primary,
   },
   manualBody: {
-    marginTop: 10,
-    marginBottom: 12,
-    fontSize: fontSize.md,
+    marginTop: 12,
+    fontSize: fontSize.sm,
     lineHeight: 18,
     fontWeight: fontWeight.regular,
     color: colors.muted,
   },
   manualButton: {
-    height: 42,
-    width: '100%',
+    height: 48,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: colors.borderMid,
-    backgroundColor: colors.white,
+    borderColor: colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 18,
+    backgroundColor: colors.white,
   },
   manualButtonText: {
-    fontSize: fontSize.base,
-    fontWeight: fontWeight.semibold,
-    color: colors.body,
-    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: fontWeight.bold,
+    color: colors.goldDark,
   },
   footer: {
     backgroundColor: colors.white,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    paddingTop: 10,
-    paddingHorizontal: 14,
-    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 8,
+    gap: 10,
   },
   cancelButton: {
-    height: 50,
-    width: '100%',
-    borderRadius: 14,
+    height: 48,
+    borderRadius: 12,
     borderWidth: 2,
     borderColor: colors.gold,
-    backgroundColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cancelButtonText: {
-    fontSize: fontSize.lg,
+    fontSize: 14,
     fontWeight: fontWeight.bold,
-    color: colors.gold,
-    textAlign: 'center',
+    color: colors.goldDark,
   },
   homeIndicator: {
+    alignSelf: 'center',
     width: 120,
     height: 4,
     borderRadius: 2,
     backgroundColor: colors.borderMid,
-    marginTop: 14,
-    marginBottom: 8,
   },
 });

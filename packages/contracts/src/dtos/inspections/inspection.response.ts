@@ -130,3 +130,30 @@ export interface InspectionManagementKpisResponse {
   pendingApprovalInspections: number;
   closedFindingsRate: number;
 }
+
+export interface InspectionManagementTableObservationSummaryResponse {
+  executed: number;
+  open: number;
+  closed: number;
+}
+
+export interface InspectionManagementTableRowResponse {
+  inspectionId: string;
+  inspectionNumber: string;
+  date: string | null;
+  inspector: string;
+  areaSector: string;
+  company: string;
+  type: string;
+  urgencyLabel: string;
+  urgencySeverity: InspectionFindingSeverity | null;
+  observationsCount: number;
+  observations: InspectionManagementTableObservationSummaryResponse;
+  daysOpen: number;
+  closureRate: number;
+}
+
+export interface InspectionManagementTableResponse {
+  total: number;
+  rows: InspectionManagementTableRowResponse[];
+}

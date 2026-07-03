@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { InspectionFindingStatus, InspectionStatus } from '@aurelia/contracts';
+import { InspectionFindingSeverity, InspectionFindingStatus, InspectionStatus } from '@aurelia/contracts';
 import type {
   InspectionDashboardAreaObservationRowResponse,
   InspectionDashboardChartsResponse,
   InspectionDashboardCompanyAnalysisResponse,
   InspectionDashboardCompanyChartRowResponse,
+  InspectionDashboardOpenFindingRowResponse,
+  InspectionDashboardOpenFindingsResponse,
 } from '@aurelia/contracts';
 import { Repository } from 'typeorm';
 import { AreaEntity } from '../organization/entities/area.entity';
@@ -202,6 +204,68 @@ export class InspectionDashboardService {
     };
   }
 
+  async getOpenFindings(): Promise<InspectionDashboardOpenFindingsResponse> {
+    const [inspections, findings, companies, areas] = await Promise.all([
+      this.inspections.find(),
+      this.findings.find(),
+      this.companies.find(),
+      this.areas.find(),
+    ]);
+    const now = new Date();
+    const inspectionById = new Map(inspections.map((inspection, index) => [inspection.id, { inspection, index }]));
+    const companyNameById = new Map(companies.map((company) => [company.id, company.name]));
+    const areaNameById = new Map(areas.map((area) => [area.id, area.name]));
+    const rowsByInspection = new Map<string, InspectionDashboardOpenFindingRowResponse>();
+    let severeOpenFindings = 0;
+
+    findings.forEach((finding) => {
+      if (!this.isOpenFinding(finding)) return;
+
+      const inspectionEntry = inspectionById.get(finding.inspectionId);
+      if (!inspectionEntry) return;
+
+      const { inspection, index } = inspectionEntry;
+      const companyId = finding.responsibleCompanyId ?? inspection.companyId ?? null;
+      const ageDays = this.daysBetween(finding.createdAt, now);
+      const isSevere = this.isSevereFinding(finding);
+      const current = rowsByInspection.get(inspection.id) ?? {
+        inspectionId: inspection.id,
+        inspectionNumber: this.resolveInspectionNumber(inspection, index),
+        companyId,
+        company: this.formatCompanyLabel(companyId, companyNameById),
+        areaId: inspection.areaId,
+        area: this.formatAreaLabel(inspection.areaId, areaNameById),
+        ageDays: 0,
+        openFindings: 0,
+        severeOpenFindings: 0,
+        hasSevereOpenFindings: false,
+        maxSeverity: null,
+      };
+
+      current.ageDays = Math.max(current.ageDays, ageDays);
+      current.openFindings += 1;
+      current.maxSeverity = this.resolveMaxSeverity(current.maxSeverity, finding.severity);
+
+      if (isSevere) {
+        current.severeOpenFindings += 1;
+        current.hasSevereOpenFindings = true;
+        severeOpenFindings += 1;
+      }
+
+      rowsByInspection.set(inspection.id, current);
+    });
+
+    const rows = Array.from(rowsByInspection.values())
+      .sort((a, b) => Number(b.hasSevereOpenFindings) - Number(a.hasSevereOpenFindings) || b.ageDays - a.ageDays || b.openFindings - a.openFindings)
+      .slice(0, 20);
+
+    return {
+      severeOpenFindings,
+      openInspections: rowsByInspection.size,
+      rows,
+    };
+  }
+
   private resolveInspectionDate(inspection: InspectionEntity): Date | null {
     return inspection.startedAt ?? inspection.scheduledAt ?? inspection.createdAt ?? null;
   }
@@ -218,6 +282,20 @@ export class InspectionDashboardService {
 
   private isOpenFinding(finding: InspectionFindingEntity): boolean {
     return finding.status !== InspectionFindingStatus.CLOSED && finding.status !== InspectionFindingStatus.CANCELLED;
+  }
+
+  private isSevereFinding(finding: InspectionFindingEntity): boolean {
+    return finding.severity === InspectionFindingSeverity.HIGH || finding.severity === InspectionFindingSeverity.CRITICAL;
+  }
+
+  private resolveInspectionNumber(inspection: InspectionEntity, index: number): string {
+    const titleNumber = inspection.title.match(/\d+/)?.[0];
+    return titleNumber ?? String(index + 1).padStart(2, '0');
+  }
+
+  private resolveMaxSeverity(current: InspectionFindingSeverity | null, candidate: InspectionFindingSeverity): InspectionFindingSeverity {
+    const order = [InspectionFindingSeverity.LOW, InspectionFindingSeverity.MEDIUM, InspectionFindingSeverity.HIGH, InspectionFindingSeverity.CRITICAL];
+    return order.indexOf(candidate) > order.indexOf(current ?? InspectionFindingSeverity.LOW) ? candidate : current ?? candidate;
   }
 
   private daysBetween(from: Date, to: Date): number {

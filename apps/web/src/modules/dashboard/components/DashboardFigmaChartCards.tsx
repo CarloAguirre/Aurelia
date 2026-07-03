@@ -44,9 +44,8 @@ const CLOSED_CURRENT = '#2d6a7f';
 const OPEN = '#f4a460';
 const GRID = '#e5e7eb';
 const CHART_HEIGHT = 200;
+const VISIBLE_FINDING_MONTHS = 5;
 const numberFormatter = new Intl.NumberFormat('es-CL');
-
-const FINDING_MONTH_LABELS = ['Ene', 'Feb', 'Mar', 'Abr', 'May'];
 
 function buildInspectionRows(rows: InspectionDashboardAnnualInspectionRowResponse[]) {
   const currentYear = new Date().getFullYear();
@@ -70,13 +69,15 @@ function formatMonthLabel(month: string) {
 }
 
 function buildFindingRows(rows: DashboardMonthlySeriesRow[]) {
-  const mappedRows = rows.slice(0, 5).map((row) => ({
+  const currentMonthIndex = new Date().getMonth();
+  const startIndex = Math.max(0, currentMonthIndex - VISIBLE_FINDING_MONTHS + 1);
+  const visibleRows = rows.slice(startIndex, currentMonthIndex + 1);
+
+  return visibleRows.map((row) => ({
     label: formatMonthLabel(row.month),
     closed: Math.max(0, row.closedFindings),
     open: Math.max(0, row.openFindings),
   }));
-
-  return FINDING_MONTH_LABELS.map((label, index) => mappedRows[index] ?? { label, closed: 0, open: 0 });
 }
 
 function formatTooltipValue(value: number) {

@@ -10,11 +10,16 @@ import type {
   InspectionDashboardOpenFindingsResponse,
   InspectionDashboardSummaryResponse,
   InspectionManagementKpisResponse,
+  InspectionManagementTableObservationSummaryResponse,
+  InspectionManagementTableResponse,
 } from '@aurelia/contracts';
 import { Repository } from 'typeorm';
 import { AreaEntity } from '../organization/entities/area.entity';
 import { CompanyEntity } from '../organization/entities/company.entity';
+import { SectorEntity } from '../organization/entities/sector.entity';
+import { UserEntity } from '../users/entities/user.entity';
 import { InspectionFindingEntity } from './entities/inspection-finding.entity';
+import { InspectionTypeEntity } from './entities/inspection-type.entity';
 import { InspectionEntity } from './entities/inspection.entity';
 import {
   type DashboardQuery,
@@ -37,6 +42,12 @@ export class InspectionDashboardService {
     private readonly areas: Repository<AreaEntity>,
     @InjectRepository(CompanyEntity)
     private readonly companies: Repository<CompanyEntity>,
+    @InjectRepository(SectorEntity)
+    private readonly sectors: Repository<SectorEntity>,
+    @InjectRepository(UserEntity)
+    private readonly users: Repository<UserEntity>,
+    @InjectRepository(InspectionTypeEntity)
+    private readonly inspectionTypes: Repository<InspectionTypeEntity>,
   ) {}
 
   async getManagementKpis(): Promise<InspectionManagementKpisResponse> {
@@ -68,6 +79,60 @@ export class InspectionDashboardService {
       pendingApprovalInspections: currentYearInspections.filter((inspection) => inspection.status === InspectionStatus.SUBMITTED || inspection.status === InspectionStatus.UNDER_REVIEW).length,
       closedFindingsRate: currentYearFindings.length > 0 ? Number(((closedFindings / currentYearFindings.length) * 100).toFixed(2)) : 0,
     };
+  }
+
+  async getManagementTable(): Promise<InspectionManagementTableResponse> {
+    const [inspections, findings, companies, areas, sectors, users, inspectionTypes] = await Promise.all([
+      this.inspections.find(),
+      this.findings.find(),
+      this.companies.find(),
+      this.areas.find(),
+      this.sectors.find(),
+      this.users.find(),
+      this.inspectionTypes.find(),
+    ]);
+    const now = new Date();
+    const companyNameById = new Map(companies.map((company) => [company.id, company.name]));
+    const areaNameById = new Map(areas.map((area) => [area.id, area.name]));
+    const sectorNameById = new Map(sectors.map((sector) => [sector.id, sector.name]));
+    const userById = new Map(users.map((user) => [user.id, user]));
+    const typeById = new Map(inspectionTypes.map((type) => [type.id, type]));
+    const findingsByInspection = new Map<string, InspectionFindingEntity[]>();
+
+    findings.forEach((finding) => {
+      if (finding.status === InspectionFindingStatus.CANCELLED) return;
+      const group = findingsByInspection.get(finding.inspectionId) ?? [];
+      group.push(finding);
+      findingsByInspection.set(finding.inspectionId, group);
+    });
+
+    const activeInspections = inspections.filter((inspection) => inspection.status !== InspectionStatus.CANCELLED);
+    const rows = activeInspections.map((inspection, index) => {
+      const inspectionFindings = findingsByInspection.get(inspection.id) ?? [];
+      const observations = this.createObservationSummary(inspectionFindings);
+      const openFindings = inspectionFindings.filter((finding) => this.isOpenFinding(finding));
+      const maxSeverity = inspectionFindings.reduce<InspectionFindingSeverity | null>((current, finding) => this.resolveMaxSeverity(current, finding.severity), null);
+      const date = getDashboardInspectionDate(inspection);
+      const closureRate = inspectionFindings.length > 0 ? Number(((observations.closed / inspectionFindings.length) * 100).toFixed(2)) : 0;
+
+      return {
+        inspectionId: inspection.id,
+        inspectionNumber: this.resolveInspectionNumber(inspection, index),
+        date: date ? date.toISOString() : null,
+        inspector: this.formatInspectorLabel(userById.get(inspection.inspectorId ?? '') ?? null),
+        areaSector: this.formatAreaSectorLabel(inspection.areaId, inspection.sectorId, areaNameById, sectorNameById),
+        company: this.formatCompanyLabel(inspection.companyId, companyNameById),
+        type: this.formatInspectionTypeLabel(typeById.get(inspection.inspectionTypeId) ?? null, inspectionFindings.length),
+        urgencyLabel: this.formatUrgencyLabel(inspection, maxSeverity),
+        urgencySeverity: maxSeverity,
+        observationsCount: inspectionFindings.length,
+        observations,
+        daysOpen: openFindings.length > 0 ? Math.max(...openFindings.map((finding) => this.daysBetween(finding.createdAt, now))) : 0,
+        closureRate,
+      };
+    }).sort((a, b) => this.getUrgencyWeight(b.urgencySeverity) - this.getUrgencyWeight(a.urgencySeverity) || b.daysOpen - a.daysOpen || b.observations.open - a.observations.open);
+
+    return { total: rows.length, rows };
   }
 
   async getSummary(query: DashboardQuery = {}): Promise<InspectionDashboardSummaryResponse> {
@@ -287,14 +352,63 @@ export class InspectionDashboardService {
     return Object.values(InspectionFindingSeverity).reduce((acc, severity) => ({ ...acc, [severity]: 0 }), {} as Record<InspectionFindingSeverity, number>);
   }
 
+  private createObservationSummary(findings: InspectionFindingEntity[]): InspectionManagementTableObservationSummaryResponse {
+    return findings.reduce((summary, finding) => {
+      if (finding.status === InspectionFindingStatus.CLOSED) summary.closed += 1;
+      else if (finding.status === InspectionFindingStatus.IN_PROGRESS) summary.executed += 1;
+      else summary.open += 1;
+      return summary;
+    }, { executed: 0, open: 0, closed: 0 });
+  }
+
   private formatAreaLabel(areaId: string | null, areaNameById: Map<string, string>): string {
     if (!areaId) return 'Sin Área';
     return areaNameById.get(areaId) ?? `Área ${areaId.slice(0, 8).toUpperCase()}`;
   }
 
+  private formatAreaSectorLabel(areaId: string | null, sectorId: string | null, areaNameById: Map<string, string>, sectorNameById: Map<string, string>): string {
+    const area = this.formatAreaLabel(areaId, areaNameById);
+    const sector = sectorId ? sectorNameById.get(sectorId) : null;
+    return sector ? `${area} · ${sector}` : area;
+  }
+
   private formatCompanyLabel(companyId: string | null, companyNameById: Map<string, string>): string {
     if (!companyId) return 'Sin Empresa';
     return companyNameById.get(companyId) ?? `Empresa ${companyId.slice(0, 8).toUpperCase()}`;
+  }
+
+  private formatInspectorLabel(user: UserEntity | null): string {
+    if (!user) return 'Sin inspector';
+    const lastInitials = user.lastName.split(' ').filter(Boolean).map((part) => `${part[0]?.toUpperCase()}.`).join(' ');
+    return `${user.firstName} ${lastInitials}`.trim();
+  }
+
+  private formatInspectionTypeLabel(type: InspectionTypeEntity | null, findingsCount: number): string {
+    const source = `${type?.name ?? ''} ${type?.code ?? ''}`.toLowerCase();
+    if (source.includes('check')) return 'Checklist';
+    if (source.includes('hallazgo')) return 'Hallazgo';
+    return type?.name ?? (findingsCount > 0 ? 'Hallazgo' : 'Checklist');
+  }
+
+  private formatSeverityLabel(severity: InspectionFindingSeverity | null): string {
+    if (severity === InspectionFindingSeverity.CRITICAL || severity === InspectionFindingSeverity.HIGH) return 'Grave';
+    if (severity === InspectionFindingSeverity.MEDIUM) return 'Moderado';
+    if (severity === InspectionFindingSeverity.LOW) return 'Menor';
+    return 'Sin obs.';
+  }
+
+  private formatUrgencyLabel(inspection: InspectionEntity, severity: InspectionFindingSeverity | null): string {
+    if (!severity) return 'Sin obs.';
+    const state = inspection.status === InspectionStatus.SUBMITTED || inspection.status === InspectionStatus.UNDER_REVIEW || inspection.status === InspectionStatus.CLOSED ? 'Ejecutada' : 'Abierta';
+    return `${state} · ${this.formatSeverityLabel(severity)}`;
+  }
+
+  private getUrgencyWeight(severity: InspectionFindingSeverity | null): number {
+    if (severity === InspectionFindingSeverity.CRITICAL) return 4;
+    if (severity === InspectionFindingSeverity.HIGH) return 3;
+    if (severity === InspectionFindingSeverity.MEDIUM) return 2;
+    if (severity === InspectionFindingSeverity.LOW) return 1;
+    return 0;
   }
 
   private isOpenFinding(finding: InspectionFindingEntity): boolean {

@@ -8,7 +8,7 @@ import type {
   InspectionManagementTableResponse,
 } from '@aurelia/contracts';
 import { RequirePermissions } from '../auth/require-permissions.decorator';
-import { InspectionDashboardService } from './inspection-dashboard.service';
+import { InspectionDashboardService, type ManagementTableQuery } from './inspection-dashboard.service';
 import type { DashboardQuery } from './inspection-dashboard-period';
 
 @RequirePermissions('inspections:read')
@@ -22,8 +22,8 @@ export class InspectionDashboardController {
   }
 
   @Get('management-table')
-  getManagementTable(): Promise<InspectionManagementTableResponse> {
-    return this.inspectionDashboardService.getManagementTable();
+  getManagementTable(@Query() query: ManagementTableQuery): Promise<InspectionManagementTableResponse> {
+    return this.inspectionDashboardService.getManagementTable(query);
   }
 
   @Get('filtered-summary')

@@ -5,9 +5,19 @@ const OPEN = '#e07838';
 const GRID = '#e8e8e8';
 const AXIS = '#ccc';
 const MAX_VISIBLE_ROWS = 8;
+const numberFormatter = new Intl.NumberFormat('es-CL');
 
 type DashboardFigmaCompanyAnalysisChartProps = {
   rows: InspectionDashboardCompanyChartRowResponse[];
+};
+
+type BarWithTooltipProps = {
+  color: string;
+  label: string;
+  value: number;
+  width: string;
+  top: number;
+  name: string;
 };
 
 function getCurrentMonthLabel() {
@@ -27,6 +37,21 @@ function getScale(rows: InspectionDashboardCompanyChartRowResponse[]) {
 
 function widthFor(value: number, maxValue: number) {
   return `${Math.max(0, Math.min(100, (value / maxValue) * 100))}%`;
+}
+
+function formatValue(value: number) {
+  return numberFormatter.format(Math.max(0, Math.round(value)));
+}
+
+function BarWithTooltip({ color, label, value, width, top, name }: BarWithTooltipProps) {
+  return (
+    <div className="group absolute left-0 h-[11px] rounded-[2px]" data-name={name} style={{ top, width, backgroundColor: color }}>
+      <div className="pointer-events-none absolute bottom-[calc(100%+8px)] left-1/2 z-[10] hidden -translate-x-1/2 overflow-clip rounded-[6px] bg-[rgba(33,48,64,0.94)] px-[8px] py-[6px] text-center shadow-[0_8px_20px_rgba(12,31,56,0.18)] group-hover:block">
+        <p className="whitespace-nowrap font-['Inter:Regular',sans-serif] text-[9px] font-normal leading-[normal] text-[rgba(255,255,255,0.75)]">{label}</p>
+        <p className="whitespace-nowrap font-['Inter:Medium',sans-serif] text-[12px] font-medium leading-[normal] text-white">{formatValue(value)}</p>
+      </div>
+    </div>
+  );
 }
 
 function LegendItem({ color, label }: { color: string; label: string }) {
@@ -67,8 +92,8 @@ export function DashboardFigmaCompanyAnalysisChart({ rows }: DashboardFigmaCompa
                   <div className="absolute inset-0 flex flex-col justify-between py-[6px]">
                     {visibleRows.map((row) => (
                       <div className="relative h-[21px] w-full" key={row.companyId ?? row.company}>
-                        <div className="absolute left-0 top-0 h-[11px] rounded-[2px]" data-name={`bar-cerradas-${row.company}`} style={{ width: widthFor(row.closed, maxValue), backgroundColor: CLOSED }} />
-                        <div className="absolute left-0 top-[15px] h-[11px] rounded-[2px]" data-name={`bar-abiertas-${row.company}`} style={{ width: widthFor(row.open, maxValue), backgroundColor: OPEN }} />
+                        <BarWithTooltip color={CLOSED} label="Obs. cerradas" value={row.closed} width={widthFor(row.closed, maxValue)} top={0} name={`bar-cerradas-${row.company}`} />
+                        <BarWithTooltip color={OPEN} label="Obs. abiertas" value={row.open} width={widthFor(row.open, maxValue)} top={15} name={`bar-abiertas-${row.company}`} />
                       </div>
                     ))}
                   </div>

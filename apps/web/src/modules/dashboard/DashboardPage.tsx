@@ -47,6 +47,7 @@ import { DashboardFigmaCompanyAnalysisChart } from './components/DashboardFigmaC
 import { DashboardFigmaOpenFindingsDetailsTable } from './components/DashboardFigmaOpenFindingsDetailsTable';
 import { DashboardPeriodLite, getCurrentDashboardPeriod } from './components/DashboardPeriodLite';
 import { DashboardCompanyFilter } from './components/DashboardCompanyFilter';
+import { DashboardSidebarNavigationOverlay } from './components/DashboardSidebarNavigationOverlay';
 import {
   DashboardCompanyCardOpenCompanies,
   DashboardCompanyCardOpenDays,
@@ -86,6 +87,7 @@ export function DashboardPage() {
     <div className="relative h-screen w-full overflow-hidden" data-name="Dashboard inspecciones">
       <DashboardSidebarTopBrandBar />
       <DashboardSidebar />
+      <DashboardSidebarNavigationOverlay />
       <DashboardFrameShell
         header={<DashboardPageHeader />}
         content={

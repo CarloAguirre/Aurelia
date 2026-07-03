@@ -37,7 +37,7 @@ export function NewInspectionIframeModalController() {
 
   function postTicket(nextTicket = ticket) {
     if (!nextTicket) return;
-    iframeRef.current?.contentWindow?.postMessage({ type: 'aurelia:web-session-ticket', ticket: nextTicket }, iframeOrigin);
+    iframeRef.current?.contentWindow?.postMessage({ type: 'aurelia:desktop-launch', code: nextTicket }, iframeOrigin);
   }
 
   useEffect(() => {

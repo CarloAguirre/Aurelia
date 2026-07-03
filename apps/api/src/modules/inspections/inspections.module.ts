@@ -4,6 +4,7 @@ import { AuditModule } from '../audit/audit.module';
 import { CommentsModule } from '../comments/comments.module';
 import { EvidencesModule } from '../evidences/evidences.module';
 import { AreaEntity } from '../organization/entities/area.entity';
+import { CompanyEntity } from '../organization/entities/company.entity';
 import { InspectionFindingSeverityEntity } from './entities/inspection-finding-severity.entity';
 import { InspectionFindingResponsibleEntity } from './entities/inspection-finding-responsible.entity';
 import { InspectionFindingTypeEntity } from './entities/inspection-finding-type.entity';
@@ -49,6 +50,7 @@ import { InspectionsService } from './inspections.service';
       InspectionFollowupEntity,
       InspectionStateEntity,
       AreaEntity,
+      CompanyEntity,
     ]),
   ],
   controllers: [InspectionsController, InspectionDashboardController, InspectionTransversalController, InspectionFindingCatalogController, InspectionCriticalityCatalogController],

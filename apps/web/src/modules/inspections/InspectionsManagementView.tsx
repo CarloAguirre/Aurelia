@@ -1,3 +1,4 @@
+import { useMemo, useState, type ReactNode } from 'react';
 import type { InspectionManagementKpisResponse, InspectionManagementTableRowResponse } from '@aurelia/contracts';
 import { useInspectionManagementKpis } from '../../shared/hooks/useInspectionManagementKpis';
 import { useInspectionManagementTable } from '../../shared/hooks/useInspectionManagementTable';
@@ -32,10 +33,52 @@ type Row = {
   height: number;
 };
 
+type TableFilters = {
+  id: string;
+  date: string;
+  inspector: string;
+  area: string;
+  company: string;
+  type: string;
+  urgency: string;
+  obs: string;
+  daysMin: string;
+  daysMax: string;
+  closure: string;
+};
+
+type TableFilterKey = keyof TableFilters;
+
+type ActiveFilter = {
+  key: TableFilterKey;
+  label: string;
+};
+
+type TableFilterOptions = {
+  inspectors: string[];
+  areas: string[];
+  companies: string[];
+  types: string[];
+  urgencies: string[];
+};
+
 const tableColumns = [72, 147, 199, 208, 197, 132, 196, 84, 155, 132, 119, 83.5];
 const tableWidth = tableColumns.reduce((total, width) => total + width, 0);
 const numberFormatter = new Intl.NumberFormat('es-CL');
 const percentFormatter = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2, minimumFractionDigits: 0 });
+const emptyTableFilters: TableFilters = {
+  id: '',
+  date: '',
+  inspector: '',
+  area: '',
+  company: '',
+  type: '',
+  urgency: '',
+  obs: '',
+  daysMin: '',
+  daysMax: '',
+  closure: '',
+};
 
 function formatNumber(value: number) {
   return numberFormatter.format(value);
@@ -43,6 +86,10 @@ function formatNumber(value: number) {
 
 function formatPercent(value: number) {
   return `${percentFormatter.format(value)}%`;
+}
+
+function normalizeSearch(value: string) {
+  return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
 function formatDeltaHelper(data: InspectionManagementKpisResponse) {
@@ -104,6 +151,81 @@ function buildTableRows(rows: InspectionManagementTableRowResponse[] | undefined
       height: getRowHeight(badges),
     };
   });
+}
+
+function uniqueOptions(values: string[]) {
+  return Array.from(new Set(values.map((value) => value.trim()).filter((value) => value.length > 0))).sort((a, b) => a.localeCompare(b, 'es'));
+}
+
+function buildTableFilterOptions(rows: Row[]): TableFilterOptions {
+  return {
+    inspectors: uniqueOptions(rows.map((row) => row.inspector)),
+    areas: uniqueOptions(rows.map((row) => row.area)),
+    companies: uniqueOptions(rows.map((row) => row.company)),
+    types: uniqueOptions(rows.map((row) => row.type)),
+    urgencies: uniqueOptions(rows.map((row) => row.urgency)),
+  };
+}
+
+function hasFilterValue(value: string) {
+  return value.trim().length > 0;
+}
+
+function rowContains(value: string, filter: string) {
+  if (!hasFilterValue(filter)) return true;
+  return normalizeSearch(value).includes(normalizeSearch(filter));
+}
+
+function rowMatchesObsFilter(row: Row, filter: string) {
+  if (!filter) return true;
+  if (filter === 'executed') return row.obs.some((item) => item.includes('Ejec'));
+  if (filter === 'open') return row.obs.some((item) => item.includes('Abier'));
+  if (filter === 'closed') return row.obs.some((item) => item.includes('Cer'));
+  return true;
+}
+
+function numberFilterPasses(value: number, filter: string, comparator: 'min' | 'max' | 'equals') {
+  if (!hasFilterValue(filter)) return true;
+  const parsed = Number(filter.replace(',', '.'));
+  if (Number.isNaN(parsed)) return true;
+  if (comparator === 'min') return value >= parsed;
+  if (comparator === 'max') return value <= parsed;
+  return Math.round(value) === Math.round(parsed);
+}
+
+function applyTableFilters(rows: Row[], filters: TableFilters) {
+  return rows.filter((row) => {
+    if (!rowContains(row.id, filters.id)) return false;
+    if (!rowContains(row.date, filters.date)) return false;
+    if (filters.inspector && row.inspector !== filters.inspector) return false;
+    if (filters.area && row.area !== filters.area) return false;
+    if (filters.company && row.company !== filters.company) return false;
+    if (filters.type && row.type !== filters.type) return false;
+    if (filters.urgency && row.urgency !== filters.urgency) return false;
+    if (!rowMatchesObsFilter(row, filters.obs)) return false;
+    if (!numberFilterPasses(row.days, filters.daysMin, 'min')) return false;
+    if (!numberFilterPasses(row.days, filters.daysMax, 'max')) return false;
+    if (!numberFilterPasses(row.closure, filters.closure, 'equals')) return false;
+    return true;
+  });
+}
+
+function buildActiveFilters(filters: TableFilters): ActiveFilter[] {
+  const chips: ActiveFilter[] = [];
+  if (filters.id) chips.push({ key: 'id', label: `N°: ${filters.id}` });
+  if (filters.date) chips.push({ key: 'date', label: `Fecha: ${filters.date}` });
+  if (filters.inspector) chips.push({ key: 'inspector', label: `Inspector: ${filters.inspector}` });
+  if (filters.area) chips.push({ key: 'area', label: `Área: ${filters.area}` });
+  if (filters.company) chips.push({ key: 'company', label: `Empresa: ${filters.company}` });
+  if (filters.type) chips.push({ key: 'type', label: `Tipo: ${filters.type}` });
+  if (filters.urgency) chips.push({ key: 'urgency', label: `Urgencia: ${filters.urgency}` });
+  if (filters.obs === 'executed') chips.push({ key: 'obs', label: 'Obs.: ejecutadas' });
+  if (filters.obs === 'open') chips.push({ key: 'obs', label: 'Obs.: abiertas' });
+  if (filters.obs === 'closed') chips.push({ key: 'obs', label: 'Obs.: cerradas' });
+  if (filters.daysMin) chips.push({ key: 'daysMin', label: `Días mín.: ${filters.daysMin}` });
+  if (filters.daysMax) chips.push({ key: 'daysMax', label: `Días máx.: ${filters.daysMax}` });
+  if (filters.closure) chips.push({ key: 'closure', label: `Cierre: ${filters.closure}%` });
+  return chips;
 }
 
 function buildManagementKpis(data: InspectionManagementKpisResponse | undefined, isLoading: boolean, isError: boolean) {
@@ -308,16 +430,29 @@ function KpiCard({ icon, iconColor, label, value, helper, valueClass = 'text-[#1
   );
 }
 
-function ActiveFilterChip({ label }: { label: string }) {
+function ActiveFilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
-    <button className="flex h-[18px] items-center gap-[5px] rounded-[4px] border border-[#b4d1ed] bg-[#e6f3ff] px-[9px] py-[3px] font-['Inter:Semi_Bold',sans-serif] text-[10px] font-semibold leading-[normal] text-[#0d3862]" type="button">
+    <button className="flex h-[18px] items-center gap-[5px] rounded-[4px] border border-[#b4d1ed] bg-[#e6f3ff] px-[9px] py-[3px] font-['Inter:Semi_Bold',sans-serif] text-[10px] font-semibold leading-[normal] text-[#0d3862]" type="button" onClick={onRemove}>
       <span className="whitespace-nowrap">{label}</span>
       <span className="font-['Arial:Regular',sans-serif] text-[10px] font-normal leading-[10px] text-[#0d3862]">×</span>
     </button>
   );
 }
 
-function ActiveFiltersBar() {
+function TableActions() {
+  return (
+    <div className="flex shrink-0 items-center gap-[8px]">
+      <button className="bg-white border-[#d1d1d1] border-[1.5px] border-solid flex h-[36px] w-[117.5px] shrink-0 items-center gap-[6px] rounded-[8px] px-[13.5px] py-[1.5px] text-[12px] font-semibold text-[#333]" type="button"><FileIcon /><span className="font-['Inter:Semi_Bold',sans-serif]">Exportar</span><CaretIcon /></button>
+      <button className="flex h-[36px] w-[159px] shrink-0 items-center gap-[7px] rounded-[6px] bg-[#c8a064] px-[16px] py-[10.5px] text-[12px] font-bold text-white" type="button"><PlusIcon /><span className="font-['Inter:Bold',sans-serif]">Nueva inspección</span></button>
+    </div>
+  );
+}
+
+function ActiveFiltersBar({ filters, onRemove }: { filters: ActiveFilter[]; onRemove: (key: TableFilterKey) => void }) {
+  if (filters.length === 0) {
+    return <div className="flex min-h-[38px] w-full justify-end pt-[16px]"><TableActions /></div>;
+  }
+
   return (
     <div className="flex min-h-[38px] w-full flex-wrap items-center justify-between gap-[12px] pt-[16px]">
       <div className="flex min-h-[38px] min-w-[280px] flex-1 items-center gap-[10px] overflow-x-auto bg-[#eef5ff] px-[14px] py-[10px]">
@@ -325,13 +460,9 @@ function ActiveFiltersBar() {
           <FilterIcon />
           <span className="font-['Inter:Semi_Bold',sans-serif] text-[11px] font-semibold leading-[13px] text-[#24588b]">Filtros activos:</span>
         </div>
-        <ActiveFilterChip label="Empresa: SOMACOR" />
-        <ActiveFilterChip label="Urgencia: Ejecutada · Grave" />
+        {filters.map((filter) => <ActiveFilterChip key={filter.key} label={filter.label} onRemove={() => onRemove(filter.key)} />)}
       </div>
-      <div className="flex shrink-0 items-center gap-[8px]">
-        <button className="bg-white border-[#d1d1d1] border-[1.5px] border-solid flex h-[36px] w-[117.5px] shrink-0 items-center gap-[6px] rounded-[8px] px-[13.5px] py-[1.5px] text-[12px] font-semibold text-[#333]" type="button"><FileIcon /><span className="font-['Inter:Semi_Bold',sans-serif]">Exportar</span><CaretIcon /></button>
-        <button className="flex h-[36px] w-[159px] shrink-0 items-center gap-[7px] rounded-[6px] bg-[#c8a064] px-[16px] py-[10.5px] text-[12px] font-bold text-white" type="button"><PlusIcon /><span className="font-['Inter:Bold',sans-serif]">Nueva inspección</span></button>
-      </div>
+      <TableActions />
     </div>
   );
 }
@@ -362,12 +493,39 @@ function Badge({ children, tone, icon, small = false }: { children: string; tone
   );
 }
 
-function TableFilter({ label, width, placeholder = false }: { label: string; width: number; placeholder?: boolean }) {
+function TableFilterShell({ children, width }: { children: ReactNode; width: number }) {
   return (
     <div className="bg-white border border-[#d1d1d1] border-solid flex h-[26px] items-center justify-center overflow-hidden rounded-[8px] px-[8px]" style={{ width: `${width}px` }}>
-      <span className={`min-w-0 flex-1 truncate font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] ${placeholder ? 'text-[#acacac]' : 'text-[#131313]'}`}>{label}</span>
-      {!placeholder ? <CaretIcon /> : null}
+      {children}
     </div>
+  );
+}
+
+function TableTextFilter({ value, onChange, width, placeholder, type = 'text' }: { value: string; onChange: (value: string) => void; width: number; placeholder: string; type?: 'text' | 'number' }) {
+  return (
+    <TableFilterShell width={width}>
+      <input className="min-w-0 flex-1 border-0 bg-transparent p-0 font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] text-[#131313] outline-none placeholder:text-[#acacac]" value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} type={type} />
+    </TableFilterShell>
+  );
+}
+
+function TableDateFilter({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return (
+    <TableFilterShell width={123}>
+      <input className="min-w-0 flex-1 border-0 bg-transparent p-0 font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] text-[#131313] outline-none placeholder:text-[#acacac]" value={value} onChange={(event) => onChange(event.target.value)} placeholder="dd-mm-aaaa" type="text" />
+      <CalendarIcon />
+    </TableFilterShell>
+  );
+}
+
+function TableSelectFilter({ value, onChange, width, allLabel, options }: { value: string; onChange: (value: string) => void; width: number; allLabel: string; options: string[] }) {
+  return (
+    <TableFilterShell width={width}>
+      <select className="min-w-0 flex-1 border-0 bg-transparent p-0 font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] text-[#131313] outline-none" value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value="">{allLabel}</option>
+        {options.map((option) => <option key={option} value={option}>{option}</option>)}
+      </select>
+    </TableFilterShell>
   );
 }
 
@@ -390,11 +548,11 @@ function ActionHeaderCell() {
   );
 }
 
-function FilterCell({ children }: { children: React.ReactNode }) {
+function FilterCell({ children }: { children: ReactNode }) {
   return <td className="h-[37px] border-r border-b border-[#e3e3e3] bg-[#f0f4f8] px-[12px] py-[5.5px] align-middle">{children}</td>;
 }
 
-function DataCell({ children, center = false, bold = false }: { children: React.ReactNode; center?: boolean; bold?: boolean }) {
+function DataCell({ children, center = false, bold = false }: { children: ReactNode; center?: boolean; bold?: boolean }) {
   return (
     <td className={`border-r border-b border-[#e3e3e3] bg-white px-[12px] py-[13.5px] align-middle font-['Inter:${bold ? 'Semi_Bold' : 'Regular'}',sans-serif] text-[12px] leading-[normal] text-[#333] ${center ? 'text-center' : 'text-left'} ${bold ? 'font-semibold text-[#131313]' : 'font-normal'}`}>
       {children}
@@ -432,7 +590,7 @@ function getObsBadge(item: string) {
   return { tone: 'yellow' as const, icon: 'clock' as const };
 }
 
-function InspectionTable({ rows, total, isLoading, isError }: { rows: Row[]; total: number; isLoading: boolean; isError: boolean }) {
+function InspectionTable({ rows, total, isLoading, isError, filters, options, onFilterChange, onClearFilters }: { rows: Row[]; total: number; isLoading: boolean; isError: boolean; filters: TableFilters; options: TableFilterOptions; onFilterChange: (key: TableFilterKey, value: string) => void; onClearFilters: () => void }) {
   const footerText = isLoading ? 'Cargando inspecciones...' : isError ? 'No fue posible cargar las inspecciones' : `Mostrando ${rows.length > 0 ? 1 : 0}–${rows.length} de ${total} inspecciones`;
 
   return (
@@ -458,18 +616,18 @@ function InspectionTable({ rows, total, isLoading, isError }: { rows: Row[]; tot
               <ActionHeaderCell />
             </tr>
             <tr className="h-[37px] bg-[#f0f4f8]">
-              <FilterCell><TableFilter label="#" width={48} placeholder /></FilterCell>
-              <FilterCell><div className="bg-white border border-[#d1d1d1] border-solid flex h-[26px] w-[123px] items-center justify-center overflow-hidden rounded-[8px] px-[8px] py-[4px]"><span className="min-w-0 flex-1 font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] text-[#acacac]">dd-mm-aaaa</span><CalendarIcon /></div></FilterCell>
-              <FilterCell><TableFilter label="Todos los inspectores" width={175} /></FilterCell>
-              <FilterCell><TableFilter label="Todas las áreas" width={184} /></FilterCell>
-              <FilterCell><TableFilter label="Todas las empresas" width={173} /></FilterCell>
-              <FilterCell><TableFilter label="Todos" width={108} /></FilterCell>
-              <FilterCell><TableFilter label="Ejecutada - Grave" width={172} /></FilterCell>
-              <FilterCell><TableFilter label="#" width={60} placeholder /></FilterCell>
-              <FilterCell><TableFilter label="Todos" width={131} /></FilterCell>
-              <FilterCell><div className="flex items-center gap-[4px]"><TableFilter label="Min" width={47} placeholder /><span className="font-['Inter:Regular',sans-serif] text-[13px] text-[#131313]">-</span><TableFilter label="Max" width={47} placeholder /></div></FilterCell>
-              <FilterCell><TableFilter label="#%" width={95} placeholder /></FilterCell>
-              <td className="h-[37px] border-b border-[#e3e3e3] bg-[#f0f4f8] px-[12px] py-[5.5px] align-middle"><button className="flex h-[26px] w-[59.5px] items-center justify-center gap-[4px] rounded-[5px] border border-[#d1d1d1] bg-white px-px py-[7px] font-['Inter:Semi_Bold',sans-serif] text-[10px] font-semibold leading-[normal] text-[#646464]" type="button">↺ Limpiar</button></td>
+              <FilterCell><TableTextFilter value={filters.id} onChange={(value) => onFilterChange('id', value)} width={48} placeholder="#" /></FilterCell>
+              <FilterCell><TableDateFilter value={filters.date} onChange={(value) => onFilterChange('date', value)} /></FilterCell>
+              <FilterCell><TableSelectFilter value={filters.inspector} onChange={(value) => onFilterChange('inspector', value)} width={175} allLabel="Todos los inspectores" options={options.inspectors} /></FilterCell>
+              <FilterCell><TableSelectFilter value={filters.area} onChange={(value) => onFilterChange('area', value)} width={184} allLabel="Todas las áreas" options={options.areas} /></FilterCell>
+              <FilterCell><TableSelectFilter value={filters.company} onChange={(value) => onFilterChange('company', value)} width={173} allLabel="Todas las empresas" options={options.companies} /></FilterCell>
+              <FilterCell><TableSelectFilter value={filters.type} onChange={(value) => onFilterChange('type', value)} width={108} allLabel="Todos" options={options.types} /></FilterCell>
+              <FilterCell><TableSelectFilter value={filters.urgency} onChange={(value) => onFilterChange('urgency', value)} width={172} allLabel="Todas" options={options.urgencies} /></FilterCell>
+              <FilterCell><TableTextFilter value="" onChange={() => undefined} width={60} placeholder="#" type="number" /></FilterCell>
+              <FilterCell><TableSelectFilter value={filters.obs} onChange={(value) => onFilterChange('obs', value)} width={131} allLabel="Todos" options={["Ejecutadas", "Abiertas", "Cerradas"]} /></FilterCell>
+              <FilterCell><div className="flex items-center gap-[4px]"><TableTextFilter value={filters.daysMin} onChange={(value) => onFilterChange('daysMin', value)} width={47} placeholder="Min" type="number" /><span className="font-['Inter:Regular',sans-serif] text-[13px] text-[#131313]">-</span><TableTextFilter value={filters.daysMax} onChange={(value) => onFilterChange('daysMax', value)} width={47} placeholder="Max" type="number" /></div></FilterCell>
+              <FilterCell><TableTextFilter value={filters.closure} onChange={(value) => onFilterChange('closure', value)} width={95} placeholder="#%" type="number" /></FilterCell>
+              <td className="h-[37px] border-b border-[#e3e3e3] bg-[#f0f4f8] px-[12px] py-[5.5px] align-middle"><button className="flex h-[26px] w-[59.5px] items-center justify-center gap-[4px] rounded-[5px] border border-[#d1d1d1] bg-white px-px py-[7px] font-['Inter:Semi_Bold',sans-serif] text-[10px] font-semibold leading-[normal] text-[#646464]" type="button" onClick={onClearFilters}>↺ Limpiar</button></td>
             </tr>
           </thead>
           <tbody>
@@ -507,10 +665,27 @@ function InspectionTable({ rows, total, isLoading, isError }: { rows: Row[]; tot
 }
 
 export function InspectionsManagementView() {
+  const [filters, setFilters] = useState<TableFilters>(emptyTableFilters);
   const kpisQuery = useInspectionManagementKpis();
   const tableQuery = useInspectionManagementTable();
   const kpis = buildManagementKpis(kpisQuery.data, kpisQuery.isLoading, kpisQuery.isError);
-  const tableRows = buildTableRows(tableQuery.data?.rows);
+  const tableRows = useMemo(() => buildTableRows(tableQuery.data?.rows), [tableQuery.data?.rows]);
+  const filterOptions = useMemo(() => buildTableFilterOptions(tableRows), [tableRows]);
+  const filteredRows = useMemo(() => applyTableFilters(tableRows, filters), [tableRows, filters]);
+  const activeFilters = useMemo(() => buildActiveFilters(filters), [filters]);
+
+  function updateFilter(key: TableFilterKey, value: string) {
+    const mappedValue = key === 'obs' ? value.toLowerCase().replace('ejecutadas', 'executed').replace('abiertas', 'open').replace('cerradas', 'closed') : value;
+    setFilters((current) => ({ ...current, [key]: mappedValue }));
+  }
+
+  function removeFilter(key: TableFilterKey) {
+    setFilters((current) => ({ ...current, [key]: '' }));
+  }
+
+  function clearFilters() {
+    setFilters(emptyTableFilters);
+  }
 
   return (
     <div className="bg-[#f7f7f7] flex h-[calc(100vh-56px)] w-full flex-col items-start overflow-y-auto overflow-x-hidden px-[24px] py-[20px]">
@@ -520,9 +695,9 @@ export function InspectionsManagementView() {
         <KpiCard icon="approval" iconColor="#bd3b5b" label="Pend. de aprobación" value={kpis.pendingApproval} helper="Ejecutadas esperando Admin GF" valueClass="text-[#bd3b5b]" />
         <KpiCard icon="closed" iconColor="#53bd49" label="% Obs. cerradas" value={kpis.closedFindingsRate} helper="Meta >99%" valueClass="text-[#2a5c16]" />
       </div>
-      <ActiveFiltersBar />
+      <ActiveFiltersBar filters={activeFilters} onRemove={removeFilter} />
       <div className="w-full pt-[16px]">
-        <InspectionTable rows={tableRows} total={tableQuery.data?.total ?? 0} isLoading={tableQuery.isLoading} isError={tableQuery.isError} />
+        <InspectionTable rows={filteredRows} total={filteredRows.length} isLoading={tableQuery.isLoading} isError={tableQuery.isError} filters={filters} options={filterOptions} onFilterChange={updateFilter} onClearFilters={clearFilters} />
       </div>
     </div>
   );

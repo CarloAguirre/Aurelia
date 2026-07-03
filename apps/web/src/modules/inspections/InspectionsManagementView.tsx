@@ -80,15 +80,6 @@ function KpiIcon({ kind, color }: { kind: KpiIconKind; color: string }) {
   );
 }
 
-function SearchIcon() {
-  return (
-    <svg className="h-[16px] w-[20px] shrink-0" fill="none" viewBox="0 0 20 16" aria-hidden>
-      <circle cx="8" cy="7" r="4.25" stroke="#131313" strokeWidth="2" />
-      <path d="M11.2 10.2L15 14" stroke="#131313" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function CaretIcon() {
   return (
     <svg className="h-[10px] w-[12.5px] shrink-0" fill="none" viewBox="0 0 13 10" aria-hidden>
@@ -103,6 +94,14 @@ function SortIcon({ gold = false }: { gold?: boolean }) {
     <svg className="h-[10px] w-[12.5px] shrink-0" fill="none" viewBox="0 0 13 10" aria-hidden>
       <path d="M6.25 1L10 4.5H2.5L6.25 1Z" fill={fill} />
       <path d="M6.25 9L2.5 5.5H10L6.25 9Z" fill={fill} />
+    </svg>
+  );
+}
+
+function FilterIcon() {
+  return (
+    <svg className="h-[10px] w-[12.5px] shrink-0" fill="none" viewBox="0 0 13 10" aria-hidden>
+      <path d="M1.5 1.25h10L7.75 5.4v2.2L5.25 8.75V5.4L1.5 1.25Z" fill="#24588b" />
     </svg>
   );
 }
@@ -207,21 +206,31 @@ function KpiCard({ icon, iconColor, label, value, helper, valueClass = 'text-[#1
   );
 }
 
-function SearchFilter() {
+function ActiveFilterChip({ label }: { label: string }) {
   return (
-    <div className="bg-white border border-[#d1d1d1] border-solid flex h-[33px] w-[250px] shrink-0 items-center gap-[12px] overflow-hidden rounded-[6px] px-[15px] py-[9px]">
-      <SearchIcon />
-      <span className="min-w-0 flex-1 truncate font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] text-[#acacac]">Buscar por N°, empresa, insp…</span>
-    </div>
+    <button className="flex h-[18px] items-center gap-[5px] rounded-[3px] border border-[#a7ccea] bg-[#dcecff] px-[9px] py-[3px] font-['Inter:Medium',sans-serif] text-[10px] font-medium leading-[12px] text-[#24588b]" type="button">
+      <span>{label}</span>
+      <span className="font-['Inter:Regular',sans-serif] text-[10px] font-normal leading-[10px] text-[#24588b]">×</span>
+    </button>
   );
 }
 
-function DropdownMock({ label, width }: { label: string; width: string }) {
+function ActiveFiltersBar() {
   return (
-    <button className={`bg-white border border-[#d1d1d1] border-solid relative h-[36px] ${width} shrink-0 rounded-[8px]`} type="button">
-      <span className="absolute left-[9px] top-[9px] whitespace-nowrap font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] text-[#131313]">{label}</span>
-      <span className="absolute right-[10px] top-[13px]"><CaretIcon /></span>
-    </button>
+    <div className="flex min-h-[38px] w-full flex-wrap items-center justify-between gap-[12px] pt-[16px]">
+      <div className="flex min-h-[38px] min-w-[280px] flex-1 items-center gap-[10px] overflow-x-auto bg-[#eef5ff] px-[14px] py-[10px]">
+        <div className="flex shrink-0 items-center gap-[6px]">
+          <FilterIcon />
+          <span className="font-['Inter:Semi_Bold',sans-serif] text-[11px] font-semibold leading-[13px] text-[#24588b]">Filtros activos:</span>
+        </div>
+        <ActiveFilterChip label="Empresa: SOMACOR" />
+        <ActiveFilterChip label="Urgencia: Ejecutada · Grave" />
+      </div>
+      <div className="flex shrink-0 items-center gap-[8px]">
+        <button className="bg-white border-[#d1d1d1] border-[1.5px] border-solid flex h-[36px] w-[117.5px] shrink-0 items-center gap-[6px] rounded-[8px] px-[13.5px] py-[1.5px] text-[12px] font-semibold text-[#333]" type="button"><FileIcon /><span className="font-['Inter:Semi_Bold',sans-serif]">Exportar</span><CaretIcon /></button>
+        <button className="flex h-[36px] w-[159px] shrink-0 items-center gap-[7px] rounded-[6px] bg-[#c8a064] px-[16px] py-[10.5px] text-[12px] font-bold text-white" type="button"><PlusIcon /><span className="font-['Inter:Bold',sans-serif]">Nueva inspección</span></button>
+      </div>
+    </div>
   );
 }
 
@@ -397,18 +406,7 @@ export function InspectionsManagementView() {
         <KpiCard icon="approval" iconColor="#bd3b5b" label="Pend. de aprobación" value="X" helper="Ejecutadas esperando Admin GF" valueClass="text-[#bd3b5b]" />
         <KpiCard icon="closed" iconColor="#53bd49" label="% Obs. cerradas" value="XX%" helper="Meta >99%" valueClass="text-[#2a5c16]" />
       </div>
-      <div className="flex min-h-[38px] w-full flex-wrap items-center justify-between gap-[12px] pt-[16px]">
-        <div className="flex min-w-0 flex-wrap items-center gap-[8px]">
-          <SearchFilter />
-          <DropdownMock label="Todas las áreas" width="w-[130px]" />
-          <DropdownMock label="Todas las empresas" width="w-[163px]" />
-          <DropdownMock label="Todo 2026" width="w-[110px]" />
-        </div>
-        <div className="flex shrink-0 items-center gap-[8px]">
-          <button className="bg-white border-[#d1d1d1] border-[1.5px] border-solid flex h-[36px] w-[117.5px] shrink-0 items-center gap-[6px] rounded-[8px] px-[13.5px] py-[1.5px] text-[12px] font-semibold text-[#333]" type="button"><FileIcon /><span className="font-['Inter:Semi_Bold',sans-serif]">Exportar</span><CaretIcon /></button>
-          <button className="flex h-[36px] w-[159px] shrink-0 items-center gap-[7px] rounded-[6px] bg-[#c8a064] px-[16px] py-[10.5px] text-[12px] font-bold text-white" type="button"><PlusIcon /><span className="font-['Inter:Bold',sans-serif]">Nueva inspección</span></button>
-        </div>
-      </div>
+      <ActiveFiltersBar />
       <div className="w-full pt-[16px]">
         <InspectionTable />
       </div>

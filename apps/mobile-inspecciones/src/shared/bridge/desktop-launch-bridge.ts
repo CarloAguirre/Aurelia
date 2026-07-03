@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import { useMobileSession } from '../../modules/auth/mobileSession.store';
 import { exchangeDesktopLaunch } from '../services/api/auth.api';
@@ -30,6 +30,7 @@ export function notifyDesktop(type: string, payload: Record<string, unknown> = {
 
 export function useDesktopLaunchBridge() {
   const applyLaunch = useMobileSession((state) => state.setMobileSession);
+  const handledCodesRef = useRef(new Set<string>());
 
   useEffect(() => {
     const currentWindow = getWindow();
@@ -40,8 +41,15 @@ export function useDesktopLaunchBridge() {
       const data = event.data as Incoming | null;
       if (!data || typeof data !== 'object') return;
       if (data.type !== 'aurelia:desktop-launch' || !data.code) return;
-      const response = await exchangeDesktopLaunch(data.code);
-      applyLaunch(response.token, response.user);
+      if (handledCodesRef.current.has(data.code)) return;
+      handledCodesRef.current.add(data.code);
+
+      try {
+        const response = await exchangeDesktopLaunch(data.code);
+        applyLaunch(response.token, response.user);
+      } catch {
+        handledCodesRef.current.delete(data.code);
+      }
     }
 
     currentWindow.addEventListener('message', handleMessage);

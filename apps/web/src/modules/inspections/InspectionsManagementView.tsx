@@ -1,5 +1,6 @@
-import type { InspectionManagementKpisResponse } from '@aurelia/contracts';
+import type { InspectionManagementKpisResponse, InspectionManagementTableRowResponse } from '@aurelia/contracts';
 import { useInspectionManagementKpis } from '../../shared/hooks/useInspectionManagementKpis';
+import { useInspectionManagementTable } from '../../shared/hooks/useInspectionManagementTable';
 
 type KpiIconKind = 'total' | 'open' | 'approval' | 'closed';
 
@@ -21,7 +22,7 @@ type Row = {
   inspector: string;
   area: string;
   company: string;
-  type: 'Hallazgo' | 'Checklist';
+  type: string;
   urgency: string;
   urgencyTone: BadgeTone;
   count: number;
@@ -30,16 +31,6 @@ type Row = {
   closure: number;
   height: number;
 };
-
-const rows: Row[] = [
-  { id: '#369', date: '03-06-26', inspector: 'Janina S. T.', area: 'Serv. Generales · Camp. Antiguo', company: 'GARDE CORPS', type: 'Hallazgo', urgency: 'Ejecutada · Grave', urgencyTone: 'pink', count: 3, obs: ['1 Ejec.', '2 Abier.'], days: 23, closure: 25, height: 61 },
-  { id: '#389', date: '28-05-26', inspector: 'Janina S. T.', area: 'Serv. Generales · PTAS', company: 'RESITER', type: 'Hallazgo', urgency: 'Ejecutada · Moderado', urgencyTone: 'orange', count: 5, obs: ['1 Ejec.', '2 Abier.', '2 Cer'], days: 9, closure: 60, height: 80 },
-  { id: '#357', date: '08-06-26', inspector: 'Karen O. S.', area: 'Planta Procesos · Módulo C', company: 'SOMACOR', type: 'Hallazgo', urgency: 'Abierta · Grave', urgencyTone: 'pink', count: 3, obs: ['1 Abier.', '2 Cer'], days: 18, closure: 67, height: 61 },
-  { id: '#395', date: '26-05-26', inspector: 'Karen O. S.', area: 'Planta Procesos · Módulo C', company: 'AGGREKO', type: 'Checklist', urgency: 'Abierta · Moderado', urgencyTone: 'yellow', count: 5, obs: ['3 Abier.', '2 Cer'], days: 4, closure: 40, height: 61 },
-  { id: '#404', date: '09-06-26', inspector: 'Karen O. S.', area: 'Mina · Sector Norte', company: 'SOMACOR', type: 'Hallazgo', urgency: 'Abierta · Menor', urgencyTone: 'green', count: 1, obs: ['1 Abier.'], days: 1, closure: 0, height: 42 },
-  { id: '#403', date: '09-06-26', inspector: 'Janina S. T.', area: 'Serv. Generales · Sect. Norte', company: 'GOLD FIELDS', type: 'Checklist', urgency: 'Abierta · Menor', urgencyTone: 'green', count: 12, obs: ['2 Abier.', '10 Cer'], days: 1, closure: 83, height: 61 },
-  { id: '#376', date: '01-06-26', inspector: 'Janina S. T.', area: 'Serv. Generales · Sect. Norte', company: 'GOLD FIELDS', type: 'Checklist', urgency: 'Abierta · Menor', urgencyTone: 'green', count: 15, obs: ['3 Abier.', '12 Cer'], days: 11, closure: 80, height: 61 },
-];
 
 const tableColumns = [72, 147, 199, 208, 197, 132, 196, 84, 155, 132, 119, 83.5];
 const tableWidth = tableColumns.reduce((total, width) => total + width, 0);
@@ -57,6 +48,62 @@ function formatPercent(value: number) {
 function formatDeltaHelper(data: InspectionManagementKpisResponse) {
   const direction = data.inspectionsDeltaPercent > 0 ? '↑' : data.inspectionsDeltaPercent < 0 ? '↓' : '→';
   return `${direction} ${formatPercent(Math.abs(data.inspectionsDeltaPercent))} vs ${data.previousYear}`;
+}
+
+function formatDate(value: string | null) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = String(date.getFullYear()).slice(-2);
+  return `${day}-${month}-${year}`;
+}
+
+function formatInspectionNumber(value: string) {
+  return value.startsWith('#') ? value : `#${value}`;
+}
+
+function formatObservationBadges(row: InspectionManagementTableRowResponse) {
+  const badges: string[] = [];
+  if (row.observations.executed > 0) badges.push(`${row.observations.executed} Ejec.`);
+  if (row.observations.open > 0) badges.push(`${row.observations.open} Abier.`);
+  if (row.observations.closed > 0) badges.push(`${row.observations.closed} Cer`);
+  return badges;
+}
+
+function getRowHeight(badges: string[]) {
+  if (badges.length >= 3) return 80;
+  if (badges.length <= 1) return 42;
+  return 61;
+}
+
+function getUrgencyTone(row: InspectionManagementTableRowResponse): BadgeTone {
+  if (row.urgencySeverity === 'critical' || row.urgencySeverity === 'high') return 'pink';
+  if (row.urgencySeverity === 'medium') return row.urgencyLabel.startsWith('Ejecutada') ? 'orange' : 'yellow';
+  if (row.urgencySeverity === 'low') return 'green';
+  return 'blue';
+}
+
+function buildTableRows(rows: InspectionManagementTableRowResponse[] | undefined): Row[] {
+  return (rows ?? []).map((row) => {
+    const badges = formatObservationBadges(row);
+    return {
+      id: formatInspectionNumber(row.inspectionNumber),
+      date: formatDate(row.date),
+      inspector: row.inspector,
+      area: row.areaSector,
+      company: row.company,
+      type: row.type,
+      urgency: row.urgencyLabel,
+      urgencyTone: getUrgencyTone(row),
+      count: row.observationsCount,
+      obs: badges,
+      days: row.daysOpen,
+      closure: row.closureRate,
+      height: getRowHeight(badges),
+    };
+  });
 }
 
 function buildManagementKpis(data: InspectionManagementKpisResponse | undefined, isLoading: boolean, isError: boolean) {
@@ -373,7 +420,7 @@ function ProgressCell({ value }: { value: number }) {
         <div className="h-[4px] min-w-[36px] flex-[62_0_0] rounded-[2px] bg-[#e3e3e3]">
           <div className="h-[4px] rounded-[2px]" style={{ width: `${Math.max(0, Math.min(100, value))}%`, backgroundColor: barColor }} />
         </div>
-        <span className="min-w-[28px] text-right font-['Inter:Bold',sans-serif] text-[10px] font-bold leading-[normal]" style={{ color: textColor }}>{value}%</span>
+        <span className="min-w-[28px] text-right font-['Inter:Bold',sans-serif] text-[10px] font-bold leading-[normal]" style={{ color: textColor }}>{formatPercent(value)}</span>
       </div>
     </td>
   );
@@ -385,7 +432,9 @@ function getObsBadge(item: string) {
   return { tone: 'yellow' as const, icon: 'clock' as const };
 }
 
-function InspectionTable() {
+function InspectionTable({ rows, total, isLoading, isError }: { rows: Row[]; total: number; isLoading: boolean; isError: boolean }) {
+  const footerText = isLoading ? 'Cargando inspecciones...' : isError ? 'No fue posible cargar las inspecciones' : `Mostrando ${rows.length > 0 ? 1 : 0}–${rows.length} de ${total} inspecciones`;
+
   return (
     <div className="bg-white border border-[#e3e3e3] border-solid w-full overflow-hidden rounded-[8px] shadow-[0px_1px_4px_rgba(0,0,0,0.05)]">
       <div className="overflow-x-auto overflow-y-hidden">
@@ -431,7 +480,7 @@ function InspectionTable() {
                 <DataCell bold>{row.inspector}</DataCell>
                 <DataCell>{row.area}</DataCell>
                 <DataCell>{row.company}</DataCell>
-                <DataCell><Badge tone={row.type === 'Checklist' ? 'mint' : 'blue'} icon={row.type === 'Checklist' ? 'checklist' : 'search'}>{row.type}</Badge></DataCell>
+                <DataCell><Badge tone={row.type.toLowerCase().includes('check') ? 'mint' : 'blue'} icon={row.type.toLowerCase().includes('check') ? 'checklist' : 'search'}>{row.type}</Badge></DataCell>
                 <DataCell><Badge tone={row.urgencyTone} icon={row.urgency.includes('Ejecutada') ? 'check' : row.urgency.includes('Grave') ? 'alert' : 'clock'}>{row.urgency}</Badge></DataCell>
                 <DataCell center>{row.count}</DataCell>
                 <DataCell><div className="flex w-[95.5px] flex-col items-start gap-[4px]">{row.obs.map((item) => { const badge = getObsBadge(item); return <Badge key={item} tone={badge.tone} icon={badge.icon} small>{item}</Badge>; })}</div></DataCell>
@@ -440,11 +489,16 @@ function InspectionTable() {
                 <td className="border-b border-[#e3e3e3] bg-white px-[12px] py-[8.5px] text-center align-middle"><button className="inline-flex size-[26px] items-center justify-center rounded-[5px] border border-[#e3e3e3] bg-white p-px" type="button"><MoreIcon /></button></td>
               </tr>
             ))}
+            {!isLoading && rows.length === 0 ? (
+              <tr className="h-[61px]">
+                <td colSpan={12} className="border-b border-[#e3e3e3] bg-white px-[12px] py-[13.5px] text-center font-['Inter:Regular',sans-serif] text-[12px] text-[#646464]">No hay inspecciones para mostrar</td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </div>
       <div className="border-t border-[#e3e3e3] bg-white px-[16px] py-[10px] flex items-center justify-between">
-        <p className="font-['Inter:Regular',sans-serif] text-[12px] text-[#646464]">Mostrando 1–7 de 7 inspecciones abiertas</p>
+        <p className="font-['Inter:Regular',sans-serif] text-[12px] text-[#646464]">{footerText}</p>
         <div className="flex items-center gap-[4px]"><button className="size-[32px] rounded-[6px] border border-[#e3e3e3] opacity-35">‹</button><button className="size-[32px] rounded-[6px] border border-[#c8a064] bg-[#c8a064] font-semibold text-[#001e39]">1</button><button className="size-[32px] rounded-[6px] border border-[#e3e3e3] opacity-35">›</button></div>
         <div className="flex items-center gap-[8px]"><span className="text-[12px] text-[#646464]">Filas por página</span><button className="h-[32px] w-[51px] rounded-[6px] border border-[#d1d1d1] text-[12px] font-semibold text-[#646464]">10⌄</button></div>
       </div>
@@ -454,7 +508,9 @@ function InspectionTable() {
 
 export function InspectionsManagementView() {
   const kpisQuery = useInspectionManagementKpis();
+  const tableQuery = useInspectionManagementTable();
   const kpis = buildManagementKpis(kpisQuery.data, kpisQuery.isLoading, kpisQuery.isError);
+  const tableRows = buildTableRows(tableQuery.data?.rows);
 
   return (
     <div className="bg-[#f7f7f7] flex h-[calc(100vh-56px)] w-full flex-col items-start overflow-y-auto overflow-x-hidden px-[24px] py-[20px]">
@@ -466,7 +522,7 @@ export function InspectionsManagementView() {
       </div>
       <ActiveFiltersBar />
       <div className="w-full pt-[16px]">
-        <InspectionTable />
+        <InspectionTable rows={tableRows} total={tableQuery.data?.total ?? 0} isLoading={tableQuery.isLoading} isError={tableQuery.isError} />
       </div>
     </div>
   );

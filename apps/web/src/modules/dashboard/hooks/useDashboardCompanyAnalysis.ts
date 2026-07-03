@@ -21,6 +21,7 @@ export function useDashboardCompanyAnalysis() {
       openFindings: formatInteger(query.data?.openFindings),
       openInspections: formatInteger(query.data?.openInspections),
       openDaysLabel: `${formatInteger(query.data?.openDays.max)} · ${formatDecimal(query.data?.openDays.average)}`,
+      chartRows: query.data?.chartRows ?? [],
     }),
     [query.data],
   );

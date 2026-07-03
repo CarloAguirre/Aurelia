@@ -5,6 +5,7 @@ import type {
   InspectionDashboardCompanyAnalysisResponse,
   InspectionDashboardOpenFindingsResponse,
   InspectionDashboardSummaryResponse,
+  InspectionManagementKpisResponse,
   InspectionResponse,
 } from '@aurelia/contracts';
 import { httpGet, httpPost } from './http-client';
@@ -22,6 +23,10 @@ function buildDashboardQuery(params?: InspectionDashboardQueryParams) {
   const searchParams = new URLSearchParams({ year: String(params.year), period: params.period });
   if (params.companyId) searchParams.set('companyId', params.companyId);
   return `?${searchParams.toString()}`;
+}
+
+export function getInspectionManagementKpis(): Promise<InspectionManagementKpisResponse> {
+  return httpGet<InspectionManagementKpisResponse>('/inspections/dashboard/management-kpis');
 }
 
 export function getInspectionDashboardSummary(params?: InspectionDashboardQueryParams): Promise<InspectionDashboardSummaryResponse> {

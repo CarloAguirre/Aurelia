@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import svgPaths from "./svg-gaoncjys4y";
-import { useDashboardCharts } from './hooks/useDashboardCharts';
-import { useDashboardCompanyAnalysis } from './hooks/useDashboardCompanyAnalysis';
-import { useDashboardKpis } from './hooks/useDashboardKpis';
-import { useDashboardOpenFindings } from './hooks/useDashboardOpenFindings';
+import { useDashboardChartsFiltered } from './hooks/useDashboardChartsFiltered';
+import { useDashboardCompanyAnalysisFiltered } from './hooks/useDashboardCompanyAnalysisFiltered';
+import { useDashboardKpisFiltered } from './hooks/useDashboardKpisFiltered';
+import { useDashboardDetailsFiltered } from './hooks/useDashboardDetailsFiltered';
+import type { InspectionDashboardPeriod } from '../../shared/services/inspections.service';
 import {
   DashboardAreaObservationsCard,
   DashboardAreaObservationsHeaderPrimary,
@@ -11,7 +13,6 @@ import {
   DashboardAnnualKpiFindingsCard,
   DashboardCoreAnalysisSection,
   DashboardAnnualHeaderLeft,
-  DashboardAnnualHeaderRight,
   DashboardAnnualKpiHistoricalClosureCard,
   DashboardAnnualKpiInspectionsCard,
   DashboardAnnualKpiOpenCard,
@@ -46,6 +47,7 @@ import { DashboardResponsiveTopKpisGrid } from './components/DashboardResponsive
 import { DashboardResponsiveCompanyAnalysisSection } from './components/DashboardResponsiveCompanyAnalysisSection';
 import { DashboardFigmaCompanyAnalysisChart } from './components/DashboardFigmaCompanyAnalysisChart';
 import { DashboardFigmaOpenFindingsDetailsTable } from './components/DashboardFigmaOpenFindingsDetailsTable';
+import { DashboardPeriodLite } from './components/DashboardPeriodLite';
 import {
   DashboardCompanyCardOpenCompanies,
   DashboardCompanyCardOpenDays,
@@ -53,11 +55,14 @@ import {
   DashboardCompanyCardOpenInspections,
 } from './components/DashboardFigmaCompanyKpiCards';
 
+const currentYear = new Date().getFullYear();
+
 export function DashboardPage() {
-  const { runtimeModel: kpisRuntimeModel, isLoading: isKpisLoading, isError: isKpisError } = useDashboardKpis();
-  const { annualInspectionRows, monthlySeriesRows, areaObservationRows, closureMetrics, isLoading: isChartsLoading, isError: isChartsError } = useDashboardCharts();
-  const { runtimeModel: companyAnalysisRuntimeModel } = useDashboardCompanyAnalysis();
-  const { rows: openFindingRows, severeOpenFindings, openInspections, isLoading: isOpenFindingsLoading, isError: isOpenFindingsError } = useDashboardOpenFindings();
+  const [dashboardQuery, setDashboardQuery] = useState({ year: currentYear, period: 'q1' as InspectionDashboardPeriod });
+  const { runtimeModel: kpisRuntimeModel, isLoading: isKpisLoading, isError: isKpisError } = useDashboardKpisFiltered(dashboardQuery);
+  const { annualInspectionRows, monthlySeriesRows, areaObservationRows, closureMetrics, isLoading: isChartsLoading, isError: isChartsError } = useDashboardChartsFiltered(dashboardQuery);
+  const { runtimeModel: companyAnalysisRuntimeModel } = useDashboardCompanyAnalysisFiltered(dashboardQuery);
+  const { rows: openFindingRows, severeOpenFindings, openInspections, isLoading: isOpenFindingsLoading, isError: isOpenFindingsError } = useDashboardDetailsFiltered(dashboardQuery);
 
   return (
     <div className="relative h-screen w-full overflow-hidden" data-name="Dashboard inspecciones">
@@ -73,7 +78,7 @@ export function DashboardPage() {
                   annualHeader={
                     <DashboardAnnualHeaderSection>
                       <DashboardAnnualHeaderLeft iconPath={svgPaths.p26a85e00} />
-                      <DashboardAnnualHeaderRight dropdownCaretPath={svgPaths.pf36e620} clearIconPath={svgPaths.p12771800} />
+                      <DashboardPeriodLite value={dashboardQuery} onChange={setDashboardQuery} clearIconPath={svgPaths.p12771800} />
                     </DashboardAnnualHeaderSection>
                   }
                   topKpis={

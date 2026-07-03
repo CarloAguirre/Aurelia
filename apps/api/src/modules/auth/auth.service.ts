@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -35,9 +36,23 @@ export interface SessionRenewRequest {
   refreshToken: string;
 }
 
+export interface IframeSessionTicketRequest {
+  ticket: string;
+}
+
+export interface IframeSessionTicketResponse {
+  ticket: string;
+  expiresAt: string;
+}
+
 export interface AuthClientContext {
   userAgent: string | null;
   ipAddress: string | null;
+}
+
+interface IframeSessionTicketRecord {
+  userId: string;
+  expiresAt: number;
 }
 
 @Injectable()
@@ -45,6 +60,10 @@ export class AuthService {
   private static readonly MAX_FAILED_ATTEMPTS = 5;
 
   private static readonly LOCK_MINUTES = 15;
+
+  private static readonly IFRAME_TICKET_TTL_MS = 60_000;
+
+  private readonly iframeTickets = new Map<string, IframeSessionTicketRecord>();
 
   constructor(
     @InjectRepository(UserEntity)
@@ -106,42 +125,7 @@ export class AuthService {
       lastLoginAt: new Date(),
     });
 
-    const issued = await this.sessionRegistryService.issue(user, context);
-    const updatedUser = await this.findActiveUserById(user.id);
-
-    const roles = updatedUser.userRoles?.map((userRole) => userRole.role.code) ?? [];
-    const permissions = this.resolvePermissions(updatedUser);
-    const isGoldFieldsUser = updatedUser.email.endsWith('@goldfields.com');
-    const fullName = `${updatedUser.firstName} ${updatedUser.lastName}`.trim();
-    const companyName = updatedUser.company?.name ?? (isGoldFieldsUser ? 'Gold Fields' : null);
-    const areaName = updatedUser.area?.name ?? (isGoldFieldsUser ? 'Medio Ambiente' : null);
-    const token = this.jwtTokenService.sign({
-      sub: updatedUser.id,
-      email: updatedUser.email,
-      fullName,
-      roles,
-      permissions,
-      sid: issued.session.id,
-    });
-
-    return {
-      token,
-      refreshToken: issued.key,
-      user: {
-        id: updatedUser.id,
-        email: updatedUser.email,
-        fullName,
-        firstName: updatedUser.firstName,
-        lastName: updatedUser.lastName,
-        position: updatedUser.position,
-        companyId: updatedUser.companyId,
-        companyName,
-        areaId: updatedUser.areaId,
-        areaName,
-        roles,
-        permissions,
-      },
-    };
+    return this.issueLoginResponse(user.id, context);
   }
 
   async renew(payload: SessionRenewRequest, context: AuthClientContext): Promise<LoginResponse> {
@@ -151,8 +135,50 @@ export class AuthService {
     }
 
     const issued = await this.sessionRegistryService.rotate(refreshToken, context);
-    const user = await this.findActiveUserById(issued.session.userId);
+    return this.issueLoginResponse(issued.session.userId, context, issued.key, issued.session.id);
+  }
 
+  createIframeSessionTicket(userId: string): IframeSessionTicketResponse {
+    this.pruneExpiredIframeTickets();
+    const ticket = randomUUID();
+    const expiresAt = Date.now() + AuthService.IFRAME_TICKET_TTL_MS;
+    this.iframeTickets.set(ticket, { userId, expiresAt });
+
+    return {
+      ticket,
+      expiresAt: new Date(expiresAt).toISOString(),
+    };
+  }
+
+  async exchangeIframeSessionTicket(payload: IframeSessionTicketRequest, context: AuthClientContext): Promise<LoginResponse> {
+    const ticket = payload?.ticket?.trim();
+    if (!ticket) {
+      throw new UnauthorizedException('Invalid session ticket');
+    }
+
+    const record = this.iframeTickets.get(ticket);
+    this.iframeTickets.delete(ticket);
+
+    if (!record || record.expiresAt < Date.now()) {
+      throw new UnauthorizedException('Invalid session ticket');
+    }
+
+    return this.issueLoginResponse(record.userId, context);
+  }
+
+  async logout(sessionId: string | undefined): Promise<void> {
+    await this.sessionRegistryService.revoke(sessionId);
+  }
+
+  async logoutAll(userId: string): Promise<void> {
+    await this.sessionRegistryService.revokeAll(userId);
+  }
+
+  private async issueLoginResponse(userId: string, context: AuthClientContext, existingRefreshToken?: string, existingSessionId?: string): Promise<LoginResponse> {
+    const issued = existingRefreshToken && existingSessionId
+      ? { key: existingRefreshToken, session: { id: existingSessionId } }
+      : await this.sessionRegistryService.issue(await this.findActiveUserById(userId), context);
+    const user = await this.findActiveUserById(userId);
     const roles = user.userRoles?.map((userRole) => userRole.role.code) ?? [];
     const permissions = this.resolvePermissions(user);
     const isGoldFieldsUser = user.email.endsWith('@goldfields.com');
@@ -188,14 +214,6 @@ export class AuthService {
     };
   }
 
-  async logout(sessionId: string | undefined): Promise<void> {
-    await this.sessionRegistryService.revoke(sessionId);
-  }
-
-  async logoutAll(userId: string): Promise<void> {
-    await this.sessionRegistryService.revokeAll(userId);
-  }
-
   private async findActiveUserById(id: string): Promise<UserEntity> {
     const user = await this.usersRepository.findOne({
       where: { id, isActive: true },
@@ -217,6 +235,13 @@ export class AuthService {
     }
 
     return user;
+  }
+
+  private pruneExpiredIframeTickets(): void {
+    const now = Date.now();
+    Array.from(this.iframeTickets.entries()).forEach(([ticket, record]) => {
+      if (record.expiresAt < now) this.iframeTickets.delete(ticket);
+    });
   }
 
   private resolvePermissions(user: UserEntity): string[] {

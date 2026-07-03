@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { getInspectionManagementTable } from '../services/inspections.service';
+import { getInspectionManagementTable, type InspectionManagementTableParams } from '../services/inspections.service';
 
-export function useInspectionManagementTable() {
+export function useInspectionManagementTable(params: InspectionManagementTableParams) {
   return useQuery({
-    queryKey: ['inspections', 'management', 'table'],
-    queryFn: getInspectionManagementTable,
+    queryKey: ['inspections', 'management', 'table', params],
+    queryFn: () => getInspectionManagementTable(params),
+    placeholderData: (previousData) => previousData,
   });
 }

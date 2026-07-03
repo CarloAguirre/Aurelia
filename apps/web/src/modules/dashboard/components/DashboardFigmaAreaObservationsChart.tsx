@@ -57,7 +57,7 @@ export function DashboardFigmaAreaObservationsChart({ rows }: DashboardFigmaArea
     <div className="bg-white min-h-[400px] relative shrink-0 w-full" data-name="bar-chart-editable">
       <div className="bg-clip-padding border-0 border-[transparent] border-solid flex min-h-[400px] flex-col items-start relative size-full">
         <div className="relative min-h-[360px] w-full shrink-0" data-name="plot-container">
-          <div className="absolute bottom-[-18px] left-[176px] right-0 top-0 flex justify-between" data-name="grid-lines">
+          <div className="absolute bottom-[18px] left-[176px] right-0 top-0 flex justify-between" data-name="grid-lines">
             {AXIS_TICKS.map((tick) => (
               <div className="h-full w-px shrink-0" data-name={`grid-${tick}`} key={tick} style={{ backgroundColor: GRID }} />
             ))}

@@ -3,7 +3,11 @@ import { Platform } from 'react-native';
 import { useMobileSession } from '../../modules/auth/mobileSession.store';
 import { exchangeDesktopLaunch } from '../services/api/auth.api';
 
-const PARENT_ORIGIN = process.env.EXPO_PUBLIC_WEB_PARENT_ORIGIN ?? 'http://localhost:5173';
+type GlobalWithProcess = typeof globalThis & {
+  process?: {
+    env?: Record<string, string | undefined>;
+  };
+};
 
 type MessageEventLike = { origin: string; data: unknown };
 type WindowLike = typeof globalThis & {
@@ -14,18 +18,23 @@ type WindowLike = typeof globalThis & {
 
 type Incoming = { type?: string; code?: string };
 
+function getParentOrigin() {
+  return (globalThis as GlobalWithProcess).process?.env?.EXPO_PUBLIC_WEB_PARENT_ORIGIN ?? 'http://localhost:5173';
+}
+
 function getWindow() {
   if (Platform.OS !== 'web') return null;
   return globalThis as WindowLike;
 }
 
 function allowed(origin: string) {
-  return PARENT_ORIGIN === '*' || origin === PARENT_ORIGIN;
+  const parentOrigin = getParentOrigin();
+  return parentOrigin === '*' || origin === parentOrigin;
 }
 
 export function notifyDesktop(type: string, payload: Record<string, unknown> = {}) {
   const currentWindow = getWindow();
-  currentWindow?.parent?.postMessage({ type, ...payload }, PARENT_ORIGIN);
+  currentWindow?.parent?.postMessage({ type, ...payload }, getParentOrigin());
 }
 
 export function useDesktopLaunchBridge() {

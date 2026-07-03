@@ -70,7 +70,7 @@ function HeaderCell({ label, sortIconPath, accent = false, center = false }: Hea
 
 function SeveritySummaryCard({ count, label, badgeClass, textClass }: SeveritySummaryCardProps) {
   return (
-    <div className="bg-white border border-[#e3e3e3] border-solid flex h-[84px] min-w-[78px] flex-col gap-[8px] items-start justify-center overflow-hidden px-[13px] py-[9px] relative rounded-[8px] shadow-[0px_1px_3px_0px_rgba(0,0,0,0.05)] shrink-0" data-name="Container">
+    <div className="bg-white border border-[#e3e3e3] border-solid flex h-[72px] min-w-[98px] flex-col gap-[6px] items-start justify-center overflow-hidden px-[13px] py-[8px] relative rounded-[8px] shadow-[0px_1px_3px_0px_rgba(0,0,0,0.05)] shrink-0" data-name="Container">
       <p className="font-['Inter:Bold',sans-serif] font-bold leading-[normal] text-[#131313] text-[18px] whitespace-nowrap">{count} obs</p>
       <div className={`${badgeClass} relative rounded-[6px] shrink-0`} data-name="Text">
         <div className="flex items-center px-[8px] py-[2px] relative size-full">
@@ -166,14 +166,14 @@ export function DashboardFigmaOpenFindingsDetailsTable({ rows, severeOpenFinding
                     </div>
 
                     {isExpanded ? (
-                      <div className="bg-[#fff8e9] h-[99px] overflow-hidden relative w-full border-b border-[#e3e3e3] border-solid">
-                        <div className="absolute left-[14px] right-[14px] top-[14px] flex items-center justify-between gap-[16px]">
-                          <div className="flex gap-[12px] items-center shrink-0">
+                      <div className="bg-[#fff8e9] h-[122px] overflow-hidden relative w-full border-b border-[#e3e3e3] border-solid">
+                        <div className="absolute left-[18px] right-[18px] top-[20px] flex items-start justify-between gap-[16px]">
+                          <div className="flex gap-[12px] items-start shrink-0">
                             <SeveritySummaryCard count={row.severityCounts.severe} label="Grave" badgeClass="bg-[#ffd0db]" textClass="text-[#570b1d]" />
                             <SeveritySummaryCard count={row.severityCounts.moderate} label="Moderado" badgeClass="bg-[#ffe1cd]" textClass="text-[#532a0e]" />
                             <SeveritySummaryCard count={row.severityCounts.minor} label="Menor" badgeClass="bg-[#e0ffd3]" textClass="text-[#2a5c16]" />
                           </div>
-                          <a className="bg-[#c8a064] flex items-center px-[16px] py-[10.5px] rounded-[6px] shrink-0" href="/inspections">
+                          <a className="bg-[#c8a064] flex items-center px-[16px] py-[10.5px] rounded-[6px] shrink-0 mt-[16px]" href="/inspections">
                             <p className="font-['Inter:Bold',sans-serif] font-bold leading-[normal] text-[12px] text-center text-white whitespace-nowrap">Ir a esta inspección</p>
                           </a>
                         </div>

@@ -8,6 +8,7 @@ import type {
   InspectionDashboardCompanyChartRowResponse,
   InspectionDashboardOpenFindingRowResponse,
   InspectionDashboardOpenFindingsResponse,
+  InspectionDashboardSummaryResponse,
 } from '@aurelia/contracts';
 import { Repository } from 'typeorm';
 import { AreaEntity } from '../organization/entities/area.entity';
@@ -18,6 +19,7 @@ import {
   type DashboardQuery,
   buildDashboardDateFilter,
   dashboardFindingMatches,
+  dashboardInspectionMatches,
   getDashboardInspectionDate,
   getDashboardPeriodLabel,
   getDashboardPeriodMonths,
@@ -35,6 +37,39 @@ export class InspectionDashboardService {
     @InjectRepository(CompanyEntity)
     private readonly companies: Repository<CompanyEntity>,
   ) {}
+
+  async getSummary(query: DashboardQuery = {}): Promise<InspectionDashboardSummaryResponse> {
+    const [inspections, findings] = await Promise.all([this.inspections.find(), this.findings.find()]);
+    const filter = buildDashboardDateFilter(query);
+    const inspectionById = new Map(inspections.map((inspection) => [inspection.id, inspection]));
+    const selectedInspections = inspections.filter((inspection) => dashboardInspectionMatches(inspection, filter));
+    const selectedFindings = findings.filter((finding) => dashboardFindingMatches(finding, inspectionById.get(finding.inspectionId) ?? null, filter));
+    const byStatus = this.createInspectionStatusCounter();
+    const findingsByStatus = this.createFindingStatusCounter();
+    const findingsBySeverity = this.createFindingSeverityCounter();
+    const now = new Date();
+    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    selectedInspections.forEach((inspection) => { byStatus[inspection.status] += 1; });
+    selectedFindings.forEach((finding) => {
+      findingsByStatus[finding.status] += 1;
+      findingsBySeverity[finding.severity] += 1;
+    });
+    const openFindings = selectedFindings.filter((finding) => this.isOpenFinding(finding));
+    const withOpenFindings = new Set(openFindings.map((finding) => finding.inspectionId)).size;
+    const closedRate = selectedInspections.length === 0 ? 0 : Number(((byStatus[InspectionStatus.CLOSED] / selectedInspections.length) * 100).toFixed(2));
+
+    return {
+      inspections: { total: selectedInspections.length, byStatus, withOpenFindings, closedRate },
+      findings: {
+        total: selectedFindings.length,
+        byStatus: findingsByStatus,
+        bySeverity: findingsBySeverity,
+        open: openFindings.length,
+        overdue: openFindings.filter((finding) => finding.dueAt && finding.dueAt < now).length,
+        dueSoonNext7Days: openFindings.filter((finding) => finding.dueAt && finding.dueAt >= now && finding.dueAt <= sevenDaysFromNow).length,
+      },
+    };
+  }
 
   async getCharts(query: DashboardQuery = {}): Promise<InspectionDashboardChartsResponse> {
     const [inspections, findings, areas] = await Promise.all([
@@ -206,6 +241,18 @@ export class InspectionDashboardService {
       openInspections: rowsByInspection.size,
       rows: Array.from(rowsByInspection.values()).sort((a, b) => Number(b.hasSevereOpenFindings) - Number(a.hasSevereOpenFindings) || b.ageDays - a.ageDays || b.openFindings - a.openFindings).slice(0, 20),
     };
+  }
+
+  private createInspectionStatusCounter(): Record<InspectionStatus, number> {
+    return Object.values(InspectionStatus).reduce((acc, status) => ({ ...acc, [status]: 0 }), {} as Record<InspectionStatus, number>);
+  }
+
+  private createFindingStatusCounter(): Record<InspectionFindingStatus, number> {
+    return Object.values(InspectionFindingStatus).reduce((acc, status) => ({ ...acc, [status]: 0 }), {} as Record<InspectionFindingStatus, number>);
+  }
+
+  private createFindingSeverityCounter(): Record<InspectionFindingSeverity, number> {
+    return Object.values(InspectionFindingSeverity).reduce((acc, severity) => ({ ...acc, [severity]: 0 }), {} as Record<InspectionFindingSeverity, number>);
   }
 
   private formatAreaLabel(areaId: string | null, areaNameById: Map<string, string>): string {

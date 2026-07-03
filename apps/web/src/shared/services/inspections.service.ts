@@ -1,4 +1,5 @@
 import type {
+  CompanyResponse,
   CreateInspectionRequest,
   InspectionDashboardChartsResponse,
   InspectionDashboardCompanyAnalysisResponse,
@@ -37,6 +38,10 @@ export function getInspectionDashboardCompanyAnalysis(params?: InspectionDashboa
 
 export function getInspectionDashboardOpenFindings(params?: InspectionDashboardQueryParams): Promise<InspectionDashboardOpenFindingsResponse> {
   return httpGet<InspectionDashboardOpenFindingsResponse>(`/inspections/dashboard/open-findings${buildDashboardQuery(params)}`);
+}
+
+export function getInspectionDashboardCompanies(): Promise<CompanyResponse[]> {
+  return httpGet<CompanyResponse[]>('/organization/companies');
 }
 
 export function listInspections(): Promise<InspectionResponse[]> {

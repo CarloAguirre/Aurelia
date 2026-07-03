@@ -9,6 +9,7 @@ type CompanyKpiCardProps = {
 
 type DashboardCompanyCardProps = {
   iconPath: string;
+  value: string;
 };
 
 function CompanyKpiCard({ iconPath, iconColor, accentColor, title, value, subtitle }: CompanyKpiCardProps) {
@@ -38,18 +39,18 @@ function CompanyKpiCard({ iconPath, iconColor, accentColor, title, value, subtit
   );
 }
 
-export function DashboardCompanyCardOpenCompanies({ iconPath }: DashboardCompanyCardProps) {
-  return <CompanyKpiCard iconPath={iconPath} iconColor="#C8A064" accentColor="#c8a064" title="Empresas con obs. abiertas" value="8" subtitle="EECC en seguimiento" />;
+export function DashboardCompanyCardOpenCompanies({ iconPath, value }: DashboardCompanyCardProps) {
+  return <CompanyKpiCard iconPath={iconPath} iconColor="#C8A064" accentColor="#c8a064" title="Empresas con obs. abiertas" value={value} subtitle="EECC en seguimiento" />;
 }
 
-export function DashboardCompanyCardOpenFindings({ iconPath }: DashboardCompanyCardProps) {
-  return <CompanyKpiCard iconPath={iconPath} iconColor="#F9A411" accentColor="#463100" title="Observaciones abiertas" value="55" subtitle="pendientes de cierre" />;
+export function DashboardCompanyCardOpenFindings({ iconPath, value }: DashboardCompanyCardProps) {
+  return <CompanyKpiCard iconPath={iconPath} iconColor="#F9A411" accentColor="#463100" title="Observaciones abiertas" value={value} subtitle="pendientes de cierre" />;
 }
 
-export function DashboardCompanyCardOpenInspections({ iconPath }: DashboardCompanyCardProps) {
-  return <CompanyKpiCard iconPath={iconPath} iconColor="#001E39" accentColor="#001e39" title="Inspecciones abiertas" value="11" subtitle="con obs. sin cerrar" />;
+export function DashboardCompanyCardOpenInspections({ iconPath, value }: DashboardCompanyCardProps) {
+  return <CompanyKpiCard iconPath={iconPath} iconColor="#001E39" accentColor="#001e39" title="Inspecciones abiertas" value={value} subtitle="con obs. sin cerrar" />;
 }
 
-export function DashboardCompanyCardOpenDays({ iconPath }: DashboardCompanyCardProps) {
-  return <CompanyKpiCard iconPath={iconPath} iconColor="#c43f61" accentColor="#463100" title="Días abierto (máx · prom)" value="18 · 9,7" subtitle="urgencia de cierre" />;
+export function DashboardCompanyCardOpenDays({ iconPath, value }: DashboardCompanyCardProps) {
+  return <CompanyKpiCard iconPath={iconPath} iconColor="#c43f61" accentColor="#463100" title="Días abierto (máx · prom)" value={value} subtitle="urgencia de cierre" />;
 }

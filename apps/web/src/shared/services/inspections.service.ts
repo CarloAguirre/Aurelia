@@ -8,20 +8,35 @@ import type {
 } from '@aurelia/contracts';
 import { httpGet, httpPost } from './http-client';
 
-export function getInspectionDashboardSummary(): Promise<InspectionDashboardSummaryResponse> {
-  return httpGet<InspectionDashboardSummaryResponse>('/inspections/dashboard/summary');
+export type InspectionDashboardPeriod = 'year' | 'q1' | 'q2' | 'q3' | 'q4' | 'm1' | 'm2' | 'm3' | 'm4' | 'm5' | 'm6' | 'm7' | 'm8' | 'm9' | 'm10' | 'm11' | 'm12';
+
+export interface InspectionDashboardQueryParams {
+  year: number;
+  period: InspectionDashboardPeriod;
+  companyId?: string | null;
 }
 
-export function getInspectionDashboardCharts(): Promise<InspectionDashboardChartsResponse> {
-  return httpGet<InspectionDashboardChartsResponse>('/inspections/dashboard/charts');
+function buildDashboardQuery(params?: InspectionDashboardQueryParams) {
+  if (!params) return '';
+  const searchParams = new URLSearchParams({ year: String(params.year), period: params.period });
+  if (params.companyId) searchParams.set('companyId', params.companyId);
+  return `?${searchParams.toString()}`;
 }
 
-export function getInspectionDashboardCompanyAnalysis(): Promise<InspectionDashboardCompanyAnalysisResponse> {
-  return httpGet<InspectionDashboardCompanyAnalysisResponse>('/inspections/dashboard/company-analysis');
+export function getInspectionDashboardSummary(params?: InspectionDashboardQueryParams): Promise<InspectionDashboardSummaryResponse> {
+  return httpGet<InspectionDashboardSummaryResponse>(`/inspections/dashboard/filtered-summary${buildDashboardQuery(params)}`);
 }
 
-export function getInspectionDashboardOpenFindings(): Promise<InspectionDashboardOpenFindingsResponse> {
-  return httpGet<InspectionDashboardOpenFindingsResponse>('/inspections/dashboard/open-findings');
+export function getInspectionDashboardCharts(params?: InspectionDashboardQueryParams): Promise<InspectionDashboardChartsResponse> {
+  return httpGet<InspectionDashboardChartsResponse>(`/inspections/dashboard/charts${buildDashboardQuery(params)}`);
+}
+
+export function getInspectionDashboardCompanyAnalysis(params?: InspectionDashboardQueryParams): Promise<InspectionDashboardCompanyAnalysisResponse> {
+  return httpGet<InspectionDashboardCompanyAnalysisResponse>(`/inspections/dashboard/company-analysis${buildDashboardQuery(params)}`);
+}
+
+export function getInspectionDashboardOpenFindings(params?: InspectionDashboardQueryParams): Promise<InspectionDashboardOpenFindingsResponse> {
+  return httpGet<InspectionDashboardOpenFindingsResponse>(`/inspections/dashboard/open-findings${buildDashboardQuery(params)}`);
 }
 
 export function listInspections(): Promise<InspectionResponse[]> {

@@ -26,12 +26,26 @@ function buildDashboardQuery(params?: InspectionDashboardQueryParams) {
   return `?${searchParams.toString()}`;
 }
 
+function normalizeManagementInspectionType(type: string) {
+  const value = type.trim().toLowerCase();
+  if (value.includes('check') || value.includes('normativ') || value.includes('regulatory') || value.includes('regulatoria')) return 'Checklist';
+  if (value.includes('hallazgo') || value.includes('ambiental') || value.includes('environmental')) return 'Hallazgo';
+  return type;
+}
+
 export function getInspectionManagementKpis(): Promise<InspectionManagementKpisResponse> {
   return httpGet<InspectionManagementKpisResponse>('/inspections/dashboard/management-kpis');
 }
 
-export function getInspectionManagementTable(): Promise<InspectionManagementTableResponse> {
-  return httpGet<InspectionManagementTableResponse>('/inspections/dashboard/management-table');
+export async function getInspectionManagementTable(): Promise<InspectionManagementTableResponse> {
+  const response = await httpGet<InspectionManagementTableResponse>('/inspections/dashboard/management-table');
+  return {
+    ...response,
+    rows: response.rows.map((row) => ({
+      ...row,
+      type: normalizeManagementInspectionType(row.type),
+    })),
+  };
 }
 
 export function getInspectionDashboardSummary(params?: InspectionDashboardQueryParams): Promise<InspectionDashboardSummaryResponse> {

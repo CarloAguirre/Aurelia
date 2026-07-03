@@ -240,6 +240,11 @@ export class InspectionDashboardService {
         severeOpenFindings: 0,
         hasSevereOpenFindings: false,
         maxSeverity: null,
+        severityCounts: {
+          severe: 0,
+          moderate: 0,
+          minor: 0,
+        },
       };
 
       current.ageDays = Math.max(current.ageDays, ageDays);
@@ -249,7 +254,12 @@ export class InspectionDashboardService {
       if (isSevere) {
         current.severeOpenFindings += 1;
         current.hasSevereOpenFindings = true;
+        current.severityCounts.severe += 1;
         severeOpenFindings += 1;
+      } else if (finding.severity === InspectionFindingSeverity.MEDIUM) {
+        current.severityCounts.moderate += 1;
+      } else {
+        current.severityCounts.minor += 1;
       }
 
       rowsByInspection.set(inspection.id, current);

@@ -10,8 +10,10 @@ import type {
   InspectionDashboardOpenFindingsResponse,
   InspectionDashboardSummaryResponse,
   InspectionManagementKpisResponse,
+  InspectionManagementTableFilterOptionsResponse,
   InspectionManagementTableObservationSummaryResponse,
   InspectionManagementTableResponse,
+  InspectionManagementTableRowResponse,
 } from '@aurelia/contracts';
 import { Repository } from 'typeorm';
 import { AreaEntity } from '../organization/entities/area.entity';
@@ -30,6 +32,23 @@ import {
   getDashboardPeriodLabel,
   getDashboardPeriodMonths,
 } from './inspection-dashboard-period';
+
+export interface ManagementTableQuery {
+  page?: string;
+  pageSize?: string;
+  id?: string;
+  date?: string;
+  inspector?: string;
+  area?: string;
+  company?: string;
+  type?: string;
+  urgency?: string;
+  count?: string;
+  obs?: string;
+  daysMin?: string;
+  daysMax?: string;
+  closure?: string;
+}
 
 @Injectable()
 export class InspectionDashboardService {
@@ -81,7 +100,7 @@ export class InspectionDashboardService {
     };
   }
 
-  async getManagementTable(): Promise<InspectionManagementTableResponse> {
+  async getManagementTable(query: ManagementTableQuery = {}): Promise<InspectionManagementTableResponse> {
     const [inspections, findings, companies, areas, sectors, users, inspectionTypes] = await Promise.all([
       this.inspections.find(),
       this.findings.find(),
@@ -131,8 +150,20 @@ export class InspectionDashboardService {
         closureRate,
       };
     }).sort((a, b) => this.getUrgencyWeight(b.urgencySeverity) - this.getUrgencyWeight(a.urgencySeverity) || b.daysOpen - a.daysOpen || b.observations.open - a.observations.open);
+    const pageSize = this.resolvePageSize(query.pageSize);
+    const filteredRows = rows.filter((row) => this.managementTableRowMatches(row, query));
+    const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+    const page = this.resolvePage(query.page, totalPages);
+    const start = (page - 1) * pageSize;
 
-    return { total: rows.length, rows };
+    return {
+      page,
+      pageSize,
+      total: filteredRows.length,
+      totalPages,
+      rows: filteredRows.slice(start, start + pageSize),
+      filterOptions: this.buildManagementTableFilterOptions(rows),
+    };
   }
 
   async getSummary(query: DashboardQuery = {}): Promise<InspectionDashboardSummaryResponse> {
@@ -361,6 +392,88 @@ export class InspectionDashboardService {
     }, { executed: 0, open: 0, closed: 0 });
   }
 
+  private buildManagementTableFilterOptions(rows: InspectionManagementTableRowResponse[]): InspectionManagementTableFilterOptionsResponse {
+    return {
+      inspectors: this.uniqueSorted(rows.map((row) => row.inspector)),
+      areas: this.uniqueSorted(rows.map((row) => row.areaSector)),
+      companies: this.uniqueSorted(rows.map((row) => row.company)),
+      types: this.uniqueSorted(rows.map((row) => row.type)),
+      urgencies: this.uniqueSorted(rows.map((row) => row.urgencyLabel)),
+    };
+  }
+
+  private uniqueSorted(values: string[]): string[] {
+    return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'es'));
+  }
+
+  private managementTableRowMatches(row: InspectionManagementTableRowResponse, query: ManagementTableQuery): boolean {
+    if (!this.textMatches(`#${row.inspectionNumber}`, query.id)) return false;
+    if (!this.textMatches(this.formatDateForFilter(row.date), query.date)) return false;
+    if (!this.exactMatches(row.inspector, query.inspector)) return false;
+    if (!this.exactMatches(row.areaSector, query.area)) return false;
+    if (!this.exactMatches(row.company, query.company)) return false;
+    if (!this.exactMatches(row.type, query.type)) return false;
+    if (!this.exactMatches(row.urgencyLabel, query.urgency)) return false;
+    if (!this.numberMatches(row.observationsCount, query.count, 'equals')) return false;
+    if (!this.observationMatches(row.observations, query.obs)) return false;
+    if (!this.numberMatches(row.daysOpen, query.daysMin, 'min')) return false;
+    if (!this.numberMatches(row.daysOpen, query.daysMax, 'max')) return false;
+    if (!this.numberMatches(row.closureRate, query.closure, 'equals')) return false;
+    return true;
+  }
+
+  private textMatches(value: string, filter?: string): boolean {
+    if (!filter?.trim()) return true;
+    return this.normalizeSearch(value).includes(this.normalizeSearch(filter));
+  }
+
+  private exactMatches(value: string, filter?: string): boolean {
+    if (!filter?.trim()) return true;
+    return value === filter;
+  }
+
+  private observationMatches(observations: InspectionManagementTableObservationSummaryResponse, filter?: string): boolean {
+    if (!filter?.trim()) return true;
+    if (filter === 'executed') return observations.executed > 0;
+    if (filter === 'open') return observations.open > 0;
+    if (filter === 'closed') return observations.closed > 0;
+    return true;
+  }
+
+  private numberMatches(value: number, filter: string | undefined, comparator: 'min' | 'max' | 'equals'): boolean {
+    if (!filter?.trim()) return true;
+    const parsed = Number(filter.replace(',', '.'));
+    if (Number.isNaN(parsed)) return true;
+    if (comparator === 'min') return value >= parsed;
+    if (comparator === 'max') return value <= parsed;
+    return Math.round(value) === Math.round(parsed);
+  }
+
+  private normalizeSearch(value: string): string {
+    return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  private formatDateForFilter(value: string | null): string {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = String(date.getFullYear()).slice(-2);
+    return `${day}-${month}-${year}`;
+  }
+
+  private resolvePageSize(value?: string): number {
+    const parsed = Number(value);
+    return parsed === 25 || parsed === 50 ? parsed : 10;
+  }
+
+  private resolvePage(value: string | undefined, totalPages: number): number {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 1) return 1;
+    return Math.min(Math.floor(parsed), totalPages);
+  }
+
   private formatAreaLabel(areaId: string | null, areaNameById: Map<string, string>): string {
     if (!areaId) return 'Sin Área';
     return areaNameById.get(areaId) ?? `Área ${areaId.slice(0, 8).toUpperCase()}`;
@@ -385,8 +498,8 @@ export class InspectionDashboardService {
 
   private formatInspectionTypeLabel(type: InspectionTypeEntity | null, findingsCount: number): string {
     const source = `${type?.name ?? ''} ${type?.code ?? ''}`.toLowerCase();
-    if (source.includes('check')) return 'Checklist';
-    if (source.includes('hallazgo')) return 'Hallazgo';
+    if (source.includes('check') || source.includes('normativ') || source.includes('regulator')) return 'Checklist';
+    if (source.includes('hallazgo') || source.includes('ambiental') || source.includes('environmental')) return 'Hallazgo';
     return type?.name ?? (findingsCount > 0 ? 'Hallazgo' : 'Checklist');
   }
 

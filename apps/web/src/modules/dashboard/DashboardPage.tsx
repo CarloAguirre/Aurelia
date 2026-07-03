@@ -24,7 +24,6 @@ import {
   DashboardAlertsStrip,
   DashboardChartsBlock,
   DashboardChartsPrimaryGrid,
-  DashboardCompanyAnalysisChart,
   DashboardMainContentShell,
   DashboardMainPanelsLayout,
   DashboardOpenFindingsDetailsTable,
@@ -47,6 +46,7 @@ import { DashboardFigmaAreaObservationsChart } from './components/DashboardFigma
 import { DashboardResponsiveSecondaryGrid } from './components/DashboardResponsiveSecondaryGrid';
 import { DashboardResponsiveTopKpisGrid } from './components/DashboardResponsiveTopKpisGrid';
 import { DashboardResponsiveCompanyAnalysisSection } from './components/DashboardResponsiveCompanyAnalysisSection';
+import { DashboardFigmaCompanyAnalysisChart } from './components/DashboardFigmaCompanyAnalysisChart';
 import {
   DashboardCompanyCardOpenCompanies,
   DashboardCompanyCardOpenDays,
@@ -122,7 +122,7 @@ export function DashboardPage() {
                       <DashboardAlertsSectionLayout left={<DashboardAlertsHeaderLeft iconPath={svgPaths.p16888980} />} right={<DashboardAlertsHeaderRight dropdownCaretPath={svgPaths.pf36e620} clearIconPath={svgPaths.p12771800} />} />
                     </DashboardAlertsStrip>
                   }
-                  companyAnalysis={<DashboardResponsiveCompanyAnalysisSection cardA={<DashboardCompanyCardOpenCompanies iconPath={svgPaths.p3e906a80} value={companyAnalysisRuntimeModel.companiesWithOpenFindings} />} cardB={<DashboardCompanyCardOpenFindings iconPath={svgPaths.p31927d00} value={companyAnalysisRuntimeModel.openFindings} />} cardC={<DashboardCompanyCardOpenInspections iconPath={svgPaths.p1711cfc0} value={companyAnalysisRuntimeModel.openInspections} />} cardD={<DashboardCompanyCardOpenDays iconPath={svgPaths.p162f2a3a} value={companyAnalysisRuntimeModel.openDaysLabel} />} chart={<DashboardCompanyAnalysisChart />} />}
+                  companyAnalysis={<DashboardResponsiveCompanyAnalysisSection cardA={<DashboardCompanyCardOpenCompanies iconPath={svgPaths.p3e906a80} value={companyAnalysisRuntimeModel.companiesWithOpenFindings} />} cardB={<DashboardCompanyCardOpenFindings iconPath={svgPaths.p31927d00} value={companyAnalysisRuntimeModel.openFindings} />} cardC={<DashboardCompanyCardOpenInspections iconPath={svgPaths.p1711cfc0} value={companyAnalysisRuntimeModel.openInspections} />} cardD={<DashboardCompanyCardOpenDays iconPath={svgPaths.p162f2a3a} value={companyAnalysisRuntimeModel.openDaysLabel} />} chart={<DashboardFigmaCompanyAnalysisChart />} />}
                   openFindingsTable={
                     <DashboardOpenFindingsTable>
                       <DashboardOpenFindingsDetailsTable

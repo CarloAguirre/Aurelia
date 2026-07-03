@@ -42,9 +42,11 @@ const tableColumns = [72, 147, 199, 208, 197, 132, 196, 84, 155, 132, 119, 83.5]
 const tableWidth = tableColumns.reduce((total, width) => total + width, 0);
 
 function KpiIcon({ kind, color }: { kind: KpiIconKind; color: string }) {
+  const className = 'h-[11px] w-[13.75px] shrink-0';
+
   if (kind === 'total') {
     return (
-      <svg className="h-[11px] w-[13.75px] shrink-0" fill="none" viewBox="0 0 14 11" aria-hidden>
+      <svg className={className} fill="none" viewBox="0 0 13.75 11" aria-hidden>
         <rect x="2.25" y="0.75" width="7.5" height="9.5" rx="1.2" stroke={color} strokeWidth="1.5" />
         <path d="M4.25 3.2h3.4M4.25 5.4h3.4M4.25 7.6h2" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
       </svg>
@@ -53,27 +55,27 @@ function KpiIcon({ kind, color }: { kind: KpiIconKind; color: string }) {
 
   if (kind === 'open') {
     return (
-      <svg className="h-[11px] w-[13.75px] shrink-0" fill="none" viewBox="0 0 14 11" aria-hidden>
-        <circle cx="6.5" cy="5.5" r="4.5" fill={color} />
-        <path d="M6.5 2.8v2.9l2.1 1.2" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      <svg className={className} fill="none" viewBox="0 0 13.75 11" aria-hidden>
+        <circle cx="6.875" cy="5.5" r="4.85" fill={color} />
+        <path d="M6.875 2.65v3l2.15 1.25" stroke="white" strokeWidth="1.15" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
   }
 
   if (kind === 'approval') {
     return (
-      <svg className="h-[11px] w-[13.75px] shrink-0" fill="none" viewBox="0 0 14 11" aria-hidden>
-        <circle cx="6.5" cy="5.5" r="4.7" fill={color} />
-        <path d="M6.5 2.9v3" stroke="white" strokeWidth="1.3" strokeLinecap="round" />
-        <circle cx="6.5" cy="8" r="0.65" fill="white" />
+      <svg className={className} fill="none" viewBox="0 0 13.75 11" aria-hidden>
+        <circle cx="6.875" cy="5.5" r="4.85" fill={color} />
+        <path d="M6.875 2.75v3" stroke="white" strokeWidth="1.25" strokeLinecap="round" />
+        <circle cx="6.875" cy="8" r="0.65" fill="white" />
       </svg>
     );
   }
 
   return (
-    <svg className="h-[11px] w-[13.75px] shrink-0" fill="none" viewBox="0 0 14 11" aria-hidden>
-      <circle cx="6.5" cy="5.5" r="4.7" fill={color} />
-      <path d="M4.4 5.6l1.35 1.35 2.95-3.1" stroke="white" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+    <svg className={className} fill="none" viewBox="0 0 13.75 11" aria-hidden>
+      <circle cx="6.875" cy="5.5" r="4.85" fill={color} />
+      <path d="M4.7 5.55l1.35 1.35 2.95-3.1" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -191,7 +193,7 @@ function MoreIcon() {
 function KpiCard({ icon, iconColor, label, value, helper, valueClass = 'text-[#131313]' }: KpiCardProps) {
   return (
     <div className="bg-white border border-[#e3e3e3] border-solid drop-shadow-[0px_1px_1.5px_rgba(0,0,0,0.05)] flex h-[92.5px] min-w-0 flex-col items-start rounded-[8px] px-[17px] py-[15px]">
-      <div className="flex w-full items-center gap-[6px]">
+      <div className="flex h-[14px] w-full items-center gap-[6px]">
         <KpiIcon kind={icon} color={iconColor} />
         <p className="font-['Inter:Semi_Bold',sans-serif] text-[11px] font-semibold uppercase leading-[normal] tracking-[0.44px] text-[#646464] whitespace-nowrap">{label}</p>
       </div>

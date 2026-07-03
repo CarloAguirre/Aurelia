@@ -28,7 +28,6 @@ import {
   DashboardCompanyCardOpenDays,
   DashboardCompanyCardOpenFindings,
   DashboardCompanyCardOpenInspections,
-  DashboardCompanyAnalysisSection,
   DashboardMainContentShell,
   DashboardMainPanelsLayout,
   DashboardOpenFindingsDetailsTable,
@@ -50,6 +49,7 @@ import {
 import { DashboardFigmaAreaObservationsChart } from './components/DashboardFigmaAreaObservationsChart';
 import { DashboardResponsiveSecondaryGrid } from './components/DashboardResponsiveSecondaryGrid';
 import { DashboardResponsiveTopKpisGrid } from './components/DashboardResponsiveTopKpisGrid';
+import { DashboardResponsiveCompanyAnalysisSection } from './components/DashboardResponsiveCompanyAnalysisSection';
 
 export function DashboardPage() {
   const { runtimeModel: kpisRuntimeModel, isLoading: isKpisLoading, isError: isKpisError } = useDashboardKpis();
@@ -118,7 +118,7 @@ export function DashboardPage() {
                       <DashboardAlertsSectionLayout left={<DashboardAlertsHeaderLeft iconPath={svgPaths.p16888980} />} right={<DashboardAlertsHeaderRight dropdownCaretPath={svgPaths.pf36e620} clearIconPath={svgPaths.p12771800} />} />
                     </DashboardAlertsStrip>
                   }
-                  companyAnalysis={<DashboardCompanyAnalysisSection cardA={<DashboardCompanyCardOpenCompanies iconPath={svgPaths.p3e906a80} />} cardB={<DashboardCompanyCardOpenFindings iconPath={svgPaths.p31927d00} />} cardC={<DashboardCompanyCardOpenInspections iconPath={svgPaths.p1711cfc0} />} cardD={<DashboardCompanyCardOpenDays iconPath={svgPaths.p162f2a3a} />} chart={<DashboardCompanyAnalysisChart />} />}
+                  companyAnalysis={<DashboardResponsiveCompanyAnalysisSection cardA={<DashboardCompanyCardOpenCompanies iconPath={svgPaths.p3e906a80} />} cardB={<DashboardCompanyCardOpenFindings iconPath={svgPaths.p31927d00} />} cardC={<DashboardCompanyCardOpenInspections iconPath={svgPaths.p1711cfc0} />} cardD={<DashboardCompanyCardOpenDays iconPath={svgPaths.p162f2a3a} />} chart={<DashboardCompanyAnalysisChart />} />}
                   openFindingsTable={
                     <DashboardOpenFindingsTable>
                       <DashboardOpenFindingsDetailsTable

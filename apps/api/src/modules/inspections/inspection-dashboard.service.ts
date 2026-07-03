@@ -4,6 +4,7 @@ import { InspectionFindingStatus, InspectionStatus } from '@aurelia/contracts';
 import type {
   InspectionDashboardAreaObservationRowResponse,
   InspectionDashboardChartsResponse,
+  InspectionDashboardCompanyAnalysisResponse,
 } from '@aurelia/contracts';
 import { Repository } from 'typeorm';
 import { AreaEntity } from '../organization/entities/area.entity';
@@ -128,6 +129,46 @@ export class InspectionDashboardService {
     };
   }
 
+  async getCompanyAnalysis(): Promise<InspectionDashboardCompanyAnalysisResponse> {
+    const [inspections, findings] = await Promise.all([
+      this.inspections.find(),
+      this.findings.find(),
+    ]);
+    const now = new Date();
+    const inspectionById = new Map(inspections.map((inspection) => [inspection.id, inspection]));
+    const companiesWithOpenFindings = new Set<string>();
+    const openInspections = new Set<string>();
+    const openAges: number[] = [];
+
+    findings.forEach((finding) => {
+      if (!this.isOpenFinding(finding)) return;
+
+      const inspection = inspectionById.get(finding.inspectionId);
+      const companyId = finding.responsibleCompanyId ?? inspection?.companyId ?? null;
+
+      if (companyId) {
+        companiesWithOpenFindings.add(companyId);
+      }
+
+      openInspections.add(finding.inspectionId);
+      openAges.push(this.daysBetween(finding.createdAt, now));
+    });
+
+    const openFindings = openAges.length;
+    const maxOpenDays = openAges.length > 0 ? Math.max(...openAges) : 0;
+    const averageOpenDays = openAges.length > 0 ? Number((openAges.reduce((sum, value) => sum + value, 0) / openAges.length).toFixed(1)) : 0;
+
+    return {
+      companiesWithOpenFindings: companiesWithOpenFindings.size,
+      openFindings,
+      openInspections: openInspections.size,
+      openDays: {
+        max: maxOpenDays,
+        average: averageOpenDays,
+      },
+    };
+  }
+
   private resolveInspectionDate(inspection: InspectionEntity): Date | null {
     return inspection.startedAt ?? inspection.scheduledAt ?? inspection.createdAt ?? null;
   }
@@ -135,5 +176,14 @@ export class InspectionDashboardService {
   private formatAreaLabel(areaId: string | null, areaNameById: Map<string, string>): string {
     if (!areaId) return 'Sin Área';
     return areaNameById.get(areaId) ?? `Área ${areaId.slice(0, 8).toUpperCase()}`;
+  }
+
+  private isOpenFinding(finding: InspectionFindingEntity): boolean {
+    return finding.status !== InspectionFindingStatus.CLOSED && finding.status !== InspectionFindingStatus.CANCELLED;
+  }
+
+  private daysBetween(from: Date, to: Date): number {
+    const millisecondsPerDay = 1000 * 60 * 60 * 24;
+    return Math.max(0, Math.floor((to.getTime() - from.getTime()) / millisecondsPerDay));
   }
 }

@@ -23,7 +23,6 @@ import {
   DashboardAlertsStrip,
   DashboardChartsBlock,
   DashboardChartsPrimaryGrid,
-  DashboardChartsSecondaryGrid,
   DashboardCompanyAnalysisChart,
   DashboardCompanyCardOpenCompanies,
   DashboardCompanyCardOpenDays,
@@ -50,6 +49,7 @@ import {
   DashboardFigmaFindingsEvolutionChartCard,
 } from './components/DashboardFigmaSecondaryChartCards';
 import { DashboardFigmaAreaObservationsChart } from './components/DashboardFigmaAreaObservationsChart';
+import { DashboardResponsiveSecondaryGrid } from './components/DashboardResponsiveSecondaryGrid';
 
 export function DashboardPage() {
   const { runtimeModel: kpisRuntimeModel, isLoading: isKpisLoading, isError: isKpisError } = useDashboardKpis();
@@ -101,11 +101,11 @@ export function DashboardPage() {
                         {isChartsLoading ? <div className="bg-white rounded-[10px] border border-[#e3e3e3] min-h-[320px] flex items-center justify-center text-[12px] text-[#646464]">Cargando gráfico de inspecciones...</div> : <DashboardFigmaAnnualInspectionsChartCard rows={annualInspectionRows} />}
                         {isChartsError ? <div className="bg-white rounded-[10px] border border-[#ffd0db] min-h-[320px] flex items-center justify-center text-[12px] text-[#570b1d]">Error al cargar gráfico de observaciones</div> : <DashboardFigmaAnnualFindingsChartCard rows={monthlySeriesRows} />}
                       </DashboardChartsPrimaryGrid>
-                      <DashboardChartsSecondaryGrid>
+                      <DashboardResponsiveSecondaryGrid>
                         <DashboardFigmaClosureGaugeChartCard rate={closureMetrics.historicalClosureRate} title="% Cierre histórico" subtitle="2023–2026" />
                         <DashboardFigmaClosureGaugeChartCard rate={closureMetrics.periodClosureRate} title="% Cierre del período" subtitle={closureMetrics.periodLabel} />
                         {isChartsError ? <div className="bg-white rounded-[8px] border border-[#ffd0db] h-[278.5px] flex items-center justify-center text-[12px] text-[#570b1d]">Error al cargar evolución</div> : <DashboardFigmaFindingsEvolutionChartCard rows={monthlySeriesRows} />}
-                      </DashboardChartsSecondaryGrid>
+                      </DashboardResponsiveSecondaryGrid>
                       <DashboardAreaObservationsCard headerPrimary={<DashboardAreaObservationsHeaderPrimary />} headerSecondary={<DashboardAreaObservationsHeaderSecondary />} chart={isChartsLoading ? <div className="h-[320px] w-full flex items-center justify-center text-[12px] text-[#646464]">Cargando observaciones por área...</div> : <DashboardFigmaAreaObservationsChart rows={areaObservationRows} />} />
                     </DashboardChartsBlock>
                   }

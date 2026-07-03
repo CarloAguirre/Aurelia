@@ -5,6 +5,8 @@ import { useInspectionManagementTable } from '../../shared/hooks/useInspectionMa
 import type { InspectionManagementPageSize, InspectionManagementTableParams } from '../../shared/services/inspections.service';
 
 type KpiIconKind = 'total' | 'open' | 'approval' | 'closed';
+type BadgeTone = 'blue' | 'mint' | 'pink' | 'orange' | 'yellow' | 'green';
+type BadgeIcon = 'search' | 'checklist' | 'clock' | 'check' | 'alert';
 
 type KpiCardProps = {
   icon: KpiIconKind;
@@ -15,10 +17,8 @@ type KpiCardProps = {
   valueClass?: string;
 };
 
-type BadgeTone = 'blue' | 'mint' | 'pink' | 'orange' | 'yellow' | 'green';
-type BadgeIcon = 'search' | 'checklist' | 'clock' | 'check' | 'alert';
-
 type Row = {
+  uniqueKey: string;
   id: string;
   date: string;
   inspector: string;
@@ -61,27 +61,8 @@ const tableWidth = tableColumns.reduce((total, width) => total + width, 0);
 const numberFormatter = new Intl.NumberFormat('es-CL');
 const percentFormatter = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2, minimumFractionDigits: 0 });
 const pageSizeOptions: InspectionManagementPageSize[] = [10, 25, 50];
-const emptyTableFilters: TableFilters = {
-  id: '',
-  date: '',
-  inspector: '',
-  area: '',
-  company: '',
-  type: '',
-  urgency: '',
-  count: '',
-  obs: '',
-  daysMin: '',
-  daysMax: '',
-  closure: '',
-};
-const emptyFilterOptions: InspectionManagementTableFilterOptionsResponse = {
-  inspectors: [],
-  areas: [],
-  companies: [],
-  types: [],
-  urgencies: [],
-};
+const emptyTableFilters: TableFilters = { id: '', date: '', inspector: '', area: '', company: '', type: '', urgency: '', count: '', obs: '', daysMin: '', daysMax: '', closure: '' };
+const emptyFilterOptions: InspectionManagementTableFilterOptionsResponse = { inspectors: [], areas: [], companies: [], types: [], urgencies: [] };
 
 function formatNumber(value: number) {
   return numberFormatter.format(value);
@@ -136,6 +117,7 @@ function buildTableRows(rows: InspectionManagementTableRowResponse[] | undefined
   return (rows ?? []).map((row) => {
     const badges = formatObservationBadges(row);
     return {
+      uniqueKey: row.inspectionId,
       id: formatInspectionNumber(row.inspectionNumber),
       date: formatDate(row.date),
       inspector: row.inspector,
@@ -178,12 +160,8 @@ function buildActiveFilters(filters: TableFilters): ActiveFilter[] {
 
 function buildManagementKpis(data: InspectionManagementKpisResponse | undefined, isLoading: boolean, isError: boolean) {
   const currentYear = new Date().getFullYear();
-  if (isLoading) {
-    return { year: currentYear, totalInspections: '...', totalHelper: 'Cargando datos...', openInspections: '...', openHelper: 'Cargando observaciones...', pendingApproval: '...', closedFindingsRate: '...' };
-  }
-  if (isError || !data) {
-    return { year: currentYear, totalInspections: '—', totalHelper: 'No disponible', openInspections: '—', openHelper: 'No disponible', pendingApproval: '—', closedFindingsRate: '—' };
-  }
+  if (isLoading) return { year: currentYear, totalInspections: '...', totalHelper: 'Cargando datos...', openInspections: '...', openHelper: 'Cargando observaciones...', pendingApproval: '...', closedFindingsRate: '...' };
+  if (isError || !data) return { year: currentYear, totalInspections: '—', totalHelper: 'No disponible', openInspections: '—', openHelper: 'No disponible', pendingApproval: '—', closedFindingsRate: '—' };
   return {
     year: data.year,
     totalInspections: formatNumber(data.totalInspections),
@@ -330,8 +308,7 @@ function InspectionTable({ rows, total, page, totalPages, pageSize, isLoading, i
   const to = Math.min(page * pageSize, total);
   const footerText = isLoading ? 'Cargando inspecciones...' : isError ? 'No fue posible cargar las inspecciones' : `Mostrando ${from}–${to} de ${total} inspecciones`;
   const typeOptions = uniqueSorted(options.types);
-
-  return <div className="bg-white border border-[#e3e3e3] border-solid w-full overflow-hidden rounded-[8px] shadow-[0px_1px_4px_rgba(0,0,0,0.05)]"><div className="overflow-x-auto overflow-y-hidden"><table className="table-fixed border-collapse" style={{ minWidth: `${tableWidth}px`, width: `${tableWidth}px` }}><colgroup>{tableColumns.map((width, index) => <col key={index} style={{ width: `${width}px` }} />)}</colgroup><thead><tr className="h-[32px]"><HeaderCell>Nº</HeaderCell><HeaderCell>Fecha</HeaderCell><HeaderCell>Inspector</HeaderCell><HeaderCell>Área. Sector</HeaderCell><HeaderCell>Empresa</HeaderCell><HeaderCell>Tipo</HeaderCell><HeaderCell gold>Urgencia máxima</HeaderCell><HeaderCell>Nº obs</HeaderCell><HeaderCell>Obs.</HeaderCell><HeaderCell>Días</HeaderCell><HeaderCell>Cierre</HeaderCell><ActionHeaderCell /></tr><tr className="h-[37px] bg-[#f0f4f8]"><FilterCell><TableTextFilter value={filters.id} onChange={(value) => onFilterChange('id', value)} width={48} placeholder="#" /></FilterCell><FilterCell><TableDateFilter value={filters.date} onChange={(value) => onFilterChange('date', value)} /></FilterCell><FilterCell><TableSelectFilter value={filters.inspector} onChange={(value) => onFilterChange('inspector', value)} width={175} allLabel="Todos los inspectores" options={options.inspectors} /></FilterCell><FilterCell><TableSelectFilter value={filters.area} onChange={(value) => onFilterChange('area', value)} width={184} allLabel="Todas las áreas" options={options.areas} /></FilterCell><FilterCell><TableSelectFilter value={filters.company} onChange={(value) => onFilterChange('company', value)} width={173} allLabel="Todas las empresas" options={options.companies} /></FilterCell><FilterCell><TableSelectFilter value={filters.type} onChange={(value) => onFilterChange('type', value)} width={108} allLabel="Todos" options={typeOptions} /></FilterCell><FilterCell><TableSelectFilter value={filters.urgency} onChange={(value) => onFilterChange('urgency', value)} width={172} allLabel="Todas" options={options.urgencies} /></FilterCell><FilterCell><TableTextFilter value={filters.count} onChange={(value) => onFilterChange('count', value)} width={60} placeholder="#" type="number" /></FilterCell><FilterCell><TableObservationFilter value={filters.obs} onChange={(value) => onFilterChange('obs', value)} /></FilterCell><FilterCell><div className="flex items-center gap-[4px]"><TableTextFilter value={filters.daysMin} onChange={(value) => onFilterChange('daysMin', value)} width={47} placeholder="Min" type="number" /><span className="font-['Inter:Regular',sans-serif] text-[13px] text-[#131313]">-</span><TableTextFilter value={filters.daysMax} onChange={(value) => onFilterChange('daysMax', value)} width={47} placeholder="Max" type="number" /></div></FilterCell><FilterCell><TableTextFilter value={filters.closure} onChange={(value) => onFilterChange('closure', value)} width={95} placeholder="#%" type="number" /></FilterCell><td className="h-[37px] border-b border-[#e3e3e3] bg-[#f0f4f8] px-[12px] py-[5.5px] align-middle"><button className="flex h-[26px] w-[59.5px] items-center justify-center gap-[4px] rounded-[5px] border border-[#d1d1d1] bg-white px-px py-[7px] font-['Inter:Semi_Bold',sans-serif] text-[10px] font-semibold leading-[normal] text-[#646464]" type="button" onClick={onClearFilters}>↺ Limpiar</button></td></tr></thead><tbody>{rows.map((row) => <tr key={row.id} style={{ height: `${row.height}px` }}><IdCell value={row.id} /><DataCell>{row.date}</DataCell><DataCell bold>{row.inspector}</DataCell><DataCell>{row.area}</DataCell><DataCell>{row.company}</DataCell><DataCell><Badge tone={row.type.toLowerCase().includes('check') ? 'mint' : 'blue'} icon={row.type.toLowerCase().includes('check') ? 'checklist' : 'search'}>{row.type}</Badge></DataCell><DataCell><Badge tone={row.urgencyTone} icon={row.urgency.includes('Ejecutada') ? 'check' : row.urgency.includes('Grave') ? 'alert' : 'clock'}>{row.urgency}</Badge></DataCell><DataCell center>{row.count}</DataCell><DataCell><div className="flex w-[95.5px] flex-col items-start gap-[4px]">{row.obs.map((item) => { const badge = getObsBadge(item); return <Badge key={item} tone={badge.tone} icon={badge.icon} small>{item}</Badge>; })}</div></DataCell><DaysCell value={row.days} /><ProgressCell value={row.closure} /><td className="border-b border-[#e3e3e3] bg-white px-[12px] py-[8.5px] text-center align-middle"><button className="inline-flex size-[26px] items-center justify-center rounded-[5px] border border-[#e3e3e3] bg-white p-px" type="button"><MoreIcon /></button></td></tr>)}{!isLoading && rows.length === 0 ? <tr className="h-[61px]"><td colSpan={12} className="border-b border-[#e3e3e3] bg-white px-[12px] py-[13.5px] text-center font-['Inter:Regular',sans-serif] text-[12px] text-[#646464]">No hay inspecciones para mostrar</td></tr> : null}</tbody></table></div><div className="border-t border-[#e3e3e3] bg-white px-[16px] py-[10px] flex items-center justify-between"><p className="font-['Inter:Regular',sans-serif] text-[12px] text-[#646464]">{footerText}</p><div className="flex items-center gap-[4px]"><button className="size-[32px] rounded-[6px] border border-[#e3e3e3] disabled:opacity-35" disabled={page <= 1} onClick={() => onPageChange(page - 1)} type="button">‹</button><button className="size-[32px] rounded-[6px] border border-[#c8a064] bg-[#c8a064] font-semibold text-[#001e39]" type="button">{page}</button><button className="size-[32px] rounded-[6px] border border-[#e3e3e3] disabled:opacity-35" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)} type="button">›</button></div><div className="flex items-center gap-[8px]"><span className="text-[12px] text-[#646464]">Filas por página</span><PageSizeSelect value={pageSize} onChange={onPageSizeChange} /></div></div></div>;
+  return <div className="bg-white border border-[#e3e3e3] border-solid w-full overflow-hidden rounded-[8px] shadow-[0px_1px_4px_rgba(0,0,0,0.05)]"><div className="overflow-x-auto overflow-y-hidden"><table className="table-fixed border-collapse" style={{ minWidth: `${tableWidth}px`, width: `${tableWidth}px` }}><colgroup>{tableColumns.map((width, index) => <col key={index} style={{ width: `${width}px` }} />)}</colgroup><thead><tr className="h-[32px]"><HeaderCell>Nº</HeaderCell><HeaderCell>Fecha</HeaderCell><HeaderCell>Inspector</HeaderCell><HeaderCell>Área. Sector</HeaderCell><HeaderCell>Empresa</HeaderCell><HeaderCell>Tipo</HeaderCell><HeaderCell gold>Urgencia máxima</HeaderCell><HeaderCell>Nº obs</HeaderCell><HeaderCell>Obs.</HeaderCell><HeaderCell>Días</HeaderCell><HeaderCell>Cierre</HeaderCell><ActionHeaderCell /></tr><tr className="h-[37px] bg-[#f0f4f8]"><FilterCell><TableTextFilter value={filters.id} onChange={(value) => onFilterChange('id', value)} width={48} placeholder="#" /></FilterCell><FilterCell><TableDateFilter value={filters.date} onChange={(value) => onFilterChange('date', value)} /></FilterCell><FilterCell><TableSelectFilter value={filters.inspector} onChange={(value) => onFilterChange('inspector', value)} width={175} allLabel="Todos los inspectores" options={options.inspectors} /></FilterCell><FilterCell><TableSelectFilter value={filters.area} onChange={(value) => onFilterChange('area', value)} width={184} allLabel="Todas las áreas" options={options.areas} /></FilterCell><FilterCell><TableSelectFilter value={filters.company} onChange={(value) => onFilterChange('company', value)} width={173} allLabel="Todas las empresas" options={options.companies} /></FilterCell><FilterCell><TableSelectFilter value={filters.type} onChange={(value) => onFilterChange('type', value)} width={108} allLabel="Todos" options={typeOptions} /></FilterCell><FilterCell><TableSelectFilter value={filters.urgency} onChange={(value) => onFilterChange('urgency', value)} width={172} allLabel="Todas" options={options.urgencies} /></FilterCell><FilterCell><TableTextFilter value={filters.count} onChange={(value) => onFilterChange('count', value)} width={60} placeholder="#" type="number" /></FilterCell><FilterCell><TableObservationFilter value={filters.obs} onChange={(value) => onFilterChange('obs', value)} /></FilterCell><FilterCell><div className="flex items-center gap-[4px]"><TableTextFilter value={filters.daysMin} onChange={(value) => onFilterChange('daysMin', value)} width={47} placeholder="Min" type="number" /><span className="font-['Inter:Regular',sans-serif] text-[13px] text-[#131313]">-</span><TableTextFilter value={filters.daysMax} onChange={(value) => onFilterChange('daysMax', value)} width={47} placeholder="Max" type="number" /></div></FilterCell><FilterCell><TableTextFilter value={filters.closure} onChange={(value) => onFilterChange('closure', value)} width={95} placeholder="#%" type="number" /></FilterCell><td className="h-[37px] border-b border-[#e3e3e3] bg-[#f0f4f8] px-[12px] py-[5.5px] align-middle"><button className="flex h-[26px] w-[59.5px] items-center justify-center gap-[4px] rounded-[5px] border border-[#d1d1d1] bg-white px-px py-[7px] font-['Inter:Semi_Bold',sans-serif] text-[10px] font-semibold leading-[normal] text-[#646464]" type="button" onClick={onClearFilters}>↺ Limpiar</button></td></tr></thead><tbody>{rows.map((row) => <tr key={row.uniqueKey} style={{ height: `${row.height}px` }}><IdCell value={row.id} /><DataCell>{row.date}</DataCell><DataCell bold>{row.inspector}</DataCell><DataCell>{row.area}</DataCell><DataCell>{row.company}</DataCell><DataCell><Badge tone={row.type.toLowerCase().includes('check') ? 'mint' : 'blue'} icon={row.type.toLowerCase().includes('check') ? 'checklist' : 'search'}>{row.type}</Badge></DataCell><DataCell><Badge tone={row.urgencyTone} icon={row.urgency.includes('Ejecutada') ? 'check' : row.urgency.includes('Grave') ? 'alert' : 'clock'}>{row.urgency}</Badge></DataCell><DataCell center>{row.count}</DataCell><DataCell><div className="flex w-[95.5px] flex-col items-start gap-[4px]">{row.obs.map((item, index) => { const badge = getObsBadge(item); return <Badge key={`${row.uniqueKey}-${item}-${index}`} tone={badge.tone} icon={badge.icon} small>{item}</Badge>; })}</div></DataCell><DaysCell value={row.days} /><ProgressCell value={row.closure} /><td className="border-b border-[#e3e3e3] bg-white px-[12px] py-[8.5px] text-center align-middle"><button className="inline-flex size-[26px] items-center justify-center rounded-[5px] border border-[#e3e3e3] bg-white p-px" type="button"><MoreIcon /></button></td></tr>)}{!isLoading && rows.length === 0 ? <tr className="h-[61px]"><td colSpan={12} className="border-b border-[#e3e3e3] bg-white px-[12px] py-[13.5px] text-center font-['Inter:Regular',sans-serif] text-[12px] text-[#646464]">No hay inspecciones para mostrar</td></tr> : null}</tbody></table></div><div className="border-t border-[#e3e3e3] bg-white px-[16px] py-[10px] flex items-center justify-between"><p className="font-['Inter:Regular',sans-serif] text-[12px] text-[#646464]">{footerText}</p><div className="flex items-center gap-[4px]"><button className="size-[32px] rounded-[6px] border border-[#e3e3e3] disabled:opacity-35" disabled={page <= 1} onClick={() => onPageChange(page - 1)} type="button">‹</button><button className="size-[32px] rounded-[6px] border border-[#c8a064] bg-[#c8a064] font-semibold text-[#001e39]" type="button">{page}</button><button className="size-[32px] rounded-[6px] border border-[#e3e3e3] disabled:opacity-35" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)} type="button">›</button></div><div className="flex items-center gap-[8px]"><span className="text-[12px] text-[#646464]">Filas por página</span><PageSizeSelect value={pageSize} onChange={onPageSizeChange} /></div></div></div>;
 }
 
 export function InspectionsManagementView() {

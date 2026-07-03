@@ -153,7 +153,19 @@ export interface InspectionManagementTableRowResponse {
   closureRate: number;
 }
 
+export interface InspectionManagementTableFilterOptionsResponse {
+  inspectors: string[];
+  areas: string[];
+  companies: string[];
+  types: string[];
+  urgencies: string[];
+}
+
 export interface InspectionManagementTableResponse {
+  page: number;
+  pageSize: number;
   total: number;
+  totalPages: number;
   rows: InspectionManagementTableRowResponse[];
+  filterOptions: InspectionManagementTableFilterOptionsResponse;
 }

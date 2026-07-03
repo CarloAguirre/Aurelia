@@ -26,9 +26,7 @@ import {
   DashboardChartsPrimaryGrid,
   DashboardMainContentShell,
   DashboardMainPanelsLayout,
-  DashboardOpenFindingsDetailsTable,
   DashboardSecondaryPanelStack,
-  DashboardOpenFindingsTable,
   DashboardPageHeader,
   DashboardSidebar,
   DashboardSidebarTopBrandBar,
@@ -47,6 +45,7 @@ import { DashboardResponsiveSecondaryGrid } from './components/DashboardResponsi
 import { DashboardResponsiveTopKpisGrid } from './components/DashboardResponsiveTopKpisGrid';
 import { DashboardResponsiveCompanyAnalysisSection } from './components/DashboardResponsiveCompanyAnalysisSection';
 import { DashboardFigmaCompanyAnalysisChart } from './components/DashboardFigmaCompanyAnalysisChart';
+import { DashboardFigmaOpenFindingsDetailsTable } from './components/DashboardFigmaOpenFindingsDetailsTable';
 import {
   DashboardCompanyCardOpenCompanies,
   DashboardCompanyCardOpenDays,
@@ -58,17 +57,7 @@ export function DashboardPage() {
   const { runtimeModel: kpisRuntimeModel, isLoading: isKpisLoading, isError: isKpisError } = useDashboardKpis();
   const { annualInspectionRows, monthlySeriesRows, areaObservationRows, closureMetrics, isLoading: isChartsLoading, isError: isChartsError } = useDashboardCharts();
   const { runtimeModel: companyAnalysisRuntimeModel } = useDashboardCompanyAnalysis();
-  const {
-    runtimeModel: openFindingsRuntimeModel,
-    inspectionNumbers,
-    companyNames,
-    areaNames,
-    ageDays,
-    openFindingsValues,
-    openDetailsRowCount,
-    isLoading: isOpenFindingsLoading,
-    isError: isOpenFindingsError,
-  } = useDashboardOpenFindings();
+  const { rows: openFindingRows, severeOpenFindings, openInspections, isLoading: isOpenFindingsLoading, isError: isOpenFindingsError } = useDashboardOpenFindings();
 
   return (
     <div className="relative h-screen w-full overflow-hidden" data-name="Dashboard inspecciones">
@@ -123,24 +112,7 @@ export function DashboardPage() {
                     </DashboardAlertsStrip>
                   }
                   companyAnalysis={<DashboardResponsiveCompanyAnalysisSection cardA={<DashboardCompanyCardOpenCompanies iconPath={svgPaths.p3e906a80} value={companyAnalysisRuntimeModel.companiesWithOpenFindings} />} cardB={<DashboardCompanyCardOpenFindings iconPath={svgPaths.p31927d00} value={companyAnalysisRuntimeModel.openFindings} />} cardC={<DashboardCompanyCardOpenInspections iconPath={svgPaths.p1711cfc0} value={companyAnalysisRuntimeModel.openInspections} />} cardD={<DashboardCompanyCardOpenDays iconPath={svgPaths.p162f2a3a} value={companyAnalysisRuntimeModel.openDaysLabel} />} chart={<DashboardFigmaCompanyAnalysisChart rows={companyAnalysisRuntimeModel.chartRows} />} />}
-                  openFindingsTable={
-                    <DashboardOpenFindingsTable>
-                      <DashboardOpenFindingsDetailsTable
-                        criticalOpenFindings={openFindingsRuntimeModel.criticalOpenFindings}
-                        openInspections={openFindingsRuntimeModel.openInspections}
-                        inspectionNumbers={inspectionNumbers}
-                        companies={companyNames}
-                        areas={areaNames}
-                        ageDays={ageDays}
-                        openFindings={openFindingsValues}
-                        rowCount={openDetailsRowCount}
-                        sortIconPath={svgPaths.p2c5a2400}
-                        expandIconPath={svgPaths.pf36e620}
-                      />
-                      {isOpenFindingsLoading ? <div className="px-[18px] py-[14px] text-[12px] text-[#646464]">Cargando detalle de observaciones...</div> : null}
-                      {isOpenFindingsError ? <div className="px-[18px] py-[14px] text-[12px] text-[#570b1d]">Error al cargar detalle de observaciones.</div> : null}
-                    </DashboardOpenFindingsTable>
-                  }
+                  openFindingsTable={<DashboardFigmaOpenFindingsDetailsTable rows={openFindingRows} severeOpenFindings={severeOpenFindings} openInspections={openInspections} sortIconPath={svgPaths.p2c5a2400} expandIconPath={svgPaths.pf36e620} isLoading={isOpenFindingsLoading} isError={isOpenFindingsError} />}
                 />
               }
             />

@@ -2,6 +2,7 @@ import type {
   CreateInspectionRequest,
   InspectionDashboardChartsResponse,
   InspectionDashboardCompanyAnalysisResponse,
+  InspectionDashboardOpenFindingsResponse,
   InspectionDashboardSummaryResponse,
   InspectionResponse,
 } from '@aurelia/contracts';
@@ -17,6 +18,10 @@ export function getInspectionDashboardCharts(): Promise<InspectionDashboardChart
 
 export function getInspectionDashboardCompanyAnalysis(): Promise<InspectionDashboardCompanyAnalysisResponse> {
   return httpGet<InspectionDashboardCompanyAnalysisResponse>('/inspections/dashboard/company-analysis');
+}
+
+export function getInspectionDashboardOpenFindings(): Promise<InspectionDashboardOpenFindingsResponse> {
+  return httpGet<InspectionDashboardOpenFindingsResponse>('/inspections/dashboard/open-findings');
 }
 
 export function listInspections(): Promise<InspectionResponse[]> {

@@ -4,6 +4,7 @@ import { useDashboardChartsFiltered } from './hooks/useDashboardChartsFiltered';
 import { useDashboardCompanyAnalysisFiltered } from './hooks/useDashboardCompanyAnalysisFiltered';
 import { useDashboardKpisFiltered } from './hooks/useDashboardKpisFiltered';
 import { useDashboardDetailsFiltered } from './hooks/useDashboardDetailsFiltered';
+import { useInspectionDashboardCompanies } from '../../shared/hooks/useInspectionDashboardCompanies';
 import type { InspectionDashboardPeriod } from '../../shared/services/inspections.service';
 import {
   DashboardAreaObservationsCard,
@@ -17,7 +18,6 @@ import {
   DashboardAnnualKpiOpenCard,
   DashboardAnnualKpiYearClosureCard,
   DashboardAlertsHeaderLeft,
-  DashboardAlertsHeaderRight,
   DashboardFrameShell,
   DashboardAlertsSectionLayout,
   DashboardAlertsStrip,
@@ -45,7 +45,8 @@ import { DashboardResponsiveTopKpisGrid } from './components/DashboardResponsive
 import { DashboardResponsiveCompanyAnalysisSection } from './components/DashboardResponsiveCompanyAnalysisSection';
 import { DashboardFigmaCompanyAnalysisChart } from './components/DashboardFigmaCompanyAnalysisChart';
 import { DashboardFigmaOpenFindingsDetailsTable } from './components/DashboardFigmaOpenFindingsDetailsTable';
-import { DashboardPeriodLite } from './components/DashboardPeriodLite';
+import { DashboardPeriodLite, getCurrentDashboardPeriod } from './components/DashboardPeriodLite';
+import { DashboardCompanyFilter } from './components/DashboardCompanyFilter';
 import {
   DashboardCompanyCardOpenCompanies,
   DashboardCompanyCardOpenDays,
@@ -72,11 +73,14 @@ function AnnualDashboardHeaderTitle() {
 }
 
 export function DashboardPage() {
-  const [dashboardQuery, setDashboardQuery] = useState({ year: currentYear, period: 'q1' as InspectionDashboardPeriod });
+  const [dashboardQuery, setDashboardQuery] = useState({ year: currentYear, period: getCurrentDashboardPeriod() as InspectionDashboardPeriod });
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const companyDashboardQuery = { ...dashboardQuery, companyId: selectedCompanyId };
+  const companiesQuery = useInspectionDashboardCompanies();
   const { runtimeModel: kpisRuntimeModel, isLoading: isKpisLoading, isError: isKpisError } = useDashboardKpisFiltered(dashboardQuery);
   const { annualInspectionRows, monthlySeriesRows, areaObservationRows, closureMetrics, isLoading: isChartsLoading, isError: isChartsError } = useDashboardChartsFiltered(dashboardQuery);
-  const { runtimeModel: companyAnalysisRuntimeModel } = useDashboardCompanyAnalysisFiltered(dashboardQuery);
-  const { rows: openFindingRows, severeOpenFindings, openInspections, isLoading: isOpenFindingsLoading, isError: isOpenFindingsError } = useDashboardDetailsFiltered(dashboardQuery);
+  const { runtimeModel: companyAnalysisRuntimeModel } = useDashboardCompanyAnalysisFiltered(companyDashboardQuery);
+  const { rows: openFindingRows, severeOpenFindings, openInspections, isLoading: isOpenFindingsLoading, isError: isOpenFindingsError } = useDashboardDetailsFiltered(companyDashboardQuery);
 
   return (
     <div className="relative h-screen w-full overflow-hidden" data-name="Dashboard inspecciones">
@@ -130,7 +134,7 @@ export function DashboardPage() {
                 <DashboardSecondaryPanelStack
                   alerts={
                     <DashboardAlertsStrip>
-                      <DashboardAlertsSectionLayout left={<DashboardAlertsHeaderLeft iconPath={svgPaths.p16888980} />} right={<DashboardAlertsHeaderRight dropdownCaretPath={svgPaths.pf36e620} clearIconPath={svgPaths.p12771800} />} />
+                      <DashboardAlertsSectionLayout left={<DashboardAlertsHeaderLeft iconPath={svgPaths.p16888980} />} right={<DashboardCompanyFilter companies={companiesQuery.data ?? []} selectedCompanyId={selectedCompanyId} onChange={setSelectedCompanyId} clearIconPath={svgPaths.p12771800} caretIconPath={svgPaths.pf36e620} />} />
                     </DashboardAlertsStrip>
                   }
                   companyAnalysis={<DashboardResponsiveCompanyAnalysisSection cardA={<DashboardCompanyCardOpenCompanies iconPath={svgPaths.p3e906a80} value={companyAnalysisRuntimeModel.companiesWithOpenFindings} />} cardB={<DashboardCompanyCardOpenFindings iconPath={svgPaths.p31927d00} value={companyAnalysisRuntimeModel.openFindings} />} cardC={<DashboardCompanyCardOpenInspections iconPath={svgPaths.p1711cfc0} value={companyAnalysisRuntimeModel.openInspections} />} cardD={<DashboardCompanyCardOpenDays iconPath={svgPaths.p162f2a3a} value={companyAnalysisRuntimeModel.openDaysLabel} />} chart={<DashboardFigmaCompanyAnalysisChart rows={companyAnalysisRuntimeModel.chartRows} />} />}

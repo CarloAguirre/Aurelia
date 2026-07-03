@@ -118,3 +118,15 @@ export interface InspectionDashboardSummaryResponse {
     dueSoonNext7Days: number;
   };
 }
+
+export interface InspectionManagementKpisResponse {
+  year: number;
+  previousYear: number;
+  totalInspections: number;
+  previousYearInspections: number;
+  inspectionsDeltaPercent: number;
+  openInspections: number;
+  openFindings: number;
+  pendingApprovalInspections: number;
+  closedFindingsRate: number;
+}

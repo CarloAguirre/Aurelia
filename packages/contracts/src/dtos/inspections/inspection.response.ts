@@ -75,6 +75,12 @@ export interface InspectionDashboardCompanyAnalysisResponse {
   chartRows: InspectionDashboardCompanyChartRowResponse[];
 }
 
+export interface InspectionDashboardOpenFindingSeverityCountsResponse {
+  severe: number;
+  moderate: number;
+  minor: number;
+}
+
 export interface InspectionDashboardOpenFindingRowResponse {
   inspectionId: string;
   inspectionNumber: string;
@@ -87,6 +93,7 @@ export interface InspectionDashboardOpenFindingRowResponse {
   severeOpenFindings: number;
   hasSevereOpenFindings: boolean;
   maxSeverity: InspectionFindingSeverity | null;
+  severityCounts: InspectionDashboardOpenFindingSeverityCountsResponse;
 }
 
 export interface InspectionDashboardOpenFindingsResponse {

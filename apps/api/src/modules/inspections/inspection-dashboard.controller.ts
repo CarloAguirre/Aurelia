@@ -1,5 +1,9 @@
 import { Controller, Get } from '@nestjs/common';
-import type { InspectionDashboardChartsResponse, InspectionDashboardCompanyAnalysisResponse } from '@aurelia/contracts';
+import type {
+  InspectionDashboardChartsResponse,
+  InspectionDashboardCompanyAnalysisResponse,
+  InspectionDashboardOpenFindingsResponse,
+} from '@aurelia/contracts';
 import { RequirePermissions } from '../auth/require-permissions.decorator';
 import { InspectionDashboardService } from './inspection-dashboard.service';
 
@@ -16,5 +20,10 @@ export class InspectionDashboardController {
   @Get('company-analysis')
   getCompanyAnalysis(): Promise<InspectionDashboardCompanyAnalysisResponse> {
     return this.inspectionDashboardService.getCompanyAnalysis();
+  }
+
+  @Get('open-findings')
+  getOpenFindings(): Promise<InspectionDashboardOpenFindingsResponse> {
+    return this.inspectionDashboardService.getOpenFindings();
   }
 }

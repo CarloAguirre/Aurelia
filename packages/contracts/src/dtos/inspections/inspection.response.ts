@@ -57,6 +57,13 @@ export interface InspectionDashboardChartsResponse {
   closure: InspectionDashboardClosureResponse;
 }
 
+export interface InspectionDashboardCompanyChartRowResponse {
+  companyId: string | null;
+  company: string;
+  closed: number;
+  open: number;
+}
+
 export interface InspectionDashboardCompanyAnalysisResponse {
   companiesWithOpenFindings: number;
   openFindings: number;
@@ -65,6 +72,7 @@ export interface InspectionDashboardCompanyAnalysisResponse {
     max: number;
     average: number;
   };
+  chartRows: InspectionDashboardCompanyChartRowResponse[];
 }
 
 export interface InspectionDashboardSummaryResponse {

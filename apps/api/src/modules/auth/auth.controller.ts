@@ -5,6 +5,8 @@ import type { AuthenticatedRequest } from './authenticated-request';
 import {
   AuthClientContext,
   AuthService,
+  IframeSessionTicketRequest,
+  IframeSessionTicketResponse,
   LoginRequest,
   LoginResponse,
   SessionRenewRequest,
@@ -27,6 +29,19 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   renew(@Body() payload: SessionRenewRequest, @Req() request: Request): Promise<LoginResponse> {
     return this.authService.renew(payload, this.getClientContext(request));
+  }
+
+  @Post('auth/iframe-ticket')
+  @HttpCode(HttpStatus.OK)
+  createIframeTicket(@Req() request: AuthenticatedRequest): IframeSessionTicketResponse {
+    return this.authService.createIframeSessionTicket(request.user.sub);
+  }
+
+  @Public()
+  @Post('auth/iframe-session')
+  @HttpCode(HttpStatus.OK)
+  exchangeIframeTicket(@Body() payload: IframeSessionTicketRequest, @Req() request: Request): Promise<LoginResponse> {
+    return this.authService.exchangeIframeSessionTicket(payload, this.getClientContext(request));
   }
 
   @Post('auth/logout')

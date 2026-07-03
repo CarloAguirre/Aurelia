@@ -22,3 +22,7 @@
   border-radius: 6px;
   box-shadow: 0 8px 20px rgba(12, 31, 56, 0.18);
 }
+
+div[class*="bg-[#f7f7f7]"] > div[class*="pt-[16px]"] > div[class*="shadow-[0px_1px_4px"] {
+  margin-top: 12px;
+}

@@ -38,7 +38,6 @@ import {
   DashboardSidebar,
   DashboardSidebarTopBrandBar,
   DashboardTopKpis,
-  DashboardTopKpisGrid,
 } from './components/DashboardSections';
 import {
   DashboardFigmaAnnualFindingsChartCard,
@@ -50,6 +49,7 @@ import {
 } from './components/DashboardFigmaSecondaryChartCards';
 import { DashboardFigmaAreaObservationsChart } from './components/DashboardFigmaAreaObservationsChart';
 import { DashboardResponsiveSecondaryGrid } from './components/DashboardResponsiveSecondaryGrid';
+import { DashboardResponsiveTopKpisGrid } from './components/DashboardResponsiveTopKpisGrid';
 
 export function DashboardPage() {
   const { runtimeModel: kpisRuntimeModel, isLoading: isKpisLoading, isError: isKpisError } = useDashboardKpis();
@@ -85,14 +85,14 @@ export function DashboardPage() {
                   }
                   topKpis={
                     <DashboardTopKpis>
-                      <DashboardTopKpisGrid>
+                      <DashboardResponsiveTopKpisGrid>
                         <DashboardAnnualKpiInspectionsCard iconPath={svgPaths.p1711cfc0} inspectionsValue={kpisRuntimeModel.totalInspections} findingsValue={kpisRuntimeModel.totalFindings} />
                         <DashboardAnnualKpiClosedCard iconPath={svgPaths.p2acec00} closedValue={kpisRuntimeModel.closedInspections} closedRate={kpisRuntimeModel.closedRate} />
                         <DashboardAnnualKpiOpenCard iconPath={svgPaths.p162f2a3a} openValue={kpisRuntimeModel.openInspections} openLabel={kpisRuntimeModel.openLabel} />
                         <DashboardAnnualKpiFindingsCard iconPath={svgPaths.p31927d00} findingsValue={kpisRuntimeModel.totalFindings} findingsLabel={kpisRuntimeModel.findingsLabel} />
                         {isKpisLoading ? <div className="bg-white rounded-[8px] border border-[#e3e3e3] min-h-[96px] flex items-center justify-center text-[12px] text-[#646464]">Cargando KPI...</div> : <DashboardAnnualKpiYearClosureCard iconPath={svgPaths.p12a2ea00} />}
                         {isKpisError ? <div className="bg-white rounded-[8px] border border-[#ffd0db] min-h-[96px] flex items-center justify-center text-[12px] text-[#570b1d]">Error al cargar KPI</div> : <DashboardAnnualKpiHistoricalClosureCard iconPath={svgPaths.p347ba580} />}
-                      </DashboardTopKpisGrid>
+                      </DashboardResponsiveTopKpisGrid>
                     </DashboardTopKpis>
                   }
                   charts={

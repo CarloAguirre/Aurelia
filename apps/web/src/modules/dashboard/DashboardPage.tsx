@@ -24,10 +24,6 @@ import {
   DashboardChartsBlock,
   DashboardChartsPrimaryGrid,
   DashboardCompanyAnalysisChart,
-  DashboardCompanyCardOpenCompanies,
-  DashboardCompanyCardOpenDays,
-  DashboardCompanyCardOpenFindings,
-  DashboardCompanyCardOpenInspections,
   DashboardMainContentShell,
   DashboardMainPanelsLayout,
   DashboardOpenFindingsDetailsTable,
@@ -50,6 +46,12 @@ import { DashboardFigmaAreaObservationsChart } from './components/DashboardFigma
 import { DashboardResponsiveSecondaryGrid } from './components/DashboardResponsiveSecondaryGrid';
 import { DashboardResponsiveTopKpisGrid } from './components/DashboardResponsiveTopKpisGrid';
 import { DashboardResponsiveCompanyAnalysisSection } from './components/DashboardResponsiveCompanyAnalysisSection';
+import {
+  DashboardCompanyCardOpenCompanies,
+  DashboardCompanyCardOpenDays,
+  DashboardCompanyCardOpenFindings,
+  DashboardCompanyCardOpenInspections,
+} from './components/DashboardFigmaCompanyKpiCards';
 
 export function DashboardPage() {
   const { runtimeModel: kpisRuntimeModel, isLoading: isKpisLoading, isError: isKpisError } = useDashboardKpis();

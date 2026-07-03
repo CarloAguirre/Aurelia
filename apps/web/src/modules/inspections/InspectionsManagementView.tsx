@@ -41,6 +41,7 @@ type TableFilters = {
   company: string;
   type: string;
   urgency: string;
+  count: string;
   obs: string;
   daysMin: string;
   daysMax: string;
@@ -74,6 +75,7 @@ const emptyTableFilters: TableFilters = {
   company: '',
   type: '',
   urgency: '',
+  count: '',
   obs: '',
   daysMin: '',
   daysMax: '',
@@ -202,6 +204,7 @@ function applyTableFilters(rows: Row[], filters: TableFilters) {
     if (filters.company && row.company !== filters.company) return false;
     if (filters.type && row.type !== filters.type) return false;
     if (filters.urgency && row.urgency !== filters.urgency) return false;
+    if (!numberFilterPasses(row.count, filters.count, 'equals')) return false;
     if (!rowMatchesObsFilter(row, filters.obs)) return false;
     if (!numberFilterPasses(row.days, filters.daysMin, 'min')) return false;
     if (!numberFilterPasses(row.days, filters.daysMax, 'max')) return false;
@@ -219,6 +222,7 @@ function buildActiveFilters(filters: TableFilters): ActiveFilter[] {
   if (filters.company) chips.push({ key: 'company', label: `Empresa: ${filters.company}` });
   if (filters.type) chips.push({ key: 'type', label: `Tipo: ${filters.type}` });
   if (filters.urgency) chips.push({ key: 'urgency', label: `Urgencia: ${filters.urgency}` });
+  if (filters.count) chips.push({ key: 'count', label: `N° obs.: ${filters.count}` });
   if (filters.obs === 'executed') chips.push({ key: 'obs', label: 'Obs.: ejecutadas' });
   if (filters.obs === 'open') chips.push({ key: 'obs', label: 'Obs.: abiertas' });
   if (filters.obs === 'closed') chips.push({ key: 'obs', label: 'Obs.: cerradas' });
@@ -231,29 +235,11 @@ function buildActiveFilters(filters: TableFilters): ActiveFilter[] {
 function buildManagementKpis(data: InspectionManagementKpisResponse | undefined, isLoading: boolean, isError: boolean) {
   const currentYear = new Date().getFullYear();
   if (isLoading) {
-    return {
-      year: currentYear,
-      totalInspections: '...',
-      totalHelper: 'Cargando datos...',
-      openInspections: '...',
-      openHelper: 'Cargando observaciones...',
-      pendingApproval: '...',
-      closedFindingsRate: '...',
-    };
+    return { year: currentYear, totalInspections: '...', totalHelper: 'Cargando datos...', openInspections: '...', openHelper: 'Cargando observaciones...', pendingApproval: '...', closedFindingsRate: '...' };
   }
-
   if (isError || !data) {
-    return {
-      year: currentYear,
-      totalInspections: '—',
-      totalHelper: 'No disponible',
-      openInspections: '—',
-      openHelper: 'No disponible',
-      pendingApproval: '—',
-      closedFindingsRate: '—',
-    };
+    return { year: currentYear, totalInspections: '—', totalHelper: 'No disponible', openInspections: '—', openHelper: 'No disponible', pendingApproval: '—', closedFindingsRate: '—' };
   }
-
   return {
     year: data.year,
     totalInspections: formatNumber(data.totalInspections),
@@ -267,285 +253,98 @@ function buildManagementKpis(data: InspectionManagementKpisResponse | undefined,
 
 function KpiIcon({ kind, color }: { kind: KpiIconKind; color: string }) {
   const className = 'h-[11px] w-[13.75px] shrink-0';
-
-  if (kind === 'total') {
-    return (
-      <svg className={className} fill="none" viewBox="0 0 13.75 11" aria-hidden>
-        <rect x="2.25" y="0.75" width="7.5" height="9.5" rx="1.2" stroke={color} strokeWidth="1.5" />
-        <path d="M4.25 3.2h3.4M4.25 5.4h3.4M4.25 7.6h2" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
-      </svg>
-    );
-  }
-
-  if (kind === 'open') {
-    return (
-      <svg className={className} fill="none" viewBox="0 0 13.75 11" aria-hidden>
-        <circle cx="6.875" cy="5.5" r="4.85" fill={color} />
-        <path d="M6.875 2.65v3l2.15 1.25" stroke="white" strokeWidth="1.15" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-
-  if (kind === 'approval') {
-    return (
-      <svg className={className} fill="none" viewBox="0 0 13.75 11" aria-hidden>
-        <circle cx="6.875" cy="5.5" r="4.85" fill={color} />
-        <path d="M6.875 2.75v3" stroke="white" strokeWidth="1.25" strokeLinecap="round" />
-        <circle cx="6.875" cy="8" r="0.65" fill="white" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg className={className} fill="none" viewBox="0 0 13.75 11" aria-hidden>
-      <circle cx="6.875" cy="5.5" r="4.85" fill={color} />
-      <path d="M4.7 5.55l1.35 1.35 2.95-3.1" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  if (kind === 'total') return <svg className={className} fill="none" viewBox="0 0 13.75 11" aria-hidden><rect x="2.25" y="0.75" width="7.5" height="9.5" rx="1.2" stroke={color} strokeWidth="1.5" /><path d="M4.25 3.2h3.4M4.25 5.4h3.4M4.25 7.6h2" stroke={color} strokeWidth="1.2" strokeLinecap="round" /></svg>;
+  if (kind === 'open') return <svg className={className} fill="none" viewBox="0 0 13.75 11" aria-hidden><circle cx="6.875" cy="5.5" r="4.85" fill={color} /><path d="M6.875 2.65v3l2.15 1.25" stroke="white" strokeWidth="1.15" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+  if (kind === 'approval') return <svg className={className} fill="none" viewBox="0 0 13.75 11" aria-hidden><circle cx="6.875" cy="5.5" r="4.85" fill={color} /><path d="M6.875 2.75v3" stroke="white" strokeWidth="1.25" strokeLinecap="round" /><circle cx="6.875" cy="8" r="0.65" fill="white" /></svg>;
+  return <svg className={className} fill="none" viewBox="0 0 13.75 11" aria-hidden><circle cx="6.875" cy="5.5" r="4.85" fill={color} /><path d="M4.7 5.55l1.35 1.35 2.95-3.1" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
 function CaretIcon() {
-  return (
-    <svg className="h-[10px] w-[12.5px] shrink-0" fill="none" viewBox="0 0 13 10" aria-hidden>
-      <path d="M3 3.5L6.25 6.5L9.5 3.5" stroke="#131313" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <svg className="h-[10px] w-[12.5px] shrink-0" fill="none" viewBox="0 0 13 10" aria-hidden><path d="M3 3.5L6.25 6.5L9.5 3.5" stroke="#131313" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
 function SortIcon({ gold = false }: { gold?: boolean }) {
   const fill = gold ? '#c8a064' : 'rgba(255,255,255,0.7)';
-  return (
-    <svg className="h-[10px] w-[12.5px] shrink-0" fill="none" viewBox="0 0 13 10" aria-hidden>
-      <path d="M6.25 1L10 4.5H2.5L6.25 1Z" fill={fill} />
-      <path d="M6.25 9L2.5 5.5H10L6.25 9Z" fill={fill} />
-    </svg>
-  );
+  return <svg className="h-[10px] w-[12.5px] shrink-0" fill="none" viewBox="0 0 13 10" aria-hidden><path d="M6.25 1L10 4.5H2.5L6.25 1Z" fill={fill} /><path d="M6.25 9L2.5 5.5H10L6.25 9Z" fill={fill} /></svg>;
 }
 
 function FilterIcon() {
-  return (
-    <svg className="h-[10px] w-[12.5px] shrink-0" fill="none" viewBox="0 0 13 10" aria-hidden>
-      <path d="M1.5 1.25h10L7.75 5.4v2.2L5.25 8.75V5.4L1.5 1.25Z" fill="#24588b" />
-    </svg>
-  );
+  return <svg className="h-[10px] w-[12.5px] shrink-0" fill="none" viewBox="0 0 13 10" aria-hidden><path d="M1.5 1.25h10L7.75 5.4v2.2L5.25 8.75V5.4L1.5 1.25Z" fill="#24588b" /></svg>;
 }
 
 function CalendarIcon() {
-  return (
-    <svg className="size-[18px] shrink-0" fill="none" viewBox="0 0 18 18" aria-hidden>
-      <path d="M4.5 2.5v2M13.5 2.5v2M3.5 6.5h11" stroke="#646464" strokeWidth="1.5" strokeLinecap="round" />
-      <rect x="3" y="4" width="12" height="11" rx="1.5" fill="#646464" opacity="0.22" />
-      <path d="M5.5 8.5h2M9.5 8.5h2M5.5 11h2M9.5 11h2" stroke="#646464" strokeWidth="1" strokeLinecap="round" />
-    </svg>
-  );
+  return <svg className="size-[18px] shrink-0" fill="none" viewBox="0 0 18 18" aria-hidden><path d="M4.5 2.5v2M13.5 2.5v2M3.5 6.5h11" stroke="#646464" strokeWidth="1.5" strokeLinecap="round" /><rect x="3" y="4" width="12" height="11" rx="1.5" fill="#646464" opacity="0.22" /><path d="M5.5 8.5h2M9.5 8.5h2M5.5 11h2M9.5 11h2" stroke="#646464" strokeWidth="1" strokeLinecap="round" /></svg>;
 }
 
 function FileIcon() {
-  return (
-    <svg className="h-[12px] w-[15px] shrink-0" fill="none" viewBox="0 0 15 12" aria-hidden>
-      <path d="M4 1.2h4.4L11 3.8v7H4z" fill="#333" />
-      <path d="M8.4 1.2v2.6H11" stroke="white" strokeWidth="0.8" strokeLinejoin="round" />
-    </svg>
-  );
+  return <svg className="h-[12px] w-[15px] shrink-0" fill="none" viewBox="0 0 15 12" aria-hidden><path d="M4 1.2h4.4L11 3.8v7H4z" fill="#333" /><path d="M8.4 1.2v2.6H11" stroke="white" strokeWidth="0.8" strokeLinejoin="round" /></svg>;
 }
 
 function PlusIcon() {
-  return (
-    <svg className="h-[12px] w-[15px] shrink-0" fill="none" viewBox="0 0 15 12" aria-hidden>
-      <path d="M7.5 2.3v7.4M3.8 6h7.4" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
+  return <svg className="h-[12px] w-[15px] shrink-0" fill="none" viewBox="0 0 15 12" aria-hidden><path d="M7.5 2.3v7.4M3.8 6h7.4" stroke="white" strokeWidth="1.8" strokeLinecap="round" /></svg>;
 }
 
 function BadgeMiniIcon({ icon, color }: { icon: BadgeIcon; color: string }) {
-  if (icon === 'search') {
-    return (
-      <svg className="h-[9px] w-[11.25px] shrink-0" fill="none" viewBox="0 0 12 9" aria-hidden>
-        <circle cx="4.8" cy="4" r="2.2" stroke={color} strokeWidth="1.5" />
-        <path d="M6.5 5.8L8.7 8" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
-      </svg>
-    );
-  }
-
-  if (icon === 'checklist') {
-    return (
-      <svg className="h-[9px] w-[11.25px] shrink-0" fill="none" viewBox="0 0 12 9" aria-hidden>
-        <rect x="2" y="1" width="6.4" height="7" rx="1" stroke={color} strokeWidth="1.3" />
-        <path d="M3.8 4.5l1 .9 1.8-2" stroke={color} strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-
-  if (icon === 'check') {
-    return (
-      <svg className="h-[8px] w-[10px] shrink-0" fill="none" viewBox="0 0 10 8" aria-hidden>
-        <circle cx="4" cy="4" r="3.3" fill={color} />
-        <path d="M2.4 4.1l1 1 2.2-2.2" stroke="white" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-
-  if (icon === 'alert') {
-    return (
-      <svg className="h-[8px] w-[10px] shrink-0" fill="none" viewBox="0 0 10 8" aria-hidden>
-        <circle cx="4" cy="4" r="3.3" fill={color} />
-        <path d="M4 2.2v2.1" stroke="white" strokeWidth="1" strokeLinecap="round" />
-        <circle cx="4" cy="5.8" r="0.45" fill="white" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg className="h-[8px] w-[10px] shrink-0" fill="none" viewBox="0 0 10 8" aria-hidden>
-      <circle cx="4" cy="4" r="3.3" fill={color} />
-      <path d="M4 2.2v2.1l1.4.8" stroke="white" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  if (icon === 'search') return <svg className="h-[9px] w-[11.25px] shrink-0" fill="none" viewBox="0 0 12 9" aria-hidden><circle cx="4.8" cy="4" r="2.2" stroke={color} strokeWidth="1.5" /><path d="M6.5 5.8L8.7 8" stroke={color} strokeWidth="1.5" strokeLinecap="round" /></svg>;
+  if (icon === 'checklist') return <svg className="h-[9px] w-[11.25px] shrink-0" fill="none" viewBox="0 0 12 9" aria-hidden><rect x="2" y="1" width="6.4" height="7" rx="1" stroke={color} strokeWidth="1.3" /><path d="M3.8 4.5l1 .9 1.8-2" stroke={color} strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+  if (icon === 'check') return <svg className="h-[8px] w-[10px] shrink-0" fill="none" viewBox="0 0 10 8" aria-hidden><circle cx="4" cy="4" r="3.3" fill={color} /><path d="M2.4 4.1l1 1 2.2-2.2" stroke="white" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+  if (icon === 'alert') return <svg className="h-[8px] w-[10px] shrink-0" fill="none" viewBox="0 0 10 8" aria-hidden><circle cx="4" cy="4" r="3.3" fill={color} /><path d="M4 2.2v2.1" stroke="white" strokeWidth="1" strokeLinecap="round" /><circle cx="4" cy="5.8" r="0.45" fill="white" /></svg>;
+  return <svg className="h-[8px] w-[10px] shrink-0" fill="none" viewBox="0 0 10 8" aria-hidden><circle cx="4" cy="4" r="3.3" fill={color} /><path d="M4 2.2v2.1l1.4.8" stroke="white" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
 function MoreIcon() {
-  return (
-    <svg className="h-[12px] w-[15px] shrink-0" fill="none" viewBox="0 0 15 12" aria-hidden>
-      <circle cx="3.5" cy="6" r="1.35" fill="#646464" />
-      <circle cx="7.5" cy="6" r="1.35" fill="#646464" />
-      <circle cx="11.5" cy="6" r="1.35" fill="#646464" />
-    </svg>
-  );
+  return <svg className="h-[12px] w-[15px] shrink-0" fill="none" viewBox="0 0 15 12" aria-hidden><circle cx="3.5" cy="6" r="1.35" fill="#646464" /><circle cx="7.5" cy="6" r="1.35" fill="#646464" /><circle cx="11.5" cy="6" r="1.35" fill="#646464" /></svg>;
 }
 
 function KpiCard({ icon, iconColor, label, value, helper, valueClass = 'text-[#131313]' }: KpiCardProps) {
-  return (
-    <div className="bg-white border border-[#e3e3e3] border-solid drop-shadow-[0px_1px_1.5px_rgba(0,0,0,0.05)] flex h-[92.5px] min-w-0 flex-col items-start rounded-[8px] px-[17px] py-[15px]">
-      <div className="flex h-[14px] w-full items-center gap-[6px]">
-        <KpiIcon kind={icon} color={iconColor} />
-        <p className="font-['Inter:Semi_Bold',sans-serif] text-[11px] font-semibold uppercase leading-[normal] tracking-[0.44px] text-[#646464] whitespace-nowrap">{label}</p>
-      </div>
-      <div className="h-[33px] w-full pt-[4px]">
-        <p className={`font-['Inter:Bold',sans-serif] text-[24px] font-bold leading-[normal] whitespace-nowrap ${valueClass}`}>{value}</p>
-      </div>
-      <div className="h-[16px] w-full pt-[3px]">
-        <p className="font-['Inter:Regular',sans-serif] text-[11px] font-normal leading-[normal] text-[#646464] whitespace-nowrap">{helper}</p>
-      </div>
-    </div>
-  );
+  return <div className="bg-white border border-[#e3e3e3] border-solid drop-shadow-[0px_1px_1.5px_rgba(0,0,0,0.05)] flex h-[92.5px] min-w-0 flex-col items-start rounded-[8px] px-[17px] py-[15px]"><div className="flex h-[14px] w-full items-center gap-[6px]"><KpiIcon kind={icon} color={iconColor} /><p className="font-['Inter:Semi_Bold',sans-serif] text-[11px] font-semibold uppercase leading-[normal] tracking-[0.44px] text-[#646464] whitespace-nowrap">{label}</p></div><div className="h-[33px] w-full pt-[4px]"><p className={`font-['Inter:Bold',sans-serif] text-[24px] font-bold leading-[normal] whitespace-nowrap ${valueClass}`}>{value}</p></div><div className="h-[16px] w-full pt-[3px]"><p className="font-['Inter:Regular',sans-serif] text-[11px] font-normal leading-[normal] text-[#646464] whitespace-nowrap">{helper}</p></div></div>;
 }
 
 function ActiveFilterChip({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    <button className="flex h-[18px] items-center gap-[5px] rounded-[4px] border border-[#b4d1ed] bg-[#e6f3ff] px-[9px] py-[3px] font-['Inter:Semi_Bold',sans-serif] text-[10px] font-semibold leading-[normal] text-[#0d3862]" type="button" onClick={onRemove}>
-      <span className="whitespace-nowrap">{label}</span>
-      <span className="font-['Arial:Regular',sans-serif] text-[10px] font-normal leading-[10px] text-[#0d3862]">×</span>
-    </button>
-  );
+  return <button className="flex h-[18px] items-center gap-[5px] rounded-[4px] border border-[#b4d1ed] bg-[#e6f3ff] px-[9px] py-[3px] font-['Inter:Semi_Bold',sans-serif] text-[10px] font-semibold leading-[normal] text-[#0d3862]" type="button" onClick={onRemove}><span className="whitespace-nowrap">{label}</span><span className="font-['Arial:Regular',sans-serif] text-[10px] font-normal leading-[10px] text-[#0d3862]">×</span></button>;
 }
 
 function TableActions() {
-  return (
-    <div className="flex shrink-0 items-center gap-[8px]">
-      <button className="bg-white border-[#d1d1d1] border-[1.5px] border-solid flex h-[36px] w-[117.5px] shrink-0 items-center gap-[6px] rounded-[8px] px-[13.5px] py-[1.5px] text-[12px] font-semibold text-[#333]" type="button"><FileIcon /><span className="font-['Inter:Semi_Bold',sans-serif]">Exportar</span><CaretIcon /></button>
-      <button className="flex h-[36px] w-[159px] shrink-0 items-center gap-[7px] rounded-[6px] bg-[#c8a064] px-[16px] py-[10.5px] text-[12px] font-bold text-white" type="button"><PlusIcon /><span className="font-['Inter:Bold',sans-serif]">Nueva inspección</span></button>
-    </div>
-  );
+  return <div className="flex shrink-0 items-center gap-[8px]"><button className="bg-white border-[#d1d1d1] border-[1.5px] border-solid flex h-[36px] w-[117.5px] shrink-0 items-center gap-[6px] rounded-[8px] px-[13.5px] py-[1.5px] text-[12px] font-semibold text-[#333]" type="button"><FileIcon /><span className="font-['Inter:Semi_Bold',sans-serif]">Exportar</span><CaretIcon /></button><button className="flex h-[36px] w-[159px] shrink-0 items-center gap-[7px] rounded-[6px] bg-[#c8a064] px-[16px] py-[10.5px] text-[12px] font-bold text-white" type="button"><PlusIcon /><span className="font-['Inter:Bold',sans-serif]">Nueva inspección</span></button></div>;
 }
 
 function ActiveFiltersBar({ filters, onRemove }: { filters: ActiveFilter[]; onRemove: (key: TableFilterKey) => void }) {
-  if (filters.length === 0) {
-    return <div className="flex min-h-[38px] w-full justify-end pt-[16px]"><TableActions /></div>;
-  }
-
-  return (
-    <div className="flex min-h-[38px] w-full flex-wrap items-center justify-between gap-[12px] pt-[16px]">
-      <div className="flex min-h-[38px] min-w-[280px] flex-1 items-center gap-[10px] overflow-x-auto bg-[#eef5ff] px-[14px] py-[10px]">
-        <div className="flex shrink-0 items-center gap-[6px]">
-          <FilterIcon />
-          <span className="font-['Inter:Semi_Bold',sans-serif] text-[11px] font-semibold leading-[13px] text-[#24588b]">Filtros activos:</span>
-        </div>
-        {filters.map((filter) => <ActiveFilterChip key={filter.key} label={filter.label} onRemove={() => onRemove(filter.key)} />)}
-      </div>
-      <TableActions />
-    </div>
-  );
+  if (filters.length === 0) return <div className="flex min-h-[38px] w-full justify-end pt-[16px]"><TableActions /></div>;
+  return <div className="flex min-h-[38px] w-full flex-wrap items-center justify-between gap-[12px] pt-[16px]"><div className="flex min-h-[38px] min-w-[280px] flex-1 items-center gap-[10px] overflow-x-auto bg-[#eef5ff] px-[14px] py-[10px]"><div className="flex shrink-0 items-center gap-[6px]"><FilterIcon /><span className="font-['Inter:Semi_Bold',sans-serif] text-[11px] font-semibold leading-[13px] text-[#24588b]">Filtros activos:</span></div>{filters.map((filter) => <ActiveFilterChip key={filter.key} label={filter.label} onRemove={() => onRemove(filter.key)} />)}</div><TableActions /></div>;
 }
 
 function Badge({ children, tone, icon, small = false }: { children: string; tone: BadgeTone; icon?: BadgeIcon; small?: boolean }) {
-  const classes: Record<BadgeTone, string> = {
-    blue: 'bg-[#e6f3ff] text-[#0d3862]',
-    mint: 'bg-[#c5fff6] text-[#006153]',
-    pink: 'bg-[#ffd0db] text-[#570b1d]',
-    orange: 'bg-[#ffe1cd] text-[#532a0e]',
-    yellow: 'bg-[#ffeab8] text-[#463100]',
-    green: 'bg-[#e0ffd3] text-[#2a5c16]',
-  };
-  const iconColor: Record<BadgeTone, string> = {
-    blue: '#0d3862',
-    mint: '#006153',
-    pink: '#570b1d',
-    orange: '#532a0e',
-    yellow: '#463100',
-    green: '#2a5c16',
-  };
-
-  return (
-    <span className={`inline-flex items-center rounded-[6px] px-[8px] py-[2px] font-['Inter:Bold',sans-serif] font-bold leading-[normal] ${small ? 'gap-[2px] text-[9px]' : 'gap-[4px] text-[10px]'} ${classes[tone]}`}>
-      {icon ? <BadgeMiniIcon icon={icon} color={iconColor[tone]} /> : null}
-      {children}
-    </span>
-  );
+  const classes: Record<BadgeTone, string> = { blue: 'bg-[#e6f3ff] text-[#0d3862]', mint: 'bg-[#c5fff6] text-[#006153]', pink: 'bg-[#ffd0db] text-[#570b1d]', orange: 'bg-[#ffe1cd] text-[#532a0e]', yellow: 'bg-[#ffeab8] text-[#463100]', green: 'bg-[#e0ffd3] text-[#2a5c16]' };
+  const iconColor: Record<BadgeTone, string> = { blue: '#0d3862', mint: '#006153', pink: '#570b1d', orange: '#532a0e', yellow: '#463100', green: '#2a5c16' };
+  return <span className={`inline-flex items-center rounded-[6px] px-[8px] py-[2px] font-['Inter:Bold',sans-serif] font-bold leading-[normal] ${small ? 'gap-[2px] text-[9px]' : 'gap-[4px] text-[10px]'} ${classes[tone]}`}>{icon ? <BadgeMiniIcon icon={icon} color={iconColor[tone]} /> : null}{children}</span>;
 }
 
 function TableFilterShell({ children, width }: { children: ReactNode; width: number }) {
-  return (
-    <div className="bg-white border border-[#d1d1d1] border-solid flex h-[26px] items-center justify-center overflow-hidden rounded-[8px] px-[8px]" style={{ width: `${width}px` }}>
-      {children}
-    </div>
-  );
+  return <div className="bg-white border border-[#d1d1d1] border-solid flex h-[26px] items-center justify-center overflow-hidden rounded-[8px] px-[8px]" style={{ width: `${width}px` }}>{children}</div>;
 }
 
 function TableTextFilter({ value, onChange, width, placeholder, type = 'text' }: { value: string; onChange: (value: string) => void; width: number; placeholder: string; type?: 'text' | 'number' }) {
-  return (
-    <TableFilterShell width={width}>
-      <input className="min-w-0 flex-1 border-0 bg-transparent p-0 font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] text-[#131313] outline-none placeholder:text-[#acacac]" value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} type={type} />
-    </TableFilterShell>
-  );
+  return <TableFilterShell width={width}><input className="min-w-0 flex-1 border-0 bg-transparent p-0 font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] text-[#131313] outline-none placeholder:text-[#acacac]" value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} type={type} /></TableFilterShell>;
 }
 
 function TableDateFilter({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  return (
-    <TableFilterShell width={123}>
-      <input className="min-w-0 flex-1 border-0 bg-transparent p-0 font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] text-[#131313] outline-none placeholder:text-[#acacac]" value={value} onChange={(event) => onChange(event.target.value)} placeholder="dd-mm-aaaa" type="text" />
-      <CalendarIcon />
-    </TableFilterShell>
-  );
+  return <TableFilterShell width={123}><input className="min-w-0 flex-1 border-0 bg-transparent p-0 font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] text-[#131313] outline-none placeholder:text-[#acacac]" value={value} onChange={(event) => onChange(event.target.value)} placeholder="dd-mm-aaaa" type="text" /><CalendarIcon /></TableFilterShell>;
 }
 
 function TableSelectFilter({ value, onChange, width, allLabel, options }: { value: string; onChange: (value: string) => void; width: number; allLabel: string; options: string[] }) {
-  return (
-    <TableFilterShell width={width}>
-      <select className="min-w-0 flex-1 border-0 bg-transparent p-0 font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] text-[#131313] outline-none" value={value} onChange={(event) => onChange(event.target.value)}>
-        <option value="">{allLabel}</option>
-        {options.map((option) => <option key={option} value={option}>{option}</option>)}
-      </select>
-    </TableFilterShell>
-  );
+  return <TableFilterShell width={width}><select className="min-w-0 flex-1 border-0 bg-transparent p-0 font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] text-[#131313] outline-none" value={value} onChange={(event) => onChange(event.target.value)}><option value="">{allLabel}</option>{options.map((option) => <option key={option} value={option}>{option}</option>)}</select></TableFilterShell>;
+}
+
+function TableObservationFilter({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return <TableFilterShell width={131}><select className="min-w-0 flex-1 border-0 bg-transparent p-0 font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] text-[#131313] outline-none" value={value} onChange={(event) => onChange(event.target.value)}><option value="">Todos</option><option value="executed">Ejecutadas</option><option value="open">Abiertas</option><option value="closed">Cerradas</option></select></TableFilterShell>;
 }
 
 function HeaderCell({ children, gold = false }: { children: string; gold?: boolean }) {
-  return (
-    <th className="h-[32px] bg-[#001e39] border-r border-[#122e47] px-[12px] py-[9.5px] text-left align-middle">
-      <div className="flex items-center gap-[3px] whitespace-nowrap">
-        <span className={`font-['Inter:Semi_Bold',sans-serif] text-[11px] font-semibold uppercase leading-[normal] tracking-[0.44px] ${gold ? 'text-[#c8a064]' : 'text-[rgba(255,255,255,0.7)]'}`}>{children}</span>
-        <SortIcon gold={gold} />
-      </div>
-    </th>
-  );
+  return <th className="h-[32px] bg-[#001e39] border-r border-[#122e47] px-[12px] py-[9.5px] text-left align-middle"><div className="flex items-center gap-[3px] whitespace-nowrap"><span className={`font-['Inter:Semi_Bold',sans-serif] text-[11px] font-semibold uppercase leading-[normal] tracking-[0.44px] ${gold ? 'text-[#c8a064]' : 'text-[rgba(255,255,255,0.7)]'}`}>{children}</span><SortIcon gold={gold} /></div></th>;
 }
 
 function ActionHeaderCell() {
-  return (
-    <th className="h-[32px] bg-[#001e39] px-[12px] py-[10px] text-left align-middle">
-      <span className="font-['Inter:Bold',sans-serif] text-[10px] font-bold uppercase leading-[normal] tracking-[0.4px] text-[rgba(255,255,255,0.7)]">Acciones</span>
-    </th>
-  );
+  return <th className="h-[32px] bg-[#001e39] px-[12px] py-[10px] text-left align-middle"><span className="font-['Inter:Bold',sans-serif] text-[10px] font-bold uppercase leading-[normal] tracking-[0.4px] text-[rgba(255,255,255,0.7)]">Acciones</span></th>;
 }
 
 function FilterCell({ children }: { children: ReactNode }) {
@@ -553,11 +352,7 @@ function FilterCell({ children }: { children: ReactNode }) {
 }
 
 function DataCell({ children, center = false, bold = false }: { children: ReactNode; center?: boolean; bold?: boolean }) {
-  return (
-    <td className={`border-r border-b border-[#e3e3e3] bg-white px-[12px] py-[13.5px] align-middle font-['Inter:${bold ? 'Semi_Bold' : 'Regular'}',sans-serif] text-[12px] leading-[normal] text-[#333] ${center ? 'text-center' : 'text-left'} ${bold ? 'font-semibold text-[#131313]' : 'font-normal'}`}>
-      {children}
-    </td>
-  );
+  return <td className={`border-r border-b border-[#e3e3e3] bg-white px-[12px] py-[13.5px] align-middle font-['Inter:${bold ? 'Semi_Bold' : 'Regular'}',sans-serif] text-[12px] leading-[normal] text-[#333] ${center ? 'text-center' : 'text-left'} ${bold ? 'font-semibold text-[#131313]' : 'font-normal'}`}>{children}</td>;
 }
 
 function IdCell({ value }: { value: string }) {
@@ -572,16 +367,7 @@ function DaysCell({ value }: { value: number }) {
 function ProgressCell({ value }: { value: number }) {
   const barColor = value < 50 ? '#bd3b5b' : '#e8a820';
   const textColor = value < 50 ? '#570b1d' : '#463100';
-  return (
-    <td className="border-r border-b border-[#e3e3e3] bg-white px-[12px] py-[14px] align-middle">
-      <div className="flex w-[95px] items-center gap-[5px]">
-        <div className="h-[4px] min-w-[36px] flex-[62_0_0] rounded-[2px] bg-[#e3e3e3]">
-          <div className="h-[4px] rounded-[2px]" style={{ width: `${Math.max(0, Math.min(100, value))}%`, backgroundColor: barColor }} />
-        </div>
-        <span className="min-w-[28px] text-right font-['Inter:Bold',sans-serif] text-[10px] font-bold leading-[normal]" style={{ color: textColor }}>{formatPercent(value)}</span>
-      </div>
-    </td>
-  );
+  return <td className="border-r border-b border-[#e3e3e3] bg-white px-[12px] py-[14px] align-middle"><div className="flex w-[95px] items-center gap-[5px]"><div className="h-[4px] min-w-[36px] flex-[62_0_0] rounded-[2px] bg-[#e3e3e3]"><div className="h-[4px] rounded-[2px]" style={{ width: `${Math.max(0, Math.min(100, value))}%`, backgroundColor: barColor }} /></div><span className="min-w-[28px] text-right font-['Inter:Bold',sans-serif] text-[10px] font-bold leading-[normal]" style={{ color: textColor }}>{formatPercent(value)}</span></div></td>;
 }
 
 function getObsBadge(item: string) {
@@ -593,75 +379,7 @@ function getObsBadge(item: string) {
 function InspectionTable({ rows, total, isLoading, isError, filters, options, onFilterChange, onClearFilters }: { rows: Row[]; total: number; isLoading: boolean; isError: boolean; filters: TableFilters; options: TableFilterOptions; onFilterChange: (key: TableFilterKey, value: string) => void; onClearFilters: () => void }) {
   const footerText = isLoading ? 'Cargando inspecciones...' : isError ? 'No fue posible cargar las inspecciones' : `Mostrando ${rows.length > 0 ? 1 : 0}–${rows.length} de ${total} inspecciones`;
 
-  return (
-    <div className="bg-white border border-[#e3e3e3] border-solid w-full overflow-hidden rounded-[8px] shadow-[0px_1px_4px_rgba(0,0,0,0.05)]">
-      <div className="overflow-x-auto overflow-y-hidden">
-        <table className="table-fixed border-collapse" style={{ minWidth: `${tableWidth}px`, width: `${tableWidth}px` }}>
-          <colgroup>
-            {tableColumns.map((width, index) => <col key={index} style={{ width: `${width}px` }} />)}
-          </colgroup>
-          <thead>
-            <tr className="h-[32px]">
-              <HeaderCell>Nº</HeaderCell>
-              <HeaderCell>Fecha</HeaderCell>
-              <HeaderCell>Inspector</HeaderCell>
-              <HeaderCell>Área. Sector</HeaderCell>
-              <HeaderCell>Empresa</HeaderCell>
-              <HeaderCell>Tipo</HeaderCell>
-              <HeaderCell gold>Urgencia máxima</HeaderCell>
-              <HeaderCell>Nº obs</HeaderCell>
-              <HeaderCell>Obs.</HeaderCell>
-              <HeaderCell>Días</HeaderCell>
-              <HeaderCell>Cierre</HeaderCell>
-              <ActionHeaderCell />
-            </tr>
-            <tr className="h-[37px] bg-[#f0f4f8]">
-              <FilterCell><TableTextFilter value={filters.id} onChange={(value) => onFilterChange('id', value)} width={48} placeholder="#" /></FilterCell>
-              <FilterCell><TableDateFilter value={filters.date} onChange={(value) => onFilterChange('date', value)} /></FilterCell>
-              <FilterCell><TableSelectFilter value={filters.inspector} onChange={(value) => onFilterChange('inspector', value)} width={175} allLabel="Todos los inspectores" options={options.inspectors} /></FilterCell>
-              <FilterCell><TableSelectFilter value={filters.area} onChange={(value) => onFilterChange('area', value)} width={184} allLabel="Todas las áreas" options={options.areas} /></FilterCell>
-              <FilterCell><TableSelectFilter value={filters.company} onChange={(value) => onFilterChange('company', value)} width={173} allLabel="Todas las empresas" options={options.companies} /></FilterCell>
-              <FilterCell><TableSelectFilter value={filters.type} onChange={(value) => onFilterChange('type', value)} width={108} allLabel="Todos" options={options.types} /></FilterCell>
-              <FilterCell><TableSelectFilter value={filters.urgency} onChange={(value) => onFilterChange('urgency', value)} width={172} allLabel="Todas" options={options.urgencies} /></FilterCell>
-              <FilterCell><TableTextFilter value="" onChange={() => undefined} width={60} placeholder="#" type="number" /></FilterCell>
-              <FilterCell><TableSelectFilter value={filters.obs} onChange={(value) => onFilterChange('obs', value)} width={131} allLabel="Todos" options={["Ejecutadas", "Abiertas", "Cerradas"]} /></FilterCell>
-              <FilterCell><div className="flex items-center gap-[4px]"><TableTextFilter value={filters.daysMin} onChange={(value) => onFilterChange('daysMin', value)} width={47} placeholder="Min" type="number" /><span className="font-['Inter:Regular',sans-serif] text-[13px] text-[#131313]">-</span><TableTextFilter value={filters.daysMax} onChange={(value) => onFilterChange('daysMax', value)} width={47} placeholder="Max" type="number" /></div></FilterCell>
-              <FilterCell><TableTextFilter value={filters.closure} onChange={(value) => onFilterChange('closure', value)} width={95} placeholder="#%" type="number" /></FilterCell>
-              <td className="h-[37px] border-b border-[#e3e3e3] bg-[#f0f4f8] px-[12px] py-[5.5px] align-middle"><button className="flex h-[26px] w-[59.5px] items-center justify-center gap-[4px] rounded-[5px] border border-[#d1d1d1] bg-white px-px py-[7px] font-['Inter:Semi_Bold',sans-serif] text-[10px] font-semibold leading-[normal] text-[#646464]" type="button" onClick={onClearFilters}>↺ Limpiar</button></td>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id} style={{ height: `${row.height}px` }}>
-                <IdCell value={row.id} />
-                <DataCell>{row.date}</DataCell>
-                <DataCell bold>{row.inspector}</DataCell>
-                <DataCell>{row.area}</DataCell>
-                <DataCell>{row.company}</DataCell>
-                <DataCell><Badge tone={row.type.toLowerCase().includes('check') ? 'mint' : 'blue'} icon={row.type.toLowerCase().includes('check') ? 'checklist' : 'search'}>{row.type}</Badge></DataCell>
-                <DataCell><Badge tone={row.urgencyTone} icon={row.urgency.includes('Ejecutada') ? 'check' : row.urgency.includes('Grave') ? 'alert' : 'clock'}>{row.urgency}</Badge></DataCell>
-                <DataCell center>{row.count}</DataCell>
-                <DataCell><div className="flex w-[95.5px] flex-col items-start gap-[4px]">{row.obs.map((item) => { const badge = getObsBadge(item); return <Badge key={item} tone={badge.tone} icon={badge.icon} small>{item}</Badge>; })}</div></DataCell>
-                <DaysCell value={row.days} />
-                <ProgressCell value={row.closure} />
-                <td className="border-b border-[#e3e3e3] bg-white px-[12px] py-[8.5px] text-center align-middle"><button className="inline-flex size-[26px] items-center justify-center rounded-[5px] border border-[#e3e3e3] bg-white p-px" type="button"><MoreIcon /></button></td>
-              </tr>
-            ))}
-            {!isLoading && rows.length === 0 ? (
-              <tr className="h-[61px]">
-                <td colSpan={12} className="border-b border-[#e3e3e3] bg-white px-[12px] py-[13.5px] text-center font-['Inter:Regular',sans-serif] text-[12px] text-[#646464]">No hay inspecciones para mostrar</td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
-      <div className="border-t border-[#e3e3e3] bg-white px-[16px] py-[10px] flex items-center justify-between">
-        <p className="font-['Inter:Regular',sans-serif] text-[12px] text-[#646464]">{footerText}</p>
-        <div className="flex items-center gap-[4px]"><button className="size-[32px] rounded-[6px] border border-[#e3e3e3] opacity-35">‹</button><button className="size-[32px] rounded-[6px] border border-[#c8a064] bg-[#c8a064] font-semibold text-[#001e39]">1</button><button className="size-[32px] rounded-[6px] border border-[#e3e3e3] opacity-35">›</button></div>
-        <div className="flex items-center gap-[8px]"><span className="text-[12px] text-[#646464]">Filas por página</span><button className="h-[32px] w-[51px] rounded-[6px] border border-[#d1d1d1] text-[12px] font-semibold text-[#646464]">10⌄</button></div>
-      </div>
-    </div>
-  );
+  return <div className="bg-white border border-[#e3e3e3] border-solid w-full overflow-hidden rounded-[8px] shadow-[0px_1px_4px_rgba(0,0,0,0.05)]"><div className="overflow-x-auto overflow-y-hidden"><table className="table-fixed border-collapse" style={{ minWidth: `${tableWidth}px`, width: `${tableWidth}px` }}><colgroup>{tableColumns.map((width, index) => <col key={index} style={{ width: `${width}px` }} />)}</colgroup><thead><tr className="h-[32px]"><HeaderCell>Nº</HeaderCell><HeaderCell>Fecha</HeaderCell><HeaderCell>Inspector</HeaderCell><HeaderCell>Área. Sector</HeaderCell><HeaderCell>Empresa</HeaderCell><HeaderCell>Tipo</HeaderCell><HeaderCell gold>Urgencia máxima</HeaderCell><HeaderCell>Nº obs</HeaderCell><HeaderCell>Obs.</HeaderCell><HeaderCell>Días</HeaderCell><HeaderCell>Cierre</HeaderCell><ActionHeaderCell /></tr><tr className="h-[37px] bg-[#f0f4f8]"><FilterCell><TableTextFilter value={filters.id} onChange={(value) => onFilterChange('id', value)} width={48} placeholder="#" /></FilterCell><FilterCell><TableDateFilter value={filters.date} onChange={(value) => onFilterChange('date', value)} /></FilterCell><FilterCell><TableSelectFilter value={filters.inspector} onChange={(value) => onFilterChange('inspector', value)} width={175} allLabel="Todos los inspectores" options={options.inspectors} /></FilterCell><FilterCell><TableSelectFilter value={filters.area} onChange={(value) => onFilterChange('area', value)} width={184} allLabel="Todas las áreas" options={options.areas} /></FilterCell><FilterCell><TableSelectFilter value={filters.company} onChange={(value) => onFilterChange('company', value)} width={173} allLabel="Todas las empresas" options={options.companies} /></FilterCell><FilterCell><TableSelectFilter value={filters.type} onChange={(value) => onFilterChange('type', value)} width={108} allLabel="Todos" options={options.types} /></FilterCell><FilterCell><TableSelectFilter value={filters.urgency} onChange={(value) => onFilterChange('urgency', value)} width={172} allLabel="Todas" options={options.urgencies} /></FilterCell><FilterCell><TableTextFilter value={filters.count} onChange={(value) => onFilterChange('count', value)} width={60} placeholder="#" type="number" /></FilterCell><FilterCell><TableObservationFilter value={filters.obs} onChange={(value) => onFilterChange('obs', value)} /></FilterCell><FilterCell><div className="flex items-center gap-[4px]"><TableTextFilter value={filters.daysMin} onChange={(value) => onFilterChange('daysMin', value)} width={47} placeholder="Min" type="number" /><span className="font-['Inter:Regular',sans-serif] text-[13px] text-[#131313]">-</span><TableTextFilter value={filters.daysMax} onChange={(value) => onFilterChange('daysMax', value)} width={47} placeholder="Max" type="number" /></div></FilterCell><FilterCell><TableTextFilter value={filters.closure} onChange={(value) => onFilterChange('closure', value)} width={95} placeholder="#%" type="number" /></FilterCell><td className="h-[37px] border-b border-[#e3e3e3] bg-[#f0f4f8] px-[12px] py-[5.5px] align-middle"><button className="flex h-[26px] w-[59.5px] items-center justify-center gap-[4px] rounded-[5px] border border-[#d1d1d1] bg-white px-px py-[7px] font-['Inter:Semi_Bold',sans-serif] text-[10px] font-semibold leading-[normal] text-[#646464]" type="button" onClick={onClearFilters}>↺ Limpiar</button></td></tr></thead><tbody>{rows.map((row) => <tr key={row.id} style={{ height: `${row.height}px` }}><IdCell value={row.id} /><DataCell>{row.date}</DataCell><DataCell bold>{row.inspector}</DataCell><DataCell>{row.area}</DataCell><DataCell>{row.company}</DataCell><DataCell><Badge tone={row.type.toLowerCase().includes('check') ? 'mint' : 'blue'} icon={row.type.toLowerCase().includes('check') ? 'checklist' : 'search'}>{row.type}</Badge></DataCell><DataCell><Badge tone={row.urgencyTone} icon={row.urgency.includes('Ejecutada') ? 'check' : row.urgency.includes('Grave') ? 'alert' : 'clock'}>{row.urgency}</Badge></DataCell><DataCell center>{row.count}</DataCell><DataCell><div className="flex w-[95.5px] flex-col items-start gap-[4px]">{row.obs.map((item) => { const badge = getObsBadge(item); return <Badge key={item} tone={badge.tone} icon={badge.icon} small>{item}</Badge>; })}</div></DataCell><DaysCell value={row.days} /><ProgressCell value={row.closure} /><td className="border-b border-[#e3e3e3] bg-white px-[12px] py-[8.5px] text-center align-middle"><button className="inline-flex size-[26px] items-center justify-center rounded-[5px] border border-[#e3e3e3] bg-white p-px" type="button"><MoreIcon /></button></td></tr>)}{!isLoading && rows.length === 0 ? <tr className="h-[61px]"><td colSpan={12} className="border-b border-[#e3e3e3] bg-white px-[12px] py-[13.5px] text-center font-['Inter:Regular',sans-serif] text-[12px] text-[#646464]">No hay inspecciones para mostrar</td></tr> : null}</tbody></table></div><div className="border-t border-[#e3e3e3] bg-white px-[16px] py-[10px] flex items-center justify-between"><p className="font-['Inter:Regular',sans-serif] text-[12px] text-[#646464]">{footerText}</p><div className="flex items-center gap-[4px]"><button className="size-[32px] rounded-[6px] border border-[#e3e3e3] opacity-35">‹</button><button className="size-[32px] rounded-[6px] border border-[#c8a064] bg-[#c8a064] font-semibold text-[#001e39]">1</button><button className="size-[32px] rounded-[6px] border border-[#e3e3e3] opacity-35">›</button></div><div className="flex items-center gap-[8px]"><span className="text-[12px] text-[#646464]">Filas por página</span><button className="h-[32px] w-[51px] rounded-[6px] border border-[#d1d1d1] text-[12px] font-semibold text-[#646464]">10⌄</button></div></div></div>;
 }
 
 export function InspectionsManagementView() {
@@ -675,8 +393,7 @@ export function InspectionsManagementView() {
   const activeFilters = useMemo(() => buildActiveFilters(filters), [filters]);
 
   function updateFilter(key: TableFilterKey, value: string) {
-    const mappedValue = key === 'obs' ? value.toLowerCase().replace('ejecutadas', 'executed').replace('abiertas', 'open').replace('cerradas', 'closed') : value;
-    setFilters((current) => ({ ...current, [key]: mappedValue }));
+    setFilters((current) => ({ ...current, [key]: value }));
   }
 
   function removeFilter(key: TableFilterKey) {
@@ -687,18 +404,5 @@ export function InspectionsManagementView() {
     setFilters(emptyTableFilters);
   }
 
-  return (
-    <div className="bg-[#f7f7f7] flex h-[calc(100vh-56px)] w-full flex-col items-start overflow-y-auto overflow-x-hidden px-[24px] py-[20px]">
-      <div className="grid w-full grid-cols-[repeat(auto-fit,minmax(244px,1fr))] gap-[12px]">
-        <KpiCard icon="total" iconColor="#24588b" label={`Total ${kpis.year}`} value={kpis.totalInspections} helper={kpis.totalHelper} />
-        <KpiCard icon="open" iconColor="#806000" label="Inspecciones abiertas" value={kpis.openInspections} helper={kpis.openHelper} valueClass="text-[#463100]" />
-        <KpiCard icon="approval" iconColor="#bd3b5b" label="Pend. de aprobación" value={kpis.pendingApproval} helper="Ejecutadas esperando Admin GF" valueClass="text-[#bd3b5b]" />
-        <KpiCard icon="closed" iconColor="#53bd49" label="% Obs. cerradas" value={kpis.closedFindingsRate} helper="Meta >99%" valueClass="text-[#2a5c16]" />
-      </div>
-      <ActiveFiltersBar filters={activeFilters} onRemove={removeFilter} />
-      <div className="w-full pt-[16px]">
-        <InspectionTable rows={filteredRows} total={filteredRows.length} isLoading={tableQuery.isLoading} isError={tableQuery.isError} filters={filters} options={filterOptions} onFilterChange={updateFilter} onClearFilters={clearFilters} />
-      </div>
-    </div>
-  );
+  return <div className="bg-[#f7f7f7] flex h-[calc(100vh-56px)] w-full flex-col items-start overflow-y-auto overflow-x-hidden px-[24px] py-[20px]"><div className="grid w-full grid-cols-[repeat(auto-fit,minmax(244px,1fr))] gap-[12px]"><KpiCard icon="total" iconColor="#24588b" label={`Total ${kpis.year}`} value={kpis.totalInspections} helper={kpis.totalHelper} /><KpiCard icon="open" iconColor="#806000" label="Inspecciones abiertas" value={kpis.openInspections} helper={kpis.openHelper} valueClass="text-[#463100]" /><KpiCard icon="approval" iconColor="#bd3b5b" label="Pend. de aprobación" value={kpis.pendingApproval} helper="Ejecutadas esperando Admin GF" valueClass="text-[#bd3b5b]" /><KpiCard icon="closed" iconColor="#53bd49" label="% Obs. cerradas" value={kpis.closedFindingsRate} helper="Meta >99%" valueClass="text-[#2a5c16]" /></div><ActiveFiltersBar filters={activeFilters} onRemove={removeFilter} /><div className="w-full pt-[16px]"><InspectionTable rows={filteredRows} total={filteredRows.length} isLoading={tableQuery.isLoading} isError={tableQuery.isError} filters={filters} options={filterOptions} onFilterChange={updateFilter} onClearFilters={clearFilters} /></div></div>;
 }

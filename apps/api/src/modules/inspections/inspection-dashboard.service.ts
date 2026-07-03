@@ -9,6 +9,7 @@ import type {
   InspectionDashboardOpenFindingRowResponse,
   InspectionDashboardOpenFindingsResponse,
   InspectionDashboardSummaryResponse,
+  InspectionManagementKpisResponse,
 } from '@aurelia/contracts';
 import { Repository } from 'typeorm';
 import { AreaEntity } from '../organization/entities/area.entity';
@@ -37,6 +38,37 @@ export class InspectionDashboardService {
     @InjectRepository(CompanyEntity)
     private readonly companies: Repository<CompanyEntity>,
   ) {}
+
+  async getManagementKpis(): Promise<InspectionManagementKpisResponse> {
+    const [inspections, findings] = await Promise.all([this.inspections.find(), this.findings.find()]);
+    const year = new Date().getFullYear();
+    const previousYear = year - 1;
+    const inspectionById = new Map(inspections.map((inspection) => [inspection.id, inspection]));
+    const activeInspections = inspections.filter((inspection) => inspection.status !== InspectionStatus.CANCELLED);
+    const currentYearInspections = activeInspections.filter((inspection) => this.inspectionBelongsToYear(inspection, year));
+    const previousYearInspections = activeInspections.filter((inspection) => this.inspectionBelongsToYear(inspection, previousYear));
+    const currentYearFindings = findings.filter((finding) => {
+      if (finding.status === InspectionFindingStatus.CANCELLED) return false;
+      const inspection = inspectionById.get(finding.inspectionId);
+      return inspection ? this.inspectionBelongsToYear(inspection, year) : finding.createdAt.getFullYear() === year;
+    });
+    const closedFindings = currentYearFindings.filter((finding) => finding.status === InspectionFindingStatus.CLOSED).length;
+    const openFindings = currentYearFindings.filter((finding) => this.isOpenFinding(finding)).length;
+    const previousTotal = previousYearInspections.length;
+    const inspectionsDeltaPercent = previousTotal > 0 ? Number((((currentYearInspections.length - previousTotal) / previousTotal) * 100).toFixed(2)) : currentYearInspections.length > 0 ? 100 : 0;
+
+    return {
+      year,
+      previousYear,
+      totalInspections: currentYearInspections.length,
+      previousYearInspections: previousTotal,
+      inspectionsDeltaPercent,
+      openInspections: currentYearInspections.filter((inspection) => inspection.status !== InspectionStatus.CLOSED).length,
+      openFindings,
+      pendingApprovalInspections: currentYearInspections.filter((inspection) => inspection.status === InspectionStatus.SUBMITTED || inspection.status === InspectionStatus.UNDER_REVIEW).length,
+      closedFindingsRate: currentYearFindings.length > 0 ? Number(((closedFindings / currentYearFindings.length) * 100).toFixed(2)) : 0,
+    };
+  }
 
   async getSummary(query: DashboardQuery = {}): Promise<InspectionDashboardSummaryResponse> {
     const [inspections, findings] = await Promise.all([this.inspections.find(), this.findings.find()]);
@@ -267,6 +299,10 @@ export class InspectionDashboardService {
 
   private isOpenFinding(finding: InspectionFindingEntity): boolean {
     return finding.status !== InspectionFindingStatus.CLOSED && finding.status !== InspectionFindingStatus.CANCELLED;
+  }
+
+  private inspectionBelongsToYear(inspection: InspectionEntity, year: number): boolean {
+    return getDashboardInspectionDate(inspection)?.getFullYear() === year;
   }
 
   private isSevereFinding(finding: InspectionFindingEntity): boolean {

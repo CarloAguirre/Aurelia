@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { InspectionDashboardOpenFindingRowResponse } from '@aurelia/contracts';
 
 type DashboardFigmaOpenFindingsDetailsTableProps = {
@@ -17,6 +18,7 @@ type SortIconProps = {
 
 type ExpandIconProps = {
   path: string;
+  expanded?: boolean;
 };
 
 type HeaderCellProps = {
@@ -24,6 +26,13 @@ type HeaderCellProps = {
   sortIconPath?: string;
   accent?: boolean;
   center?: boolean;
+};
+
+type SeveritySummaryCardProps = {
+  count: number;
+  label: string;
+  badgeClass: string;
+  textClass: string;
 };
 
 const tableColumns = '86px minmax(180px,1fr) minmax(180px,1fr) 121.5px 127.5px 122px';
@@ -38,9 +47,9 @@ function SortIcon({ path, color = 'white' }: SortIconProps) {
   );
 }
 
-function ExpandIcon({ path }: ExpandIconProps) {
+function ExpandIcon({ path, expanded = false }: ExpandIconProps) {
   return (
-    <div className="h-[10px] relative shrink-0 w-[12.5px]" data-name="Image">
+    <div className="h-[10px] relative shrink-0 w-[12.5px]" data-name="Image" style={{ transform: expanded ? 'scaleY(-1)' : undefined }}>
       <svg className="absolute block inset-0 size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 12.5 10">
         <path d={path} fill="#131313" />
       </svg>
@@ -59,17 +68,38 @@ function HeaderCell({ label, sortIconPath, accent = false, center = false }: Hea
   );
 }
 
+function SeveritySummaryCard({ count, label, badgeClass, textClass }: SeveritySummaryCardProps) {
+  return (
+    <div className="bg-white border border-[#e3e3e3] border-solid flex h-[84px] min-w-[78px] flex-col gap-[8px] items-start justify-center overflow-hidden px-[13px] py-[9px] relative rounded-[8px] shadow-[0px_1px_3px_0px_rgba(0,0,0,0.05)] shrink-0" data-name="Container">
+      <p className="font-['Inter:Bold',sans-serif] font-bold leading-[normal] text-[#131313] text-[18px] whitespace-nowrap">{count} obs</p>
+      <div className={`${badgeClass} relative rounded-[6px] shrink-0`} data-name="Text">
+        <div className="flex items-center px-[8px] py-[2px] relative size-full">
+          <p className={`font-['Inter:Bold',sans-serif] font-bold leading-[normal] text-[10px] whitespace-nowrap ${textClass}`}>{label}</p>
+        </div>
+      </div>
+      <div className="absolute bg-[#570b1d] h-full left-0 top-0 w-[3px]" data-name="Text" />
+    </div>
+  );
+}
+
 function getAgeTextClass(row: InspectionDashboardOpenFindingRowResponse) {
   if (row.hasSevereOpenFindings) return 'text-[#570b1d]';
   if (row.ageDays >= 10) return 'text-[#463100]';
   return 'text-[#2a5c16]';
 }
 
-function rowBackground(row: InspectionDashboardOpenFindingRowResponse) {
+function rowBackground(row: InspectionDashboardOpenFindingRowResponse, expanded: boolean) {
+  if (expanded) return 'bg-[#ffeab8]';
   return row.hasSevereOpenFindings ? 'bg-[#ffd0db]' : 'bg-white';
 }
 
 export function DashboardFigmaOpenFindingsDetailsTable({ rows, severeOpenFindings, openInspections, sortIconPath, expandIconPath, isLoading = false, isError = false }: DashboardFigmaOpenFindingsDetailsTableProps) {
+  const [expandedInspectionId, setExpandedInspectionId] = useState<string | null>(null);
+
+  function toggleRow(inspectionId: string) {
+    setExpandedInspectionId((current) => (current === inspectionId ? null : inspectionId));
+  }
+
   return (
     <div className="bg-white relative rounded-[8px] shrink-0 w-full" data-name="Container">
       <div className="bg-clip-padding border-0 border-[transparent] border-solid content-stretch flex flex-col items-start overflow-hidden px-[19px] py-[17px] relative rounded-[inherit] size-full">
@@ -109,28 +139,46 @@ export function DashboardFigmaOpenFindingsDetailsTable({ rows, severeOpenFinding
               <div className="h-[66px] flex items-center justify-center text-[12px] text-[#646464] border-b border-[#e3e3e3] border-solid">Sin observaciones abiertas</div>
             ) : (
               rows.map((row) => {
-                const bgClass = rowBackground(row);
+                const isExpanded = expandedInspectionId === row.inspectionId;
+                const bgClass = rowBackground(row, isExpanded);
 
                 return (
-                  <div className="grid h-[33px]" style={{ gridTemplateColumns: tableColumns }} key={row.inspectionId}>
-                    <div className={`${bgClass} border-b border-r border-[#e3e3e3] border-solid flex items-center px-[12px]`}>
-                      <p className="font-['Inter:Bold',sans-serif] font-bold leading-[normal] text-[#24588b] text-[12px] whitespace-nowrap">{row.inspectionNumber}</p>
+                  <div key={row.inspectionId}>
+                    <div className="grid h-[33px]" style={{ gridTemplateColumns: tableColumns }}>
+                      <div className={`${bgClass} border-b border-r border-[#e3e3e3] border-solid flex items-center px-[12px]`}>
+                        <p className="font-['Inter:Bold',sans-serif] font-bold leading-[normal] text-[#24588b] text-[12px] whitespace-nowrap">{row.inspectionNumber}</p>
+                      </div>
+                      <div className={`${bgClass} border-b border-r border-[#e3e3e3] border-solid flex items-center px-[12px] min-w-0`}>
+                        <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] text-[#131313] text-[12px] truncate">{row.company}</p>
+                      </div>
+                      <div className={`${bgClass} border-b border-r border-[#e3e3e3] border-solid flex items-center px-[12px] min-w-0`}>
+                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[normal] text-[#333] text-[12px] truncate">{row.area}</p>
+                      </div>
+                      <div className={`${bgClass} border-b border-r border-[#e3e3e3] border-solid flex items-center justify-center px-[12px]`}>
+                        <p className={`font-['Inter:Bold',sans-serif] font-bold leading-[normal] text-[12px] whitespace-nowrap ${getAgeTextClass(row)}`}>{row.ageDays}</p>
+                      </div>
+                      <div className={`${bgClass} border-b border-r border-[#e3e3e3] border-solid flex items-center justify-center px-[12px]`}>
+                        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[normal] text-[#333] text-[12px] whitespace-nowrap">{row.openFindings}</p>
+                      </div>
+                      <button className={`${bgClass} border-b border-r border-[#e3e3e3] border-solid flex items-center justify-center px-[12px] cursor-pointer`} type="button" onClick={() => toggleRow(row.inspectionId)}>
+                        <ExpandIcon path={expandIconPath} expanded={isExpanded} />
+                      </button>
                     </div>
-                    <div className={`${bgClass} border-b border-r border-[#e3e3e3] border-solid flex items-center px-[12px] min-w-0`}>
-                      <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] text-[#131313] text-[12px] truncate">{row.company}</p>
-                    </div>
-                    <div className={`${bgClass} border-b border-r border-[#e3e3e3] border-solid flex items-center px-[12px] min-w-0`}>
-                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[normal] text-[#333] text-[12px] truncate">{row.area}</p>
-                    </div>
-                    <div className={`${bgClass} border-b border-r border-[#e3e3e3] border-solid flex items-center justify-center px-[12px]`}>
-                      <p className={`font-['Inter:Bold',sans-serif] font-bold leading-[normal] text-[12px] whitespace-nowrap ${getAgeTextClass(row)}`}>{row.ageDays}</p>
-                    </div>
-                    <div className={`${bgClass} border-b border-r border-[#e3e3e3] border-solid flex items-center justify-center px-[12px]`}>
-                      <p className="font-['Inter:Regular',sans-serif] font-normal leading-[normal] text-[#333] text-[12px] whitespace-nowrap">{row.openFindings}</p>
-                    </div>
-                    <div className={`${bgClass} border-b border-r border-[#e3e3e3] border-solid flex items-center justify-center px-[12px]`}>
-                      <ExpandIcon path={expandIconPath} />
-                    </div>
+
+                    {isExpanded ? (
+                      <div className="bg-[#fff8e9] h-[99px] overflow-hidden relative w-full border-b border-[#e3e3e3] border-solid">
+                        <div className="absolute left-[14px] right-[14px] top-[14px] flex items-center justify-between gap-[16px]">
+                          <div className="flex gap-[12px] items-center shrink-0">
+                            <SeveritySummaryCard count={row.severityCounts.severe} label="Grave" badgeClass="bg-[#ffd0db]" textClass="text-[#570b1d]" />
+                            <SeveritySummaryCard count={row.severityCounts.moderate} label="Moderado" badgeClass="bg-[#ffe1cd]" textClass="text-[#532a0e]" />
+                            <SeveritySummaryCard count={row.severityCounts.minor} label="Menor" badgeClass="bg-[#e0ffd3]" textClass="text-[#2a5c16]" />
+                          </div>
+                          <a className="bg-[#c8a064] flex items-center px-[16px] py-[10.5px] rounded-[6px] shrink-0" href="/inspections">
+                            <p className="font-['Inter:Bold',sans-serif] font-bold leading-[normal] text-[12px] text-center text-white whitespace-nowrap">Ir a esta inspección</p>
+                          </a>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 );
               })

@@ -1,3 +1,6 @@
+import type { InspectionManagementKpisResponse } from '@aurelia/contracts';
+import { useInspectionManagementKpis } from '../../shared/hooks/useInspectionManagementKpis';
+
 type KpiIconKind = 'total' | 'open' | 'approval' | 'closed';
 
 type KpiCardProps = {
@@ -40,6 +43,58 @@ const rows: Row[] = [
 
 const tableColumns = [72, 147, 199, 208, 197, 132, 196, 84, 155, 132, 119, 83.5];
 const tableWidth = tableColumns.reduce((total, width) => total + width, 0);
+const numberFormatter = new Intl.NumberFormat('es-CL');
+const percentFormatter = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2, minimumFractionDigits: 0 });
+
+function formatNumber(value: number) {
+  return numberFormatter.format(value);
+}
+
+function formatPercent(value: number) {
+  return `${percentFormatter.format(value)}%`;
+}
+
+function formatDeltaHelper(data: InspectionManagementKpisResponse) {
+  const direction = data.inspectionsDeltaPercent > 0 ? '↑' : data.inspectionsDeltaPercent < 0 ? '↓' : '→';
+  return `${direction} ${formatPercent(Math.abs(data.inspectionsDeltaPercent))} vs ${data.previousYear}`;
+}
+
+function buildManagementKpis(data: InspectionManagementKpisResponse | undefined, isLoading: boolean, isError: boolean) {
+  const currentYear = new Date().getFullYear();
+  if (isLoading) {
+    return {
+      year: currentYear,
+      totalInspections: '...',
+      totalHelper: 'Cargando datos...',
+      openInspections: '...',
+      openHelper: 'Cargando observaciones...',
+      pendingApproval: '...',
+      closedFindingsRate: '...',
+    };
+  }
+
+  if (isError || !data) {
+    return {
+      year: currentYear,
+      totalInspections: '—',
+      totalHelper: 'No disponible',
+      openInspections: '—',
+      openHelper: 'No disponible',
+      pendingApproval: '—',
+      closedFindingsRate: '—',
+    };
+  }
+
+  return {
+    year: data.year,
+    totalInspections: formatNumber(data.totalInspections),
+    totalHelper: formatDeltaHelper(data),
+    openInspections: formatNumber(data.openInspections),
+    openHelper: `${formatNumber(data.openFindings)} observaciones pendientes`,
+    pendingApproval: formatNumber(data.pendingApprovalInspections),
+    closedFindingsRate: formatPercent(data.closedFindingsRate),
+  };
+}
 
 function KpiIcon({ kind, color }: { kind: KpiIconKind; color: string }) {
   const className = 'h-[11px] w-[13.75px] shrink-0';
@@ -398,13 +453,16 @@ function InspectionTable() {
 }
 
 export function InspectionsManagementView() {
+  const kpisQuery = useInspectionManagementKpis();
+  const kpis = buildManagementKpis(kpisQuery.data, kpisQuery.isLoading, kpisQuery.isError);
+
   return (
     <div className="bg-[#f7f7f7] flex h-[calc(100vh-56px)] w-full flex-col items-start overflow-y-auto overflow-x-hidden px-[24px] py-[20px]">
       <div className="grid w-full grid-cols-[repeat(auto-fit,minmax(244px,1fr))] gap-[12px]">
-        <KpiCard icon="total" iconColor="#24588b" label="Total 2026" value="XXXX" helper="↑ 12% vs 2025" />
-        <KpiCard icon="open" iconColor="#806000" label="Inspecciones abiertas" value="XX" helper="111 observaciones pendientes" valueClass="text-[#463100]" />
-        <KpiCard icon="approval" iconColor="#bd3b5b" label="Pend. de aprobación" value="X" helper="Ejecutadas esperando Admin GF" valueClass="text-[#bd3b5b]" />
-        <KpiCard icon="closed" iconColor="#53bd49" label="% Obs. cerradas" value="XX%" helper="Meta >99%" valueClass="text-[#2a5c16]" />
+        <KpiCard icon="total" iconColor="#24588b" label={`Total ${kpis.year}`} value={kpis.totalInspections} helper={kpis.totalHelper} />
+        <KpiCard icon="open" iconColor="#806000" label="Inspecciones abiertas" value={kpis.openInspections} helper={kpis.openHelper} valueClass="text-[#463100]" />
+        <KpiCard icon="approval" iconColor="#bd3b5b" label="Pend. de aprobación" value={kpis.pendingApproval} helper="Ejecutadas esperando Admin GF" valueClass="text-[#bd3b5b]" />
+        <KpiCard icon="closed" iconColor="#53bd49" label="% Obs. cerradas" value={kpis.closedFindingsRate} helper="Meta >99%" valueClass="text-[#2a5c16]" />
       </div>
       <ActiveFiltersBar />
       <div className="w-full pt-[16px]">

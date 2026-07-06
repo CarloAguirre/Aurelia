@@ -120,11 +120,19 @@ Pendiente:
 
 ### Iteracion 7 - Persistencia y reanudacion
 
-Estado: pendiente.
+Estado: parcialmente completada.
 
-- Persistir draft y estado del chat.
-- Mostrar opcion de continuar borrador o iniciar desde cero.
-- Limpiar estado al guardar.
+- Persistencia local del draft conversacional en `localStorage`.
+- Los objetos `File` no se persisten; solo se conserva el nombre de la evidencia para poder reanudar el contexto.
+- La pantalla inicial detecta borrador AurelIA disponible.
+- Permite `Continuar borrador` o `Descartar borrador`.
+- Al guardar, cancelar o crear otra inspeccion se limpia el snapshot local.
+- `AssistantChatStep` reconstruye el punto pendiente desde el draft y continúa en el chat.
+
+Pendiente:
+
+- Persistir historial completo de `messages` si se requiere recuperar visualmente toda la conversación, no solo el siguiente paso.
+- Definir comportamiento de evidencias si el usuario reanuda tras recargar y el objeto `File` ya no existe.
 
 ## Validacion por iteracion
 

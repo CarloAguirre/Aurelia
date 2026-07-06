@@ -64,6 +64,7 @@ Estado: parcialmente completada.
 - Widgets resueltos congelados con `resolvedMessages`.
 - Primera pasada visual global para header, fondo, tarjetas, chips, upload e input inferior.
 - Segunda pasada sobre `PhotoStepWidget`: tarjeta dashed centrada, icon box, skip link y receipt verde claro.
+- Tercera pasada sobre `QuestionCard`: header compacto, numero de pregunta, botones SÍ/NO/N/A y jerarquia visual mas cercana a mobile.
 
 Pendiente:
 
@@ -89,6 +90,7 @@ Estado: parcialmente completada.
 - Guardado de observacion despues de confirmar SLA.
 - Primera pasada visual de cards via stylesheet del modal.
 - Segunda pasada visual de SLA: card compacta, input numerico de 55x30 y boton verde estilo mobile.
+- Tercera pasada sobre `CriticalityCard`: opciones tipo lista, icono visual, borde y texto mas alineados al selector mobile.
 
 Pendiente:
 
@@ -106,10 +108,11 @@ Estado: parcialmente completada.
 - `PersonnelPicker` web con usuario sugerido y seleccion multiple ya existe como version inicial.
 - Segunda pasada visual de `CompanySuggestionCard`: header crema, label uppercase, reason row, acciones secundaria/primaria estilo mobile.
 - Segunda pasada parcial de `PersonnelPicker`: seleccionados en teal surf y sugeridos con tonos mobile.
+- Tercera pasada de `PersonnelPicker`: chips transformados visualmente a filas con avatar, check circular y estado seleccionado.
 
 Pendiente:
 
-- Reemplazar chips de `PersonnelPicker` por filas con avatar, cargo, badge sugerido y check circular.
+- Reemplazar visual CSS por markup real con avatar, cargo, badge sugerido y check circular.
 - Mejorar heuristica de matching cuando la IA devuelve texto largo y no solo el nombre de empresa.
 
 ### Iteracion 6 - Resumen y guardado
@@ -120,6 +123,7 @@ Estado: parcialmente completada.
 - Botones `Guardar hallazgo` y `Guardar checklist`.
 - Pantalla final enriquecida con resumen de area, sector, fecha, registro, empresa y observaciones.
 - Correccion: `Nueva inspeccion` desde guardado limpia el draft antes de volver al inicio.
+- Tercera pasada visual de `SummaryCard`: cards con sombra, badge teal y boton guardar en teal.
 
 Pendiente:
 
@@ -151,6 +155,7 @@ Estado: en curso.
 - Se agregó clase `new-inspection-modal-panel` para evitar estilos globales fuera del modal.
 - Auditados componentes mobile `AiProposalCard`, `CompanySuggestionCard`, `PhotoStepWidget`, `SlaConfirmWidget` y `PersonnelPicker`.
 - Segunda pasada aplicada sobre cards IA, empresa, foto, SLA y selección de responsables.
+- Tercera pasada aplicada sobre `QuestionCard`, `CriticalityCard`, `SummaryCard`, boton guardar y selector de responsables.
 
 Pendiente:
 

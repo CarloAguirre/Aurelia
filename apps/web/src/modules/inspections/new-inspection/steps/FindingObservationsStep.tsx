@@ -158,6 +158,103 @@ function PhotoUpload({ evidence, onChange }: { evidence: NewInspectionFindingObs
   );
 }
 
+function CompanySearchSheet({
+  visible,
+  options,
+  selectedId,
+  loading,
+  onClose,
+  onSelect,
+}: {
+  visible: boolean;
+  options: SelectSheetOption[];
+  selectedId?: string | null;
+  loading?: boolean;
+  onClose: () => void;
+  onSelect: (option: SelectSheetOption) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const filteredOptions = useMemo(() => {
+    const value = query.trim().toLowerCase();
+    if (!value) return options;
+    return options.filter((option) => `${option.label} ${option.description ?? ''}`.toLowerCase().includes(value));
+  }, [options, query]);
+
+  useEffect(() => {
+    if (visible) setQuery('');
+  }, [visible]);
+
+  if (!visible) return null;
+
+  return (
+    <div className="fixed bottom-[16px] right-[20px] top-[16px] z-[1100] flex w-[360px] max-w-[calc(100vw-40px)] items-end overflow-hidden rounded-[22px] bg-[rgba(19,19,19,0.75)]" onClick={onClose}>
+      <div className="flex h-[705px] max-h-[88%] w-full flex-col rounded-t-[16px] bg-white px-[14px] pb-[24px] pt-[12px]" onClick={(event) => event.stopPropagation()}>
+        <div className="flex w-full flex-col items-center pt-[10px]"><div className="h-[4px] w-[40px] rounded-[2px] bg-[#D1D1D1]" /></div>
+        <div className="mt-[24px] grid gap-[12px]">
+          <p className="text-[18px] font-bold leading-[21.6px] text-[#131313]">Seleccione la empresa</p>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Ingrese nombre de la empresa"
+            className="h-[50px] w-full rounded-[10px] border-[1.5px] border-[#24588B] bg-[#F6FAFF] px-[15.5px] py-[15px] text-[13px] leading-[19.5px] text-[#131313] outline-none placeholder:text-[#131313]"
+          />
+        </div>
+        <div className="mt-[12px] min-h-0 flex-1 overflow-y-auto rounded-[12px] bg-white p-[8px]">
+          {loading ? <p className="px-[8px] py-[12px] text-[14px] leading-[22.7px] tracking-[0.28px] text-[#646464]">Cargando empresas...</p> : null}
+          {!loading && filteredOptions.length === 0 ? <p className="px-[8px] py-[12px] text-[14px] leading-[22.7px] tracking-[0.28px] text-[#646464]">No hay empresas disponibles</p> : null}
+          {!loading ? filteredOptions.map((option) => <button key={option.id} type="button" onClick={() => onSelect(option)} className={`flex min-h-[46.7px] w-full items-center rounded-[8px] px-[8px] py-[12px] text-left ${option.id === selectedId ? 'bg-[#F6FAFF]' : 'bg-white'}`}><span className="min-w-0 flex-1 text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313]">{option.label}</span></button>) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PersonnelSelectionSheet({
+  visible,
+  options,
+  selectedIds,
+  loading,
+  onClose,
+  onSave,
+}: {
+  visible: boolean;
+  options: SelectSheetOption[];
+  selectedIds: string[];
+  loading?: boolean;
+  onClose: () => void;
+  onSave: (ids: string[]) => void;
+}) {
+  const [draftIds, setDraftIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (visible) setDraftIds(selectedIds);
+  }, [selectedIds, visible]);
+
+  function toggle(id: string) {
+    setDraftIds((value) => value.includes(id) ? value.filter((item) => item !== id) : [...value, id]);
+  }
+
+  if (!visible) return null;
+
+  return (
+    <div className="fixed bottom-[16px] right-[20px] top-[16px] z-[1100] flex w-[360px] max-w-[calc(100vw-40px)] items-end overflow-hidden rounded-[22px] bg-[rgba(19,19,19,0.75)]" onClick={onClose}>
+      <div className="flex max-h-[76%] w-full flex-col overflow-hidden rounded-t-[16px] bg-white" onClick={(event) => event.stopPropagation()}>
+        <div className="flex w-full flex-col items-center px-[14px] py-[12px]"><div className="mt-[10px] h-[4px] w-[40px] rounded-[2px] bg-[#D1D1D1]" /></div>
+        <div className="bg-white px-[14px] py-[12px]"><p className="text-[14px] font-bold leading-none text-[#131313]">Seleccione al personal encargado</p></div>
+        <div className="min-h-0 flex-1 overflow-y-auto bg-white p-[8px] shadow-[0_4px_8px_rgba(19,19,19,0.24)]">
+          {loading ? <p className="px-[8px] py-[12px] text-[14px] leading-[22.7px] tracking-[0.28px] text-[#646464]">Cargando personal...</p> : null}
+          {!loading && options.length === 0 ? <p className="px-[8px] py-[12px] text-[14px] leading-[22.7px] tracking-[0.28px] text-[#646464]">No hay personal disponible</p> : null}
+          {!loading ? options.map((option) => {
+            const selected = draftIds.includes(option.id);
+            return <button key={option.id} type="button" onClick={() => toggle(option.id)} className="flex h-[40px] w-full items-center gap-[8px] rounded-[8px] bg-white px-[8px] py-[12px] text-left"><span className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border-[1.5px] ${selected ? 'border-[#C8A064] bg-[#C8A064] text-white' : 'border-[#131313] bg-white text-transparent'}`}>✓</span><span className="min-w-0 flex-1 truncate text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313]">{option.label} - [{option.description ?? 'Tipo de perfil'}]</span></button>;
+          }) : null}
+        </div>
+        <div className="flex w-full gap-[8px] border-t border-[#E3E3E3] bg-white px-[20px] pb-[14px] pt-[15px]"><button type="button" className="h-[44px] flex-1 rounded-[14px] border-2 border-[#C8A064] bg-white px-[20px] text-[13px] font-bold text-[#C8A064]" onClick={onClose}>Cancelar</button><button type="button" className="h-[44px] flex-1 rounded-[14px] bg-[#C8A064] px-[12px] text-[15px] font-bold text-white shadow-[0_2px_5px_rgba(200,160,100,0.3)]" onClick={() => { onSave(draftIds); onClose(); }}>Guardar selección</button></div>
+      </div>
+    </div>
+  );
+}
+
 function SlaReassignSheet({
   visible,
   calculatedLabel,
@@ -211,23 +308,7 @@ function SlaReassignSheet({
   );
 }
 
-function ObservationCard({
-  observation,
-  index,
-  severityOptions,
-  onOpenSeverity,
-  onChange,
-  onSave,
-  onRemove,
-}: {
-  observation: NewInspectionFindingObservationDraft;
-  index: number;
-  severityOptions: SelectSheetOption[];
-  onOpenSeverity: () => void;
-  onChange: (patch: Partial<Omit<NewInspectionFindingObservationDraft, 'id'>>) => void;
-  onSave: () => void;
-  onRemove: () => void;
-}) {
+function ObservationCard({ observation, index, severityOptions, onOpenSeverity, onChange, onSave, onRemove }: { observation: NewInspectionFindingObservationDraft; index: number; severityOptions: SelectSheetOption[]; onOpenSeverity: () => void; onChange: (patch: Partial<Omit<NewInspectionFindingObservationDraft, 'id'>>) => void; onSave: () => void; onRemove: () => void }) {
   const [slaSheetOpen, setSlaSheetOpen] = useState(false);
   const complete = Boolean(observation.detectedCondition.trim() && observation.correctiveAction.trim() && observation.evidence && observation.severityId);
   const slaLabel = observation.severityClosureTimeLabel ?? findSeverityLabel(observation.severityId ?? '', severityOptions) ?? '5 días hábiles';
@@ -300,11 +381,6 @@ export function FindingObservationsStep({ onBack, onNext }: FindingObservationsS
     setObservationIdForSeverity(null);
   }
 
-  function toggleResponsible(userId: string) {
-    const next = draft.findingResponsibleIds.includes(userId) ? draft.findingResponsibleIds.filter((id) => id !== userId) : [...draft.findingResponsibleIds, userId];
-    setFindingResponsibles(next);
-  }
-
   function addObservation() {
     if (!draft.findingTypeId) return;
     addFindingObservation();
@@ -337,8 +413,8 @@ export function FindingObservationsStep({ onBack, onNext }: FindingObservationsS
       </div>
       <div className="shrink-0 border-t border-[#E3E3E3] bg-white pb-[8px] pt-[10px]"><div className="flex w-full gap-[10px] px-[14px]"><button type="button" className={`!flex !h-[50px] !w-auto !min-w-0 !shrink-0 !items-center !justify-center !gap-[8px] !rounded-[14px] !border-[2px] !bg-white !px-[20px] !text-[14px] !font-bold ${hasSavedObservation ? '!border-[#D1D1D1] !text-[#ACACAC]' : '!border-[#C8A064] !text-[#C8A064]'}`} onClick={onBack}><ArrowLeftIcon />Atrás</button><button type="button" className={`!flex !h-[50px] !w-auto !min-w-0 !flex-1 !items-center !justify-center !gap-[8px] !rounded-[14px] !text-[14px] !font-bold ${canContinue ? '!bg-[#C8A064] !text-white !shadow-[0_2px_4px_rgba(200,160,100,0.25)]' : '!bg-[#D1D1D1] !text-[#ACACAC] !shadow-none'}`} onClick={onNext} disabled={!canContinue}>Continuar<ArrowRightIcon /></button></div><div className="mx-auto mb-[4px] mt-[14px] h-[4px] w-[120px] rounded-[2px] bg-[#D1D1D1]" /></div>
       <SelectSheet visible={picker === 'finding-type'} title="Tipo de hallazgo" options={findingTypeOptions} selectedId={draft.findingTypeId} loading={findingTypesQuery.isLoading} emptyText="No hay tipos disponibles" onClose={() => setPicker(null)} onSelect={onSelectFindingType} />
-      <SelectSheet visible={picker === 'company'} title="Seleccionar empresa" options={companyOptions} selectedId={draft.findingCompanyId} loading={companiesQuery.isLoading} emptyText="No hay empresas disponibles" onClose={() => setPicker(null)} onSelect={onSelectCompany} />
-      <SelectSheet visible={picker === 'users'} title="Seleccionar personal" options={userOptions} selectedId={null} loading={usersByCompanyQuery.isLoading} emptyText="No hay personal disponible" onClose={() => setPicker(null)} onSelect={(option) => toggleResponsible(option.id)} />
+      <CompanySearchSheet visible={picker === 'company'} options={companyOptions} selectedId={draft.findingCompanyId} loading={companiesQuery.isLoading} onClose={() => setPicker(null)} onSelect={onSelectCompany} />
+      <PersonnelSelectionSheet visible={picker === 'users'} options={userOptions} selectedIds={draft.findingResponsibleIds} loading={usersByCompanyQuery.isLoading} onClose={() => setPicker(null)} onSave={setFindingResponsibles} />
       <SelectSheet visible={picker === 'severity'} title="Seleccionar criticidad" options={severityOptions} selectedId={draft.findingObservations.find((item) => item.id === observationIdForSeverity)?.severityId ?? null} loading={severitiesQuery.isLoading} emptyText="No hay criticidades disponibles" onClose={() => { setPicker(null); setObservationIdForSeverity(null); }} onSelect={onSelectSeverity} />
     </>
   );

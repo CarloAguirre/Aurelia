@@ -45,7 +45,7 @@ El asistente no debe comportarse como un wizard con pantallas. Debe comportarse 
 
 ### Iteracion 1 - Base conversacional
 
-Objetivo: reemplazar el control por `stage` por un motor de mensajes equivalente al mobile.
+Estado: completada.
 
 Incluye:
 
@@ -55,45 +55,62 @@ Incluye:
 - Flujo base dentro del chat para area, sector, tipo, fecha, ubicacion, plantilla/hallazgo, foto, preguntas, responsables y resumen.
 - Input inferior habilitado cuando el bot espera texto.
 
-No incluye aun:
-
-- Persistencia real de borrador conversacional.
-- IA de medida correctiva.
-- SLA editable.
-- Sugerencia IA de empresa.
-- Paridad visual fina de cada card.
-
 ### Iteracion 2 - Widgets visuales de checklist y fotografia
 
-- Extraer `QuestionCard` web equivalente a mobile.
-- Crear `PhotoStepWidget` web con recibo de foto, hora y metadata.
-- Congelar widgets resueltos igual que mobile.
+Estado: parcialmente completada en la iteracion base.
+
+- `QuestionCard` web equivalente inicial.
+- `PhotoStepWidget` web con recibo de foto, hora y metadata.
+- Widgets resueltos congelados con `resolvedMessages`.
+
+Pendiente:
+
+- Paridad visual fina contra los componentes mobile.
+- Extraccion a componentes pequeños para reducir el tamaño de `AssistantChatStep.tsx`.
 
 ### Iteracion 3 - Rama hallazgo IA
+
+Estado: completada funcionalmente.
 
 - Integrar `suggestCorrectiveMeasure`.
 - Crear `AiProposalCard` web.
 - Permitir aceptar o editar medida.
+- Mantener fallback local si `/ai/suggest` falla.
 
 ### Iteracion 4 - Criticidad y SLA
 
-- Crear card de criticidad con descripcion.
-- Crear `SlaConfirmWidget` web.
-- Guardar observacion solo despues de confirmar SLA.
+Estado: parcialmente completada en la iteracion base.
+
+- Card de criticidad con descripcion.
+- `SlaConfirmWidget` web.
+- Guardado de observacion despues de confirmar SLA.
+
+Pendiente:
+
+- Ajuste visual fino contra mobile.
 
 ### Iteracion 5 - Empresa y personal
 
-- Integrar `suggestCompany` si existe servicio web compatible.
+Estado: pendiente.
+
+- Integrar `suggestCompany`.
 - Crear `CompanySuggestionCard` web.
 - Crear `PersonnelPicker` web con sugerido y seleccion multiple.
 
 ### Iteracion 6 - Resumen y guardado
 
-- Resumen diferenciado para Hallazgo y Checklist.
+Estado: parcialmente completada.
+
+- Resumen diferenciado inicial.
 - Botones `Guardar hallazgo` y `Guardar checklist`.
-- Definir resultado post-guardado web consistente.
+
+Pendiente:
+
+- Ajustar detalle visual y resultado post-guardado web.
 
 ### Iteracion 7 - Persistencia y reanudacion
+
+Estado: pendiente.
 
 - Persistir draft y estado del chat.
 - Mostrar opcion de continuar borrador o iniciar desde cero.

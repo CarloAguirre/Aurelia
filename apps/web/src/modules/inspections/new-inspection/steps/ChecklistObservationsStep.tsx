@@ -20,6 +20,7 @@ interface ChecklistObservationsStepProps {
 }
 
 type ChecklistItemRow = InspectionChecklistItem & { sectionTitle: string };
+type AttachmentInputVariant = 'photo' | 'field';
 
 function useOnlineStatus() {
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
@@ -59,6 +60,11 @@ function getTemplateItems(template: InspectionChecklistTemplateResponse | undefi
         .sort((a, b) => a.sortOrder - b.sortOrder)
         .map((item) => ({ ...item, sectionTitle: section.title })),
     );
+}
+
+function getTemplateHeaderTitle(template: InspectionChecklistTemplateResponse | undefined, fallback: string | null) {
+  const source = template?.name ?? fallback ?? 'Checklist normativo';
+  return source.replace(/^Almacenamiento de\s+/i, '').replace(/\s*-\s*/g, ' – ').trim() || source;
 }
 
 function BackIcon() {
@@ -145,18 +151,29 @@ function ManualStepper() {
 
 function ChecklistAnswerButton({ label, selected, tone, onPress }: { label: string; selected: boolean; tone: 'yes' | 'no' | 'na'; onPress: () => void }) {
   const selectedClass = tone === 'yes' ? 'border-[#35A137] bg-[#E4FBE5] text-[#247527]' : tone === 'no' ? 'border-[#BD3B5B] bg-[#FFE5EC] text-[#7A0E23]' : 'border-[#24588B] bg-[#E8F3FF] text-[#0F3F69]';
-  return <button type="button" onClick={onPress} className={`h-[32px] min-w-[70px] rounded-[8px] border px-[10px] text-[12px] font-bold ${selected ? selectedClass : 'border-[#D1D1D1] bg-white text-[#646464]'}`}>{label}</button>;
+  return <button type="button" onClick={onPress} className={`flex h-[40px] flex-1 items-center justify-center rounded-[8px] border-[1.5px] px-[8px] text-center text-[12px] font-bold leading-none ${selected ? selectedClass : 'border-[#D1D1D1] bg-[#F6FAFF] text-[#131313]'}`}>{label}</button>;
 }
 
-function AttachmentInput({ value, emptyLabel, onPick }: { value: string | null; emptyLabel: string; onPick: (name: string, file: File) => void }) {
+function AttachmentInput({ value, emptyLabel, emptySubtitle, variant = 'field', onPick }: { value: string | null; emptyLabel: string; emptySubtitle?: string; variant?: AttachmentInputVariant; onPick: (name: string, file: File) => void }) {
   function onChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
     onPick(file.name, file);
   }
 
+  if (variant === 'photo') {
+    return (
+      <label className="flex w-full cursor-pointer flex-col items-center justify-center rounded-[10px] border-2 border-dashed border-[#D1D1D1] bg-[#F6FAFF] px-[16px] py-[24px] text-center">
+        <input type="file" className="hidden" accept="image/*" onChange={onChange} />
+        <span className="text-[28px] leading-none">📷</span>
+        <span className={`mt-[6px] max-w-full truncate text-[13px] font-semibold leading-none ${value ? 'text-[#247527]' : 'text-[#646464]'}`}>{value ?? emptyLabel}</span>
+        {!value && emptySubtitle ? <span className="mt-[3px] text-[11px] leading-none text-[#ACACAC]">{emptySubtitle}</span> : null}
+      </label>
+    );
+  }
+
   return (
-    <label className="mt-[4px] flex min-h-[58px] cursor-pointer items-center rounded-[10px] border-[1.5px] border-dashed border-[#D1D1D1] bg-[#F6FAFF] px-[12px] py-[8px]">
+    <label className="mt-[4px] flex min-h-[48px] cursor-pointer items-center rounded-[10px] border-[1.5px] border-dashed border-[#D1D1D1] bg-[#F6FAFF] px-[12px] py-[8px]">
       <input type="file" className="hidden" accept="image/*" onChange={onChange} />
       <span className={`truncate text-[13px] font-semibold ${value ? 'text-[#1f6f23]' : 'text-[#646464]'}`}>{value ?? emptyLabel}</span>
     </label>
@@ -168,11 +185,74 @@ function ChecklistItemCard({ item, index, answer, detail, onAnswer, onDetail }: 
   const isYes = answer === InspectionAnswerValue.COMPLIANT;
 
   return (
-    <div className="rounded-[12px] border border-[#E3E3E3] bg-white p-[12px]">
-      <div className="mb-[8px] flex items-start gap-[8px]"><span className="mt-[2px] flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[#f0f4f8] text-[10px] font-bold text-[#24588b]">{index + 1}</span><p className="flex-1 text-[13px] leading-[18px] text-[#131313]">{item.question}</p></div>
-      <div className="flex flex-wrap gap-[8px]"><ChecklistAnswerButton label="SÍ" tone="yes" selected={answer === InspectionAnswerValue.COMPLIANT} onPress={() => onAnswer(InspectionAnswerValue.COMPLIANT)} /><ChecklistAnswerButton label="NO" tone="no" selected={answer === InspectionAnswerValue.NOT_COMPLIANT} onPress={() => onAnswer(InspectionAnswerValue.NOT_COMPLIANT)} /><ChecklistAnswerButton label="N/A" tone="na" selected={answer === InspectionAnswerValue.NOT_APPLICABLE} onPress={() => onAnswer(InspectionAnswerValue.NOT_APPLICABLE)} /></div>
-      {isNo ? <div className="mt-[10px] grid gap-[8px]"><div><p className="text-[12px] font-bold text-[#131313]">Condición detectada *</p><textarea className="mt-[4px] min-h-[64px] w-full resize-none rounded-[10px] border-[1.5px] border-[#D1D1D1] bg-[#F6FAFF] px-[10px] py-[8px] text-[13px] text-[#131313]" value={detail.detectedCondition ?? ''} onChange={(event) => onDetail({ detectedCondition: event.target.value })} placeholder="Describe la condición detectada" /></div><div><p className="text-[12px] font-bold text-[#131313]">Medida correctiva propuesta *</p><textarea className="mt-[4px] min-h-[64px] w-full resize-none rounded-[10px] border-[1.5px] border-[#D1D1D1] bg-[#F6FAFF] px-[10px] py-[8px] text-[13px] text-[#131313]" value={detail.correctiveAction ?? ''} onChange={(event) => onDetail({ correctiveAction: event.target.value })} placeholder="Indique la medida correctiva" /></div><div><p className="text-[12px] font-bold text-[#131313]">Evidencia *</p><AttachmentInput value={detail.evidence?.name ?? null} emptyLabel="Adjuntar foto" onPick={(name, file) => onDetail({ evidence: { name, file } })} /></div></div> : null}
-      {isYes ? <div className="mt-[10px]"><p className="text-[12px] font-bold text-[#131313]">Comentario (Opcional)</p><textarea className="mt-[4px] min-h-[54px] w-full resize-none rounded-[10px] border-[1.5px] border-[#D1D1D1] bg-[#F6FAFF] px-[10px] py-[8px] text-[13px] text-[#131313]" value={detail.comment ?? ''} onChange={(event) => onDetail({ comment: event.target.value })} placeholder="Comentario" /></div> : null}
+    <div className="border-b border-[#E3E3E3] pb-px last:border-b-0">
+      <div className="flex items-start px-[12px] pb-[6px] pt-[11px]">
+        <span className="shrink-0 pt-px text-[10px] font-bold leading-none text-[#ACACAC]">{index + 1}</span>
+        <p className="ml-[2px] flex-1 text-[12px] font-normal leading-[18px] text-[#131313]">{item.question}</p>
+      </div>
+      <div className="flex w-full gap-[6px] pb-[10px] pl-[32px] pr-[12px]">
+        <ChecklistAnswerButton label="SÍ" tone="yes" selected={answer === InspectionAnswerValue.COMPLIANT} onPress={() => onAnswer(InspectionAnswerValue.COMPLIANT)} />
+        <ChecklistAnswerButton label="NO" tone="no" selected={answer === InspectionAnswerValue.NOT_COMPLIANT} onPress={() => onAnswer(InspectionAnswerValue.NOT_COMPLIANT)} />
+        <ChecklistAnswerButton label="N/A" tone="na" selected={answer === InspectionAnswerValue.NOT_APPLICABLE} onPress={() => onAnswer(InspectionAnswerValue.NOT_APPLICABLE)} />
+      </div>
+      {isNo ? (
+        <div className="mb-[10px] ml-[32px] mr-[12px] grid gap-[8px] rounded-[10px] border border-[#E3E3E3] bg-[#FAFAFA] p-[10px]">
+          <div>
+            <p className="text-[12px] font-bold text-[#131313]">Condición detectada *</p>
+            <textarea className="mt-[4px] min-h-[64px] w-full resize-none rounded-[10px] border-[1.5px] border-[#D1D1D1] bg-[#F6FAFF] px-[10px] py-[8px] text-[13px] text-[#131313]" value={detail.detectedCondition ?? ''} onChange={(event) => onDetail({ detectedCondition: event.target.value })} placeholder="Describe la condición detectada" />
+          </div>
+          <div>
+            <p className="text-[12px] font-bold text-[#131313]">Medida correctiva propuesta *</p>
+            <textarea className="mt-[4px] min-h-[64px] w-full resize-none rounded-[10px] border-[1.5px] border-[#D1D1D1] bg-[#F6FAFF] px-[10px] py-[8px] text-[13px] text-[#131313]" value={detail.correctiveAction ?? ''} onChange={(event) => onDetail({ correctiveAction: event.target.value })} placeholder="Indique la medida correctiva" />
+          </div>
+          <div>
+            <p className="text-[12px] font-bold text-[#131313]">Evidencia *</p>
+            <AttachmentInput value={detail.evidence?.name ?? null} emptyLabel="Adjuntar foto" onPick={(name, file) => onDetail({ evidence: { name, file } })} />
+          </div>
+        </div>
+      ) : null}
+      {isYes ? (
+        <div className="mb-[10px] ml-[32px] mr-[12px]">
+          <p className="text-[12px] font-bold text-[#131313]">Comentario (Opcional)</p>
+          <textarea className="mt-[4px] min-h-[54px] w-full resize-none rounded-[10px] border-[1.5px] border-[#D1D1D1] bg-[#F6FAFF] px-[10px] py-[8px] text-[13px] text-[#131313]" value={detail.comment ?? ''} onChange={(event) => onDetail({ comment: event.target.value })} placeholder="Comentario" />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ProgressCard({ answeredCount, totalCount }: { answeredCount: number; totalCount: number }) {
+  const width = totalCount ? `${(answeredCount / totalCount) * 100}%` : '0%';
+  return (
+    <div className="rounded-[12px] border border-[#E3E3E3] bg-white px-[15px] py-[13px] shadow-[0_1px_1.5px_rgba(0,0,0,0.05)]">
+      <p className="text-[12px] font-bold leading-none text-[#131313]">{answeredCount} de {totalCount} respondidos</p>
+      <div className="mt-[8px] h-[6px] w-full overflow-hidden rounded-[4px] bg-[#E3E3E3]">
+        <div className="h-[6px] rounded-[4px] bg-[#3A9B3A]" style={{ width }} />
+      </div>
+    </div>
+  );
+}
+
+function ReferencePhotoBox({ value, onPick }: { value: string | null; onPick: (name: string, file: File) => void }) {
+  return (
+    <div className="grid gap-[6px]">
+      <p className="text-[13px] font-bold leading-none text-[#131313]">Foto referencial general para la inspección *</p>
+      <AttachmentInput value={value} emptyLabel="Tomar foto o galería" emptySubtitle="Fecha, hora y GPS automáticos" variant="photo" onPick={onPick} />
+    </div>
+  );
+}
+
+function ChecklistItemsCard({ title, code, items, draft, setAnswer, setItemDetail }: { title: string; code: string; items: ChecklistItemRow[]; draft: ReturnType<typeof useNewInspectionDraftStore>; setAnswer: (itemId: string, value: InspectionAnswerValue) => void; setItemDetail: (itemId: string, detail: Partial<NewInspectionChecklistItemDetail>) => void }) {
+  return (
+    <div className="min-h-px w-full overflow-hidden rounded-[12px] border border-[#E3E3E3] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+      <div className="flex items-center justify-between bg-[#001E39] px-[14px] py-[10px]">
+        <p className="truncate text-[12px] font-bold leading-none text-white">{title}</p>
+        <p className="ml-[10px] shrink-0 text-[10px] font-normal leading-none text-[rgba(255,255,255,0.45)]">{code}</p>
+      </div>
+      {items.length === 0 ? <p className="px-[12px] py-[14px] text-[12px] text-[#646464]">Esta plantilla no tiene ítems activos.</p> : null}
+      {items.map((item, index) => (
+        <ChecklistItemCard key={item.id} item={item} index={index} answer={draft.answersByItemId[item.id]} detail={draft.detailsByItemId[item.id] ?? {}} onAnswer={(value) => setAnswer(item.id, value)} onDetail={(patch) => setItemDetail(item.id, patch)} />
+      ))}
     </div>
   );
 }
@@ -232,6 +312,7 @@ export function ChecklistObservationsStep({ onBack, onNext }: ChecklistObservati
   const showOfflineBanner = !online || !user;
   const templateCode = draft.templateCode ?? selectedTemplate?.code ?? 'FR-00007';
   const templateItemsCount = draft.templateItemsCount ?? (selectedTemplate ? getItemsCount(selectedTemplate) : 15);
+  const templateTitle = getTemplateHeaderTitle(selectedTemplate, draft.templateName);
 
   return (
     <>
@@ -242,13 +323,20 @@ export function ChecklistObservationsStep({ onBack, onNext }: ChecklistObservati
       <ManualStepper />
 
       <div className="flex-1 overflow-y-auto bg-[#F7F7F7] px-[14px] pb-[16px] pt-[14px]">
-        <div><p className="text-[18px] font-bold leading-[21.6px] text-[#131313]">Checklist normativo</p><p className="mt-[4px] w-[332px] text-[12px] leading-[16.8px] text-[#646464]">Responde todos los ítems · los NO quedarán registrados como observaciones</p></div>
-        <div className="mt-[12px] rounded-[12px] border-[1.5px] border-[#E3E3E3] bg-white p-[15.5px] shadow-[0_1px_1.5px_rgba(0,0,0,0.05)]">
-          <div className="grid gap-[6px]"><p className="text-[13px] font-bold leading-none text-[#131313]">Seleccione la plantilla *</p><button type="button" onClick={() => setTemplatePickerOpen(true)} className="flex h-[50px] w-full items-end justify-between rounded-[10px] border border-[#D1D1D1] bg-[#F6FAFF] px-[14px] py-[15px] text-left" disabled={templatesQuery.isLoading}><span className="truncate text-[14px] font-medium leading-none text-[#131313]">{templatesQuery.isLoading ? 'Cargando plantillas...' : draft.templateName ?? 'Seleccione'}</span><CaretDownIcon /></button></div>
-          <div className="mt-[6px] flex h-[19px] items-center gap-[8px] pt-[6px]"><div className="flex items-center gap-[4px]"><HashIcon /><span className="text-[11px] leading-none text-[#646464]">{templateCode}</span></div><div className="flex items-center gap-[4px]"><ListIcon /><span className="text-[11px] leading-none text-[#646464]">{templateItemsCount} ítems</span></div></div>
-        </div>
+        <div className="grid gap-[12px]">
+          <div><p className="text-[18px] font-bold leading-[21.6px] text-[#131313]">Checklist normativo</p><p className="mt-[4px] w-[332px] text-[12px] leading-[16.8px] text-[#646464]">Responde todos los ítems · los NO quedarán registrados como observaciones</p></div>
 
-        {selectedTemplate ? <><div className="mt-[12px] rounded-[12px] bg-white px-[14px] py-[10px]"><p className="text-[13px] font-semibold text-[#131313]">{answeredCount} de {items.length} respondidos</p><div className="mt-[8px] h-[6px] rounded-[4px] bg-[#e3e3e3]"><div className="h-[6px] rounded-[4px] bg-[#7A5A2B]" style={{ width: `${items.length ? (answeredCount / items.length) * 100 : 0}%` }} /></div></div><div className="mt-[12px] rounded-[12px] border border-[#e3e3e3] bg-white p-[12px]"><p className="text-[12px] font-bold text-[#131313]">Foto referencial general *</p><AttachmentInput value={draft.generalPhoto?.name ?? null} emptyLabel="Tomar foto o galería" onPick={(name, file) => setGeneralPhoto({ name, file })} /></div><div className="mt-[12px] grid gap-[12px]">{items.map((item, index) => <ChecklistItemCard key={item.id} item={item} index={index} answer={draft.answersByItemId[item.id]} detail={draft.detailsByItemId[item.id] ?? {}} onAnswer={(value) => setAnswer(item.id, value)} onDetail={(patch) => setItemDetail(item.id, patch)} />)}</div>{hasFindings ? <div className="mt-[12px] rounded-[12px] border border-[#E1E1E1] bg-white p-[14px]"><p className="text-[18px] font-bold text-[#131313]">Responsables</p><p className="mt-[8px] text-[13px] font-bold text-[#131313]">Empresa encargada de los hallazgos</p><button type="button" onClick={() => setCompanyPickerOpen(true)} className="mt-[4px] flex h-[50px] w-full items-center justify-between rounded-[10px] border-[1.5px] border-[#D1D1D1] bg-[#F6FAFF] px-[12px]"><span className="truncate text-[14px] font-medium text-[#131313]">{draft.findingCompanyName ?? 'Seleccione empresa'}</span><CaretDownIcon /></button><p className="mt-[10px] text-[13px] font-bold text-[#131313]">Personal encargado de los hallazgos</p><button type="button" onClick={() => setUsersPickerOpen((value) => !value)} disabled={!draft.findingCompanyId} className="mt-[4px] flex h-[50px] w-full items-center justify-between rounded-[10px] border-[1.5px] border-[#D1D1D1] bg-[#F6FAFF] px-[12px] disabled:opacity-70"><span className="truncate text-[14px] font-medium text-[#131313]">{draft.findingResponsibleIds.length > 0 ? `${draft.findingResponsibleIds.length} responsables seleccionados` : 'Seleccione personal'}</span><CaretDownIcon /></button>{usersPickerOpen ? <div className="mt-[8px] max-h-[160px] overflow-y-auto rounded-[10px] border border-[#E3E3E3] bg-[#fafafa] p-[8px]">{usersByCompanyQuery.isLoading ? <p className="px-[8px] py-[6px] text-[12px] text-[#646464]">Cargando personal...</p> : null}{userOptions.map((userOption) => { const selected = draft.findingResponsibleIds.includes(userOption.id); return <button key={userOption.id} type="button" onClick={() => toggleUser(userOption.id)} className="mb-[6px] flex w-full items-center gap-[8px] rounded-[8px] px-[8px] py-[8px] text-left"><span className={`flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border ${selected ? 'border-[#C8A064] bg-[#C8A064] text-white' : 'border-[#001E39] bg-white'}`}>{selected ? '✓' : ''}</span><span className="flex-1 text-[13px] text-[#131313]">{userOption.label}</span></button>; })}</div> : null}</div> : null}</> : null}
+          <div className="rounded-[12px] border-[1.5px] border-[#E3E3E3] bg-white p-[15.5px] shadow-[0_1px_1.5px_rgba(0,0,0,0.05)]">
+            <div className="grid gap-[6px]"><p className="text-[13px] font-bold leading-none text-[#131313]">Seleccione la plantilla *</p><button type="button" onClick={() => setTemplatePickerOpen(true)} className="flex min-h-[50px] w-full items-center justify-between gap-[10px] rounded-[10px] border border-[#D1D1D1] bg-[#F6FAFF] px-[14px] py-[14px] text-left" disabled={templatesQuery.isLoading}><span className="min-w-0 flex-1 truncate text-[14px] font-medium leading-normal text-[#131313]">{templatesQuery.isLoading ? 'Cargando plantillas...' : draft.templateName ?? 'Seleccione'}</span><CaretDownIcon /></button></div>
+            <div className="mt-[6px] flex h-[19px] items-center gap-[8px] pt-[6px]"><div className="flex items-center gap-[4px]"><HashIcon /><span className="text-[11px] leading-none text-[#646464]">{templateCode}</span></div><div className="flex items-center gap-[4px]"><ListIcon /><span className="text-[11px] leading-none text-[#646464]">{templateItemsCount} ítems</span></div></div>
+          </div>
+
+          {selectedTemplate ? <ProgressCard answeredCount={answeredCount} totalCount={items.length} /> : null}
+          {selectedTemplate ? <ReferencePhotoBox value={draft.generalPhoto?.name ?? null} onPick={(name, file) => setGeneralPhoto({ name, file })} /> : null}
+          {selectedTemplate ? <ChecklistItemsCard title={templateTitle} code={templateCode} items={items} draft={draft} setAnswer={setAnswer} setItemDetail={setItemDetail} /> : null}
+
+          {hasFindings ? <div className="rounded-[12px] border border-[#E1E1E1] bg-white p-[14px]"><p className="text-[18px] font-bold text-[#131313]">Responsables</p><p className="mt-[8px] text-[13px] font-bold text-[#131313]">Empresa encargada de los hallazgos</p><button type="button" onClick={() => setCompanyPickerOpen(true)} className="mt-[4px] flex h-[50px] w-full items-center justify-between rounded-[10px] border-[1.5px] border-[#D1D1D1] bg-[#F6FAFF] px-[12px]"><span className="truncate text-[14px] font-medium text-[#131313]">{draft.findingCompanyName ?? 'Seleccione empresa'}</span><CaretDownIcon /></button><p className="mt-[10px] text-[13px] font-bold text-[#131313]">Personal encargado de los hallazgos</p><button type="button" onClick={() => setUsersPickerOpen((value) => !value)} disabled={!draft.findingCompanyId} className="mt-[4px] flex h-[50px] w-full items-center justify-between rounded-[10px] border-[1.5px] border-[#D1D1D1] bg-[#F6FAFF] px-[12px] disabled:opacity-70"><span className="truncate text-[14px] font-medium text-[#131313]">{draft.findingResponsibleIds.length > 0 ? `${draft.findingResponsibleIds.length} responsables seleccionados` : 'Seleccione personal'}</span><CaretDownIcon /></button>{usersPickerOpen ? <div className="mt-[8px] max-h-[160px] overflow-y-auto rounded-[10px] border border-[#E3E3E3] bg-[#fafafa] p-[8px]">{usersByCompanyQuery.isLoading ? <p className="px-[8px] py-[6px] text-[12px] text-[#646464]">Cargando personal...</p> : null}{userOptions.map((userOption) => { const selected = draft.findingResponsibleIds.includes(userOption.id); return <button key={userOption.id} type="button" onClick={() => toggleUser(userOption.id)} className="mb-[6px] flex w-full items-center gap-[8px] rounded-[8px] px-[8px] py-[8px] text-left"><span className={`flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border ${selected ? 'border-[#C8A064] bg-[#C8A064] text-white' : 'border-[#001E39] bg-white'}`}>{selected ? '✓' : ''}</span><span className="flex-1 text-[13px] text-[#131313]">{userOption.label}</span></button>; })}</div> : null}</div> : null}
+        </div>
       </div>
 
       <div className="shrink-0 border-t border-[#E3E3E3] bg-white pb-[8px] pt-[10px]"><div className="flex w-full gap-[10px] px-[14px]"><button type="button" className="!flex !h-[50px] !w-auto !min-w-0 !shrink-0 !items-center !justify-center !gap-[8px] !rounded-[14px] !border-[2px] !border-[#C8A064] !bg-white !px-[20px] !text-[14px] !font-bold !text-[#C8A064]" onClick={onBack}><ArrowLeftIcon />Atrás</button><button type="button" className={`!flex !h-[50px] !w-auto !min-w-0 !flex-1 !items-center !justify-center !gap-[8px] !rounded-[14px] !text-[14px] !font-bold ${canContinue ? '!bg-[#C8A064] !text-white !shadow-[0_2px_4px_rgba(200,160,100,0.25)]' : '!bg-[#D1D1D1] !text-[#ACACAC] !shadow-none'}`} onClick={onNext} disabled={!canContinue}>Continuar<ArrowRightIcon /></button></div><div className="mx-auto mb-[4px] mt-[14px] h-[4px] w-[120px] rounded-[2px] bg-[#D1D1D1]" /></div>

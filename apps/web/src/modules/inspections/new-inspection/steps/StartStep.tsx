@@ -1,7 +1,11 @@
 interface StartStepProps {
   onStartAssistant: () => void;
+  onResumeAssistant?: () => void;
+  onDiscardDraft?: () => void;
   onStartManual: () => void;
   onCancelInspection: () => void;
+  hasAssistantDraft?: boolean;
+  assistantDraftSavedAt?: string | null;
 }
 
 function FeatureRow({ children }: { children: string }) {
@@ -13,7 +17,24 @@ function FeatureRow({ children }: { children: string }) {
   );
 }
 
-export function StartStep({ onStartAssistant, onStartManual, onCancelInspection }: StartStepProps) {
+function formatDraftDate(value?: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat('es-CL', { dateStyle: 'short', timeStyle: 'short' }).format(date);
+}
+
+export function StartStep({
+  onStartAssistant,
+  onResumeAssistant,
+  onDiscardDraft,
+  onStartManual,
+  onCancelInspection,
+  hasAssistantDraft = false,
+  assistantDraftSavedAt = null,
+}: StartStepProps) {
+  const savedAtLabel = formatDraftDate(assistantDraftSavedAt);
+
   return (
     <>
       <div className="h-[56px] bg-[#001E39] px-[12px] py-[6px] text-white shadow-[0_2px_4px_rgba(0,0,0,0.3)]">
@@ -27,7 +48,7 @@ export function StartStep({ onStartAssistant, onStartManual, onCancelInspection 
             ←
           </button>
           <div className="flex-1 px-[8px]">
-            <p className="text-[18px] font-semibold">Nueva inspeccion</p>
+            <p className="text-[18px] font-semibold">Nueva inspección</p>
             <p className="text-[12px] text-[rgba(255,255,255,0.55)]">SGA · Gold Fields Salares Norte</p>
           </div>
           <div className="w-[40px]" />
@@ -37,10 +58,40 @@ export function StartStep({ onStartAssistant, onStartManual, onCancelInspection 
       <div className="flex-1 overflow-y-auto bg-[#F7F7F7] px-[20px] pb-[24px] pt-[32px]">
         <div className="pb-[4px] text-center">
           <p className="mx-auto max-w-[320px] text-[18px] font-bold leading-[23.4px] text-[#131313]">
-            ¿Como deseas registrar esta inspeccion?
+            ¿Cómo deseas registrar esta inspección?
           </p>
           <p className="mt-[6px] text-[14px] leading-[18.2px] text-[#646464]">Puedes usar el asistente IA o el formulario manual</p>
         </div>
+
+        {hasAssistantDraft ? (
+          <div className="mt-[20px] w-full rounded-[16px] border-[2px] border-[#C8A064] bg-[#FFF8EA] p-[18px] shadow-[0_4px_8px_rgba(122,90,43,0.12)]">
+            <div className="flex items-start gap-[12px]">
+              <div className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[12px] bg-[#7A5A2B] text-[18px] text-white">✦</div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[15px] font-bold text-[#7A5A2B]">Borrador AurelIA disponible</p>
+                <p className="mt-[4px] text-[12px] leading-[16px] text-[#646464]">
+                  {savedAtLabel ? `Guardado el ${savedAtLabel}.` : 'Tienes una inspección conversacional sin terminar.'}
+                </p>
+              </div>
+            </div>
+            <div className="mt-[14px] grid gap-[8px]">
+              <button
+                type="button"
+                onClick={onResumeAssistant}
+                className="flex h-[42px] w-full items-center justify-center rounded-[10px] bg-[#C8A064] text-[13px] font-bold text-white"
+              >
+                Continuar borrador
+              </button>
+              <button
+                type="button"
+                onClick={onDiscardDraft}
+                className="h-[38px] w-full rounded-[10px] border border-[#C8A064] bg-white text-[12px] font-bold text-[#7A5A2B]"
+              >
+                Descartar borrador
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-[20px] w-full rounded-[16px] border-[2px] border-[#C8A064] bg-white p-[22px] shadow-[0_4px_8px_rgba(122,90,43,0.16)]">
           <div className="flex items-center gap-[12px]">
@@ -55,13 +106,13 @@ export function StartStep({ onStartAssistant, onStartManual, onCancelInspection 
           </div>
 
           <p className="mt-[12px] text-[13px] leading-[18px] text-[#374151]">
-            El asistente te guia con preguntas simples, propone medidas correctivas basadas en el historial de la faena y reduce el tiempo de registro.
+            El asistente te guía con preguntas simples, propone medidas correctivas basadas en el historial de la faena y reduce el tiempo de registro.
           </p>
 
           <div className="mt-[12px] flex flex-col gap-[6px]">
             <FeatureRow>Medidas correctivas sugeridas por IA</FeatureRow>
-            <FeatureRow>Criticidad calculada automaticamente</FeatureRow>
-            <FeatureRow>Funciona online y offline</FeatureRow>
+            <FeatureRow>Criticidad calculada automáticamente</FeatureRow>
+            <FeatureRow>Borrador recuperable en este navegador</FeatureRow>
           </div>
 
           <button
@@ -103,7 +154,7 @@ export function StartStep({ onStartAssistant, onStartManual, onCancelInspection 
           className="h-[44px] w-full rounded-[14px] border-[2px] border-[#C8A064] text-[14px] font-bold text-[#C8A064]"
           onClick={onCancelInspection}
         >
-          Cancelar inspeccion
+          Cancelar inspección
         </button>
         <div className="mx-auto mb-[4px] mt-[12px] h-[4px] w-[120px] rounded-[2px] bg-[#d1d1d1]" />
       </div>

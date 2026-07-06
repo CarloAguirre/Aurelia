@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { InspectionType } from '@aurelia/contracts';
 import { useSessionStore } from '../../../shared/stores/session.store';
 import { StartStep } from './steps/StartStep';
-import { AssistantChatStep } from './steps/AssistantChatStepV2';
+import { AssistantChatStep } from './steps/AssistantChatStepV3';
 import { IdentificationStep } from './steps/IdentificationStep';
 import { TypeStep } from './steps/TypeStep';
 import { FindingObservationsStep } from './steps/FindingObservationsStep';

@@ -31,7 +31,7 @@
 .new-inspection-modal-panel div[class*="rounded-[14px]"][class*="border-[#D8E0EA]"][class*="bg-white"] > div:first-child {
   margin: 0;
   padding: 9px 12px;
-  background: #fae8c8;
+  background: linear-gradient(135deg, #fdf3e3, #fae8c8);
   border-bottom: 1px solid rgba(200, 160, 100, 0.25);
 }
 
@@ -41,18 +41,53 @@
   font-weight: 700;
 }
 
+.new-inspection-modal-panel div[class*="rounded-[14px]"][class*="border-[#D8E0EA]"][class*="bg-white"] > div:first-child p::before {
+  content: '✦';
+  margin-right: 6px;
+  color: #8e6e3e;
+}
+
+.new-inspection-modal-panel div[class*="rounded-[14px]"][class*="border-[#D8E0EA]"][class*="bg-white"] > div:first-child > span {
+  display: none;
+}
+
 .new-inspection-modal-panel div[class*="rounded-[14px]"][class*="border-[#D8E0EA]"][class*="bg-white"] > p {
   margin: 0;
-  padding: 13px 12px 0;
+  padding: 12px 12px 0;
   color: #131313;
-  font-size: 13px;
-  line-height: 19px;
+  font-size: 12px;
+  line-height: 18px;
   font-weight: 500;
 }
 
+.new-inspection-modal-panel div[class*="rounded-[14px]"][class*="border-[#D8E0EA]"][class*="bg-white"] > p::before {
+  content: 'MEDIDA CORRECTIVA';
+  display: block;
+  margin-bottom: 4px;
+  color: #646464;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.new-inspection-modal-panel div[class*="rounded-[14px]"][class*="border-[#D8E0EA]"][class*="bg-white"] > p::after {
+  content: '↝ Basada en historial 2023–2026 · Gold Fields Salares Norte';
+  display: block;
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px solid #e3e3e3;
+  color: #646464;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 13px;
+}
+
 .new-inspection-modal-panel div[class*="rounded-[14px]"][class*="border-[#D8E0EA]"][class*="bg-white"] > div:last-child {
+  flex-direction: row-reverse;
   margin: 0;
-  padding: 12px;
+  padding: 10px 12px 12px;
   gap: 8px;
 }
 
@@ -64,7 +99,7 @@
 }
 
 .new-inspection-modal-panel div[class*="rounded-[14px]"][class*="border-[#D8E0EA]"][class*="bg-white"] > div:last-child button[class*="bg-[#35A137]"] {
-  background: #09b89d;
+  background: #00b398;
 }
 
 .new-inspection-modal-panel label[class*="border-dashed"][class*="bg-[#F6FAFF]"] {
@@ -74,19 +109,19 @@
   align-items: center;
   border-width: 1.5px;
   border-color: #d1d1d1;
-  border-radius: 10px;
-  background: #f6faff;
+  border-radius: 12px;
+  background: #ffffff;
   text-align: center;
 }
 
 .new-inspection-modal-panel label[class*="border-dashed"][class*="bg-[#F6FAFF]"] > span:first-of-type {
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   margin-bottom: 8px;
   border-radius: 10px;
-  background: #ffffff;
+  background: #f4f6f9;
   color: #646464;
-  font-size: 24px;
+  font-size: 18px;
 }
 
 .new-inspection-modal-panel label[class*="border-dashed"][class*="bg-[#F6FAFF]"] > span:last-child {
@@ -95,25 +130,68 @@
 }
 
 .new-inspection-modal-panel label[class*="border-dashed"][class*="bg-[#F6FAFF]"] > span:last-child span:first-child {
-  color: #646464;
-  font-size: 13px;
+  color: #333333;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .new-inspection-modal-panel label[class*="border-dashed"][class*="bg-[#F6FAFF]"] > span:last-child span:last-child {
   color: #acacac;
-  font-size: 11px;
+  font-size: 10px;
+}
+
+.new-inspection-modal-panel div[class*="mb-[10px]"][class*="ml-[33px]"][class*="rounded-[12px]"][class*="border"][class*="bg-white"][class*="p-[12px]"]:has(> div[class*="min-h-[58px]"][class*="bg-[#35A137]"]) {
+  margin-right: 12px;
+  padding: 0;
+  border: 1.5px dashed #d1d1d1;
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: none;
 }
 
 .new-inspection-modal-panel div[class*="min-h-[58px]"][class*="bg-[#35A137]"] {
-  min-height: 60px;
-  border-radius: 8px;
-  background: #3a9b3a;
+  min-height: 58px;
+  padding: 10px 12px;
+  gap: 8px;
+  border-radius: 12px;
+  background: #e0ffd3;
+  color: #2a5c16;
+}
+
+.new-inspection-modal-panel div[class*="min-h-[58px]"][class*="bg-[#35A137]"] > span:first-child {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #2a5c16;
+  color: #e0ffd3;
+  font-size: 0;
+}
+
+.new-inspection-modal-panel div[class*="min-h-[58px]"][class*="bg-[#35A137]"] > span:first-child::before {
+  content: '✓';
+  display: flex;
+  width: 16px;
+  height: 16px;
+  align-items: center;
+  justify-content: center;
+  color: #e0ffd3;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 16px;
 }
 
 .new-inspection-modal-panel div[class*="min-h-[58px]"][class*="bg-[#35A137]"] span[class*="truncate"] {
-  font-size: 13px;
+  color: #2a5c16;
+  font-size: 12px;
   font-weight: 700;
+  line-height: 15px;
+}
+
+.new-inspection-modal-panel div[class*="min-h-[58px]"][class*="bg-[#35A137]"] span[class*="text-[rgba(255,255,255,0.78)]"] {
+  color: #2a5c16;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 13px;
 }
 
 .new-inspection-modal-panel div[class*="rounded-[12px]"][class*="border-[#E3E3E3]"][class*="bg-white"][class*="p-[12px]"] > div[class*="flex-wrap"] > button {

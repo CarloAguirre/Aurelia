@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSessionStore } from '../../../../shared/stores/session.store';
 import { SelectSheet, type SelectSheetOption } from '../components/SelectSheet';
@@ -115,7 +115,7 @@ function ManualStepper() {
   );
 }
 
-function InfoNotice({ children }: { children: string }) {
+function InfoNotice({ children }: { children: ReactNode }) {
   return <div className="flex min-h-[48px] w-full items-center gap-[12px] rounded-[12px] bg-[#4A90C4] py-[12px] pl-[14px] pr-[12px] text-white"><span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-white text-[12px] font-bold text-[#4A90C4]">i</span><span className="text-[13px] font-bold leading-[16.9px]">{children}</span></div>;
 }
 

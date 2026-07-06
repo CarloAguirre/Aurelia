@@ -207,12 +207,12 @@ export function IdentificationStep({ onCancel, onNext }: IdentificationStepProps
   const { captureLocation, capturing, locationError } = useNewInspectionLocation();
 
   const areaOptions = useMemo<SelectSheetOption[]>(
-    () => areas.map((area) => ({ id: area.id, label: area.name, description: area.code })),
+    () => areas.map((area) => ({ id: area.id, label: area.name })),
     [areas],
   );
 
   const sectorOptions = useMemo<SelectSheetOption[]>(
-    () => sectors.map((sector) => ({ id: sector.id, label: sector.name, description: sector.code })),
+    () => sectors.map((sector) => ({ id: sector.id, label: sector.name })),
     [sectors],
   );
 

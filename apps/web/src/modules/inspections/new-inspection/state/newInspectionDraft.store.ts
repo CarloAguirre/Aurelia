@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { InspectionAnswerValue, InspectionType } from '@aurelia/contracts';
 
+const NEW_INSPECTION_DRAFT_STORAGE_KEY = 'aurelia:new-inspection-draft:v1';
+
 interface NewInspectionLocationInput {
   label: string;
   accuracy: string;
@@ -81,6 +83,7 @@ interface NewInspectionDraftState extends NewInspectionDraft {
   setGeneralPhoto: (asset: NewInspectionPickedAsset | null) => void;
   setFindingCompany: (id: string | null, name: string | null) => void;
   setFindingResponsibles: (ids: string[]) => void;
+  hydrate: (draft: NewInspectionDraft) => void;
   reset: () => void;
 }
 
@@ -123,6 +126,78 @@ const initialDraft: NewInspectionDraft = {
   findingCompanyName: null,
   findingResponsibleIds: [],
 };
+
+function stripAsset(asset: NewInspectionPickedAsset | null | undefined): NewInspectionPickedAsset | null {
+  if (!asset?.name) return null;
+  return { name: asset.name };
+}
+
+function serializableDraft(draft: NewInspectionDraft): NewInspectionDraft {
+  return {
+    ...draft,
+    generalPhoto: stripAsset(draft.generalPhoto),
+    detailsByItemId: Object.fromEntries(
+      Object.entries(draft.detailsByItemId).map(([itemId, detail]) => [
+        itemId,
+        {
+          ...detail,
+          evidence: stripAsset(detail.evidence),
+        },
+      ]),
+    ),
+    findingObservations: draft.findingObservations.map((observation) => ({
+      ...observation,
+      evidence: stripAsset(observation.evidence),
+    })),
+  };
+}
+
+export function hasNewInspectionDraftProgress(draft: NewInspectionDraft): boolean {
+  return Boolean(
+    draft.areaId ||
+    draft.sectorId ||
+    draft.locationCaptured ||
+    draft.findingTypeId ||
+    draft.findingObservations.length > 0 ||
+    draft.templateId ||
+    Object.keys(draft.answersByItemId).length > 0 ||
+    draft.generalPhoto ||
+    draft.findingCompanyId ||
+    draft.findingResponsibleIds.length > 0,
+  );
+}
+
+export function saveNewInspectionDraftSnapshot(draft: NewInspectionDraft) {
+  if (typeof window === 'undefined') return;
+  if (!hasNewInspectionDraftProgress(draft)) return;
+  window.localStorage.setItem(
+    NEW_INSPECTION_DRAFT_STORAGE_KEY,
+    JSON.stringify({ savedAt: new Date().toISOString(), draft: serializableDraft(draft) }),
+  );
+}
+
+export function loadNewInspectionDraftSnapshot(): { savedAt: string; draft: NewInspectionDraft } | null {
+  if (typeof window === 'undefined') return null;
+  const raw = window.localStorage.getItem(NEW_INSPECTION_DRAFT_STORAGE_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { savedAt?: string; draft?: NewInspectionDraft };
+    if (!parsed.savedAt || !parsed.draft) return null;
+    if (!hasNewInspectionDraftProgress(parsed.draft)) return null;
+    return { savedAt: parsed.savedAt, draft: serializableDraft(parsed.draft) };
+  } catch {
+    return null;
+  }
+}
+
+export function clearNewInspectionDraftSnapshot() {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(NEW_INSPECTION_DRAFT_STORAGE_KEY);
+}
+
+export function hasNewInspectionDraftSnapshot() {
+  return loadNewInspectionDraftSnapshot() !== null;
+}
 
 export const useNewInspectionDraftStore = create<NewInspectionDraftState>((set) => ({
   ...initialDraft,
@@ -213,5 +288,6 @@ export const useNewInspectionDraftStore = create<NewInspectionDraftState>((set) 
   setFindingCompany: (findingCompanyId, findingCompanyName) =>
     set({ findingCompanyId, findingCompanyName, findingResponsibleIds: [] }),
   setFindingResponsibles: (findingResponsibleIds) => set({ findingResponsibleIds }),
+  hydrate: (draft) => set(serializableDraft(draft)),
   reset: () => set(initialDraft),
 }));

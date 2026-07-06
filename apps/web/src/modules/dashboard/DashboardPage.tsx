@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import svgPaths from "./svg-gaoncjys4y";
 import { useDashboardChartsFiltered } from './hooks/useDashboardChartsFiltered';
 import { useDashboardCompanyAnalysisFiltered } from './hooks/useDashboardCompanyAnalysisFiltered';
@@ -83,6 +83,27 @@ export function DashboardPage() {
   const { runtimeModel: companyAnalysisRuntimeModel } = useDashboardCompanyAnalysisFiltered(companyDashboardQuery);
   const { rows: openFindingRows, severeOpenFindings, openInspections, isLoading: isOpenFindingsLoading, isError: isOpenFindingsError } = useDashboardDetailsFiltered(companyDashboardQuery);
 
+  const companyFilterOptions = useMemo(() => {
+    const fromQuery = (companiesQuery.data ?? []).map((company) => ({ id: (company.id ?? '').trim(), name: (company.name ?? '').trim() }));
+
+    const fromAnalysis = companyAnalysisRuntimeModel.chartRows
+      .filter((row) => Boolean((row.companyId ?? '').trim() && (row.company ?? '').trim()))
+      .map((row) => ({ id: (row.companyId as string).trim(), name: (row.company ?? '').trim() }));
+
+    const fromOpenFindings = openFindingRows
+      .filter((row) => Boolean((row.companyId ?? '').trim() && (row.company ?? '').trim()))
+      .map((row) => ({ id: (row.companyId as string).trim(), name: (row.company ?? '').trim() }));
+
+    const merged = [...fromQuery, ...fromAnalysis, ...fromOpenFindings];
+    const byId = new Map<string, { id: string; name: string }>();
+    merged.forEach((item) => {
+      if (!item.id || !item.name) return;
+      if (!byId.has(item.id)) byId.set(item.id, item);
+    });
+
+    return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name, 'es'));
+  }, [companiesQuery.data, companyAnalysisRuntimeModel.chartRows, openFindingRows]);
+
   return (
     <div className="relative h-screen w-full overflow-hidden" data-name="Dashboard inspecciones">
       <DashboardSidebarTopBrandBar />
@@ -136,7 +157,7 @@ export function DashboardPage() {
                 <DashboardSecondaryPanelStack
                   alerts={
                     <DashboardAlertsStrip>
-                      <DashboardAlertsSectionLayout left={<DashboardAlertsHeaderLeft iconPath={svgPaths.p16888980} />} right={<DashboardCompanyFilter companies={companiesQuery.data ?? []} selectedCompanyId={selectedCompanyId} onChange={setSelectedCompanyId} clearIconPath={svgPaths.p12771800} caretIconPath={svgPaths.pf36e620} />} />
+                      <DashboardAlertsSectionLayout left={<DashboardAlertsHeaderLeft iconPath={svgPaths.p16888980} />} right={<DashboardCompanyFilter companies={companyFilterOptions} selectedCompanyId={selectedCompanyId} onChange={setSelectedCompanyId} clearIconPath={svgPaths.p12771800} caretIconPath={svgPaths.pf36e620} />} />
                     </DashboardAlertsStrip>
                   }
                   companyAnalysis={<DashboardResponsiveCompanyAnalysisSection cardA={<DashboardCompanyCardOpenCompanies iconPath={svgPaths.p3e906a80} value={companyAnalysisRuntimeModel.companiesWithOpenFindings} />} cardB={<DashboardCompanyCardOpenFindings iconPath={svgPaths.p31927d00} value={companyAnalysisRuntimeModel.openFindings} />} cardC={<DashboardCompanyCardOpenInspections iconPath={svgPaths.p1711cfc0} value={companyAnalysisRuntimeModel.openInspections} />} cardD={<DashboardCompanyCardOpenDays iconPath={svgPaths.p162f2a3a} value={companyAnalysisRuntimeModel.openDaysLabel} />} chart={<DashboardFigmaCompanyAnalysisChart rows={companyAnalysisRuntimeModel.chartRows} />} />}

@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { CompanyResponse } from '@aurelia/contracts';
+type CompanyFilterOption = {
+  id: string;
+  name: string;
+};
 
 type Props = {
-  companies: CompanyResponse[];
+  companies: CompanyFilterOption[];
   selectedCompanyId: string | null;
   onChange: (companyId: string | null) => void;
   clearIconPath: string;
@@ -16,7 +19,12 @@ function Icon({ path, fill }: { path: string; fill: string }) {
 export function DashboardCompanyFilter({ companies, selectedCompanyId, onChange, clearIconPath, caretIconPath }: Props) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const options = useMemo(() => companies.filter((company) => company.id && company.name), [companies]);
+  const options = useMemo(
+    () => companies
+      .map((company) => ({ id: company.id.trim(), name: company.name.trim() }))
+      .filter((company) => company.id.length > 0 && company.name.length > 0),
+    [companies],
+  );
   const selectedCompany = options.find((company) => company.id === selectedCompanyId);
   const label = selectedCompany?.name ?? 'Todas las empresas';
 
@@ -37,12 +45,25 @@ export function DashboardCompanyFilter({ companies, selectedCompanyId, onChange,
         </button>
         {open ? (
           <div className="absolute right-0 top-[44px] z-50 bg-white border border-[#d1d1d1] border-solid flex max-h-[280px] flex-col items-start overflow-y-auto p-[8px] rounded-[12px] shadow-[0px_4px_8px_rgba(19,19,19,0.24)] w-[220px]">
-            <button className={`h-[40px] w-full rounded-[8px] px-[8px] text-left font-['Inter:Regular',sans-serif] font-normal text-[#131313] text-[13px] ${selectedCompanyId ? 'bg-white' : 'bg-[#e3e3e3]'}`} type="button" onClick={() => { onChange(null); setOpen(false); }}>
-              Todas las empresas
+            <button
+              className={`h-[40px] w-full rounded-[8px] px-[8px] text-left ${selectedCompanyId ? 'bg-white' : 'bg-[#e3e3e3]'}`}
+              type="button"
+              onClick={() => { onChange(null); setOpen(false); }}
+            >
+              <span style={{ color: '#131313', fontSize: '13px', fontWeight: 500, lineHeight: '18px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                Todas las empresas
+              </span>
             </button>
             {options.map((company) => (
-              <button key={company.id} className={`h-[40px] w-full rounded-[8px] px-[8px] text-left font-['Inter:Regular',sans-serif] font-normal text-[#131313] text-[13px] truncate ${company.id === selectedCompanyId ? 'bg-[#e3e3e3]' : 'bg-white'}`} type="button" onClick={() => { onChange(company.id); setOpen(false); }}>
-                {company.name}
+              <button
+                key={company.id}
+                className={`h-[40px] w-full rounded-[8px] px-[8px] text-left ${company.id === selectedCompanyId ? 'bg-[#e3e3e3]' : 'bg-white'} hover:bg-[#f3f3f3]`}
+                type="button"
+                onClick={() => { onChange(company.id); setOpen(false); }}
+              >
+                <span style={{ color: '#131313', fontSize: '13px', fontWeight: 500, lineHeight: '18px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {company.name}
+                </span>
               </button>
             ))}
           </div>

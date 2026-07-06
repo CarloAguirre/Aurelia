@@ -3,6 +3,7 @@ import type { InspectionManagementKpisResponse, InspectionManagementTableFilterO
 import { useInspectionManagementKpis } from '../../shared/hooks/useInspectionManagementKpis';
 import { useInspectionManagementTable } from '../../shared/hooks/useInspectionManagementTable';
 import type { InspectionManagementPageSize, InspectionManagementTableParams } from '../../shared/services/inspections.service';
+import { NewInspectionModalController } from './new-inspection/NewInspectionModalController';
 
 type KpiIconKind = 'total' | 'open' | 'approval' | 'closed';
 type BadgeTone = 'blue' | 'mint' | 'pink' | 'orange' | 'yellow' | 'green';
@@ -226,13 +227,13 @@ function ActiveFilterChip({ label, onRemove }: { label: string; onRemove: () => 
   return <button className="flex h-[18px] items-center gap-[5px] rounded-[4px] border border-[#b4d1ed] bg-[#e6f3ff] px-[9px] py-[3px] font-['Inter:Semi_Bold',sans-serif] text-[10px] font-semibold leading-[normal] text-[#0d3862]" type="button" onClick={onRemove}><span className="whitespace-nowrap">{label}</span><span className="font-['Arial:Regular',sans-serif] text-[10px] font-normal leading-[10px] text-[#0d3862]">×</span></button>;
 }
 
-function TableActions() {
-  return <div className="flex shrink-0 items-center gap-[8px]"><button className="bg-white border-[#d1d1d1] border-[1.5px] border-solid flex h-[36px] w-[117.5px] shrink-0 items-center gap-[6px] rounded-[8px] px-[13.5px] py-[1.5px] text-[12px] font-semibold text-[#333]" type="button"><FileIcon /><span className="font-['Inter:Semi_Bold',sans-serif]">Exportar</span><CaretIcon /></button><button className="flex h-[36px] w-[159px] shrink-0 items-center gap-[7px] rounded-[6px] bg-[#c8a064] px-[16px] py-[10.5px] text-[12px] font-bold text-white" type="button"><PlusIcon /><span className="font-['Inter:Bold',sans-serif]">Nueva inspección</span></button></div>;
+function TableActions({ onNewInspection }: { onNewInspection: () => void }) {
+  return <div className="flex shrink-0 items-center gap-[8px]"><button className="bg-white border-[#d1d1d1] border-[1.5px] border-solid flex h-[36px] w-[117.5px] shrink-0 items-center gap-[6px] rounded-[8px] px-[13.5px] py-[1.5px] text-[12px] font-semibold text-[#333]" type="button"><FileIcon /><span className="font-['Inter:Semi_Bold',sans-serif]">Exportar</span><CaretIcon /></button><button className="flex h-[36px] w-[159px] shrink-0 items-center gap-[7px] rounded-[6px] bg-[#c8a064] px-[16px] py-[10.5px] text-[12px] font-bold text-white" type="button" onClick={onNewInspection}><PlusIcon /><span className="font-['Inter:Bold',sans-serif]">Nueva inspección</span></button></div>;
 }
 
-function ActiveFiltersBar({ filters, onRemove }: { filters: ActiveFilter[]; onRemove: (key: TableFilterKey) => void }) {
-  if (filters.length === 0) return <div className="flex min-h-[38px] w-full justify-end pt-[16px]"><TableActions /></div>;
-  return <div className="flex min-h-[38px] w-full flex-wrap items-center justify-between gap-[12px] pt-[16px]"><div className="flex min-h-[38px] min-w-[280px] flex-1 items-center gap-[10px] overflow-x-auto bg-[#eef5ff] px-[14px] py-[10px]"><div className="flex shrink-0 items-center gap-[6px]"><FilterIcon /><span className="font-['Inter:Semi_Bold',sans-serif] text-[11px] font-semibold leading-[13px] text-[#24588b]">Filtros activos:</span></div>{filters.map((filter) => <ActiveFilterChip key={filter.key} label={filter.label} onRemove={() => onRemove(filter.key)} />)}</div><TableActions /></div>;
+function ActiveFiltersBar({ filters, onRemove, onNewInspection }: { filters: ActiveFilter[]; onRemove: (key: TableFilterKey) => void; onNewInspection: () => void }) {
+  if (filters.length === 0) return <div className="flex min-h-[38px] w-full justify-end pt-[16px]"><TableActions onNewInspection={onNewInspection} /></div>;
+  return <div className="flex min-h-[38px] w-full flex-wrap items-center justify-between gap-[12px] pt-[16px]"><div className="flex min-h-[38px] min-w-[280px] flex-1 items-center gap-[10px] overflow-x-auto bg-[#eef5ff] px-[14px] py-[10px]"><div className="flex shrink-0 items-center gap-[6px]"><FilterIcon /><span className="font-['Inter:Semi_Bold',sans-serif] text-[11px] font-semibold leading-[13px] text-[#24588b]">Filtros activos:</span></div>{filters.map((filter) => <ActiveFilterChip key={filter.key} label={filter.label} onRemove={() => onRemove(filter.key)} />)}</div><TableActions onNewInspection={onNewInspection} /></div>;
 }
 
 function Badge({ children, tone, icon, small = false }: { children: string; tone: BadgeTone; icon?: BadgeIcon; small?: boolean }) {
@@ -262,11 +263,11 @@ function TableObservationFilter({ value, onChange }: { value: string; onChange: 
 }
 
 function HeaderCell({ children, gold = false }: { children: string; gold?: boolean }) {
-  return <th className="h-[32px] bg-[#001e39] border-r border-[#122e47] px-[12px] py-[9.5px] text-left align-middle"><div className="flex items-center gap-[3px] whitespace-nowrap"><span className={`font-['Inter:Semi_Bold',sans-serif] text-[11px] font-semibold uppercase leading-[normal] tracking-[0.44px] ${gold ? 'text-[#c8a064]' : 'text-[rgba(255,255,255,0.7)]'}`}>{children}</span><SortIcon gold={gold} /></div></th>;
+  return <th className="h-[32px] bg-[#001e39] border-r border-[#122e47] px-[12px] py-0 text-left align-middle"><div className="flex h-[32px] items-center gap-[3px] whitespace-nowrap"><span className={`font-['Inter:Semi_Bold',sans-serif] text-[11px] font-semibold uppercase leading-[11px] tracking-[0.44px] ${gold ? 'text-[#c8a064]' : 'text-[rgba(255,255,255,0.7)]'}`}>{children}</span><SortIcon gold={gold} /></div></th>;
 }
 
 function ActionHeaderCell() {
-  return <th className="h-[32px] bg-[#001e39] px-[12px] py-[10px] text-left align-middle"><span className="font-['Inter:Bold',sans-serif] text-[10px] font-bold uppercase leading-[normal] tracking-[0.4px] text-[rgba(255,255,255,0.7)]">Acciones</span></th>;
+  return <th className="h-[32px] bg-[#001e39] px-[12px] py-0 text-left align-middle"><div className="flex h-[32px] items-center"><span className="font-['Inter:Bold',sans-serif] text-[10px] font-bold uppercase leading-[10px] tracking-[0.4px] text-[rgba(255,255,255,0.7)]">Acciones</span></div></th>;
 }
 
 function FilterCell({ children }: { children: ReactNode }) {
@@ -312,6 +313,7 @@ function InspectionTable({ rows, total, page, totalPages, pageSize, isLoading, i
 }
 
 export function InspectionsManagementView() {
+  const [newInspectionOpen, setNewInspectionOpen] = useState(false);
   const [filters, setFilters] = useState<TableFilters>(emptyTableFilters);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<InspectionManagementPageSize>(10);
@@ -345,5 +347,9 @@ export function InspectionsManagementView() {
     setPageSize(value);
   }
 
-  return <div className="bg-[#f7f7f7] flex h-[calc(100vh-56px)] w-full flex-col items-start overflow-y-auto overflow-x-hidden px-[24px] py-[20px]"><div className="grid w-full grid-cols-[repeat(auto-fit,minmax(244px,1fr))] gap-[12px]"><KpiCard icon="total" iconColor="#24588b" label={`Total ${kpis.year}`} value={kpis.totalInspections} helper={kpis.totalHelper} /><KpiCard icon="open" iconColor="#806000" label="Inspecciones abiertas" value={kpis.openInspections} helper={kpis.openHelper} valueClass="text-[#463100]" /><KpiCard icon="approval" iconColor="#bd3b5b" label="Pend. de aprobación" value={kpis.pendingApproval} helper="Ejecutadas esperando Admin GF" valueClass="text-[#bd3b5b]" /><KpiCard icon="closed" iconColor="#53bd49" label="% Obs. cerradas" value={kpis.closedFindingsRate} helper="Meta >99%" valueClass="text-[#2a5c16]" /></div><ActiveFiltersBar filters={activeFilters} onRemove={removeFilter} /><div className="w-full pt-[16px]"><InspectionTable rows={tableRows} total={total} page={tableQuery.data?.page ?? page} totalPages={totalPages} pageSize={pageSize} isLoading={tableQuery.isLoading} isError={tableQuery.isError} filters={filters} options={filterOptions} onFilterChange={updateFilter} onClearFilters={clearFilters} onPageChange={setPage} onPageSizeChange={changePageSize} /></div></div>;
+  function openNewInspection() {
+    setNewInspectionOpen(true);
+  }
+
+  return <><div className="bg-[#f7f7f7] flex h-[calc(100vh-56px)] w-full flex-col items-start overflow-y-auto overflow-x-hidden px-[24px] py-[20px]"><div className="grid w-full grid-cols-[repeat(auto-fit,minmax(244px,1fr))] gap-[12px]"><KpiCard icon="total" iconColor="#24588b" label={`Total ${kpis.year}`} value={kpis.totalInspections} helper={kpis.totalHelper} /><KpiCard icon="open" iconColor="#806000" label="Inspecciones abiertas" value={kpis.openInspections} helper={kpis.openHelper} valueClass="text-[#463100]" /><KpiCard icon="approval" iconColor="#bd3b5b" label="Pend. de aprobación" value={kpis.pendingApproval} helper="Ejecutadas esperando Admin GF" valueClass="text-[#bd3b5b]" /><KpiCard icon="closed" iconColor="#53bd49" label="% Obs. cerradas" value={kpis.closedFindingsRate} helper="Meta >99%" valueClass="text-[#2a5c16]" /></div><ActiveFiltersBar filters={activeFilters} onRemove={removeFilter} onNewInspection={openNewInspection} /><div className="w-full pt-[16px]"><InspectionTable rows={tableRows} total={total} page={tableQuery.data?.page ?? page} totalPages={totalPages} pageSize={pageSize} isLoading={tableQuery.isLoading} isError={tableQuery.isError} filters={filters} options={filterOptions} onFilterChange={updateFilter} onClearFilters={clearFilters} onPageChange={setPage} onPageSizeChange={changePageSize} /></div></div><NewInspectionModalController open={newInspectionOpen} onClose={() => setNewInspectionOpen(false)} /></>;
 }

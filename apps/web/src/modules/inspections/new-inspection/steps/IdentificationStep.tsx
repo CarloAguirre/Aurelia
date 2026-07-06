@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSessionStore } from '../../../../shared/stores/session.store';
 import { useNewInspectionCatalogs } from '../hooks/useNewInspectionCatalogs';
 import { useNewInspectionLocation } from '../hooks/useNewInspectionLocation';
@@ -80,7 +80,7 @@ function CalendarIcon() {
 function ArrowRightIcon() {
   return (
     <svg width="18" height="14" viewBox="0 0 18 14" fill="none" aria-hidden="true">
-      <path d="M1 7h15M10.5 1.5 16 7l-5.5 5.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M1 7h15M10.5 1.5 16 7l-5.5 5.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -109,6 +109,29 @@ function MapPreview() {
       <div className="absolute bottom-[11px] right-[8px] rounded-[4px] bg-[rgba(0,179,152,0.8)] px-[8px] py-[3px] text-[10px] font-semibold leading-[12px] text-white">± 12.4 m</div>
     </div>
   );
+}
+
+function useOnlineStatus() {
+  const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
+
+  useEffect(() => {
+    function handleOnline() {
+      setOnline(true);
+    }
+
+    function handleOffline() {
+      setOnline(false);
+    }
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  return online;
 }
 
 function SectionCard({ icon, title, subtitle, children, heightClass }: { icon: ReactNode; title: string; subtitle: string; children: ReactNode; heightClass?: string }) {
@@ -179,6 +202,7 @@ export function IdentificationStep({ onCancel, onNext }: IdentificationStepProps
   const user = useSessionStore((state) => state.user);
   const draft = useNewInspectionDraftStore();
   const flow = useNewInspectionFlowStore();
+  const online = useOnlineStatus();
   const { areas, sectors, loadingAreas, loadingSectors, catalogErrorMessage } = useNewInspectionCatalogs();
   const { captureLocation, capturing, locationError } = useNewInspectionLocation();
 
@@ -196,6 +220,7 @@ export function IdentificationStep({ onCancel, onNext }: IdentificationStepProps
   const inspectorName = user?.fullName ?? draft.inspectorName;
   const inspectorCompanyName = draft.inspectorCompanyName;
   const canContinue = Boolean(draft.areaId && draft.sectorId && draft.inspectionDate && draft.locationCaptured);
+  const showOfflineBanner = !online || !user;
 
   function selectArea(option: SelectSheetOption) {
     draft.setArea(option.id, option.label);
@@ -237,10 +262,12 @@ export function IdentificationStep({ onCancel, onNext }: IdentificationStepProps
         </div>
       </div>
 
-      <div className="flex h-[23px] shrink-0 items-center gap-[7px] border-b border-[#C8A064] bg-[#2A1A04] px-[16px] pb-[6px] pt-[5px]">
-        <OfflineIcon />
-        <span className="text-[11px] font-semibold leading-none text-[#C8A064]">Sin red · guardando localmente</span>
-      </div>
+      {showOfflineBanner ? (
+        <div className="flex h-[23px] shrink-0 items-center gap-[7px] border-b border-[#C8A064] bg-[#2A1A04] px-[16px] pb-[6px] pt-[5px]">
+          <OfflineIcon />
+          <span className="text-[11px] font-semibold leading-none text-[#C8A064]">Sin red · guardando localmente</span>
+        </div>
+      ) : null}
 
       <ManualStepper />
 
@@ -332,15 +359,15 @@ export function IdentificationStep({ onCancel, onNext }: IdentificationStepProps
         <div className="flex w-full gap-[10px] px-[14px]">
           <button
             type="button"
-            className="flex h-[50px] shrink-0 items-center justify-center rounded-[14px] border-[2px] border-[#C8A064] bg-white px-[20px] text-[14px] font-bold text-[#C8A064]"
+            className="!flex !h-[50px] !w-auto !min-w-0 !shrink-0 !items-center !justify-center !rounded-[14px] !border-[2px] !border-[#C8A064] !bg-white !px-[20px] !text-[14px] !font-bold !text-[#C8A064]"
             onClick={onCancel}
           >
             Cancelar
           </button>
           <button
             type="button"
-            className={`flex h-[50px] flex-1 items-center justify-center gap-[8px] rounded-[14px] text-[14px] font-bold shadow-[0_2px_4px_rgba(200,160,100,0.25)] ${
-              canContinue ? 'bg-[#C8A064] text-white' : 'bg-[#E3E3E3] text-[#9AA0A6] shadow-none'
+            className={`!flex !h-[50px] !w-auto !min-w-0 !flex-1 !items-center !justify-center !gap-[8px] !rounded-[14px] !text-[14px] !font-bold !shadow-[0_2px_4px_rgba(200,160,100,0.25)] ${
+              canContinue ? '!bg-[#C8A064] !text-white' : '!bg-[#E3E3E3] !text-[#9AA0A6] !shadow-none'
             }`}
             onClick={handleNext}
             disabled={!canContinue}

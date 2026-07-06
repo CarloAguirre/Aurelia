@@ -24,14 +24,14 @@ type AiMeasureData = { observationId: string; suggestion: string; fallback: bool
 type CriticalityData = { observationId: string; severities: InspectionFindingSeverityResponse[] };
 type SlaData = { observationId: string; initialDays: number; observationNumber: number };
 type ObservationSavedData = { observationId: string; index: number };
-type CompanySuggestionData = { company: CompanyResponse; companies: CompanyResponse[]; suggestion: string; fallback: boolean };
+type CompanySuggestionData = { company: CompanyResponse; companies: CompanyResponse[]; fallback: boolean };
 type PeopleData = { users: UserResponse[]; suggestedUserId: string | null };
 type PhotoReceipt = { title: string; sub: string };
 
 const STEP_LABELS = ['Identificación', 'Observación', 'Medida y criticidad', 'Más observaciones', 'Empresa y personal', 'Resumen'];
 const STEP_PCT = ['14%', '28%', '42%', '57%', '71%', '86%'];
-const FALLBACK_MEASURE = 'Corregir la condición identificada antes del próximo turno. Registrar evidencia fotográfica y notificar al supervisor de área.';
 const SLA_OPTIONS = [1, 3, 7, 14];
+const FALLBACK_MEASURE = 'Corregir la condición identificada antes del próximo turno. Registrar evidencia fotográfica y notificar al supervisor de área.';
 
 function sleep(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -45,21 +45,21 @@ function normalizeText(value: string) {
   return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
-function typeId(types: InspectionTypeResponse[], code: InspectionType) {
-  return types.find((item) => item.code === code)?.id ?? null;
+function formatDate(value: Date) {
+  return `${String(value.getDate()).padStart(2, '0')}-${String(value.getMonth() + 1).padStart(2, '0')}-${value.getFullYear()}`;
 }
 
-function parseSlaDays(label: string | null | undefined, fallback = 7) {
-  const value = Number((label ?? '').match(/(\d+)/)?.[1]);
-  return Number.isFinite(value) && value > 0 ? value : fallback;
+function parseDateLabel(value: string) {
+  const parts = value.split(/[/-]/).map((part) => Number(part));
+  if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) return null;
+  const [day, month, year] = parts;
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return date;
 }
 
-function fileAsset(file: File): NewInspectionPickedAsset {
-  return { name: file.name, file };
-}
-
-function receiptText(fileName: string) {
-  return `${fileName} · GPS ✓ · ${currentTime()}`;
+function displayDate(value: string) {
+  return value ? value.replaceAll('-', '/') : '';
 }
 
 function formatDateInput(value: string) {
@@ -77,11 +77,28 @@ function parseDateInput(value: string) {
   const year = Number(digits.slice(4, 8));
   const date = new Date(year, month - 1, day);
   if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
-  return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4, 8)}`;
+  return formatDate(date);
 }
 
-function displayDate(value: string) {
-  return value ? value.replaceAll('-', '/') : '';
+function monthLabel(value: Date) {
+  return new Intl.DateTimeFormat('es-CL', { month: 'long', year: 'numeric' }).format(value);
+}
+
+function parseSlaDays(label: string | null | undefined, fallback = 7) {
+  const value = Number((label ?? '').match(/(\d+)/)?.[1]);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function typeId(types: InspectionTypeResponse[], code: InspectionType) {
+  return types.find((item) => item.code === code)?.id ?? null;
+}
+
+function fileAsset(file: File): NewInspectionPickedAsset {
+  return { name: file.name, file };
+}
+
+function receiptText(fileName: string) {
+  return `${fileName} · GPS ✓ · ${currentTime()}`;
 }
 
 function parsePoint(value: string) {
@@ -104,6 +121,10 @@ function suggestedResponsible(users: UserResponse[]) {
 
 function initials(value: string) {
   return value.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase();
+}
+
+function CalendarIcon() {
+  return <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><rect x="3" y="4" width="12" height="11" rx="1.6" fill="#131313" /><path d="M3 7h12M6 2.8v2.4M12 2.8v2.4" stroke="#F6FAFF" strokeWidth="1.5" strokeLinecap="round" /></svg>;
 }
 
 function BotMark() {
@@ -142,10 +163,51 @@ function QuickOpts({ options, selected, onSelect }: { options: Array<{ value: st
   return <div className="mb-[10px] ml-[33px] flex flex-col gap-[6px]">{options.map((option) => { const active = selected === option.value || selected === option.label; return <button key={option.value} type="button" onClick={() => onSelect(option.value)} className={`inline-flex min-h-[32px] w-fit items-center gap-[8px] rounded-full border-[1.5px] px-[15px] py-[7px] text-[14px] font-bold leading-[18px] ${active ? 'border-[#002659] bg-[#002659] text-white' : 'border-[#D1D1D1] bg-white text-[#24588B]'}`}><QuickIcon icon={option.icon} />{option.label}</button>; })}</div>;
 }
 
+function DateCalendarSheet({ visible, value, onClose, onSelect }: { visible: boolean; value: string; onClose: () => void; onSelect: (value: string) => void }) {
+  const selectedDate = parseDateLabel(value) ?? new Date();
+  const [viewDate, setViewDate] = useState(() => new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+  const [dateText, setDateText] = useState(() => displayDate(value));
+
+  useEffect(() => {
+    if (!visible) return;
+    const selected = parseDateLabel(value) ?? new Date();
+    setViewDate(new Date(selected.getFullYear(), selected.getMonth(), 1));
+    setDateText(displayDate(value));
+  }, [value, visible]);
+
+  if (!visible) return null;
+
+  const firstDay = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+  const offset = (firstDay.getDay() + 6) % 7;
+  const calendarStart = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1 - offset);
+  const days = Array.from({ length: 42 }, (_, index) => new Date(calendarStart.getFullYear(), calendarStart.getMonth(), calendarStart.getDate() + index));
+  const weekDays = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+
+  function selectDate(date: Date) {
+    const formatted = formatDate(date);
+    setDateText(displayDate(formatted));
+    onSelect(formatted);
+    onClose();
+  }
+
+  function handleDateTextChange(event: ChangeEvent<HTMLInputElement>) {
+    const nextText = formatDateInput(event.target.value);
+    setDateText(nextText);
+    const nextValue = parseDateInput(nextText);
+    if (!nextValue) return;
+    const nextDate = parseDateLabel(nextValue);
+    if (nextDate) setViewDate(new Date(nextDate.getFullYear(), nextDate.getMonth(), 1));
+    onSelect(nextValue);
+    onClose();
+  }
+
+  return <div className="fixed bottom-[16px] right-[20px] top-[16px] z-[1100] flex w-[360px] max-w-[calc(100vw-40px)] items-end overflow-hidden rounded-[22px] bg-black/70" onClick={onClose}><div className="max-h-[92%] w-full overflow-hidden rounded-t-[16px] bg-white px-[14px] pb-[14px] pt-[14px]" onClick={(event) => event.stopPropagation()}><div className="flex flex-col gap-[6px]"><p className="text-[13px] font-bold leading-none text-[#131313]">Fecha</p><div className="flex h-[50px] w-full items-center justify-between rounded-[10px] border-[1.5px] border-[#24588B] bg-[#F6FAFF] px-[15.5px] py-[15px] text-left"><input value={dateText} onChange={handleDateTextChange} inputMode="numeric" maxLength={10} placeholder="dd/mm/aaaa" className="min-w-0 flex-1 bg-transparent text-[13px] leading-[19.5px] text-[#131313] outline-none placeholder:text-[#757575]" /><CalendarIcon /></div></div><div className="mt-[10px] w-full rounded-[10px] border border-[#D1D1D1] bg-white px-[12px] pb-[12px] pt-[12px] shadow-[0_1px_1.5px_rgba(0,0,0,0.06)]"><div className="flex h-[28px] items-center justify-between"><button type="button" className="flex items-center gap-[4px] text-[14px] font-bold leading-none text-[#131313]" onClick={() => setViewDate((date) => new Date(date.getFullYear(), date.getMonth() - 1, 1))}>{monthLabel(viewDate)} <span className="text-[10px]">▼</span></button><div className="flex items-center gap-[10px] text-[#131313]"><button type="button" className="flex h-[28px] w-[28px] items-center justify-center text-[20px] leading-none" onClick={() => setViewDate((date) => new Date(date.getFullYear(), date.getMonth() - 1, 1))}>↑</button><button type="button" className="flex h-[28px] w-[28px] items-center justify-center text-[20px] leading-none" onClick={() => setViewDate((date) => new Date(date.getFullYear(), date.getMonth() + 1, 1))}>↓</button></div></div><div className="mt-[14px] grid grid-cols-7 text-center text-[14px] font-bold leading-none text-[#131313]">{weekDays.map((day) => <span key={day}>{day}</span>)}</div><div className="mt-[10px] grid grid-cols-7 gap-y-[8px] text-center text-[15px] leading-[30px]">{days.map((date) => { const selected = value && formatDate(date) === value; const currentMonth = date.getMonth() === viewDate.getMonth(); return <button key={date.toISOString()} type="button" onClick={() => selectDate(date)} className={`mx-auto flex h-[30px] w-[30px] items-center justify-center rounded-[6px] ${selected ? 'bg-[#0B84FF] font-bold text-white shadow-[0_0_0_2px_#006FE6]' : currentMonth ? 'text-[#131313]' : 'text-[#888888]'}`}>{date.getDate()}</button>; })}</div><div className="mt-[14px] flex items-center justify-between px-[18px] text-[14px] font-semibold text-[#0B84FF]"><button type="button" onClick={() => { onSelect(''); onClose(); }}>Borrar</button><button type="button" onClick={() => selectDate(new Date())}>Hoy</button></div></div></div></div>;
+}
+
 function DateWidget({ value, resolved, onSelect }: { value: string; resolved: boolean; onSelect: (value: string) => void }) {
-  const [text, setText] = useState(displayDate(value));
-  useEffect(() => setText(displayDate(value)), [value]);
-  return <div className="mb-[10px] ml-[33px] mr-[12px] rounded-[12px] border border-[#E3E3E3] bg-white p-[12px]"><p className="text-[12px] font-bold text-[#131313]">Fecha</p><input value={text} disabled={resolved} onChange={(event) => { const next = formatDateInput(event.target.value); setText(next); const parsed = parseDateInput(next); if (parsed) onSelect(parsed); }} placeholder="dd/mm/aaaa" inputMode="numeric" maxLength={10} className="mt-[8px] h-[44px] w-full rounded-[10px] border-[1.5px] border-[#24588B] bg-[#F6FAFF] px-[12px] text-[13px] outline-none" /></div>;
+  const [open, setOpen] = useState(!resolved);
+  useEffect(() => { if (!resolved) setOpen(true); }, [resolved]);
+  return <div className="mb-[10px] ml-[33px] mr-[12px] rounded-[12px] border border-[#E3E3E3] bg-white p-[12px]"><p className="text-[12px] font-bold text-[#131313]">Fecha</p><button type="button" disabled={resolved} onClick={() => setOpen(true)} className="mt-[8px] flex h-[44px] w-full items-center justify-between rounded-[10px] border-[1.5px] border-[#24588B] bg-[#F6FAFF] px-[12px] text-left text-[13px] text-[#131313] disabled:opacity-80"><span>{displayDate(value) || 'dd/mm/aaaa'}</span><CalendarIcon /></button><DateCalendarSheet visible={open && !resolved} value={value} onClose={() => setOpen(false)} onSelect={onSelect} /></div>;
 }
 
 function LocationWidget({ captured, label, capturing, resolved, onCapture, onManual, onContinue }: { captured: boolean; label: string; capturing: boolean; resolved: boolean; onCapture: () => void; onManual: (latitude: number, longitude: number) => void; onContinue: () => void }) {
@@ -242,7 +304,7 @@ export function AssistantChatStep(props: AssistantChatStepProps) {
   async function selectArea(area: AreaResponse, messageId: string) { markResolved(messageId); draft.setArea(area.id, area.name); push('user', area.name); await beginSectorSelection(area.id); }
   async function selectSector(sector: SectorResponse, messageId: string) { markResolved(messageId); draft.setSector(sector.id, sector.name); push('user', sector.name); push('typing'); try { const types = await queryClient.fetchQuery({ queryKey: ['inspections', 'assistant-chat', 'inspection-types'], queryFn: getInspectionTypes, staleTime: 300000 }); clearTyping(); push('bot', `${useNewInspectionDraftStore.getState().areaName} · ${sector.name}. ¿Qué tipo de inspección es?`); push('types', [{ value: InspectionType.ENVIRONMENTAL, label: 'Hallazgo', icon: 'search', inspectionTypeId: typeId(types, InspectionType.ENVIRONMENTAL) }, { value: InspectionType.REGULATORY, label: 'Checklist normativo', icon: 'clipboard-check', inspectionTypeId: typeId(types, InspectionType.REGULATORY) }] as TypeOption[]); } catch { clearTyping(); pushError('No pude cargar tipos.', () => { void selectSector(sector, messageId); }); } }
   async function selectInspectionType(value: InspectionType, inspectionTypeId: string | null, label: string, messageId: string) { markResolved(messageId); draft.setInspectionType(value, label); push('user', label); if (!inspectionTypeId) { pushError('No se encontró este tipo en catálogo.'); return; } if (value !== InspectionType.ENVIRONMENTAL) { setFallbackToV2(true); return; } await sleep(200); push('bot', 'Selecciona la fecha de inspección.'); push('date'); }
-  async function selectInspectionDate(value: string, messageId: string) { if (resolvedMessages.has(messageId)) return; markResolved(messageId); draft.setInspectionDate(value); push('user', value); await sleep(200); push('bot', 'Capturemos la ubicación obligatoria.'); push('loc'); }
+  async function selectInspectionDate(value: string, messageId: string) { if (!value || resolvedMessages.has(messageId)) return; markResolved(messageId); draft.setInspectionDate(value); push('user', value); await sleep(200); push('bot', 'Capturemos la ubicación obligatoria.'); push('loc'); }
   async function captureChatLocation(messageId: string) { const ok = await captureLocation(); if (!ok) { pushError(locationError ?? 'No se pudo capturar la ubicación.'); return; } await continueAfterLocation(messageId); }
   async function continueAfterLocation(messageId: string) { if (resolvedMessages.has(messageId)) return; markResolved(messageId); push('user', `Ubicación capturada · ${useNewInspectionDraftStore.getState().locationAccuracyLabel}`); await askFindingType(); }
   function setManualLocation(latitude: number, longitude: number) { draft.setLocation({ label: `${latitude.toFixed(5)}, ${longitude.toFixed(5)} +- 0.0 m`, accuracy: '+- 0.0 m', latitude, longitude, altitude: draft.altitude }); }
@@ -258,7 +320,7 @@ export function AssistantChatStep(props: AssistantChatStepProps) {
   async function completeCriticality(observationId: string, severity: InspectionFindingSeverityResponse, messageId: string) { markResolved(messageId); draft.updateFindingObservation(observationId, { severityId: severity.id, severityLabel: severity.name, severityClosureTimeLabel: severity.closureTimeLabel }); const index = useNewInspectionDraftStore.getState().findingObservations.filter((item) => item.saved).length + 1; await sleep(200); push('bot', 'Confirma el SLA para esta observación.'); push('sla', { observationId, initialDays: parseSlaDays(severity.closureTimeLabel, 7), observationNumber: index } as SlaData); }
   async function saveObservation(messageId: string, data: SlaData, days: number) { markResolved(messageId); const state = useNewInspectionDraftStore.getState(); const target = state.findingObservations.find((item) => item.id === data.observationId); if (!target) return; if (!target.detectedCondition.trim() || !target.correctiveAction.trim() || !target.evidence || !target.severityId) { pushError('La observación está incompleta.'); return; } const index = state.findingObservations.filter((item) => item.saved).length + 1; draft.updateFindingObservation(data.observationId, { severityClosureTimeLabel: `${days} días`, saved: true }); push('user', `✓ Observación ${index} guardada`); await sleep(200); setStep(3); push('bot', `Llevas ${index} observación. Revisa antes de continuar:`); push('observationSaved', { observationId: data.observationId, index } as ObservationSavedData); push('bot', '¿Agregar otra observación o continuamos con la empresa?'); push('findingNext'); }
   async function findingDecision(value: 'add' | 'continue', messageId: string) { markResolved(messageId); const saved = useNewInspectionDraftStore.getState().findingObservations.filter((item) => item.saved).length; if (value === 'add') { await startFindingObservation(); return; } if (!saved) { pushError('Debes guardar al menos una observación antes de continuar.'); return; } await askCompany(); }
-  async function askCompany() { push('typing'); try { const companies = await queryClient.fetchQuery({ queryKey: ['inspections', 'assistant-chat', 'companies'], queryFn: getResponsibleCompanies, staleTime: 300000 }); clearTyping(); if (!companies.length) { pushError('No hay empresas disponibles.'); return; } let suggestion = companies[0].name; let fallback = true; try { const state = useNewInspectionDraftStore.getState(); const response = await suggestCompany({ area: state.areaName ?? '', sector: state.sectorName ?? '', availableCompanies: companies.map((company) => company.name) }); suggestion = response.suggestion; fallback = response.fallback; } catch { fallback = true; } const company = matchSuggestedCompany(companies, suggestion); if (!company) { pushError('No pude sugerir empresa.'); return; } setStep(4); push('bot', `Basándome en el historial de ${useNewInspectionDraftStore.getState().areaName} · ${useNewInspectionDraftStore.getState().sectorName}, te propongo:`); push('companySuggestion', { company, companies, suggestion, fallback } as CompanySuggestionData); } catch { clearTyping(); pushError('No pude cargar empresas.'); } }
+  async function askCompany() { push('typing'); try { const companies = await queryClient.fetchQuery({ queryKey: ['inspections', 'assistant-chat', 'companies'], queryFn: getResponsibleCompanies, staleTime: 300000 }); clearTyping(); if (!companies.length) { pushError('No hay empresas disponibles.'); return; } let suggestion = companies[0].name; let fallback = true; try { const state = useNewInspectionDraftStore.getState(); const response = await suggestCompany({ area: state.areaName ?? '', sector: state.sectorName ?? '', availableCompanies: companies.map((company) => company.name) }); suggestion = response.suggestion; fallback = response.fallback; } catch { fallback = true; } const company = matchSuggestedCompany(companies, suggestion); if (!company) { pushError('No pude sugerir empresa.'); return; } setStep(4); push('bot', `Basándome en el historial de ${useNewInspectionDraftStore.getState().areaName} · ${useNewInspectionDraftStore.getState().sectorName}, te propongo:`); push('companySuggestion', { company, companies, fallback } as CompanySuggestionData); } catch { clearTyping(); pushError('No pude cargar empresas.'); } }
   async function selectCompany(company: CompanyResponse, messageId: string) { markResolved(messageId); draft.setFindingCompany(company.id, company.name); push('user', `✓ ${company.name} confirmada`); await askPeople(company.id); }
   function chooseOtherCompany(messageId: string, companies: CompanyResponse[]) { markResolved(messageId); push('bot', 'Selecciona otra empresa responsable.'); push('companies', companies); }
   async function askPeople(companyId: string) { push('typing'); try { const users = await queryClient.fetchQuery({ queryKey: ['inspections', 'assistant-chat', 'people', companyId], queryFn: () => getCompanyUsers(companyId), staleTime: 300000 }); clearTyping(); if (!users.length) { pushError('No hay personal asociado a esta empresa.'); return; } const suggested = suggestedResponsible(users); push('bot', `Para ${useNewInspectionDraftStore.getState().findingCompanyName}, sugiero este personal. Selecciona uno o más:`); push('people', { users, suggestedUserId: suggested?.id ?? null } as PeopleData); } catch { clearTyping(); pushError('No pude cargar personal.'); } }

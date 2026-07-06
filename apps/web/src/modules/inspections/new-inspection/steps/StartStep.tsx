@@ -16,35 +16,6 @@ function BackIcon() {
   );
 }
 
-function SignalIcon() {
-  return (
-    <div className="flex h-[11px] items-end gap-[1.5px]" aria-hidden="true">
-      <span className="h-[4px] w-[3px] rounded-[1px] bg-[rgba(255,255,255,0.85)]" />
-      <span className="h-[6px] w-[3px] rounded-[1px] bg-[rgba(255,255,255,0.85)]" />
-      <span className="h-[8px] w-[3px] rounded-[1px] bg-[rgba(255,255,255,0.85)]" />
-      <span className="h-[10px] w-[3px] rounded-[1px] bg-[rgba(255,255,255,0.85)]" />
-    </div>
-  );
-}
-
-function WifiIcon() {
-  return (
-    <svg width="20" height="16" viewBox="0 0 20 16" fill="none" aria-hidden="true">
-      <path d="M2 5.5c4.6-4 11.4-4 16 0M5.2 8.8c2.7-2.2 6.9-2.2 9.6 0M8.5 12.1c.9-.7 2.1-.7 3 0" stroke="rgba(255,255,255,0.85)" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function BatteryIcon() {
-  return (
-    <svg width="20" height="16" viewBox="0 0 20 16" fill="none" aria-hidden="true">
-      <rect x="2" y="4.5" width="14" height="8" rx="1.5" stroke="rgba(255,255,255,0.85)" strokeWidth="1.8" />
-      <path d="M17 7v3" stroke="rgba(255,255,255,0.85)" strokeWidth="2" strokeLinecap="round" />
-      <rect x="4.4" y="6.7" width="8.8" height="3.6" rx="0.8" fill="rgba(255,255,255,0.85)" />
-    </svg>
-  );
-}
-
 function AiChipIcon() {
   return (
     <svg width="28" height="24" viewBox="0 0 28 24" fill="none" aria-hidden="true">
@@ -103,18 +74,6 @@ export function StartStep({
 
   return (
     <>
-      <div className="relative h-[28px] shrink-0 px-[16px] pr-[14px]" style={{ backgroundColor: '#002659' }}>
-        <div className="flex h-full items-center justify-between">
-          <p className="text-[12px] font-semibold leading-none text-[rgba(255,255,255,0.9)]">9:41</p>
-          <div className="flex items-center gap-[5px]">
-            <SignalIcon />
-            <WifiIcon />
-            <BatteryIcon />
-          </div>
-        </div>
-        <div className="absolute left-1/2 top-[10px] h-[12px] w-[12px] -translate-x-1/2 rounded-full bg-black" />
-      </div>
-
       <div className="h-[56px] shrink-0 text-white" style={{ backgroundColor: '#002659' }}>
         <div className="flex h-full items-center gap-[4px] px-[4px]">
           <button

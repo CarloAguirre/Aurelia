@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { useSessionStore } from '../../../../shared/stores/session.store';
 import { useNewInspectionCatalogs } from '../hooks/useNewInspectionCatalogs';
 import { useNewInspectionLocation } from '../hooks/useNewInspectionLocation';
@@ -11,6 +11,11 @@ interface IdentificationStepProps {
   onNext: () => void;
 }
 
+interface LocationPoint {
+  latitude: number;
+  longitude: number;
+}
+
 function formatDate(value: Date): string {
   const day = String(value.getDate()).padStart(2, '0');
   const month = String(value.getMonth() + 1).padStart(2, '0');
@@ -18,24 +23,57 @@ function formatDate(value: Date): string {
   return `${day}-${month}-${year}`;
 }
 
-function buildDateOptions(): SelectSheetOption[] {
-  return Array.from({ length: 21 }, (_, index) => {
-    const date = new Date();
-    date.setDate(date.getDate() - index);
-    const label = formatDate(date);
-    const description =
-      index === 0
-        ? 'Hoy'
-        : index === 1
-        ? 'Ayer'
-        : new Intl.DateTimeFormat('es-CL', { weekday: 'long' }).format(date);
-
-    return { id: label, label, description };
-  });
+function parseDateLabel(value: string): Date | null {
+  const parts = value.split(/[/-]/).map((part) => Number(part));
+  if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) return null;
+  const [day, month, year] = parts;
+  if (!day || !month || !year) return null;
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return date;
 }
 
 function displayDate(value: string) {
-  return value.replaceAll('-', '/');
+  return value ? value.replaceAll('-', '/') : 'dd-mm-aaaa';
+}
+
+function monthLabel(value: Date) {
+  return new Intl.DateTimeFormat('es-CL', { month: 'long', year: 'numeric' }).format(value);
+}
+
+function formatLocationLabel(latitude: number, longitude: number, accuracy: string) {
+  return `${latitude.toFixed(5)}, ${longitude.toFixed(5)} ${accuracy}`;
+}
+
+function parseLocationText(value: string): { latitude: number; longitude: number; accuracy: string | null } | null {
+  const match = value.match(/(-?\d+(?:[.,]\d+)?)\s*,\s*(-?\d+(?:[.,]\d+)?)(?:.*?(\+?-?\s*\d+(?:[.,]\d+)?\s*m))?/i);
+  if (!match) return null;
+  const latitude = Number(match[1]?.replace(',', '.'));
+  const longitude = Number(match[2]?.replace(',', '.'));
+  if (Number.isNaN(latitude) || Number.isNaN(longitude)) return null;
+  const accuracy = match[3]?.replace(',', '.').replace(/\s+/g, ' ').trim() ?? null;
+  return { latitude, longitude, accuracy };
+}
+
+function clampLatitude(value: number) {
+  return Math.max(-85, Math.min(85, value));
+}
+
+function latLngToWorld(latitude: number, longitude: number, zoom: number) {
+  const scale = 256 * 2 ** zoom;
+  const sin = Math.sin((clampLatitude(latitude) * Math.PI) / 180);
+  return {
+    x: ((longitude + 180) / 360) * scale,
+    y: (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * scale,
+  };
+}
+
+function worldToLatLng(x: number, y: number, zoom: number): LocationPoint {
+  const scale = 256 * 2 ** zoom;
+  const longitude = (x / scale) * 360 - 180;
+  const n = Math.PI - (2 * Math.PI * y) / scale;
+  const latitude = (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+  return { latitude, longitude };
 }
 
 function HeaderIcon({ tone }: { tone: 'inspector' | 'inspection' }) {
@@ -71,8 +109,8 @@ function InfoIcon() {
 function CalendarIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-      <rect x="3" y="4" width="12" height="11" rx="1.6" stroke="#131313" strokeWidth="1.5" />
-      <path d="M3 7h12M6 2.8v2.4M12 2.8v2.4" stroke="#131313" strokeWidth="1.5" strokeLinecap="round" />
+      <rect x="3" y="4" width="12" height="11" rx="1.6" fill="#131313" />
+      <path d="M3 7h12M6 2.8v2.4M12 2.8v2.4" stroke="#F6FAFF" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }
@@ -93,20 +131,110 @@ function CaretDown() {
   );
 }
 
-function MapPreview() {
+function DateCalendarSheet({ visible, value, onClose, onSelect }: { visible: boolean; value: string; onClose: () => void; onSelect: (value: string) => void }) {
+  const selectedDate = parseDateLabel(value) ?? new Date();
+  const [viewDate, setViewDate] = useState(() => new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+
+  useEffect(() => {
+    if (visible) setViewDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+  }, [selectedDate.getFullYear(), selectedDate.getMonth(), visible]);
+
+  if (!visible) return null;
+
+  const firstDay = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+  const offset = (firstDay.getDay() + 6) % 7;
+  const calendarStart = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1 - offset);
+  const days = Array.from({ length: 42 }, (_, index) => new Date(calendarStart.getFullYear(), calendarStart.getMonth(), calendarStart.getDate() + index));
+  const weekDays = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+
+  function selectDate(date: Date) {
+    onSelect(formatDate(date));
+    onClose();
+  }
+
   return (
-    <div className="relative h-[120px] w-full overflow-hidden rounded-[10px] border-[1.5px] border-[#D1D1D1] bg-[linear-gradient(158deg,#2A4A3A_0%,#1E3A2E_30%,#2A4A3A_50%,#1A3228_100%)]">
-      <div className="absolute inset-0 opacity-90 bg-[linear-gradient(158deg,#1E4A2E_0%,#2A5A3A_40%,#1A3828_70%,#243E30_100%)]" />
-      <div className="absolute left-[58px] top-[35px] h-[3px] w-[178px] rounded-[2px] bg-[rgba(255,200,100,0.4)]" />
-      <div className="absolute left-[30px] top-[70px] h-[2px] w-[118px] rounded-[2px] bg-[rgba(255,200,100,0.3)]" />
-      <div className="absolute left-[134px] top-[31px] drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+    <div className="fixed bottom-[16px] right-[20px] top-[16px] z-[1100] flex w-[360px] max-w-[calc(100vw-40px)] items-end overflow-hidden rounded-[22px] bg-black/70" onClick={onClose}>
+      <div className="max-h-[92%] w-full overflow-hidden rounded-t-[16px] bg-white px-[14px] pb-[16px] pt-[16px]" onClick={(event) => event.stopPropagation()}>
+        <div className="flex flex-col gap-[6px]">
+          <p className="text-[13px] font-bold leading-none text-[#131313]">Fecha</p>
+          <button type="button" className="flex h-[50px] w-full items-center justify-between rounded-[10px] border-[1.5px] border-[#24588B] bg-[#F6FAFF] px-[15.5px] py-[15px] text-left" onClick={() => undefined}>
+            <span className={`text-[13px] leading-[19.5px] ${value ? 'text-[#131313]' : 'text-[#757575]'}`}>{displayDate(value)}</span>
+            <CalendarIcon />
+          </button>
+        </div>
+
+        <div className="mt-[12px] w-full border border-[#646464] bg-white px-[16px] pb-[16px] pt-[18px] shadow-[0_1px_2px_rgba(0,0,0,0.2)]">
+          <div className="flex h-[34px] items-center justify-between">
+            <button type="button" className="flex items-center gap-[6px] text-[18px] font-bold leading-none text-[#131313]" onClick={() => setViewDate((date) => new Date(date.getFullYear(), date.getMonth() - 1, 1))}>
+              {monthLabel(viewDate)} <span className="text-[13px]">▼</span>
+            </button>
+            <div className="flex items-center gap-[22px] text-[#131313]">
+              <button type="button" className="text-[34px] leading-none" onClick={() => setViewDate((date) => new Date(date.getFullYear(), date.getMonth() - 1, 1))}>↑</button>
+              <button type="button" className="text-[34px] leading-none" onClick={() => setViewDate((date) => new Date(date.getFullYear(), date.getMonth() + 1, 1))}>↓</button>
+            </div>
+          </div>
+          <div className="mt-[22px] grid grid-cols-7 text-center text-[22px] font-medium leading-none text-[#131313]">
+            {weekDays.map((day) => <span key={day}>{day}</span>)}
+          </div>
+          <div className="mt-[16px] grid grid-cols-7 gap-y-[16px] text-center text-[22px] leading-[34px]">
+            {days.map((date) => {
+              const selected = value && formatDate(date) === value;
+              const currentMonth = date.getMonth() === viewDate.getMonth();
+              return (
+                <button key={date.toISOString()} type="button" onClick={() => selectDate(date)} className={`mx-auto flex h-[34px] w-[34px] items-center justify-center rounded-[3px] ${selected ? 'bg-[#0B84FF] font-bold text-white shadow-[0_0_0_3px_#006FE6]' : currentMonth ? 'text-[#131313]' : 'text-[#888888]'}`}>
+                  {date.getDate()}
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-[26px] flex items-center justify-between px-[20px] text-[22px] font-medium text-[#0B84FF]">
+            <button type="button" onClick={() => { onSelect(''); onClose(); }}>Borrar</button>
+            <button type="button" onClick={() => selectDate(new Date())}>Hoy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MapPreview({ latitude, longitude, accuracyLabel, altitude, onPick }: { latitude: number | null; longitude: number | null; accuracyLabel: string; altitude: number | null; onPick: (point: LocationPoint) => void }) {
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const zoom = 15;
+  const center = { latitude: latitude ?? -26.02888, longitude: longitude ?? -69.18732 };
+  const centerWorld = latLngToWorld(center.latitude, center.longitude, zoom);
+  const viewWidth = 332;
+  const viewHeight = 120;
+  const centerTileX = Math.floor(centerWorld.x / 256);
+  const centerTileY = Math.floor(centerWorld.y / 256);
+  const tiles = [-1, 0, 1].flatMap((row) => [-1, 0, 1].map((column) => ({ row, column })));
+
+  function handleMapClick(event: MouseEvent<HTMLDivElement>) {
+    const rect = mapRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = centerWorld.x + event.clientX - rect.left - rect.width / 2;
+    const y = centerWorld.y + event.clientY - rect.top - rect.height / 2;
+    onPick(worldToLatLng(x, y, zoom));
+  }
+
+  return (
+    <div ref={mapRef} role="button" tabIndex={0} className="relative h-[120px] w-full cursor-crosshair overflow-hidden rounded-[10px] border-[1.5px] border-[#D1D1D1] bg-[#E6EEE8]" onClick={handleMapClick}>
+      {tiles.map(({ row, column }) => {
+        const tileX = centerTileX + column;
+        const tileY = centerTileY + row;
+        const maxTile = 2 ** zoom;
+        const wrappedX = ((tileX % maxTile) + maxTile) % maxTile;
+        const left = tileX * 256 - centerWorld.x + viewWidth / 2;
+        const top = tileY * 256 - centerWorld.y + viewHeight / 2;
+        return <img key={`${row}-${column}`} alt="" draggable={false} referrerPolicy="no-referrer" src={`https://tile.openstreetmap.org/${zoom}/${wrappedX}/${tileY}.png`} className="absolute h-[256px] w-[256px] select-none" style={{ left, top }} />;
+      })}
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-full drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
         <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
           <path d="M14 2.5c-5 0-9 3.9-9 8.8 0 6.7 9 14.2 9 14.2s9-7.5 9-14.2c0-4.9-4-8.8-9-8.8Z" fill="#BD3B5B" />
           <circle cx="14" cy="11.2" r="2.4" fill="#2A1A04" />
         </svg>
       </div>
-      <div className="absolute bottom-[11px] left-[8px] rounded-[4px] bg-[rgba(0,0,0,0.6)] px-[8px] py-[3px] text-[10px] font-semibold leading-[12px] text-white">Salares Norte · 4.500 msnm</div>
-      <div className="absolute bottom-[11px] right-[8px] rounded-[4px] bg-[rgba(0,179,152,0.8)] px-[8px] py-[3px] text-[10px] font-semibold leading-[12px] text-white">± 12.4 m</div>
+      <div className="absolute bottom-[11px] left-[8px] rounded-[4px] bg-[rgba(0,0,0,0.7)] px-[8px] py-[3px] text-[10px] font-semibold leading-[12px] text-white">{latitude && longitude ? `${latitude.toFixed(5)}, ${longitude.toFixed(5)}` : 'Ubicación estimada'}</div>
+      <div className="absolute bottom-[11px] right-[8px] rounded-[4px] bg-[rgba(0,179,152,0.88)] px-[8px] py-[3px] text-[10px] font-semibold leading-[12px] text-white">{altitude !== null ? `${altitude.toFixed(1)} m` : accuracyLabel}</div>
     </div>
   );
 }
@@ -205,6 +333,11 @@ export function IdentificationStep({ onCancel, onNext }: IdentificationStepProps
   const online = useOnlineStatus();
   const { areas, sectors, loadingAreas, loadingSectors, catalogErrorMessage } = useNewInspectionCatalogs();
   const { captureLocation, capturing, locationError } = useNewInspectionLocation();
+  const [locationText, setLocationText] = useState(draft.locationLabel);
+
+  useEffect(() => {
+    setLocationText(draft.locationLabel);
+  }, [draft.locationLabel]);
 
   const areaOptions = useMemo<SelectSheetOption[]>(
     () => areas.map((area) => ({ id: area.id, label: area.name })),
@@ -216,7 +349,6 @@ export function IdentificationStep({ onCancel, onNext }: IdentificationStepProps
     [sectors],
   );
 
-  const dateOptions = useMemo<SelectSheetOption[]>(buildDateOptions, []);
   const inspectorName = user?.fullName ?? draft.inspectorName;
   const inspectorCompanyName = draft.inspectorCompanyName;
   const canContinue = Boolean(draft.areaId && draft.sectorId && draft.inspectionDate && draft.locationCaptured);
@@ -232,9 +364,32 @@ export function IdentificationStep({ onCancel, onNext }: IdentificationStepProps
     flow.closePicker();
   }
 
-  function selectDate(option: SelectSheetOption) {
-    draft.setInspectionDate(option.label);
-    flow.closePicker();
+  function selectDate(value: string) {
+    draft.setInspectionDate(value);
+  }
+
+  function setLocationFromPoint(point: LocationPoint) {
+    const accuracy = draft.locationAccuracyLabel && draft.locationAccuracyLabel !== 'Sin precision' ? draft.locationAccuracyLabel : '+- 0.0 m';
+    draft.setLocation({
+      label: formatLocationLabel(point.latitude, point.longitude, accuracy),
+      accuracy,
+      latitude: point.latitude,
+      longitude: point.longitude,
+      altitude: draft.altitude,
+    });
+  }
+
+  function applyManualLocation() {
+    const parsed = parseLocationText(locationText);
+    if (!parsed) return;
+    const accuracy = parsed.accuracy ?? (draft.locationAccuracyLabel && draft.locationAccuracyLabel !== 'Sin precision' ? draft.locationAccuracyLabel : '+- 0.0 m');
+    draft.setLocation({
+      label: formatLocationLabel(parsed.latitude, parsed.longitude, accuracy),
+      accuracy,
+      latitude: parsed.latitude,
+      longitude: parsed.longitude,
+      altitude: draft.altitude,
+    });
   }
 
   async function handleCaptureLocation() {
@@ -342,15 +497,20 @@ export function IdentificationStep({ onCancel, onNext }: IdentificationStepProps
           {locationError ? <p className="mt-[6px] text-[11px] text-[#BD3B5B]">{locationError}</p> : null}
           {catalogErrorMessage ? <p className="mt-[6px] text-[11px] text-[#BD3B5B]">{catalogErrorMessage}</p> : null}
 
-          <div className="mt-[8px] flex h-[50px] items-center rounded-[10px] border-[1.5px] border-[#D1D1D1] bg-[#F6FAFF] px-[12px] text-[14px] font-normal text-[#131313]">
-            <span className="truncate">{draft.locationLabel}</span>
-          </div>
+          <input
+            value={locationText}
+            onChange={(event) => setLocationText(event.target.value)}
+            onBlur={applyManualLocation}
+            onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+            className="mt-[8px] flex h-[50px] w-full rounded-[10px] border-[1.5px] border-[#D1D1D1] bg-[#F6FAFF] px-[12px] text-[14px] font-normal text-[#131313] outline-none"
+            placeholder="latitud, longitud +- precisión"
+          />
           <div className="mt-[8px]">
-            <MapPreview />
+            <MapPreview latitude={draft.latitude} longitude={draft.longitude} accuracyLabel={draft.locationAccuracyLabel} altitude={draft.altitude} onPick={setLocationFromPoint} />
           </div>
           <div className="mt-[8px] flex h-[16px] items-center gap-[4px] text-[11px] leading-[14.3px] text-[#646464]">
             <span className="text-[#24588B]">↳</span>
-            <span className="truncate">Arrastra el pin para ajustar la ubicación manualmente</span>
+            <span className="truncate">Haz click en el mapa para ajustar la ubicación manualmente</span>
           </div>
         </SectionCard>
       </div>
@@ -403,17 +563,7 @@ export function IdentificationStep({ onCancel, onNext }: IdentificationStepProps
         onSelect={selectSector}
       />
 
-      <SelectSheet
-        visible={flow.activePicker === 'date'}
-        title="Fecha de inspección"
-        subtitle="Selecciona una fecha reciente"
-        options={dateOptions}
-        selectedId={draft.inspectionDate}
-        loading={false}
-        emptyText="Sin fechas disponibles"
-        onClose={flow.closePicker}
-        onSelect={selectDate}
-      />
+      <DateCalendarSheet visible={flow.activePicker === 'date'} value={draft.inspectionDate} onClose={flow.closePicker} onSelect={selectDate} />
     </>
   );
 }

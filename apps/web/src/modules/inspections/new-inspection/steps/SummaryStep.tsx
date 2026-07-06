@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { InspectionAnswerValue, InspectionType } from '@aurelia/contracts';
 import { useSessionStore } from '../../../../shared/stores/session.store';
@@ -99,7 +99,7 @@ function ManualStepper({ checklist }: { checklist: boolean }) {
   );
 }
 
-function SectionCard({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
+function SectionCard({ title, icon, children }: { title: string; icon: string; children: ReactNode }) {
   return (
     <div className="w-full overflow-hidden rounded-[12px] border border-[#E3E3E3] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
       <div className="flex h-[29px] items-center gap-[6px] border-b border-[#E3E3E3] bg-[#F7F7F7] px-[12px]"><span className="text-[10px] text-[#646464]">{icon}</span><p className="text-[10px] font-bold uppercase leading-none tracking-[0.5px] text-[#646464]">{title}</p></div>

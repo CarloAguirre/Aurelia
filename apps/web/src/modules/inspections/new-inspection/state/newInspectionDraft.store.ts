@@ -94,6 +94,8 @@ interface NewInspectionDraftState extends NewInspectionDraft {
 type NewInspectionDraftStoreHook = {
   (): NewInspectionDraftState;
   <T>(selector: (state: NewInspectionDraftState) => T): T;
+  getState: () => NewInspectionDraftState;
+  subscribe: (listener: (state: NewInspectionDraftState) => void) => () => void;
 };
 
 function newObservationId() {

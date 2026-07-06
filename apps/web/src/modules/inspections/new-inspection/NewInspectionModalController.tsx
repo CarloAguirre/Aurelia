@@ -123,7 +123,7 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
 
   if (!open) return null;
 
-  const panelWidthClass = routeStep === 'start' ? 'w-[360px]' : 'w-[430px]';
+  const panelWidthClass = routeStep === 'start' || routeStep === 'identification' ? 'w-[360px]' : 'w-[430px]';
 
   return (
     <div className="fixed inset-0 z-[1000] bg-[rgba(0,0,0,0.68)]">

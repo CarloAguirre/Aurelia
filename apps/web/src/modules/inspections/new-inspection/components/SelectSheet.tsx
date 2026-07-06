@@ -30,20 +30,22 @@ export function SelectSheet({
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-[16px] right-[20px] top-[16px] z-[1100] flex w-[360px] max-w-[calc(100vw-40px)] items-end overflow-hidden rounded-[22px] bg-[rgba(0,0,0,0.42)]" onClick={onClose}>
+    <div
+      className="fixed bottom-[16px] right-[20px] top-[16px] z-[1100] flex w-[360px] max-w-[calc(100vw-40px)] items-end overflow-hidden rounded-[22px] bg-[rgba(0,0,0,0.58)]"
+      onClick={onClose}
+    >
       <div
-        className="max-h-[72%] w-full rounded-t-[20px] bg-white px-[16px] pb-[22px] pt-[8px] shadow-[0_-12px_32px_rgba(0,0,0,0.22)]"
+        className="max-h-[76%] w-full overflow-hidden rounded-t-[20px] bg-white shadow-[0_-12px_32px_rgba(0,0,0,0.22)]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="mx-auto mb-[12px] h-[4px] w-[46px] rounded-[2px] bg-[#d1d1d1]" />
-        <div className="flex items-center gap-[12px] pb-[10px]">
-          <div className="flex-1">
+        <div className="flex min-h-[76px] items-center gap-[12px] px-[24px] pt-[4px]">
+          <div className="min-w-0 flex-1">
             <p className="text-[18px] font-bold leading-[22px] text-[#131313]">{title}</p>
             {subtitle ? <p className="mt-[3px] text-[12px] leading-[16px] text-[#646464]">{subtitle}</p> : null}
           </div>
           <button
             type="button"
-            className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[#f2f2f2] text-[14px] text-[#131313]"
+            className="flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-none bg-transparent text-[34px] font-light leading-none text-[#131313]"
             onClick={onClose}
             aria-label="Cerrar selector"
           >
@@ -51,9 +53,9 @@ export function SelectSheet({
           </button>
         </div>
 
-        <div className="max-h-[420px] overflow-y-auto pb-[12px]">
-          {loading ? <p className="py-[18px] text-center text-[13px] text-[#646464]">Cargando...</p> : null}
-          {!loading && options.length === 0 ? <p className="py-[18px] text-center text-[13px] text-[#646464]">{emptyText}</p> : null}
+        <div className="max-h-[calc(76vh-108px)] overflow-y-auto pb-[20px]">
+          {loading ? <p className="border-t border-[#E3E3E3] px-[36px] py-[28px] text-[16px] leading-[24px] text-[#646464]">Cargando...</p> : null}
+          {!loading && options.length === 0 ? <p className="border-t border-[#E3E3E3] px-[36px] py-[28px] text-[16px] leading-[24px] text-[#646464]">{emptyText}</p> : null}
           {!loading
             ? options.map((option) => {
                 const selected = option.id === selectedId;
@@ -61,20 +63,15 @@ export function SelectSheet({
                   <button
                     key={option.id}
                     type="button"
-                    className={`mb-[8px] flex min-h-[52px] w-full items-center gap-[12px] rounded-[12px] border-[1.5px] px-[14px] py-[10px] text-left ${
-                      selected ? 'border-[#00b398] bg-[#E9FFFB]' : 'border-[#e3e3e3] bg-[#FAFAFA]'
+                    className={`flex min-h-[78px] w-full items-center border-t border-[#E3E3E3] px-[36px] py-[18px] text-left ${
+                      selected ? 'bg-[#F6FAFF]' : 'bg-white'
                     }`}
                     onClick={() => onSelect(option)}
                   >
-                    <div className="flex-1">
-                      <p className={`text-[14px] font-semibold leading-[18px] ${selected ? 'text-[#00b398]' : 'text-[#131313]'}`}>
-                        {option.label}
-                      </p>
-                      {option.description ? (
-                        <p className="mt-[2px] text-[11px] leading-[14px] text-[#646464]">{option.description}</p>
-                      ) : null}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[16px] font-normal leading-[24px] text-[#131313]">{option.label}</p>
+                      {option.description ? <p className="mt-[7px] text-[12px] leading-[16px] text-[#646464]">{option.description}</p> : null}
                     </div>
-                    {selected ? <span className="text-[16px] text-[#00b398]">●</span> : null}
                   </button>
                 );
               })

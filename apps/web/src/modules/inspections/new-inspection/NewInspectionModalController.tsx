@@ -16,6 +16,7 @@ import {
   useNewInspectionDraftStore,
 } from './state/newInspectionDraft.store';
 import { useNewInspectionFlowStore } from './state/newInspectionFlow.store';
+import './assistant-chat-visual-parity.css';
 
 interface NewInspectionModalControllerProps {
   open: boolean;
@@ -125,7 +126,7 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
   return (
     <div className="fixed inset-0 z-[1000] bg-[rgba(0,0,0,0.68)]">
       <div className="flex h-full w-full items-center justify-end px-[20px] py-[16px]">
-        <div className="relative flex h-[calc(100vh-32px)] max-h-[920px] w-[430px] max-w-[calc(100vw-40px)] flex-col overflow-hidden rounded-[22px] bg-white shadow-[0_24px_70px_rgba(0,0,0,0.35)]">
+        <div className="new-inspection-modal-panel relative flex h-[calc(100vh-32px)] max-h-[920px] w-[430px] max-w-[calc(100vw-40px)] flex-col overflow-hidden rounded-[22px] bg-white shadow-[0_24px_70px_rgba(0,0,0,0.35)]">
         {routeStep === 'start' ? (
           <StartStep
             onStartAssistant={handleStartAssistant}

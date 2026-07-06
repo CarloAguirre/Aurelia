@@ -27,6 +27,7 @@ import { httpGet, httpPost, httpPostForm } from './http-client';
 
 export type InspectionDashboardPeriod = 'year' | 'q1' | 'q2' | 'q3' | 'q4' | 'm1' | 'm2' | 'm3' | 'm4' | 'm5' | 'm6' | 'm7' | 'm8' | 'm9' | 'm10' | 'm11' | 'm12';
 export type InspectionManagementPageSize = 10 | 25 | 50;
+export type AiSuggestType = 'corrective_measure' | 'company_suggestion';
 
 export interface InspectionDashboardQueryParams {
   year: number;
@@ -49,6 +50,17 @@ export interface InspectionManagementTableParams {
   daysMin?: string;
   daysMax?: string;
   closure?: string;
+}
+
+export interface AiSuggestRequest {
+  type: AiSuggestType;
+  context: Record<string, unknown>;
+}
+
+export interface AiSuggestResponse {
+  suggestion: string;
+  type: AiSuggestType;
+  fallback: boolean;
 }
 
 function buildDashboardQuery(params?: InspectionDashboardQueryParams) {
@@ -201,6 +213,28 @@ export async function getCompanyUsers(companyId: string): Promise<UserResponse[]
       (user) => user.companyId === companyId || user.companies?.some((company) => company.id === companyId),
     );
   }
+}
+
+export function suggestCorrectiveMeasure(params: {
+  area: string;
+  sector: string;
+  description: string;
+}): Promise<AiSuggestResponse> {
+  return httpPost<AiSuggestRequest, AiSuggestResponse>('/ai/suggest', {
+    type: 'corrective_measure',
+    context: params,
+  });
+}
+
+export function suggestCompany(params: {
+  area: string;
+  sector: string;
+  availableCompanies: string[];
+}): Promise<AiSuggestResponse> {
+  return httpPost<AiSuggestRequest, AiSuggestResponse>('/ai/suggest', {
+    type: 'company_suggestion',
+    context: params,
+  });
 }
 
 export function createInspection(payload: CreateInspectionRequest): Promise<InspectionResponse> {

@@ -57,15 +57,16 @@ Incluye:
 
 ### Iteracion 2 - Widgets visuales de checklist y fotografia
 
-Estado: parcialmente completada en la iteracion base.
+Estado: parcialmente completada.
 
 - `QuestionCard` web equivalente inicial.
 - `PhotoStepWidget` web con recibo de foto, hora y metadata.
 - Widgets resueltos congelados con `resolvedMessages`.
+- Primera pasada visual global para header, fondo, tarjetas, chips, upload e input inferior.
 
 Pendiente:
 
-- Paridad visual fina contra los componentes mobile.
+- Paridad pixel-perfect contra Figma o nodos mobile.
 - Extraccion a componentes pequeños para reducir el tamaño de `AssistantChatStep.tsx`.
 
 ### Iteracion 3 - Rama hallazgo IA
@@ -79,15 +80,16 @@ Estado: completada funcionalmente.
 
 ### Iteracion 4 - Criticidad y SLA
 
-Estado: parcialmente completada en la iteracion base.
+Estado: parcialmente completada.
 
 - Card de criticidad con descripcion.
 - `SlaConfirmWidget` web.
 - Guardado de observacion despues de confirmar SLA.
+- Primera pasada visual de cards via stylesheet del modal.
 
 Pendiente:
 
-- Ajuste visual fino contra mobile.
+- Ajuste visual fino contra mobile/Figma.
 
 ### Iteracion 5 - Empresa y personal
 
@@ -98,10 +100,11 @@ Estado: parcialmente completada.
 - Permite confirmar empresa sugerida o elegir otra.
 - Mantiene fallback local si `/ai/suggest` falla.
 - `PersonnelPicker` web con usuario sugerido y seleccion multiple ya existe como version inicial.
+- Primera pasada visual de `CompanySuggestionCard` y chips.
 
 Pendiente:
 
-- Paridad visual fina de `CompanySuggestionCard` y `PersonnelPicker` contra mobile.
+- Paridad visual fina de `CompanySuggestionCard` y `PersonnelPicker` contra mobile/Figma.
 - Mejorar heuristica de matching cuando la IA devuelve texto largo y no solo el nombre de empresa.
 
 ### Iteracion 6 - Resumen y guardado
@@ -133,6 +136,19 @@ Pendiente:
 
 - Persistir historial completo de `messages` si se requiere recuperar visualmente toda la conversación, no solo el siguiente paso.
 - Definir comportamiento de evidencias si el usuario reanuda tras recargar y el objeto `File` ya no existe.
+
+### Iteracion 8 - Paridad visual fina
+
+Estado: iniciada.
+
+- Agregado `assistant-chat-visual-parity.css` acotado al panel de nueva inspeccion.
+- Aplicado ajuste visual a header, fondo del chat, sombras de burbujas/cards, estados hover de chips, upload e input inferior.
+- Se agregó clase `new-inspection-modal-panel` para evitar estilos globales fuera del modal.
+
+Pendiente:
+
+- Reemplazar selectores CSS de transición por componentes extraídos.
+- Validar contra capturas/nodos de Figma para medidas exactas.
 
 ## Validacion por iteracion
 

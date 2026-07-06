@@ -99,7 +99,7 @@ function currentTime() {
   return new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
 }
 
-function firstName(value: string) {
+export function firstName(value: string) {
   return value.split(' ')[0] || value;
 }
 

@@ -261,3 +261,136 @@
 .new-inspection-modal-panel > div[class*="border-t"][class*="bg-white"] button:disabled {
   opacity: 0.5;
 }
+
+.new-inspection-modal-panel > div[class*="bg-[#D1D4DA]"] [class*="border-[#D8E0EA]"][class*="rounded-[14px]"]:has(> p[class*="text-[13px]"]) > div:first-child > p,
+.new-inspection-modal-panel > div[class*="bg-[#D1D4DA]"] [class*="border-[#D8E0EA]"][class*="rounded-[14px]"]:has(> p[class*="text-[15px]"]) > div:first-child > p {
+  font-size: 0;
+}
+
+.new-inspection-modal-panel > div[class*="bg-[#D1D4DA]"] [class*="border-[#D8E0EA]"][class*="rounded-[14px]"]:has(> p[class*="text-[13px]"]) > div:first-child > p::after {
+  content: "Medida sugerida por AurelIA";
+  color: #8e6e3e;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.new-inspection-modal-panel > div[class*="bg-[#D1D4DA]"] [class*="border-[#D8E0EA]"][class*="rounded-[14px]"]:has(> p[class*="text-[15px]"]) > div:first-child > p::after {
+  content: "Empresa sugerida por AurelIA";
+  color: #8e6e3e;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.new-inspection-modal-panel > div[class*="bg-[#D1D4DA]"] [class*="border-[#D8E0EA]"][class*="rounded-[14px]"]:has(> p[class*="text-[13px]"]) > p:nth-of-type(1)::before {
+  content: "MEDIDA CORRECTIVA";
+}
+
+.new-inspection-modal-panel > div[class*="bg-[#D1D4DA]"] [class*="border-[#D8E0EA]"][class*="rounded-[14px]"]:has(> p[class*="text-[15px]"]) > p:nth-of-type(1)::before {
+  content: "EMPRESA RESPONSABLE";
+}
+
+.new-inspection-modal-panel > div[class*="bg-[#D1D4DA]"] [class*="border-[#D8E0EA]"][class*="rounded-[14px]"]:has(> p[class*="text-[15px]"]) > p[class*="text-[15px]"] {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 20px;
+}
+
+.new-inspection-modal-panel > div[class*="bg-[#D1D4DA]"] [class*="border-[#D8E0EA]"][class*="rounded-[14px]"]:has(> p[class*="text-[15px]"]) > div:last-child > button:first-child {
+  order: 2;
+  flex: 1.25;
+  background: #72d7c9;
+  color: #ffffff;
+}
+
+.new-inspection-modal-panel > div[class*="bg-[#D1D4DA]"] [class*="border-[#D8E0EA]"][class*="rounded-[14px]"]:has(> p[class*="text-[15px]"]) > div:last-child > button:last-child {
+  order: 1;
+  flex: 0.78;
+  border: 1.5px solid #d1d1d1;
+  background: #ffffff;
+  color: #646464;
+}
+
+.new-inspection-modal-panel > div[class*="bg-[#D1D4DA]"] > div[class*="ml-[33px]"][class*="mr-[12px]"][class*="rounded-[12px]"][class*="bg-white"][class*="p-[12px]"] > div[class*="flex-wrap"][class*="gap-[8px]"] {
+  display: block;
+  max-height: 220px;
+  margin: -12px -12px 0;
+  overflow-y: auto;
+}
+
+.new-inspection-modal-panel > div[class*="bg-[#D1D4DA]"] > div[class*="ml-[33px]"][class*="mr-[12px]"][class*="rounded-[12px]"][class*="bg-white"][class*="p-[12px]"] > div[class*="flex-wrap"][class*="gap-[8px]"] > button {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: 52px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  border: 0;
+  border-bottom: 1px solid #e3e3e3;
+  border-radius: 0;
+  background: #ffffff;
+  color: #131313;
+  padding: 10px 44px 10px 52px;
+  text-align: left;
+  white-space: normal;
+}
+
+.new-inspection-modal-panel > div[class*="bg-[#D1D4DA]"] > div[class*="ml-[33px]"][class*="mr-[12px]"][class*="rounded-[12px]"][class*="bg-white"][class*="p-[12px]"] > div[class*="flex-wrap"][class*="gap-[8px]"] > button::before {
+  content: "GF";
+  position: absolute;
+  left: 12px;
+  width: 30px;
+  height: 30px;
+  border-radius: 9999px;
+  background: #e6f3ff;
+  color: #0d3862;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.new-inspection-modal-panel > div[class*="bg-[#D1D4DA]"] > div[class*="ml-[33px]"][class*="mr-[12px]"][class*="rounded-[12px]"][class*="bg-white"][class*="p-[12px]"] > div[class*="flex-wrap"][class*="gap-[8px]"] > button::after {
+  content: "";
+  position: absolute;
+  right: 12px;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #d1d1d1;
+  border-radius: 9999px;
+}
+
+.new-inspection-modal-panel > div[class*="bg-[#D1D4DA]"] > div[class*="ml-[33px]"][class*="mr-[12px]"][class*="rounded-[12px]"][class*="bg-white"][class*="p-[12px]"] > div[class*="flex-wrap"][class*="gap-[8px]"] > button[class*="border-[#052B63]"] {
+  margin: 1px;
+  border: 1.5px solid #00b398;
+  border-radius: 10px;
+  background: #c5fff6;
+  color: #131313;
+}
+
+.new-inspection-modal-panel > div[class*="bg-[#D1D4DA]"] > div[class*="ml-[33px]"][class*="mr-[12px]"][class*="rounded-[12px]"][class*="bg-white"][class*="p-[12px]"] > div[class*="flex-wrap"][class*="gap-[8px]"] > button[class*="border-[#052B63]"]::before {
+  background: #c8a064;
+  color: #001e39;
+}
+
+.new-inspection-modal-panel > div[class*="bg-[#D1D4DA]"] > div[class*="ml-[33px]"][class*="mr-[12px]"][class*="rounded-[12px]"][class*="bg-white"][class*="p-[12px]"] > div[class*="flex-wrap"][class*="gap-[8px]"] > button[class*="border-[#052B63]"]::after {
+  content: "✓";
+  border-color: #00b398;
+  background: #00b398;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.new-inspection-modal-panel > div[class*="bg-[#D1D4DA]"] > div[class*="ml-[33px]"][class*="mr-[12px]"][class*="rounded-[12px]"][class*="bg-white"][class*="p-[12px]"] > button[class*="mt-[10px]"][class*="w-full"] {
+  margin: 10px 0 0;
+  height: 36px;
+  border-radius: 8px;
+  background: #00b398;
+  color: #ffffff;
+  font-size: 12px;
+}

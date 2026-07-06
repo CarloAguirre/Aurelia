@@ -58,32 +58,6 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
     goToChecklistObservations();
   }
 
-  function handleAssistantContinue() {
-    const identificationReady = Boolean(
-      draft.areaId &&
-      draft.sectorId &&
-      draft.inspectionDate &&
-      draft.locationCaptured,
-    );
-
-    if (!identificationReady) {
-      goToIdentification();
-      return;
-    }
-
-    if (!draft.inspectionType) {
-      goToType();
-      return;
-    }
-
-    if (draft.inspectionType === InspectionType.ENVIRONMENTAL) {
-      goToFindingObservations();
-      return;
-    }
-
-    goToChecklistObservations();
-  }
-
   function handleSave() {
     submitMutation.mutate(draft, {
       onSuccess: () => {
@@ -103,7 +77,13 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
         ) : null}
 
         {routeStep === 'assistant-chat' ? (
-          <AssistantChatStep onBack={goToStart} onContinueWizard={handleAssistantContinue} onCancelInspection={handleClose} />
+          <AssistantChatStep
+            onBack={goToStart}
+            onSave={handleSave}
+            onCancelInspection={handleClose}
+            saving={submitMutation.isPending}
+            errorMessage={submitMutation.error instanceof Error ? submitMutation.error.message : null}
+          />
         ) : null}
 
         {routeStep === 'identification' ? (

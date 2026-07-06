@@ -91,11 +91,18 @@ Pendiente:
 
 ### Iteracion 5 - Empresa y personal
 
-Estado: pendiente.
+Estado: parcialmente completada.
 
-- Integrar `suggestCompany`.
-- Crear `CompanySuggestionCard` web.
-- Crear `PersonnelPicker` web con sugerido y seleccion multiple.
+- Integrado `suggestCompany`.
+- Creado `CompanySuggestionCard` web.
+- Permite confirmar empresa sugerida o elegir otra.
+- Mantiene fallback local si `/ai/suggest` falla.
+- `PersonnelPicker` web con usuario sugerido y seleccion multiple ya existe como version inicial.
+
+Pendiente:
+
+- Paridad visual fina de `CompanySuggestionCard` y `PersonnelPicker` contra mobile.
+- Mejorar heuristica de matching cuando la IA devuelve texto largo y no solo el nombre de empresa.
 
 ### Iteracion 6 - Resumen y guardado
 

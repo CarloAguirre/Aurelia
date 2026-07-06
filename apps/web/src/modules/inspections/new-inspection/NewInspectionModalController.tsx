@@ -50,6 +50,12 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
     resetDraft();
   }
 
+  function handleCreateAnother() {
+    resetDraft();
+    submitMutation.reset();
+    goToStart();
+  }
+
   function handleTypeNext() {
     if (selectedInspectionType === InspectionType.ENVIRONMENTAL) {
       goToFindingObservations();
@@ -109,7 +115,7 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
           />
         ) : null}
 
-        {routeStep === 'saved' ? <SavedStep onClose={handleClose} onCreateAnother={goToStart} /> : null}
+        {routeStep === 'saved' ? <SavedStep onClose={handleClose} onCreateAnother={handleCreateAnother} /> : null}
         </div>
       </div>
     </div>

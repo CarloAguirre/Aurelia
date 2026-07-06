@@ -154,7 +154,7 @@ function DateCalendarSheet({ visible, value, onClose, onSelect }: { visible: boo
 
   return (
     <div className="fixed bottom-[16px] right-[20px] top-[16px] z-[1100] flex w-[360px] max-w-[calc(100vw-40px)] items-end overflow-hidden rounded-[22px] bg-black/70" onClick={onClose}>
-      <div className="max-h-[92%] w-full overflow-hidden rounded-t-[16px] bg-white px-[14px] pb-[16px] pt-[16px]" onClick={(event) => event.stopPropagation()}>
+      <div className="max-h-[92%] w-full overflow-hidden rounded-t-[16px] bg-white px-[14px] pb-[14px] pt-[14px]" onClick={(event) => event.stopPropagation()}>
         <div className="flex flex-col gap-[6px]">
           <p className="text-[13px] font-bold leading-none text-[#131313]">Fecha</p>
           <button type="button" className="flex h-[50px] w-full items-center justify-between rounded-[10px] border-[1.5px] border-[#24588B] bg-[#F6FAFF] px-[15.5px] py-[15px] text-left" onClick={() => undefined}>
@@ -163,31 +163,31 @@ function DateCalendarSheet({ visible, value, onClose, onSelect }: { visible: boo
           </button>
         </div>
 
-        <div className="mt-[12px] w-full border border-[#646464] bg-white px-[16px] pb-[16px] pt-[18px] shadow-[0_1px_2px_rgba(0,0,0,0.2)]">
-          <div className="flex h-[34px] items-center justify-between">
-            <button type="button" className="flex items-center gap-[6px] text-[18px] font-bold leading-none text-[#131313]" onClick={() => setViewDate((date) => new Date(date.getFullYear(), date.getMonth() - 1, 1))}>
-              {monthLabel(viewDate)} <span className="text-[13px]">▼</span>
+        <div className="mt-[10px] w-full rounded-[10px] border border-[#D1D1D1] bg-white px-[12px] pb-[12px] pt-[12px] shadow-[0_1px_1.5px_rgba(0,0,0,0.06)]">
+          <div className="flex h-[28px] items-center justify-between">
+            <button type="button" className="flex items-center gap-[4px] text-[14px] font-bold leading-none text-[#131313]" onClick={() => setViewDate((date) => new Date(date.getFullYear(), date.getMonth() - 1, 1))}>
+              {monthLabel(viewDate)} <span className="text-[10px]">▼</span>
             </button>
-            <div className="flex items-center gap-[22px] text-[#131313]">
-              <button type="button" className="text-[34px] leading-none" onClick={() => setViewDate((date) => new Date(date.getFullYear(), date.getMonth() - 1, 1))}>↑</button>
-              <button type="button" className="text-[34px] leading-none" onClick={() => setViewDate((date) => new Date(date.getFullYear(), date.getMonth() + 1, 1))}>↓</button>
+            <div className="flex items-center gap-[10px] text-[#131313]">
+              <button type="button" className="flex h-[28px] w-[28px] items-center justify-center text-[20px] leading-none" onClick={() => setViewDate((date) => new Date(date.getFullYear(), date.getMonth() - 1, 1))}>↑</button>
+              <button type="button" className="flex h-[28px] w-[28px] items-center justify-center text-[20px] leading-none" onClick={() => setViewDate((date) => new Date(date.getFullYear(), date.getMonth() + 1, 1))}>↓</button>
             </div>
           </div>
-          <div className="mt-[22px] grid grid-cols-7 text-center text-[22px] font-medium leading-none text-[#131313]">
+          <div className="mt-[14px] grid grid-cols-7 text-center text-[14px] font-bold leading-none text-[#131313]">
             {weekDays.map((day) => <span key={day}>{day}</span>)}
           </div>
-          <div className="mt-[16px] grid grid-cols-7 gap-y-[16px] text-center text-[22px] leading-[34px]">
+          <div className="mt-[10px] grid grid-cols-7 gap-y-[8px] text-center text-[15px] leading-[30px]">
             {days.map((date) => {
               const selected = value && formatDate(date) === value;
               const currentMonth = date.getMonth() === viewDate.getMonth();
               return (
-                <button key={date.toISOString()} type="button" onClick={() => selectDate(date)} className={`mx-auto flex h-[34px] w-[34px] items-center justify-center rounded-[3px] ${selected ? 'bg-[#0B84FF] font-bold text-white shadow-[0_0_0_3px_#006FE6]' : currentMonth ? 'text-[#131313]' : 'text-[#888888]'}`}>
+                <button key={date.toISOString()} type="button" onClick={() => selectDate(date)} className={`mx-auto flex h-[30px] w-[30px] items-center justify-center rounded-[6px] ${selected ? 'bg-[#0B84FF] font-bold text-white shadow-[0_0_0_2px_#006FE6]' : currentMonth ? 'text-[#131313]' : 'text-[#888888]'}`}>
                   {date.getDate()}
                 </button>
               );
             })}
           </div>
-          <div className="mt-[26px] flex items-center justify-between px-[20px] text-[22px] font-medium text-[#0B84FF]">
+          <div className="mt-[14px] flex items-center justify-between px-[18px] text-[14px] font-semibold text-[#0B84FF]">
             <button type="button" onClick={() => { onSelect(''); onClose(); }}>Borrar</button>
             <button type="button" onClick={() => selectDate(new Date())}>Hoy</button>
           </div>

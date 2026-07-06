@@ -63,6 +63,7 @@ Estado: parcialmente completada.
 - `PhotoStepWidget` web con recibo de foto, hora y metadata.
 - Widgets resueltos congelados con `resolvedMessages`.
 - Primera pasada visual global para header, fondo, tarjetas, chips, upload e input inferior.
+- Segunda pasada sobre `PhotoStepWidget`: tarjeta dashed centrada, icon box, skip link y receipt verde claro.
 
 Pendiente:
 
@@ -77,6 +78,7 @@ Estado: completada funcionalmente.
 - Crear `AiProposalCard` web.
 - Permitir aceptar o editar medida.
 - Mantener fallback local si `/ai/suggest` falla.
+- Segunda pasada visual: borde dorado, header crema con spark, label uppercase, acciones estilo mobile y sombra dorada.
 
 ### Iteracion 4 - Criticidad y SLA
 
@@ -86,10 +88,12 @@ Estado: parcialmente completada.
 - `SlaConfirmWidget` web.
 - Guardado de observacion despues de confirmar SLA.
 - Primera pasada visual de cards via stylesheet del modal.
+- Segunda pasada visual de SLA: card compacta, input numerico de 55x30 y boton verde estilo mobile.
 
 Pendiente:
 
 - Ajuste visual fino contra mobile/Figma.
+- Agregar opciones rapidas 1, 3, 7, 14 dias como mobile.
 
 ### Iteracion 5 - Empresa y personal
 
@@ -100,11 +104,12 @@ Estado: parcialmente completada.
 - Permite confirmar empresa sugerida o elegir otra.
 - Mantiene fallback local si `/ai/suggest` falla.
 - `PersonnelPicker` web con usuario sugerido y seleccion multiple ya existe como version inicial.
-- Primera pasada visual de `CompanySuggestionCard` y chips.
+- Segunda pasada visual de `CompanySuggestionCard`: header crema, label uppercase, reason row, acciones secundaria/primaria estilo mobile.
+- Segunda pasada parcial de `PersonnelPicker`: seleccionados en teal surf y sugeridos con tonos mobile.
 
 Pendiente:
 
-- Paridad visual fina de `CompanySuggestionCard` y `PersonnelPicker` contra mobile/Figma.
+- Reemplazar chips de `PersonnelPicker` por filas con avatar, cargo, badge sugerido y check circular.
 - Mejorar heuristica de matching cuando la IA devuelve texto largo y no solo el nombre de empresa.
 
 ### Iteracion 6 - Resumen y guardado
@@ -139,16 +144,19 @@ Pendiente:
 
 ### Iteracion 8 - Paridad visual fina
 
-Estado: iniciada.
+Estado: en curso.
 
 - Agregado `assistant-chat-visual-parity.css` acotado al panel de nueva inspeccion.
 - Aplicado ajuste visual a header, fondo del chat, sombras de burbujas/cards, estados hover de chips, upload e input inferior.
 - Se agregó clase `new-inspection-modal-panel` para evitar estilos globales fuera del modal.
+- Auditados componentes mobile `AiProposalCard`, `CompanySuggestionCard`, `PhotoStepWidget`, `SlaConfirmWidget` y `PersonnelPicker`.
+- Segunda pasada aplicada sobre cards IA, empresa, foto, SLA y selección de responsables.
 
 Pendiente:
 
 - Reemplazar selectores CSS de transición por componentes extraídos.
 - Validar contra capturas/nodos de Figma para medidas exactas.
+- Extraer clases reales por componente para evitar dependencia de selectores Tailwind generados.
 
 ## Validacion por iteracion
 

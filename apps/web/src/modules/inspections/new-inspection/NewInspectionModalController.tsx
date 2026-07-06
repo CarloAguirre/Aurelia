@@ -17,6 +17,7 @@ import {
 } from './state/newInspectionDraft.store';
 import { useNewInspectionFlowStore } from './state/newInspectionFlow.store';
 import './assistant-chat-visual-parity.css';
+import './assistant-chat-fidelity-tweaks.css';
 
 interface NewInspectionModalControllerProps {
   open: boolean;

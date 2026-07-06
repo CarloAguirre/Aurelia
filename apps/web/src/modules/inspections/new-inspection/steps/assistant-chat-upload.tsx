@@ -35,3 +35,5 @@ export function AssistantUploadWidget({ resolved, receipt, onCapture, onSkip }: 
     </div>
   );
 }
+
+export const PhotoStepWidget = AssistantUploadWidget;

@@ -110,10 +110,13 @@ Estado: parcialmente completada.
 
 - Resumen diferenciado inicial.
 - Botones `Guardar hallazgo` y `Guardar checklist`.
+- Pantalla final enriquecida con resumen de area, sector, fecha, registro, empresa y observaciones.
+- Correccion: `Nueva inspeccion` desde guardado limpia el draft antes de volver al inicio.
 
 Pendiente:
 
-- Ajustar detalle visual y resultado post-guardado web.
+- Ajustar detalle visual fino contra success mobile.
+- Incorporar numero/id de inspeccion creada si el submit expone ese dato al controller.
 
 ### Iteracion 7 - Persistencia y reanudacion
 

@@ -21,6 +21,10 @@ export interface NewInspectionChecklistItemDetail {
   detectedCondition?: string;
   correctiveAction?: string;
   evidence?: NewInspectionPickedAsset | null;
+  severityId?: string | null;
+  severityLabel?: string | null;
+  severityClosureTimeLabel?: string | null;
+  slaLabel?: string | null;
 }
 
 export interface NewInspectionFindingObservationDraft {
@@ -86,6 +90,11 @@ interface NewInspectionDraftState extends NewInspectionDraft {
   hydrate: (draft: NewInspectionDraft) => void;
   reset: () => void;
 }
+
+type NewInspectionDraftStoreHook = {
+  (): NewInspectionDraftState;
+  <T>(selector: (state: NewInspectionDraftState) => T): T;
+};
 
 function newObservationId() {
   return `finding-observation-${Date.now()}-${Math.round(Math.random() * 10000)}`;
@@ -290,4 +299,4 @@ export const useNewInspectionDraftStore = create<NewInspectionDraftState>((set) 
   setFindingResponsibles: (findingResponsibleIds) => set({ findingResponsibleIds }),
   hydrate: (draft) => set(serializableDraft(draft)),
   reset: () => set(initialDraft),
-}));
+})) as NewInspectionDraftStoreHook;

@@ -8,10 +8,76 @@ interface StartStepProps {
   assistantDraftSavedAt?: string | null;
 }
 
+function BackIcon() {
+  return (
+    <svg width="23" height="19" viewBox="0 0 23 19" fill="none" aria-hidden="true">
+      <path d="M9.5 1.75 1.75 9.5l7.75 7.75M2.5 9.5h18.75" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function SignalIcon() {
+  return (
+    <div className="flex h-[11px] items-end gap-[1.5px]" aria-hidden="true">
+      <span className="h-[4px] w-[3px] rounded-[1px] bg-[rgba(255,255,255,0.85)]" />
+      <span className="h-[6px] w-[3px] rounded-[1px] bg-[rgba(255,255,255,0.85)]" />
+      <span className="h-[8px] w-[3px] rounded-[1px] bg-[rgba(255,255,255,0.85)]" />
+      <span className="h-[10px] w-[3px] rounded-[1px] bg-[rgba(255,255,255,0.85)]" />
+    </div>
+  );
+}
+
+function WifiIcon() {
+  return (
+    <svg width="20" height="16" viewBox="0 0 20 16" fill="none" aria-hidden="true">
+      <path d="M2 5.5c4.6-4 11.4-4 16 0M5.2 8.8c2.7-2.2 6.9-2.2 9.6 0M8.5 12.1c.9-.7 2.1-.7 3 0" stroke="rgba(255,255,255,0.85)" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function BatteryIcon() {
+  return (
+    <svg width="20" height="16" viewBox="0 0 20 16" fill="none" aria-hidden="true">
+      <rect x="2" y="4.5" width="14" height="8" rx="1.5" stroke="rgba(255,255,255,0.85)" strokeWidth="1.8" />
+      <path d="M17 7v3" stroke="rgba(255,255,255,0.85)" strokeWidth="2" strokeLinecap="round" />
+      <rect x="4.4" y="6.7" width="8.8" height="3.6" rx="0.8" fill="rgba(255,255,255,0.85)" />
+    </svg>
+  );
+}
+
+function AiChipIcon() {
+  return (
+    <svg width="28" height="24" viewBox="0 0 28 24" fill="none" aria-hidden="true">
+      <rect x="7" y="5" width="14" height="14" rx="2.5" stroke="white" strokeWidth="2" />
+      <path d="M3 8h4M3 12h4M3 16h4M21 8h4M21 12h4M21 16h4M10 1v4M14 1v4M18 1v4M10 19v4M14 19v4M18 19v4" stroke="white" strokeWidth="2" strokeLinecap="round" />
+      <path d="M10.8 15.2 13 8.8h2l2.2 6.4M11.6 13.3h4.8" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function SparkIcon() {
+  return (
+    <svg width="18" height="14" viewBox="0 0 18 14" fill="none" aria-hidden="true">
+      <path d="M6.5 1.5 7.8 5l3.4 1.3-3.4 1.3-1.3 3.5-1.3-3.5-3.4-1.3L5.2 5 6.5 1.5ZM13.5 0l.8 2.1 2.1.8-2.1.8-.8 2.1-.8-2.1-2.1-.8 2.1-.8.8-2.1Z" fill="#001E39" />
+    </svg>
+  );
+}
+
+function ManualIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="6.5" y="4" width="11" height="16" rx="2" fill="#646464" />
+      <rect x="9" y="7" width="6" height="2" rx="1" fill="#F4F6F9" />
+      <rect x="9" y="11" width="6" height="1.6" rx="0.8" fill="#F4F6F9" />
+      <rect x="9" y="14.5" width="6" height="1.6" rx="0.8" fill="#F4F6F9" />
+    </svg>
+  );
+}
+
 function FeatureRow({ children }: { children: string }) {
   return (
     <div className="flex items-center gap-[5px]">
-      <span className="text-[11px] leading-none text-[#2A5C16]">✓</span>
+      <span className="text-[13px] leading-none text-[#2A5C16]">✓</span>
       <span className="text-[11px] leading-[15px] text-[#2A5C16]">{children}</span>
     </div>
   );
@@ -37,18 +103,30 @@ export function StartStep({
 
   return (
     <>
-      <div className="h-[56px] bg-[#002659] text-white shadow-[0_2px_4px_rgba(0,0,0,0.3)]">
+      <div className="relative h-[28px] shrink-0 px-[16px] pr-[14px]" style={{ backgroundColor: '#002659' }}>
+        <div className="flex h-full items-center justify-between">
+          <p className="text-[12px] font-semibold leading-none text-[rgba(255,255,255,0.9)]">9:41</p>
+          <div className="flex items-center gap-[5px]">
+            <SignalIcon />
+            <WifiIcon />
+            <BatteryIcon />
+          </div>
+        </div>
+        <div className="absolute left-1/2 top-[10px] h-[12px] w-[12px] -translate-x-1/2 rounded-full bg-black" />
+      </div>
+
+      <div className="h-[56px] shrink-0 text-white" style={{ backgroundColor: '#002659' }}>
         <div className="flex h-full items-center gap-[4px] px-[4px]">
           <button
             type="button"
             onClick={onCancelInspection}
-            className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full text-[26px] font-light leading-none"
+            className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full text-[rgba(255,255,255,0.92)]"
             aria-label="Volver"
           >
-            ←
+            <BackIcon />
           </button>
           <div className="min-w-0 flex-1 px-[4px]">
-            <p className="truncate text-[14px] font-semibold leading-[17px]">Nueva inspección</p>
+            <p className="truncate text-[14px] font-semibold leading-[17px] text-white">Nueva inspección</p>
             <p className="mt-[1px] truncate text-[11px] leading-[14px] text-[rgba(255,255,255,0.55)]">SGA · Gold Fields Salares Norte</p>
           </div>
           <div className="h-0 w-[48px] shrink-0" />
@@ -95,7 +173,9 @@ export function StartStep({
 
         <div className="mt-[20px] w-full rounded-[16px] border-[2px] border-[#C8A064] bg-white p-[22px] shadow-[0_4px_8px_rgba(200,160,100,0.2)]">
           <div className="flex items-center gap-[12px]">
-            <div className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-[12px] bg-gradient-to-br from-[#C8A064] to-[#8E6E3E] text-[16px] font-black text-white">AI</div>
+            <div className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-[12px] bg-gradient-to-br from-[#C8A064] to-[#8E6E3E]">
+              <AiChipIcon />
+            </div>
             <div className="min-w-0 flex-1">
               <p className="text-[15px] font-bold leading-[17px] text-[#8E6E3E]">Asistente AurelIA</p>
               <p className="mt-[2px] text-[11px] leading-[13px] text-[#646464]">Modo conversacional con IA</p>
@@ -120,14 +200,16 @@ export function StartStep({
             onClick={onStartAssistant}
             className="mt-[14px] flex h-[46px] w-full items-center justify-center gap-[8px] rounded-[12px] bg-[#C8A064] text-[14px] font-bold text-[#001E39]"
           >
-            <span className="text-[16px]">✦</span>
+            <SparkIcon />
             Iniciar con asistente
           </button>
         </div>
 
         <div className="mt-[20px] rounded-[16px] border-[1.5px] border-[#E3E3E3] bg-white p-[21.5px]">
           <div className="flex items-center gap-[12px]">
-            <div className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-[12px] border border-[#E3E3E3] bg-[#F4F6F9] text-[20px] text-[#646464]">▣</div>
+            <div className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-[12px] border border-[#E3E3E3] bg-[#F4F6F9]">
+              <ManualIcon />
+            </div>
             <div className="min-w-0 flex-1">
               <p className="text-[15px] font-bold leading-[17px] text-[#131313]">Formulario manual</p>
               <p className="mt-[2px] text-[11px] leading-[14px] text-[#646464]">Wizard de 5 pasos</p>
@@ -148,7 +230,7 @@ export function StartStep({
         </div>
       </div>
 
-      <div className="new-inspection-start-footer shrink-0 border-t border-[#E3E3E3] bg-white pb-[8px] pt-[10px]">
+      <div className="new-inspection-start-footer shrink-0 pb-[8px] pt-[10px]" style={{ backgroundColor: '#ffffff', borderTop: '1px solid #E3E3E3' }}>
         <div className="px-[14px]">
           <button
             type="button"

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { InspectionAnswerValue, InspectionType } from '@aurelia/contracts';
 import { useSessionStore } from '../../../../shared/stores/session.store';
-import { useNewInspectionDraftStore } from '../state/newInspectionDraft.store';
+import { useNewInspectionDraftStore, type NewInspectionChecklistItemDetail } from '../state/newInspectionDraft.store';
 import { getCompanyUsers } from '../../../../shared/services/inspections.service';
 
 interface SummaryStepProps {
@@ -117,7 +117,30 @@ function SummaryRow({ label, value, mono = false }: { label: string; value: stri
   );
 }
 
-function ObservationSummary({ index, severity, text, sla }: { index: number; severity: string; text: string; sla: string }) {
+function ResultRow({ label, value, tone }: { label: string; value: string; tone: 'yes' | 'no' | 'na' }) {
+  const toneClass = tone === 'yes' ? 'text-[#2A5C16]' : tone === 'no' ? 'text-[#570B1D]' : 'text-[#646464]';
+  const icon = tone === 'yes' ? '✓' : tone === 'no' ? '×' : '';
+  return (
+    <div className="flex min-h-[36px] items-center justify-between gap-[10px] border-b border-[#E3E3E3] px-[12px] py-[9px] last:border-b-0">
+      <p className="text-[12px] font-medium leading-none text-[#646464]">{label}</p>
+      <p className={`text-right text-[12px] font-bold leading-none ${toneClass}`}>{icon ? `${icon} ` : ''}{value}</p>
+    </div>
+  );
+}
+
+function ChecklistObservationSummary({ index, detail }: { index: number; detail: NewInspectionChecklistItemDetail }) {
+  const severityLabel = detail.severityLabel ?? 'Sin criticidad';
+  const slaLabel = detail.slaLabel ?? detail.severityClosureTimeLabel ?? 'xx días hábiles';
+  return (
+    <div className="border-b border-[#E3E3E3] px-[12px] pb-[10px] pt-[9px] last:border-b-0">
+      <div className="flex items-center gap-[8px]"><span className="rounded-[6px] bg-[#E6F3FF] px-[8px] py-[3px] text-[11px] font-bold leading-none text-[#24588B]">Ítem. Nº{index + 1}</span><span className={`rounded-[8px] px-[7px] py-[4px] text-[10px] font-bold leading-none ${severityTone(severityLabel)}`}>{severityLabel}</span></div>
+      <p className="mt-[8px] text-[12px] leading-[16.8px] text-[#131313]">{detail.detectedCondition || 'Sin descripción'}</p>
+      <div className="mt-[8px] flex items-center justify-between border-t border-[#E3E3E3] pt-[10px]"><span className="text-[12px] font-medium leading-none text-[#646464]">SLA calculado</span><span className="text-right text-[12px] font-bold leading-none text-[#131313]">{slaLabel}</span></div>
+    </div>
+  );
+}
+
+function FindingObservationSummary({ index, severity, text, sla }: { index: number; severity: string; text: string; sla: string }) {
   return (
     <div className="border-b border-[#E3E3E3] px-[12px] pb-[10px] pt-[9px] last:border-b-0">
       <div className="flex items-center gap-[8px]"><span className="rounded-[6px] bg-[#E6F3FF] px-[8px] py-[3px] text-[11px] font-bold leading-none text-[#24588B]">Obs. {index + 1}</span><span className={`rounded-[8px] px-[7px] py-[4px] text-[10px] font-bold leading-none ${severityTone(severity)}`}>{severity || 'Sin criticidad'}</span></div>
@@ -148,12 +171,18 @@ export function SummaryStep({ onBack, onSave, saving, errorMessage }: SummarySte
   });
 
   const usersById = useMemo(() => new Map((usersByCompanyQuery.data ?? []).map((responsible) => [responsible.id, responsible])), [usersByCompanyQuery.data]);
-  const checklistValues = Object.values(draft.answersByItemId);
-  const noCount = checklistValues.filter((value) => value === InspectionAnswerValue.NOT_COMPLIANT).length;
+  const checklistEntries = Object.entries(draft.answersByItemId);
+  const yesCount = checklistEntries.filter(([, value]) => value === InspectionAnswerValue.COMPLIANT).length;
+  const noEntries = checklistEntries.filter(([, value]) => value === InspectionAnswerValue.NOT_COMPLIANT);
+  const noCount = noEntries.length;
+  const naCount = checklistEntries.filter(([, value]) => value === InspectionAnswerValue.NOT_APPLICABLE).length;
+  const checklistObservations = noEntries.map(([itemId]) => draft.detailsByItemId[itemId] ?? {}).filter((detail) => Boolean(detail.detectedCondition || detail.correctiveAction || detail.evidence));
   const findingObservations = draft.findingObservations.filter((item) => item.saved);
   const isFindingFlow = draft.inspectionType === InspectionType.ENVIRONMENTAL;
   const showOfflineBanner = !online || !user;
-  const observationsCount = isFindingFlow ? findingObservations.length : noCount;
+  const observationsCount = isFindingFlow ? findingObservations.length : checklistObservations.length;
+  const areaSectorValue = `${draft.areaName ?? '-'} · ${draft.sectorName ?? '-'}`;
+  const templateLabel = draft.templateName?.replace(/^Almacenamiento de\s+/i, '').replace(/\s*-\s*/g, ' – ') ?? '-';
 
   return (
     <>
@@ -164,10 +193,9 @@ export function SummaryStep({ onBack, onSave, saving, errorMessage }: SummarySte
         <div><p className="text-[18px] font-bold leading-[21.6px] text-[#131313]">Resumen</p><p className="mt-[4px] text-[12px] leading-[16.8px] text-[#646464]">Revisa antes de guardar · se sincronizará al recuperar red</p></div>
         <div className="mt-[12px] grid gap-[12px]">
           <SectionCard title="Quién realizó la inspección" icon="♟"><SummaryRow label="Nombre" value={draft.inspectorName} /><SummaryRow label="Empresa" value={draft.inspectorCompanyName} /></SectionCard>
-          <SectionCard title="Dónde y cuándo" icon="⚑"><SummaryRow label="Área · Sector" value={`${draft.areaName ?? '-'} · ${draft.sectorName ?? '-'}`} /><SummaryRow label="Fecha" value={draft.inspectionDate} /><SummaryRow label="Tipo" value={draft.inspectionTypeLabel || (isFindingFlow ? 'Hallazgo' : 'Checklist')} />{!isFindingFlow ? <SummaryRow label="Plantilla" value={draft.templateName ?? '-'} /> : null}<SummaryRow label="Ubicación UTM" value={trimLocationLabel(draft.locationLabel)} mono /></SectionCard>
-          <SectionCard title={isFindingFlow ? `Observaciones (${observationsCount})` : `Checklist (${checklistValues.length})`} icon="☷">
-            {isFindingFlow ? findingObservations.map((item, index) => <ObservationSummary key={item.id} index={index} severity={item.severityLabel ?? ''} text={item.detectedCondition} sla={item.severityClosureTimeLabel ?? ''} />) : <><SummaryRow label="Sí" value={`${checklistValues.filter((value) => value === InspectionAnswerValue.COMPLIANT).length}`} /><SummaryRow label="No" value={`${noCount}`} /><SummaryRow label="N/A" value={`${checklistValues.filter((value) => value === InspectionAnswerValue.NOT_APPLICABLE).length}`} /></>}
-          </SectionCard>
+          <SectionCard title="Donde y cuándo" icon="⚑"><SummaryRow label="Área · Sector" value={areaSectorValue} /><SummaryRow label="Fecha" value={draft.inspectionDate} /><SummaryRow label="Tipo" value={draft.inspectionTypeLabel || (isFindingFlow ? 'Hallazgo' : 'Checklist normativo')} />{!isFindingFlow ? <><SummaryRow label="Plantilla" value={templateLabel} /><SummaryRow label="Código" value={draft.templateCode ?? '-'} /></> : null}<SummaryRow label="Ubicación UTM" value={trimLocationLabel(draft.locationLabel)} mono /></SectionCard>
+          {!isFindingFlow ? <SectionCard title={`Resultado · ${checklistEntries.length} ítems`} icon="☑"><ResultRow label="SÍ" value={`${yesCount} ítems conformes`} tone="yes" /><ResultRow label="NO" value={`${noCount} · obs. registradas`} tone="no" /><ResultRow label="N/A" value={`${naCount} ítems`} tone="na" /></SectionCard> : null}
+          {isFindingFlow ? <SectionCard title={`Observaciones (${observationsCount})`} icon="☷">{findingObservations.map((item, index) => <FindingObservationSummary key={item.id} index={index} severity={item.severityLabel ?? ''} text={item.detectedCondition} sla={item.severityClosureTimeLabel ?? ''} />)}</SectionCard> : <SectionCard title={`Observaciones (${observationsCount})`} icon="☷">{checklistObservations.length > 0 ? checklistObservations.map((detail, index) => <ChecklistObservationSummary key={index} index={index} detail={detail} />) : <p className="px-[12px] py-[10px] text-[12px] text-[#646464]">Sin observaciones registradas</p>}</SectionCard>}
           {draft.findingCompanyName ? <SectionCard title="Responsables" icon="♟"><SummaryRow label="EECC" value={draft.findingCompanyName} />{draft.findingResponsibleIds.map((id, index) => { const responsible = usersById.get(id); const name = responsible?.fullName ?? 'Responsable'; const self = Boolean(responsible && user?.id === responsible.id); return <ResponsibleRow key={id} name={name} position={responsible?.position ?? (index === 0 ? 'Coordinador' : 'Inspector')} self={self} tone={index === 0 ? 'gold' : 'navy'} />; })}</SectionCard> : null}
           <div className="flex min-h-[82px] w-full items-start gap-[12px] rounded-[12px] bg-[#4A90C4] py-[12px] pl-[14px] pr-[12px] text-white"><InfoIcon /><div className="min-w-0 flex-1"><p className="text-[13px] font-bold leading-[16.9px]">Guardado offline</p><p className="mt-[2px] text-[11px] leading-[15.4px] text-[rgba(255,255,255,0.88)]">Este proceso cuenta con guardado localmente. En caso que no cuente con señal, el formulario será enviado una vez esta sea recuperada.</p></div></div>
         </div>

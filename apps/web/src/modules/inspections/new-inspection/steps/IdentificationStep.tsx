@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type MouseEvent, type ReactNode } from 'react';
 import { useSessionStore } from '../../../../shared/stores/session.store';
 import { useNewInspectionCatalogs } from '../hooks/useNewInspectionCatalogs';
 import { useNewInspectionLocation } from '../hooks/useNewInspectionLocation';
@@ -35,6 +35,24 @@ function parseDateLabel(value: string): Date | null {
 
 function displayDate(value: string) {
   return value ? value.replaceAll('-', '/') : 'dd-mm-aaaa';
+}
+
+function formatDateInput(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
+function parseDateInput(value: string): string | null {
+  const digits = value.replace(/\D/g, '');
+  if (digits.length !== 8) return null;
+  const day = Number(digits.slice(0, 2));
+  const month = Number(digits.slice(2, 4));
+  const year = Number(digits.slice(4, 8));
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return formatDate(date);
 }
 
 function monthLabel(value: Date) {
@@ -134,10 +152,13 @@ function CaretDown() {
 function DateCalendarSheet({ visible, value, onClose, onSelect }: { visible: boolean; value: string; onClose: () => void; onSelect: (value: string) => void }) {
   const selectedDate = parseDateLabel(value) ?? new Date();
   const [viewDate, setViewDate] = useState(() => new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+  const [dateText, setDateText] = useState(() => displayDate(value));
 
   useEffect(() => {
-    if (visible) setViewDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
-  }, [selectedDate.getFullYear(), selectedDate.getMonth(), visible]);
+    if (!visible) return;
+    setViewDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+    setDateText(displayDate(value));
+  }, [selectedDate.getFullYear(), selectedDate.getMonth(), value, visible]);
 
   if (!visible) return null;
 
@@ -148,8 +169,35 @@ function DateCalendarSheet({ visible, value, onClose, onSelect }: { visible: boo
   const weekDays = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
   function selectDate(date: Date) {
-    onSelect(formatDate(date));
+    const formatted = formatDate(date);
+    setDateText(displayDate(formatted));
+    onSelect(formatted);
     onClose();
+  }
+
+  function handleDateTextChange(event: ChangeEvent<HTMLInputElement>) {
+    const nextText = formatDateInput(event.target.value);
+    setDateText(nextText);
+    const nextValue = parseDateInput(nextText);
+    if (!nextText) onSelect('');
+    if (!nextValue) return;
+    const nextDate = parseDateLabel(nextValue);
+    if (nextDate) setViewDate(new Date(nextDate.getFullYear(), nextDate.getMonth(), 1));
+    onSelect(nextValue);
+  }
+
+  function handleDateTextBlur() {
+    const nextValue = parseDateInput(dateText);
+    if (nextValue) {
+      setDateText(displayDate(nextValue));
+      onSelect(nextValue);
+      return;
+    }
+    if (!dateText) {
+      onSelect('');
+      return;
+    }
+    setDateText(displayDate(value));
   }
 
   return (
@@ -157,10 +205,10 @@ function DateCalendarSheet({ visible, value, onClose, onSelect }: { visible: boo
       <div className="max-h-[92%] w-full overflow-hidden rounded-t-[16px] bg-white px-[14px] pb-[14px] pt-[14px]" onClick={(event) => event.stopPropagation()}>
         <div className="flex flex-col gap-[6px]">
           <p className="text-[13px] font-bold leading-none text-[#131313]">Fecha</p>
-          <button type="button" className="flex h-[50px] w-full items-center justify-between rounded-[10px] border-[1.5px] border-[#24588B] bg-[#F6FAFF] px-[15.5px] py-[15px] text-left" onClick={() => undefined}>
-            <span className={`text-[13px] leading-[19.5px] ${value ? 'text-[#131313]' : 'text-[#757575]'}`}>{displayDate(value)}</span>
+          <div className="flex h-[50px] w-full items-center justify-between rounded-[10px] border-[1.5px] border-[#24588B] bg-[#F6FAFF] px-[15.5px] py-[15px] text-left">
+            <input value={dateText} onChange={handleDateTextChange} onBlur={handleDateTextBlur} inputMode="numeric" maxLength={10} placeholder="dd/mm/aaaa" className="min-w-0 flex-1 bg-transparent text-[13px] leading-[19.5px] text-[#131313] outline-none placeholder:text-[#757575]" />
             <CalendarIcon />
-          </button>
+          </div>
         </div>
 
         <div className="mt-[10px] w-full rounded-[10px] border border-[#D1D1D1] bg-white px-[12px] pb-[12px] pt-[12px] shadow-[0_1px_1.5px_rgba(0,0,0,0.06)]">
@@ -188,7 +236,7 @@ function DateCalendarSheet({ visible, value, onClose, onSelect }: { visible: boo
             })}
           </div>
           <div className="mt-[14px] flex items-center justify-between px-[18px] text-[14px] font-semibold text-[#0B84FF]">
-            <button type="button" onClick={() => { onSelect(''); onClose(); }}>Borrar</button>
+            <button type="button" onClick={() => { setDateText(''); onSelect(''); onClose(); }}>Borrar</button>
             <button type="button" onClick={() => selectDate(new Date())}>Hoy</button>
           </div>
         </div>

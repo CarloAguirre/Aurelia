@@ -123,12 +123,10 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
 
   if (!open) return null;
 
-  const panelWidthClass = routeStep === 'start' || routeStep === 'identification' ? 'w-[360px]' : 'w-[430px]';
-
   return (
     <div className="fixed inset-0 z-[1000] bg-[rgba(0,0,0,0.68)]">
       <div className="flex h-full w-full items-center justify-end px-[20px] py-[16px]">
-        <div className={`new-inspection-modal-panel relative flex h-[calc(100vh-32px)] max-h-[920px] ${panelWidthClass} max-w-[calc(100vw-40px)] flex-col overflow-hidden rounded-[22px] bg-white shadow-[0_24px_70px_rgba(0,0,0,0.35)]`}>
+        <div className="new-inspection-modal-panel relative flex h-[calc(100vh-32px)] max-h-[920px] w-[360px] max-w-[calc(100vw-40px)] flex-col overflow-hidden rounded-[22px] bg-white shadow-[0_24px_70px_rgba(0,0,0,0.35)]">
         {routeStep === 'start' ? (
           <StartStep
             onStartAssistant={handleStartAssistant}

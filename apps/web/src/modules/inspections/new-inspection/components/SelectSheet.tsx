@@ -30,12 +30,12 @@ export function SelectSheet({
   if (!visible) return null;
 
   return (
-    <div className="absolute inset-0 z-[6] flex items-end bg-[rgba(0,0,0,0.42)]" onClick={onClose}>
+    <div className="fixed bottom-[16px] right-[20px] top-[16px] z-[1100] flex w-[360px] max-w-[calc(100vw-40px)] items-end overflow-hidden rounded-[22px] bg-[rgba(0,0,0,0.42)]" onClick={onClose}>
       <div
-        className="max-h-[72%] w-full rounded-t-[20px] bg-white px-[16px] pb-[22px] pt-[8px]"
+        className="max-h-[72%] w-full rounded-t-[20px] bg-white px-[16px] pb-[22px] pt-[8px] shadow-[0_-12px_32px_rgba(0,0,0,0.22)]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="mb-[12px] h-[4px] w-[46px] self-center rounded-[2px] bg-[#d1d1d1]" />
+        <div className="mx-auto mb-[12px] h-[4px] w-[46px] rounded-[2px] bg-[#d1d1d1]" />
         <div className="flex items-center gap-[12px] pb-[10px]">
           <div className="flex-1">
             <p className="text-[18px] font-bold leading-[22px] text-[#131313]">{title}</p>

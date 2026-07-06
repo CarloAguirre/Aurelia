@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { InspectionAnswerValue, InspectionType } from '@aurelia/contracts';
-import { ManualFormStepper } from '../components/ManualFormStepper';
+import { useSessionStore } from '../../../../shared/stores/session.store';
 import { useNewInspectionDraftStore } from '../state/newInspectionDraft.store';
 import { getCompanyUsers } from '../../../../shared/services/inspections.service';
 
@@ -12,160 +12,167 @@ interface SummaryStepProps {
   errorMessage: string | null;
 }
 
-function trimLocationLabel(value: string): string {
-  return value.replace(/ \+\- .*/, '').trim();
+function useOnlineStatus() {
+  const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
+
+  useEffect(() => {
+    function handleOnline() {
+      setOnline(true);
+    }
+
+    function handleOffline() {
+      setOnline(false);
+    }
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  return online;
 }
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
+function trimLocationLabel(value: string): string {
+  return value.replace(/ \+- .*/, '').trim();
+}
+
+function severityTone(label?: string | null) {
+  const normalized = (label ?? '').toLowerCase();
+  if (normalized.includes('grave') || normalized.includes('alta') || normalized.includes('crít')) return 'bg-[#FFD0DB] text-[#570B1D]';
+  if (normalized.includes('menor') || normalized.includes('baja')) return 'bg-[#E0FFD3] text-[#2A5C16]';
+  return 'bg-[#FFE1CD] text-[#532A0E]';
+}
+
+function initials(value: string) {
+  return value
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('') || 'NA';
+}
+
+function BackIcon() {
+  return <svg width="23" height="19" viewBox="0 0 23 19" fill="none" aria-hidden="true"><path d="M9.5 1.75 1.75 9.5l7.75 7.75M2.5 9.5h18.75" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+function OfflineIcon() {
+  return <svg width="13" height="11" viewBox="0 0 13 11" fill="none" aria-hidden="true"><path d="m1 1 11 9M2.2 4.1c2.5-1.8 5.8-1.8 8.3 0M4.5 6.1c1.2-.7 2.7-.7 3.9 0" stroke="#C8A064" strokeWidth="1.4" strokeLinecap="round" /></svg>;
+}
+
+function ArrowLeftIcon() {
+  return <svg width="18" height="14" viewBox="0 0 18 14" fill="none" aria-hidden="true"><path d="M17 7H2M7.5 1.5 2 7l5.5 5.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+function CheckIcon() {
+  return <svg width="18" height="14" viewBox="0 0 18 14" fill="none" aria-hidden="true"><path d="m2 7.2 4 4L16 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+function InfoIcon() {
+  return <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full bg-white text-[12px] font-bold text-[#4A90C4]">i</span>;
+}
+
+function ManualStepper({ checklist }: { checklist: boolean }) {
+  const steps = [
+    { label: 'Datos', complete: true, active: false },
+    { label: 'Tipo', complete: true, active: false },
+    { label: checklist ? 'Ítems' : 'Obs.', complete: true, active: false },
+    { label: 'Resumen', complete: false, active: true },
+  ];
+
   return (
-    <div className="flex min-h-[34px] items-center justify-between gap-[10px] border-b border-[#E3E3E3] px-[12px] py-[8px]">
-      <p className="text-[12px] font-medium text-[#646464]">{label}</p>
-      <p className="max-w-[62%] text-right text-[12px] font-bold text-[#131313]">{value}</p>
+    <div className="shrink-0 border-b border-[#E3E3E3] bg-white px-[14px] pb-[9px] pt-[10px]">
+      <div className="flex items-center justify-center">
+        {steps.map((step, index) => (
+          <div key={step.label} className="relative h-[35px] w-[83px] shrink-0">
+            {index < steps.length - 1 ? <div className={`absolute left-[33px] top-[11px] h-[2px] ${index === 2 ? 'w-[81px]' : 'w-[73px]'} bg-[#C8A064]`} /> : null}
+            <div className={`absolute left-[22.2px] top-0 flex h-[22px] w-[22px] items-center justify-center rounded-full text-[9px] font-bold ${step.complete ? 'border-[1.5px] border-[#C8A064] bg-[#C8A064] text-white' : 'border-[2px] border-[#C8A064] bg-white text-[#C8A064]'}`}>{step.complete ? '✓' : index + 1}</div>
+            <p className="absolute top-[25px] w-full text-center text-[8px] font-semibold leading-[9.6px] text-[#8E6E3E]">{step.label}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-[6px] h-[2px] w-full overflow-hidden rounded-[2px] bg-[#E3E3E3]"><div className="h-[2px] w-full rounded-[2px] bg-gradient-to-r from-[#8E6E3E] to-[#C8A064]" /></div>
+    </div>
+  );
+}
+
+function SectionCard({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
+  return (
+    <div className="w-full overflow-hidden rounded-[12px] border border-[#E3E3E3] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+      <div className="flex h-[29px] items-center gap-[6px] border-b border-[#E3E3E3] bg-[#F7F7F7] px-[12px]"><span className="text-[10px] text-[#646464]">{icon}</span><p className="text-[10px] font-bold uppercase leading-none tracking-[0.5px] text-[#646464]">{title}</p></div>
+      {children}
+    </div>
+  );
+}
+
+function SummaryRow({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="flex min-h-[33px] items-center justify-between gap-[10px] border-b border-[#E3E3E3] px-[12px] py-[9px] last:border-b-0">
+      <p className="text-[12px] font-medium leading-none text-[#646464]">{label}</p>
+      <p className={`max-w-[62%] truncate text-right text-[12px] font-bold leading-none text-[#131313] ${mono ? 'font-mono text-[11px]' : ''}`}>{value || '—'}</p>
+    </div>
+  );
+}
+
+function ObservationSummary({ index, severity, text, sla }: { index: number; severity: string; text: string; sla: string }) {
+  return (
+    <div className="border-b border-[#E3E3E3] px-[12px] pb-[10px] pt-[9px] last:border-b-0">
+      <div className="flex items-center gap-[8px]"><span className="rounded-[6px] bg-[#E6F3FF] px-[8px] py-[3px] text-[11px] font-bold leading-none text-[#24588B]">Obs. {index + 1}</span><span className={`rounded-[8px] px-[7px] py-[4px] text-[10px] font-bold leading-none ${severityTone(severity)}`}>{severity || 'Sin criticidad'}</span></div>
+      <p className="mt-[8px] text-[12px] leading-[16.8px] text-[#131313]">{text || 'Sin descripción'}</p>
+      <div className="mt-[8px] flex items-center justify-between border-t border-[#E3E3E3] pt-[10px]"><span className="text-[12px] font-medium leading-none text-[#646464]">SLA calculado</span><span className="text-right text-[12px] font-bold leading-none text-[#131313]">{sla || 'xx días hábiles'}</span></div>
+    </div>
+  );
+}
+
+function ResponsibleRow({ name, position, self, tone }: { name: string; position: string; self: boolean; tone: 'gold' | 'navy' }) {
+  return (
+    <div className="flex items-center gap-[10px] border-b border-[#E3E3E3] px-[12px] py-[10px] last:border-b-0">
+      <span className={`flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full text-[12px] font-bold ${tone === 'gold' ? 'bg-[#C8A064] text-[#001E39]' : 'bg-[#24588B] text-white'}`}>{initials(name)}</span>
+      <div className="min-w-0 flex-1"><p className="truncate text-[12px] font-bold leading-none text-[#131313]">{name}</p><p className="mt-[4px] truncate text-[11px] leading-none text-[#646464]">{position || 'Responsable'}</p></div>
+      {self ? <span className="rounded-[5px] bg-[#C5FFF6] px-[7px] py-[2px] text-[10px] font-bold leading-none text-[#00B398]">Tú</span> : null}
     </div>
   );
 }
 
 export function SummaryStep({ onBack, onSave, saving, errorMessage }: SummaryStepProps) {
+  const user = useSessionStore((state) => state.user);
+  const online = useOnlineStatus();
   const draft = useNewInspectionDraftStore();
-
   const usersByCompanyQuery = useQuery({
     queryKey: ['inspections', 'new-inspection', 'company-users', draft.findingCompanyId],
     queryFn: () => getCompanyUsers(draft.findingCompanyId ?? ''),
     enabled: Boolean(draft.findingCompanyId),
   });
 
-  const usersById = useMemo(
-    () => new Map((usersByCompanyQuery.data ?? []).map((user) => [user.id, user.fullName])),
-    [usersByCompanyQuery.data],
-  );
-
+  const usersById = useMemo(() => new Map((usersByCompanyQuery.data ?? []).map((responsible) => [responsible.id, responsible])), [usersByCompanyQuery.data]);
   const checklistValues = Object.values(draft.answersByItemId);
-  const yesCount = checklistValues.filter((value) => value === InspectionAnswerValue.COMPLIANT).length;
   const noCount = checklistValues.filter((value) => value === InspectionAnswerValue.NOT_COMPLIANT).length;
-  const naCount = checklistValues.filter((value) => value === InspectionAnswerValue.NOT_APPLICABLE).length;
   const findingObservations = draft.findingObservations.filter((item) => item.saved);
-
   const isFindingFlow = draft.inspectionType === InspectionType.ENVIRONMENTAL;
-  const stepperSteps = isFindingFlow ? ['Datos', 'Tipo', 'Obs.', 'Resumen'] : ['Datos', 'Tipo', 'Items', 'Resumen'];
+  const showOfflineBanner = !online || !user;
+  const observationsCount = isFindingFlow ? findingObservations.length : noCount;
 
   return (
     <>
-      <div className="h-[56px] bg-[#001E39] px-[12px] py-[6px] text-white shadow-[0_2px_4px_rgba(0,0,0,0.3)]">
-        <div className="flex h-full items-center">
-          <button type="button" className="flex h-[40px] w-[40px] items-center justify-center rounded-full text-[16px]" onClick={onBack}>
-            ←
-          </button>
-          <div className="flex-1 px-[4px]">
-            <p className="text-[18px] font-semibold">Resumen</p>
-            <p className="mt-[1px] text-[13px] text-[rgba(255,255,255,0.55)]">Paso 4 de 5</p>
-          </div>
-          <div className="mr-[4px] rounded-[16px] bg-[#C8A064] px-[10px] py-[2px]">
-            <span className="text-[10px] font-bold text-[#001E39]">GF HSE</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex h-[23px] items-center gap-[7px] border-b border-[#C8A064] bg-[#2A1A04] px-[16px]">
-        <span className="text-[11px] text-[#C8A064]">☁</span>
-        <span className="text-[11px] font-semibold text-[#C8A064]">Sin red · guardando localmente</span>
-      </div>
-
-      <ManualFormStepper activeStep={4} steps={stepperSteps} />
-
+      <div className="h-[56px] shrink-0 bg-[#002659] text-white shadow-[0_2px_4px_rgba(0,0,0,0.3)]"><div className="flex h-full items-center gap-[4px] px-[4px]"><button type="button" className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full text-[rgba(255,255,255,0.92)]" onClick={onBack} aria-label="Atrás"><BackIcon /></button><div className="min-w-0 flex-1 px-[4px]"><p className="truncate text-[14px] font-semibold leading-[17px] text-white">Observaciones</p><p className="mt-[1px] truncate text-[11px] leading-[14px] text-[rgba(255,255,255,0.55)]">Paso 3 de 5</p></div><div className="pr-[4px]"><div className="flex h-[20px] w-[56px] items-center justify-center rounded-[16px] bg-[#C8A064]"><span className="text-[10px] font-bold leading-none text-[#001E39]">GF HSE</span></div></div></div></div>
+      {showOfflineBanner ? <div className="flex h-[23px] shrink-0 items-center gap-[7px] border-b border-[#C8A064] bg-[#2A1A04] px-[16px] pb-[6px] pt-[5px]"><OfflineIcon /><span className="text-[11px] font-semibold leading-none text-[#C8A064]">Sin red · guardando localmente</span></div> : null}
+      <ManualStepper checklist={!isFindingFlow} />
       <div className="flex-1 overflow-y-auto bg-[#F7F7F7] px-[14px] pb-[16px] pt-[14px]">
-        <div className="flex flex-col gap-[4px]">
-          <p className="text-[18px] font-bold leading-[21.6px] text-[#131313]">Resumen</p>
-          <p className="text-[12px] leading-[16.8px] text-[#646464]">Revisa antes de guardar</p>
+        <div><p className="text-[18px] font-bold leading-[21.6px] text-[#131313]">Resumen</p><p className="mt-[4px] text-[12px] leading-[16.8px] text-[#646464]">Revisa antes de guardar · se sincronizará al recuperar red</p></div>
+        <div className="mt-[12px] grid gap-[12px]">
+          <SectionCard title="Quién realizó la inspección" icon="♟"><SummaryRow label="Nombre" value={draft.inspectorName} /><SummaryRow label="Empresa" value={draft.inspectorCompanyName} /></SectionCard>
+          <SectionCard title="Dónde y cuándo" icon="⚑"><SummaryRow label="Área · Sector" value={`${draft.areaName ?? '-'} · ${draft.sectorName ?? '-'}`} /><SummaryRow label="Fecha" value={draft.inspectionDate} /><SummaryRow label="Tipo" value={draft.inspectionTypeLabel || (isFindingFlow ? 'Hallazgo' : 'Checklist')} />{!isFindingFlow ? <SummaryRow label="Plantilla" value={draft.templateName ?? '-'} /> : null}<SummaryRow label="Ubicación UTM" value={trimLocationLabel(draft.locationLabel)} mono /></SectionCard>
+          <SectionCard title={isFindingFlow ? `Observaciones (${observationsCount})` : `Checklist (${checklistValues.length})`} icon="☷">
+            {isFindingFlow ? findingObservations.map((item, index) => <ObservationSummary key={item.id} index={index} severity={item.severityLabel ?? ''} text={item.detectedCondition} sla={item.severityClosureTimeLabel ?? ''} />) : <><SummaryRow label="Sí" value={`${checklistValues.filter((value) => value === InspectionAnswerValue.COMPLIANT).length}`} /><SummaryRow label="No" value={`${noCount}`} /><SummaryRow label="N/A" value={`${checklistValues.filter((value) => value === InspectionAnswerValue.NOT_APPLICABLE).length}`} /></>}
+          </SectionCard>
+          {draft.findingCompanyName ? <SectionCard title="Responsables" icon="♟"><SummaryRow label="EECC" value={draft.findingCompanyName} />{draft.findingResponsibleIds.map((id, index) => { const responsible = usersById.get(id); const name = responsible?.fullName ?? 'Responsable'; return <ResponsibleRow key={id} name={name} position={responsible?.position ?? (index === 0 ? 'Coordinador' : 'Inspector')} self={index === 0} tone={index === 0 ? 'gold' : 'navy'} />; })}</SectionCard> : null}
+          <div className="flex min-h-[82px] w-full items-start gap-[12px] rounded-[12px] bg-[#4A90C4] py-[12px] pl-[14px] pr-[12px] text-white"><InfoIcon /><div className="min-w-0 flex-1"><p className="text-[13px] font-bold leading-[16.9px]">Guardado offline</p><p className="mt-[2px] text-[11px] leading-[15.4px] text-[rgba(255,255,255,0.88)]">Este proceso cuenta con guardado localmente. En caso que no cuente con señal, el formulario será enviado una vez esta sea recuperada.</p></div></div>
         </div>
-
-        <div className="mt-[12px] overflow-hidden rounded-[12px] border border-[#E3E3E3] bg-white">
-          <div className="min-h-[29px] border-b border-[#E3E3E3] bg-[#F7F7F7] px-[12px] py-[8px]">
-            <p className="text-[10px] font-bold uppercase tracking-[0.5px] text-[#646464]">Quien realizo la inspeccion</p>
-          </div>
-          <SummaryRow label="Nombre" value={draft.inspectorName} />
-          <SummaryRow label="Empresa" value={draft.inspectorCompanyName} />
-        </div>
-
-        <div className="mt-[12px] overflow-hidden rounded-[12px] border border-[#E3E3E3] bg-white">
-          <div className="min-h-[29px] border-b border-[#E3E3E3] bg-[#F7F7F7] px-[12px] py-[8px]">
-            <p className="text-[10px] font-bold uppercase tracking-[0.5px] text-[#646464]">Donde y cuando</p>
-          </div>
-          <SummaryRow label="Area · Sector" value={`${draft.areaName ?? '-'} · ${draft.sectorName ?? '-'}`} />
-          <SummaryRow label="Fecha" value={draft.inspectionDate} />
-          <SummaryRow label="Tipo" value={draft.inspectionTypeLabel} />
-          {!isFindingFlow ? <SummaryRow label="Plantilla" value={draft.templateName ?? '-'} /> : null}
-          <SummaryRow label="Ubicacion" value={trimLocationLabel(draft.locationLabel)} />
-        </div>
-
-        {!isFindingFlow ? (
-          <div className="mt-[12px] overflow-hidden rounded-[12px] border border-[#E3E3E3] bg-white">
-            <div className="min-h-[29px] border-b border-[#E3E3E3] bg-[#F7F7F7] px-[12px] py-[8px]">
-              <p className="text-[10px] font-bold uppercase tracking-[0.5px] text-[#646464]">Resultado checklist</p>
-            </div>
-            <SummaryRow label="SI" value={`${yesCount}`} />
-            <SummaryRow label="NO" value={`${noCount}`} />
-            <SummaryRow label="N/A" value={`${naCount}`} />
-          </div>
-        ) : null}
-
-        {isFindingFlow ? (
-          <div className="mt-[12px] overflow-hidden rounded-[12px] border border-[#E3E3E3] bg-white">
-            <div className="min-h-[29px] border-b border-[#E3E3E3] bg-[#F7F7F7] px-[12px] py-[8px]">
-              <p className="text-[10px] font-bold uppercase tracking-[0.5px] text-[#646464]">Observaciones ({findingObservations.length})</p>
-            </div>
-            {findingObservations.map((item, index) => (
-              <div key={item.id} className="border-b border-[#E3E3E3] px-[12px] py-[10px] last:border-b-0">
-                <div className="mb-[6px] flex items-center gap-[8px]">
-                  <span className="rounded-[6px] bg-[#E6F3FF] px-[8px] py-[3px] text-[11px] font-bold text-[#24588B]">Obs. {index + 1}</span>
-                  <span className="rounded-[8px] bg-[#FFE1CD] px-[8px] py-[3px] text-[10px] font-bold text-[#532A0E]">{item.severityLabel ?? 'Sin criticidad'}</span>
-                </div>
-                <p className="text-[12px] text-[#131313]">{item.detectedCondition || 'Sin descripcion'}</p>
-              </div>
-            ))}
-          </div>
-        ) : null}
-
-        {draft.findingCompanyName ? (
-          <div className="mt-[12px] overflow-hidden rounded-[12px] border border-[#E3E3E3] bg-white">
-            <div className="min-h-[29px] border-b border-[#E3E3E3] bg-[#F7F7F7] px-[12px] py-[8px]">
-              <p className="text-[10px] font-bold uppercase tracking-[0.5px] text-[#646464]">Responsables</p>
-            </div>
-            <SummaryRow label="EECC" value={draft.findingCompanyName} />
-            <div className="px-[12px] py-[10px]">
-              {draft.findingResponsibleIds.length === 0 ? (
-                <p className="text-[12px] text-[#646464]">Sin responsables seleccionados</p>
-              ) : (
-                draft.findingResponsibleIds.map((id) => (
-                  <p key={id} className="mb-[6px] text-[12px] text-[#131313] last:mb-0">• {usersById.get(id) ?? 'Responsable'}</p>
-                ))
-              )}
-            </div>
-          </div>
-        ) : null}
       </div>
-
-      <div className="border-t border-[#e3e3e3] bg-white px-[14px] pb-[8px] pt-[10px]">
-        {errorMessage ? <p className="mb-[8px] text-[11px] text-[#BD3B5B]">{errorMessage}</p> : null}
-        <div className="flex w-full gap-[10px]">
-          <button
-            type="button"
-            className="flex h-[50px] items-center justify-center rounded-[14px] border-[2px] border-[#C8A064] px-[20px] text-[14px] font-bold text-[#C8A064]"
-            onClick={onBack}
-          >
-            Atras
-          </button>
-          <button
-            type="button"
-            className={`flex h-[50px] flex-1 items-center justify-center gap-[8px] rounded-[14px] text-[14px] font-bold ${saving ? 'bg-[#8BC98C]' : 'bg-[#35A137]'} text-white`}
-            onClick={onSave}
-            disabled={saving}
-          >
-            {saving ? 'Guardando...' : 'Guardar inspeccion'}
-            <span>✓</span>
-          </button>
-        </div>
-        <div className="mx-auto mb-[4px] mt-[14px] h-[4px] w-[120px] rounded-[2px] bg-[#d1d1d1]" />
-      </div>
+      <div className="shrink-0 border-t border-[#E3E3E3] bg-white pb-[8px] pt-[10px]"><div className="flex w-full gap-[10px] px-[14px]"><button type="button" className="!flex !h-[50px] !w-auto !min-w-0 !shrink-0 !items-center !justify-center !gap-[8px] !rounded-[14px] !border-[2px] !border-[#C8A064] !bg-white !px-[20px] !text-[14px] !font-bold !text-[#C8A064]" onClick={onBack}><ArrowLeftIcon />Atrás</button><button type="button" className={`!flex !h-[50px] !w-auto !min-w-0 !flex-1 !items-center !justify-center !gap-[8px] !rounded-[14px] !text-[14px] !font-bold ${saving ? '!bg-[#85C586]' : '!bg-[#3A9B3A]'} !text-white !shadow-[0_2px_4px_rgba(58,155,58,0.25)]`} onClick={onSave} disabled={saving}><CheckIcon />{saving ? 'Guardando...' : 'Guardar inspección'}</button></div>{errorMessage ? <p className="mx-[14px] mt-[8px] text-[11px] text-[#BD3B5B]">{errorMessage}</p> : null}<div className="mx-auto mb-[4px] mt-[14px] h-[4px] w-[120px] rounded-[2px] bg-[#D1D1D1]" /></div>
     </>
   );
 }

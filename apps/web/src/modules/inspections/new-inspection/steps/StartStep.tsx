@@ -152,7 +152,7 @@ export function StartStep({
         <div className="px-[14px]">
           <button
             type="button"
-            className="flex h-[50px] w-full items-center justify-center rounded-[14px] border-[2px] border-[#C8A064] bg-white px-[20px] text-center text-[14px] font-bold text-[#C8A064]"
+            className="!flex !h-[50px] !w-full !min-w-0 !items-center !justify-center !rounded-[14px] !border-[2px] !border-[#C8A064] !bg-white !px-[20px] !text-center !text-[14px] !font-bold !text-[#C8A064]"
             onClick={onCancelInspection}
           >
             Cancelar inspección

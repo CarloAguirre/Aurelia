@@ -52,61 +52,43 @@ function pluralizeObservation(count: number) {
 }
 
 function BackIcon() {
-  return (
-    <svg width="23" height="19" viewBox="0 0 23 19" fill="none" aria-hidden="true">
-      <path d="M9.5 1.75 1.75 9.5l7.75 7.75M2.5 9.5h18.75" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <svg width="23" height="19" viewBox="0 0 23 19" fill="none" aria-hidden="true"><path d="M9.5 1.75 1.75 9.5l7.75 7.75M2.5 9.5h18.75" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
 function OfflineIcon() {
-  return (
-    <svg width="13" height="11" viewBox="0 0 13 11" fill="none" aria-hidden="true">
-      <path d="m1 1 11 9M2.2 4.1c2.5-1.8 5.8-1.8 8.3 0M4.5 6.1c1.2-.7 2.7-.7 3.9 0" stroke="#C8A064" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  );
+  return <svg width="13" height="11" viewBox="0 0 13 11" fill="none" aria-hidden="true"><path d="m1 1 11 9M2.2 4.1c2.5-1.8 5.8-1.8 8.3 0M4.5 6.1c1.2-.7 2.7-.7 3.9 0" stroke="#C8A064" strokeWidth="1.4" strokeLinecap="round" /></svg>;
 }
 
 function ArrowLeftIcon() {
-  return (
-    <svg width="18" height="14" viewBox="0 0 18 14" fill="none" aria-hidden="true">
-      <path d="M17 7H2M7.5 1.5 2 7l5.5 5.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <svg width="18" height="14" viewBox="0 0 18 14" fill="none" aria-hidden="true"><path d="M17 7H2M7.5 1.5 2 7l5.5 5.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
 function ArrowRightIcon() {
-  return (
-    <svg width="18" height="14" viewBox="0 0 18 14" fill="none" aria-hidden="true">
-      <path d="M1 7h15M10.5 1.5 16 7l-5.5 5.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <svg width="18" height="14" viewBox="0 0 18 14" fill="none" aria-hidden="true"><path d="M1 7h15M10.5 1.5 16 7l-5.5 5.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
 function CaretDownIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-      <path d="m4.5 7 4.5 4 4.5-4" stroke="#131313" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function InfoIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-      <circle cx="9" cy="9" r="8" fill="white" />
-      <path d="M9 7.4v5" stroke="#4A90C4" strokeWidth="1.8" strokeLinecap="round" />
-      <circle cx="9" cy="5.1" r="1" fill="#4A90C4" />
-    </svg>
-  );
+  return <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="m4.5 7 4.5 4 4.5-4" stroke="#131313" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
 function PlusIcon() {
-  return (
-    <svg width="17" height="14" viewBox="0 0 17 14" fill="none" aria-hidden="true">
-      <path d="M8.5 2.5v9M4 7h9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
+  return <svg width="17" height="14" viewBox="0 0 17 14" fill="none" aria-hidden="true"><path d="M8.5 2.5v9M4 7h9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>;
+}
+
+function CheckIcon() {
+  return <svg width="16" height="13" viewBox="0 0 16 13" fill="none" aria-hidden="true"><path d="m2 6.6 3.6 3.6L14 1.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+function CameraIcon() {
+  return <svg width="18" height="14" viewBox="0 0 18 14" fill="none" aria-hidden="true"><path d="M5.4 2 6.6.6h4.8L12.6 2H16a1.4 1.4 0 0 1 1.4 1.4v8.2A1.4 1.4 0 0 1 16 13H2a1.4 1.4 0 0 1-1.4-1.4V3.4A1.4 1.4 0 0 1 2 2h3.4Z" fill="currentColor" /><circle cx="9" cy="7.4" r="2.6" fill="rgba(255,255,255,0.75)" /></svg>;
+}
+
+function TrashIcon() {
+  return <svg width="15" height="12" viewBox="0 0 15 12" fill="none" aria-hidden="true"><path d="M2.4 3.2h10.2M5.5 3.2V2h4v1.2M4.2 4.4l.5 6.1h5.6l.5-6.1" stroke="#7A0E23" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+function ObservationIcon() {
+  return <svg width="15" height="12" viewBox="0 0 15 12" fill="none" aria-hidden="true"><path d="M7.5 1.2a5.3 5.3 0 1 0 0 10.6 5.3 5.3 0 0 0 0-10.6Zm0 2.8v3.1M7.5 9h.01" stroke="#8E6E3E" strokeWidth="1.8" strokeLinecap="round" /></svg>;
 }
 
 function ManualStepper() {
@@ -128,29 +110,53 @@ function ManualStepper() {
           </div>
         ))}
       </div>
-      <div className="mt-[6px] h-[2px] w-full overflow-hidden rounded-[2px] bg-[#E3E3E3]">
-        <div className="h-[2px] w-[249px] rounded-[2px] bg-gradient-to-r from-[#8E6E3E] to-[#C8A064]" />
-      </div>
+      <div className="mt-[6px] h-[2px] w-full overflow-hidden rounded-[2px] bg-[#E3E3E3]"><div className="h-[2px] w-[249px] rounded-[2px] bg-gradient-to-r from-[#8E6E3E] to-[#C8A064]" /></div>
     </div>
   );
 }
 
-function EmptyObservationsCard() {
+function InfoNotice({ children }: { children: string }) {
+  return <div className="flex min-h-[48px] w-full items-center gap-[12px] rounded-[12px] bg-[#4A90C4] py-[12px] pl-[14px] pr-[12px] text-white"><span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-white text-[12px] font-bold text-[#4A90C4]">i</span><span className="text-[13px] font-bold leading-[16.9px]">{children}</span></div>;
+}
+
+function FieldLabel({ children }: { children: string }) {
+  return <p className="text-[13px] font-bold leading-[15.5px] text-[#131313]">{children}</p>;
+}
+
+function SavedTextBlock({ label, value, muted = false }: { label: string; value: string; muted?: boolean }) {
+  return <div className={`${muted ? 'bg-[#F7F7F7]' : 'border border-[#E3E3E3] bg-white'} rounded-[8px] px-[10px] py-[8px]`}><p className="text-[9px] font-bold uppercase leading-none tracking-[1.5px] text-[#646464]">{label}</p><p className="mt-[4px] text-[12px] leading-[16.8px] text-[#131313]">{value}</p></div>;
+}
+
+function PhotoUpload({ evidence, onChange }: { evidence: NewInspectionFindingObservationDraft['evidence']; onChange: (asset: NonNullable<NewInspectionFindingObservationDraft['evidence']>) => void }) {
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    onChange({ name: file.name, file });
+  }
+
+  if (evidence) {
+    return (
+      <label className="flex min-h-[60px] w-full cursor-pointer items-center gap-[8px] rounded-[8px] bg-[#3A9B3A] px-[12px] py-[10px] text-white">
+        <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+        <span className="flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-[8px] bg-[rgba(255,255,255,0.25)] text-white"><CameraIcon /></span>
+        <span className="truncate text-[12px] font-bold leading-none">{evidence.name}</span>
+      </label>
+    );
+  }
+
   return (
-    <div className="flex min-h-[90px] w-full items-start gap-[12px] rounded-[12px] bg-[#4A90C4] py-[12px] pl-[14px] pr-[12px] text-white">
-      <div className="pt-[1px]"><InfoIcon /></div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-bold leading-[16.9px]">Sin observaciones aún</p>
-        <p className="mt-[2px] text-[11px] leading-[15.4px] text-[rgba(255,255,255,0.88)]">
-          Agrega al menos una observación para continuar. Puedes agregar todas las que encontraste en esta visita.
-        </p>
-      </div>
-    </div>
+    <label className="flex min-h-[108px] w-full cursor-pointer flex-col items-center justify-center rounded-[10px] border-2 border-dashed border-[#D1D1D1] bg-[#F6FAFF] px-[16px] py-[24px] text-center">
+      <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+      <span className="text-[28px] leading-none">📷</span>
+      <span className="mt-[6px] text-[13px] font-semibold leading-none text-[#646464]">Tomar foto o galería</span>
+      <span className="mt-[3px] text-[11px] leading-none text-[#ACACAC]">Fecha, hora y GPS automáticos</span>
+    </label>
   );
 }
 
 function ObservationCard({
   observation,
+  index,
   severityOptions,
   onOpenSeverity,
   onChange,
@@ -158,64 +164,35 @@ function ObservationCard({
   onRemove,
 }: {
   observation: NewInspectionFindingObservationDraft;
+  index: number;
   severityOptions: SelectSheetOption[];
   onOpenSeverity: () => void;
   onChange: (patch: Partial<Omit<NewInspectionFindingObservationDraft, 'id'>>) => void;
   onSave: () => void;
   onRemove: () => void;
 }) {
-  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    onChange({ evidence: { name: file.name, file } });
-  }
-
-  const complete = Boolean(
-    observation.detectedCondition.trim() &&
-      observation.correctiveAction.trim() &&
-      observation.evidence &&
-      observation.severityId,
-  );
+  const complete = Boolean(observation.detectedCondition.trim() && observation.correctiveAction.trim() && observation.evidence && observation.severityId);
+  const slaLabel = observation.severityClosureTimeLabel ?? findSeverityLabel(observation.severityId ?? '', severityOptions) ?? '5 Días';
 
   return (
-    <div className="rounded-[12px] border-[1.5px] border-[#C8A064] bg-white p-[12px]">
-      <div className="mb-[8px] flex items-center justify-between">
-        <p className="text-[12px] font-bold uppercase tracking-[0.3px] text-[#9B7440]">Nueva observación</p>
-        <button type="button" onClick={onRemove} className="flex h-[32px] w-[32px] items-center justify-center rounded-[8px] bg-[#FFD4E0] text-[14px] text-[#7A0E23]">×</button>
+    <div className="w-full rounded-[12px] border-[1.5px] border-[#C8A064] bg-white p-[15.5px] shadow-[0_2px_4px_rgba(200,160,100,0.15)]">
+      <div className="flex items-center gap-[6px]"><ObservationIcon /><p className="text-[12px] font-bold uppercase leading-none tracking-[0.6px] text-[#8E6E3E]">Nueva observación {index + 1}</p></div>
+      <div className="mt-[10px] grid gap-[10px]">
+        <div className="grid gap-[6px]"><FieldLabel>Condición detectada *</FieldLabel><textarea className="min-h-[80px] w-full resize-none rounded-[10px] border-[1.5px] border-[#D1D1D1] bg-[#F6FAFF] px-[15.5px] py-[14.5px] text-[13px] leading-[19.5px] text-[#131313] outline-none placeholder:text-[#757575]" placeholder="Describe la condición subestándar, su ubicación exacta y la norma que incumple..." value={observation.detectedCondition} onChange={(event) => onChange({ detectedCondition: event.target.value })} /></div>
+        <div className="grid gap-[6px]"><FieldLabel>Fotografía "Antes" *</FieldLabel><PhotoUpload evidence={observation.evidence} onChange={(evidence) => onChange({ evidence })} /></div>
+        <div className="grid gap-[6px]"><FieldLabel>Medidas correctivas propuestas</FieldLabel><textarea className="min-h-[80px] w-full resize-none rounded-[10px] border-[1.5px] border-[#D1D1D1] bg-[#F6FAFF] px-[15.5px] py-[14.5px] text-[13px] leading-[19.5px] text-[#131313] outline-none placeholder:text-[#757575]" placeholder="Qué debe hacer la EECC para corregir esta condición..." value={observation.correctiveAction} onChange={(event) => onChange({ correctiveAction: event.target.value })} /></div>
+        <div className="grid gap-[10px]"><div><p className="text-[18px] font-bold leading-[21.6px] text-[#131313]">Seleccione la criticidad</p><p className="mt-[4px] text-[12px] leading-[16.8px] text-[#646464]">Califica el riesgo global de esta visita · aplica a las observaciones registradas</p></div><button type="button" onClick={onOpenSeverity} className="flex h-[48px] w-full items-end justify-between rounded-[10px] border border-[#D1D1D1] bg-[#F6FAFF] px-[14px] py-[15px]"><span className="truncate text-[14px] font-medium leading-none text-[#131313]">{observation.severityLabel ?? 'Seleccione'}</span><CaretDownIcon /></button>{observation.severityId ? <div className="flex min-h-[64px] items-center justify-between rounded-[10px] border-[1.5px] border-[#E8A06A] bg-[#FFE1CD] p-[15.5px]"><div><p className="text-[9px] font-bold uppercase leading-none tracking-[0.63px] text-[#333]">SLA calculado</p><p className="mt-[2px] text-[20px] font-bold leading-[20px] text-[#333]">{slaLabel}</p></div><button type="button" className="h-[40px] rounded-[8px] border-[1.5px] border-[#D1D1D1] bg-white px-[15.5px] text-[13px] font-semibold text-[#333]">Reasignar SLA</button></div> : <div className="flex min-h-[64px] items-center justify-center rounded-[10px] border-[1.5px] border-dashed border-[#E3E3E3] bg-[#F7F7F7] p-[15.5px]"><p className="text-center text-[12px] text-[#ACACAC]">Seleccione criticidad para calcular SLA</p></div>}</div>
+        <div className="flex h-[48px] gap-[8px] pt-[4px]"><button type="button" onClick={onRemove} className="h-[44px] flex-1 rounded-[14px] border-2 border-[#C8A064] bg-white px-[20px] text-[13px] font-bold text-[#C8A064]">Cancelar</button><button type="button" onClick={onSave} disabled={!complete} className={`flex h-[44px] items-center justify-center gap-[8px] rounded-[14px] px-[12px] text-[13px] font-bold text-white shadow-[0_2px_4px_rgba(200,160,100,0.25)] ${complete ? 'bg-[#C8A064]' : 'bg-[#D1D1D1]'}`}><CheckIcon />Guardar observación</button></div>
       </div>
-      <div className="grid gap-[8px]">
-        <div>
-          <p className="text-[13px] font-bold text-[#131313]">Condición detectada *</p>
-          <textarea className="mt-[4px] min-h-[70px] w-full resize-none rounded-[10px] border-[1.5px] border-[#D1D1D1] bg-[#F6FAFF] px-[12px] py-[10px] text-[13px] text-[#131313] outline-none" placeholder="Describe la condición subestándar..." value={observation.detectedCondition} onChange={(event) => onChange({ detectedCondition: event.target.value })} />
-        </div>
-        <div>
-          <p className="text-[13px] font-bold text-[#131313]">Fotografía antes *</p>
-          <label className={`mt-[4px] flex cursor-pointer items-center rounded-[10px] border-[1.5px] px-[12px] py-[8px] ${observation.evidence ? 'min-h-[58px] border-0 bg-[#35A137] text-white' : 'min-h-[90px] border-dashed border-[#D1D1D1] bg-[#F6FAFF]'}`}>
-            <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-            <span className="text-[13px] font-semibold">{observation.evidence?.name ?? 'Tomar foto o galería'}</span>
-          </label>
-        </div>
-        <div>
-          <p className="text-[13px] font-bold text-[#131313]">Medida correctiva propuesta *</p>
-          <textarea className="mt-[4px] min-h-[70px] w-full resize-none rounded-[10px] border-[1.5px] border-[#D1D1D1] bg-[#F6FAFF] px-[12px] py-[10px] text-[13px] text-[#131313] outline-none" placeholder="Qué debe hacer la EECC..." value={observation.correctiveAction} onChange={(event) => onChange({ correctiveAction: event.target.value })} />
-        </div>
-        <div>
-          <p className="text-[13px] font-bold text-[#131313]">Seleccione la criticidad</p>
-          <button type="button" onClick={onOpenSeverity} className="mt-[4px] flex h-[48px] w-full items-center justify-between rounded-[10px] border-[1.5px] border-[#D1D1D1] bg-[#F6FAFF] px-[12px]">
-            <span className="truncate text-[14px] font-medium text-[#131313]">{observation.severityLabel ?? 'Seleccione criticidad'}</span>
-            <CaretDownIcon />
-          </button>
-          {observation.severityId ? (
-            <div className="mt-[8px] flex items-center justify-between rounded-[10px] border-[1.5px] border-[#F29A5B] bg-[#FFDCC4] px-[12px] py-[10px]">
-              <span className="text-[10px] font-bold uppercase tracking-[0.7px] text-[#5E3B24]">SLA calculado</span>
-              <span className="text-[20px] font-bold text-[#5E3B24]">{findSeverityLabel(observation.severityId, severityOptions) ?? observation.severityClosureTimeLabel ?? 'N/D'}</span>
-            </div>
-          ) : null}
-        </div>
-        <div className="flex justify-end pt-[4px]">
-          <button type="button" onClick={onSave} disabled={!complete} className={`h-[40px] rounded-[10px] px-[14px] text-[13px] font-bold text-white ${complete ? 'bg-[#C8A064]' : 'bg-[#D1D1D1]'}`}>Guardar observación</button>
-        </div>
-      </div>
+    </div>
+  );
+}
+
+function SavedObservationCard({ observation, index, onRemove }: { observation: NewInspectionFindingObservationDraft; index: number; onRemove: () => void }) {
+  return (
+    <div className="w-full rounded-[10px] border-[1.5px] border-[#E3E3E3] bg-white p-[13.5px] shadow-[0_1px_1.5px_rgba(0,0,0,0.06)]">
+      <div className="flex items-center justify-between"><div className="flex items-center gap-[8px]"><span className="rounded-[6px] bg-[#E6F3FF] px-[8px] py-[3px] text-[11px] font-bold leading-none text-[#24588B]">Obs. {index + 1}</span><span className="rounded-[8px] bg-[#FFE1CD] px-[7px] py-[4px] text-[10px] font-bold leading-none text-[#532A0E]">{observation.severityLabel ?? 'Moderado'}</span></div><button type="button" onClick={onRemove} className="flex h-[28px] w-[28px] items-center justify-center rounded-[6px] border border-[#FFD0DB] bg-[#FFD0DB]"><TrashIcon /></button></div>
+      <div className="mt-[12px] grid gap-[4px]"><SavedTextBlock label="Condición detectada" value={observation.detectedCondition || 'Sin descripción'} /><SavedTextBlock label="Medida correctiva propuesta" value={observation.correctiveAction || 'Sin medida correctiva'} muted />{observation.evidence ? <div className="border-t-[1.5px] border-[#C8A064] bg-[#FFFDF7] px-[10px] py-[9.5px]"><div className="flex min-h-[60px] items-center gap-[8px] rounded-[8px] bg-[#3A9B3A] px-[12px] py-[10px] text-white"><span className="flex h-[40px] w-[40px] items-center justify-center rounded-[8px] bg-[rgba(255,255,255,0.25)]"><CameraIcon /></span><span className="truncate text-[12px] font-bold">{observation.evidence.name}</span></div></div> : null}<div className="flex items-center justify-between border-t border-[#E3E3E3] px-[12px] pb-[9px] pt-[10px]"><span className="text-[12px] font-medium text-[#646464]">SLA calculado</span><span className="text-right text-[12px] font-bold text-[#131313]">{observation.severityClosureTimeLabel ?? 'xx días hábiles'}</span></div></div>
     </div>
   );
 }
@@ -226,7 +203,6 @@ export function FindingObservationsStep({ onBack, onNext }: FindingObservationsS
   const draft = useNewInspectionDraftStore();
   const [picker, setPicker] = useState<FindingPicker>(null);
   const [observationIdForSeverity, setObservationIdForSeverity] = useState<string | null>(null);
-
   const setFindingType = useNewInspectionDraftStore((state) => state.setFindingType);
   const addFindingObservation = useNewInspectionDraftStore((state) => state.addFindingObservation);
   const updateFindingObservation = useNewInspectionDraftStore((state) => state.updateFindingObservation);
@@ -238,7 +214,6 @@ export function FindingObservationsStep({ onBack, onNext }: FindingObservationsS
   const severitiesQuery = useQuery({ queryKey: ['inspections', 'new-inspection', 'finding-severities'], queryFn: getInspectionFindingSeverities });
   const companiesQuery = useQuery({ queryKey: ['inspections', 'new-inspection', 'companies'], queryFn: getResponsibleCompanies });
   const usersByCompanyQuery = useQuery({ queryKey: ['inspections', 'new-inspection', 'company-users', draft.findingCompanyId], queryFn: () => getCompanyUsers(draft.findingCompanyId ?? ''), enabled: Boolean(draft.findingCompanyId) });
-
   const findingTypeOptions = useMemo<SelectSheetOption[]>(() => (findingTypesQuery.data ?? []).map((item) => ({ id: item.id, label: item.name })), [findingTypesQuery.data]);
   const severityOptions = useMemo<SelectSheetOption[]>(() => (severitiesQuery.data ?? []).map((item) => ({ id: item.id, label: item.name, description: item.description })), [severitiesQuery.data]);
   const companyOptions = useMemo<SelectSheetOption[]>(() => (companiesQuery.data ?? []).map((item) => ({ id: item.id, label: item.name, description: item.code ?? undefined })), [companiesQuery.data]);
@@ -271,80 +246,35 @@ export function FindingObservationsStep({ onBack, onNext }: FindingObservationsS
     addFindingObservation();
   }
 
-  const hasSavedObservation = draft.findingObservations.some((item) => item.saved);
-  const savedObservationsCount = draft.findingObservations.filter((item) => item.saved).length;
-  const hasActiveObservation = draft.findingObservations.some((item) => !item.saved);
-  const showInitialSelector = !hasSavedObservation && !hasActiveObservation;
+  const savedObservations = draft.findingObservations.filter((item) => item.saved);
+  const activeObservations = draft.findingObservations.filter((item) => !item.saved);
+  const hasSavedObservation = savedObservations.length > 0;
+  const hasActiveObservation = activeObservations.length > 0;
+  const showFindingTypeSelector = !hasSavedObservation;
   const canContinue = Boolean(hasSavedObservation && draft.findingCompanyId && draft.findingResponsibleIds.length > 0);
   const showOfflineBanner = !online || !user;
 
   return (
     <>
-      <div className="h-[56px] shrink-0 bg-[#002659] text-white shadow-[0_2px_4px_rgba(0,0,0,0.3)]">
-        <div className="flex h-full items-center gap-[4px] px-[4px]">
-          <button type="button" className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full text-[rgba(255,255,255,0.92)]" onClick={onBack} aria-label="Atrás"><BackIcon /></button>
-          <div className="min-w-0 flex-1 px-[4px]"><p className="truncate text-[14px] font-semibold leading-[17px] text-white">Observaciones</p><p className="mt-[1px] truncate text-[11px] leading-[14px] text-[rgba(255,255,255,0.55)]">Paso 3 de 5</p></div>
-          <div className="pr-[4px]"><div className="flex h-[20px] w-[56px] items-center justify-center rounded-[16px] bg-[#C8A064]"><span className="text-[10px] font-bold leading-none text-[#001E39]">GF HSE</span></div></div>
-        </div>
-      </div>
-
+      <div className="h-[56px] shrink-0 bg-[#002659] text-white shadow-[0_2px_4px_rgba(0,0,0,0.3)]"><div className="flex h-full items-center gap-[4px] px-[4px]"><button type="button" className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full text-[rgba(255,255,255,0.92)]" onClick={onBack} aria-label="Atrás"><BackIcon /></button><div className="min-w-0 flex-1 px-[4px]"><p className="truncate text-[14px] font-semibold leading-[17px] text-white">Observaciones</p><p className="mt-[1px] truncate text-[11px] leading-[14px] text-[rgba(255,255,255,0.55)]">Paso 3 de 5</p></div><div className="pr-[4px]"><div className="flex h-[20px] w-[56px] items-center justify-center rounded-[16px] bg-[#C8A064]"><span className="text-[10px] font-bold leading-none text-[#001E39]">GF HSE</span></div></div></div></div>
       {showOfflineBanner ? <div className="flex h-[23px] shrink-0 items-center gap-[7px] border-b border-[#C8A064] bg-[#2A1A04] px-[16px] pb-[6px] pt-[5px]"><OfflineIcon /><span className="text-[11px] font-semibold leading-none text-[#C8A064]">Sin red · guardando localmente</span></div> : null}
-
       <ManualStepper />
-
       <div className="flex-1 overflow-y-auto bg-[#F7F7F7] px-[14px] pb-[16px] pt-[14px]">
-        {showInitialSelector ? (
-          <>
-            <div>
-              <p className="text-[18px] font-bold leading-[21.6px] text-[#131313]">Tipo de hallazgo</p>
-              <p className="mt-[4px] w-[332px] text-[12px] leading-[16.8px] text-[#646464]">Seleccione el tipo de hallazgo antes de continuar con las observaciones para esta inspección.</p>
-            </div>
-            <button type="button" onClick={() => setPicker('finding-type')} className="mt-[12px] flex h-[48px] w-full items-end justify-between rounded-[10px] border border-[#D1D1D1] bg-[#F6FAFF] px-[14px] py-[15px]"><span className="truncate text-[14px] font-medium leading-none text-[#131313]">{draft.findingTypeLabel ?? 'Seleccione'}</span><CaretDownIcon /></button>
-          </>
-        ) : null}
-
-        <div className={showInitialSelector ? 'mt-[12px]' : ''}>
-          <p className="text-[18px] font-bold leading-[21.6px] text-[#131313]">Observaciones</p>
-          <p className="mt-[4px] w-[332px] text-[12px] leading-[16.8px] text-[#646464]">Registra cada condición detectada en esta visita · una a una</p>
-        </div>
-
+        {showFindingTypeSelector ? <><div><p className="text-[18px] font-bold leading-[21.6px] text-[#131313]">Tipo de hallazgo</p><p className="mt-[4px] w-[332px] text-[12px] leading-[16.8px] text-[#646464]">Seleccione el tipo de hallazgo antes de continuar con las observaciones para esta inspección.</p></div><button type="button" onClick={() => setPicker('finding-type')} className="mt-[12px] flex h-[48px] w-full items-end justify-between rounded-[10px] border border-[#D1D1D1] bg-[#F6FAFF] px-[14px] py-[15px]"><span className="truncate text-[14px] font-medium leading-none text-[#131313]">{draft.findingTypeLabel ?? 'Seleccione'}</span><CaretDownIcon /></button></> : null}
+        <div className={showFindingTypeSelector ? 'mt-[12px]' : ''}><p className="text-[18px] font-bold leading-[21.6px] text-[#131313]">Observaciones</p><p className="mt-[4px] w-[332px] text-[12px] leading-[16.8px] text-[#646464]">Registra cada condición detectada en esta visita · una a una</p></div>
         <div className="mt-[12px] grid gap-[12px]">
-          {!hasSavedObservation && !hasActiveObservation ? <EmptyObservationsCard /> : null}
-
-          {hasSavedObservation ? <div className="flex min-h-[58px] items-center gap-[16px] rounded-[12px] bg-[#4A90C4] px-[20px] py-[10px] text-white"><span className="flex h-[24px] w-[24px] items-center justify-center rounded-full bg-white text-[12px] text-[#4A90C4]">i</span><span className="text-[14px] font-bold">La inspección contiene: {pluralizeObservation(savedObservationsCount)}</span></div> : null}
-
-          {draft.findingObservations.map((observation, observationIndex) => observation.saved ? (
-            <div key={observation.id} className="rounded-[12px] border border-[#E1E1E1] bg-white px-[14px] pb-[16px] pt-[14px] shadow-[0_2px_4px_rgba(0,0,0,0.08)]">
-              <div className="mb-[8px] flex items-center justify-between"><div className="flex items-center gap-[8px]"><span className="rounded-[8px] bg-[#DDF0FF] px-[10px] py-[5px] text-[12px] font-bold text-[#1E5A92]">Obs. {observationIndex + 1}</span><span className="rounded-[8px] bg-[#FFE2CF] px-[8px] py-[4px] text-[12px] font-bold text-[#5E3B24]">{observation.severityLabel ?? 'Sin criticidad'}</span></div><button type="button" onClick={() => removeFindingObservation(observation.id)} className="flex h-[40px] w-[40px] items-center justify-center rounded-[8px] bg-[#FFD4E0] text-[14px] text-[#7A0E23]">×</button></div>
-              <div className="rounded-[8px] border border-[#E1E1E1] p-[10px]"><p className="text-[10px] font-bold uppercase tracking-[1.7px] text-[#646464]">Condición detectada</p><p className="mt-[6px] text-[13px] text-[#131313]">{observation.detectedCondition || 'Sin descripción'}</p></div>
-            </div>
-          ) : (
-            <ObservationCard key={observation.id} observation={observation} severityOptions={severityOptions} onOpenSeverity={() => { setObservationIdForSeverity(observation.id); setPicker('severity'); }} onChange={(patch) => updateFindingObservation(observation.id, patch)} onSave={() => { const complete = Boolean(observation.detectedCondition.trim() && observation.correctiveAction.trim() && observation.evidence && observation.severityId); if (!complete) return; updateFindingObservation(observation.id, { saved: true }); }} onRemove={() => removeFindingObservation(observation.id)} />
-          ))}
-
-          <button type="button" onClick={addObservation} disabled={!draft.findingTypeId || draft.findingObservations.some((item) => !item.saved)} className="flex h-[48px] w-full items-center justify-center gap-[8px] rounded-[10px] border-[2px] border-dashed border-[#D1D1D1] bg-[#F6FAFF] text-[13px] font-semibold text-[#D1D1D1] disabled:text-[#D1D1D1]"><PlusIcon />Agregar observación</button>
+          {!hasSavedObservation && !hasActiveObservation ? <><InfoNotice>Sin observaciones aún</InfoNotice><button type="button" onClick={addObservation} disabled={!draft.findingTypeId} className="flex h-[48px] w-full items-center justify-center gap-[8px] rounded-[10px] border-[2px] border-dashed border-[#D1D1D1] bg-[#F6FAFF] text-[13px] font-semibold text-[#D1D1D1]"><PlusIcon />Agregar observación</button></> : null}
+          {hasSavedObservation ? <InfoNotice>La inspección contiene: {pluralizeObservation(savedObservations.length)}</InfoNotice> : null}
+          {draft.findingObservations.map((observation, observationIndex) => observation.saved ? <SavedObservationCard key={observation.id} observation={observation} index={observationIndex} onRemove={() => removeFindingObservation(observation.id)} /> : <ObservationCard key={observation.id} observation={observation} index={observationIndex} severityOptions={severityOptions} onOpenSeverity={() => { setObservationIdForSeverity(observation.id); setPicker('severity'); }} onChange={(patch) => updateFindingObservation(observation.id, patch)} onSave={() => { const complete = Boolean(observation.detectedCondition.trim() && observation.correctiveAction.trim() && observation.evidence && observation.severityId); if (!complete) return; updateFindingObservation(observation.id, { saved: true }); }} onRemove={() => removeFindingObservation(observation.id)} />)}
+          {hasSavedObservation && !hasActiveObservation ? <button type="button" onClick={addObservation} className="flex h-[48px] w-full items-center justify-center gap-[8px] rounded-[10px] border-[2px] border-dashed border-[#D1D1D1] bg-[#F6FAFF] text-[13px] font-semibold text-[#D1D1D1]"><PlusIcon />Agregar observación</button> : null}
         </div>
-
-        {hasSavedObservation ? (
-          <div className="mt-[12px] rounded-[12px] border border-[#E1E1E1] bg-white p-[14px] shadow-[0_2px_4px_rgba(0,0,0,0.08)]">
-            <p className="text-[18px] font-bold text-[#131313]">Responsables</p>
-            <p className="mt-[8px] text-[13px] font-bold text-[#131313]">Empresa encargada de los hallazgos</p>
-            <button type="button" onClick={() => setPicker('company')} className="mt-[4px] flex min-h-[50px] w-full items-center justify-between rounded-[10px] border-[1.5px] border-[#D1D1D1] bg-[#F6FAFF] px-[14px]"><span className="truncate text-[14px] font-medium text-[#131313]">{draft.findingCompanyName ?? 'Seleccione empresa'}</span><CaretDownIcon /></button>
-            <p className="mt-[10px] text-[13px] font-bold text-[#131313]">Personal encargado de los hallazgos</p>
-            <button type="button" onClick={() => setPicker('users')} disabled={!draft.findingCompanyId} className="mt-[4px] flex min-h-[50px] w-full items-center justify-between rounded-[10px] border-[1.5px] border-[#D1D1D1] bg-[#F6FAFF] px-[14px] disabled:opacity-70"><span className="truncate text-[14px] font-medium text-[#131313]">{draft.findingResponsibleIds.length > 0 ? `${draft.findingResponsibleIds.length} personas seleccionadas` : 'Seleccione personal'}</span><CaretDownIcon /></button>
-          </div>
-        ) : null}
+        {hasSavedObservation ? <div className="mt-[12px] w-full rounded-[10px] border-[1.5px] border-[#E3E3E3] bg-white p-[13.5px] shadow-[0_1px_1.5px_rgba(0,0,0,0.06)]"><p className="text-[18px] font-bold leading-[21.6px] text-[#131313]">Responsables</p><div className="mt-[12px] grid gap-[10px]"><div className="grid gap-[6px]"><FieldLabel>Empresa encargada de los hallazgos</FieldLabel><button type="button" onClick={() => setPicker('company')} className="flex h-[48px] w-full items-end justify-between rounded-[10px] border border-[#D1D1D1] bg-[#F6FAFF] px-[14px] py-[15px]"><span className="truncate text-[14px] font-medium leading-none text-[#131313]">{draft.findingCompanyName ?? 'Seleccione empresa'}</span><CaretDownIcon /></button></div><div className="grid gap-[6px]"><FieldLabel>Personal encargado de los hallazgos</FieldLabel><button type="button" onClick={() => setPicker('users')} disabled={!draft.findingCompanyId} className="flex h-[48px] w-full items-end justify-between rounded-[10px] border border-[#D1D1D1] bg-[#F6FAFF] px-[14px] py-[15px] disabled:opacity-70"><span className="truncate text-[14px] font-medium leading-none text-[#131313]">{draft.findingResponsibleIds.length > 0 ? `${draft.findingResponsibleIds.length} personas seleccionadas` : 'Seleccione al personal'}</span><CaretDownIcon /></button></div></div></div> : null}
       </div>
-
-      <div className="shrink-0 border-t border-[#E3E3E3] bg-white pb-[8px] pt-[10px]"><div className="flex w-full gap-[10px] px-[14px]"><button type="button" className="!flex !h-[50px] !w-auto !min-w-0 !shrink-0 !items-center !justify-center !gap-[8px] !rounded-[14px] !border-[2px] !border-[#C8A064] !bg-white !px-[20px] !text-[14px] !font-bold !text-[#C8A064]" onClick={onBack}><ArrowLeftIcon />Atrás</button><button type="button" className={`!flex !h-[50px] !w-auto !min-w-0 !flex-1 !items-center !justify-center !gap-[8px] !rounded-[14px] !text-[14px] !font-bold ${canContinue ? '!bg-[#C8A064] !text-white !shadow-[0_2px_4px_rgba(200,160,100,0.25)]' : '!bg-[#D1D1D1] !text-[#ACACAC] !shadow-none'}`} onClick={onNext} disabled={!canContinue}>Continuar<ArrowRightIcon /></button></div><div className="mx-auto mb-[4px] mt-[14px] h-[4px] w-[120px] rounded-[2px] bg-[#D1D1D1]" /></div>
-
+      <div className="shrink-0 border-t border-[#E3E3E3] bg-white pb-[8px] pt-[10px]"><div className="flex w-full gap-[10px] px-[14px]"><button type="button" className={`!flex !h-[50px] !w-auto !min-w-0 !shrink-0 !items-center !justify-center !gap-[8px] !rounded-[14px] !border-[2px] !bg-white !px-[20px] !text-[14px] !font-bold ${hasSavedObservation ? '!border-[#D1D1D1] !text-[#ACACAC]' : '!border-[#C8A064] !text-[#C8A064]'}`} onClick={onBack}><ArrowLeftIcon />Atrás</button><button type="button" className={`!flex !h-[50px] !w-auto !min-w-0 !flex-1 !items-center !justify-center !gap-[8px] !rounded-[14px] !text-[14px] !font-bold ${canContinue ? '!bg-[#C8A064] !text-white !shadow-[0_2px_4px_rgba(200,160,100,0.25)]' : '!bg-[#D1D1D1] !text-[#ACACAC] !shadow-none'}`} onClick={onNext} disabled={!canContinue}>Continuar<ArrowRightIcon /></button></div><div className="mx-auto mb-[4px] mt-[14px] h-[4px] w-[120px] rounded-[2px] bg-[#D1D1D1]" /></div>
       <SelectSheet visible={picker === 'finding-type'} title="Tipo de hallazgo" options={findingTypeOptions} selectedId={draft.findingTypeId} loading={findingTypesQuery.isLoading} emptyText="No hay tipos disponibles" onClose={() => setPicker(null)} onSelect={onSelectFindingType} />
       <SelectSheet visible={picker === 'company'} title="Seleccionar empresa" options={companyOptions} selectedId={draft.findingCompanyId} loading={companiesQuery.isLoading} emptyText="No hay empresas disponibles" onClose={() => setPicker(null)} onSelect={onSelectCompany} />
       <SelectSheet visible={picker === 'users'} title="Seleccionar personal" options={userOptions} selectedId={null} loading={usersByCompanyQuery.isLoading} emptyText="No hay personal disponible" onClose={() => setPicker(null)} onSelect={(option) => toggleResponsible(option.id)} />
-
-      {picker === 'severity' ? (
-        <div className="fixed inset-0 z-[80] flex items-end"><button type="button" aria-label="Cerrar selector de criticidad" className="absolute inset-0 bg-[rgba(0,0,0,0.68)]" onClick={() => setPicker(null)} /><div className="relative max-h-[78vh] min-h-[420px] w-full overflow-hidden rounded-t-[20px] bg-white"><div className="flex min-h-[76px] items-center justify-between px-[22px] pt-[8px]"><p className="flex-1 text-[18px] font-bold text-[#131313]">Seleccionar criticidad</p><button type="button" aria-label="Cerrar" className="flex h-[38px] w-[38px] items-center justify-center text-[22px] text-[#131313]" onClick={() => setPicker(null)}>×</button></div><div className="max-h-[56vh] overflow-y-auto">{severitiesQuery.isLoading ? <div className="flex min-h-[120px] items-center justify-center border-t border-[#E0E0E0] px-[24px]"><p className="text-[14px] text-[#646464]">Cargando opciones...</p></div> : null}{!severitiesQuery.isLoading && !severitiesQuery.isError ? severityOptions.map((option) => <button key={option.id} type="button" onClick={() => onSelectSeverity(option)} className="flex min-h-[88px] w-full flex-col items-start justify-center border-t border-[#E0E0E0] px-[22px] py-[14px] text-left"><span className="text-[16px] font-bold leading-[24px] text-[#131313]">{option.label}</span>{option.description ? <span className="mt-[12px] text-[15px] leading-[22px] text-[#131313]">{option.description}</span> : null}</button>) : null}</div></div></div>
-      ) : null}
+      {picker === 'severity' ? <div className="fixed inset-0 z-[80] flex items-end"><button type="button" aria-label="Cerrar selector de criticidad" className="absolute inset-0 bg-[rgba(0,0,0,0.68)]" onClick={() => setPicker(null)} /><div className="relative max-h-[78vh] min-h-[420px] w-full overflow-hidden rounded-t-[20px] bg-white"><div className="flex min-h-[76px] items-center justify-between px-[22px] pt-[8px]"><p className="flex-1 text-[18px] font-bold text-[#131313]">Seleccionar criticidad</p><button type="button" aria-label="Cerrar" className="flex h-[38px] w-[38px] items-center justify-center text-[22px] text-[#131313]" onClick={() => setPicker(null)}>×</button></div><div className="max-h-[56vh] overflow-y-auto">{severitiesQuery.isLoading ? <div className="flex min-h-[120px] items-center justify-center border-t border-[#E0E0E0] px-[24px]"><p className="text-[14px] text-[#646464]">Cargando opciones...</p></div> : null}{!severitiesQuery.isLoading && !severitiesQuery.isError ? severityOptions.map((option) => <button key={option.id} type="button" onClick={() => onSelectSeverity(option)} className="flex min-h-[88px] w-full flex-col items-start justify-center border-t border-[#E0E0E0] px-[22px] py-[14px] text-left"><span className="text-[16px] font-bold leading-[24px] text-[#131313]">{option.label}</span>{option.description ? <span className="mt-[12px] text-[15px] leading-[22px] text-[#131313]">{option.description}</span> : null}</button>) : null}</div></div></div> : null}
     </>
   );
 }

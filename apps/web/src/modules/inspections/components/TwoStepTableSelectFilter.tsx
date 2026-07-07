@@ -51,7 +51,7 @@ function BackIcon() {
   return <svg className="h-[16px] w-[22px] shrink-0" fill="none" viewBox="0 0 22 16" aria-hidden><path d="M7.1 1.6 1.7 8l5.4 6.4M2.5 8h18" stroke="#131313" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
-export function TwoStepTableSelectFilter({ value, onChange, width, allLabel, options, detailTitle = (group) => `Sectores de [${group}]` }: TwoStepTableSelectFilterProps) {
+export function TwoStepTableSelectFilter({ value, onChange, width, allLabel, options, detailTitle = (group) => `Sectores de ${group}` }: TwoStepTableSelectFilterProps) {
   const [open, setOpen] = useState(false);
   const [activeGroup, setActiveGroup] = useState<string | null>(null);
   const groups = useMemo(() => buildGroups(options), [options]);

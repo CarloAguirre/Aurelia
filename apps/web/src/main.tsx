@@ -8,12 +8,13 @@ import { router } from './routes/router';
 import './modules/dashboard/dashboard-figma-alignment.css';
 
 const queryClient = new QueryClient();
+const bridgeKey = 'aurelia';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
-      <InspectionAreaSectorFilterBridge />
+      <InspectionAreaSectorFilterBridge key={bridgeKey} />
       <IncompleteInspectionDraftBridge />
     </QueryClientProvider>
   </React.StrictMode>,

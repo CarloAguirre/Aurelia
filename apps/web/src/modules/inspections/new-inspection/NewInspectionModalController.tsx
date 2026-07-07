@@ -11,6 +11,9 @@ import { SummaryStep } from './steps/SummaryStep';
 import { SavedStep } from './steps/SavedStep';
 import { useSubmitNewInspection } from './hooks/useSubmitNewInspection';
 import {
+  activateNewInspectionDraftSnapshot,
+  beginNewInspectionDraftSession,
+  clearActiveNewInspectionDraftSession,
   clearNewInspectionDraftSnapshot,
   loadNewInspectionDraftSnapshot,
   type NewInspectionDraft,
@@ -40,6 +43,7 @@ function clearResumeStoredDraft() {
 export function NewInspectionModalController({ open, onClose }: NewInspectionModalControllerProps) {
   const user = useSessionStore((state) => state.user);
   const setInspector = useNewInspectionDraftStore((state) => state.setInspector);
+  const setFlowMode = useNewInspectionDraftStore((state) => state.setFlowMode);
   const hydrateDraft = useNewInspectionDraftStore((state) => state.hydrate);
   const resetDraft = useNewInspectionDraftStore((state) => state.reset);
   const selectedInspectionType = useNewInspectionDraftStore((state) => state.inspectionType);
@@ -71,7 +75,7 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
       goToIdentification();
       return;
     }
-    if (!nextDraft.findingTypeId && !nextDraft.templateId) {
+    if (!nextDraft.inspectionTypeSelected || (!nextDraft.findingTypeId && !nextDraft.templateId)) {
       goToType();
       return;
     }
@@ -97,13 +101,13 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
     const snapshot = loadNewInspectionDraftSnapshot();
     const shouldResumeDraft = resumeDraftOnOpenRef.current || shouldResumeStoredDraft();
     setResumeAssistantDraft(false);
-    setInspector(fullName, companyName);
     if (shouldResumeDraft && snapshot) {
       resumeDraftOnOpenRef.current = false;
       clearResumeStoredDraft();
+      activateNewInspectionDraftSnapshot(snapshot.id);
       hydrateDraft(snapshot.draft);
       submitMutation.reset();
-      if (snapshot.draft.inspectionType === InspectionType.ENVIRONMENTAL) {
+      if (snapshot.draft.flowMode === 'assistant') {
         setResumeAssistantDraft(true);
         goToAssistantChat();
         return;
@@ -112,16 +116,22 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
       return;
     }
     resumeDraftOnOpenRef.current = false;
-    if (shouldResumeDraft) clearResumeStoredDraft();
+    clearResumeStoredDraft();
+    clearActiveNewInspectionDraftSession();
+    resetFlow();
+    resetDraft();
+    submitMutation.reset();
+    setInspector(fullName, companyName);
     goToStart();
-  }, [goToAssistantChat, goToStart, hydrateDraft, open, setInspector, user?.fullName]);
+  }, [goToAssistantChat, goToStart, hydrateDraft, open, resetDraft, resetFlow, setInspector, user?.fullName]);
 
-  function clearAssistantDraft() {
+  function discardActiveDraft() {
     clearNewInspectionDraftSnapshot();
     clearResumeStoredDraft();
   }
 
   function handleClose() {
+    discardActiveDraft();
     onClose();
     resetFlow();
     resetDraft();
@@ -129,7 +139,7 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
   }
 
   function handleCreateAnother() {
-    clearAssistantDraft();
+    discardActiveDraft();
     resetDraft();
     submitMutation.reset();
     setResumeAssistantDraft(false);
@@ -137,11 +147,23 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
   }
 
   function handleStartAssistant() {
-    clearAssistantDraft();
+    clearResumeStoredDraft();
+    beginNewInspectionDraftSession();
     resetDraft();
+    setFlowMode('assistant');
     submitMutation.reset();
     setResumeAssistantDraft(false);
     goToAssistantChat();
+  }
+
+  function handleStartManual() {
+    clearResumeStoredDraft();
+    beginNewInspectionDraftSession();
+    resetDraft();
+    setFlowMode('manual');
+    submitMutation.reset();
+    setResumeAssistantDraft(false);
+    goToIdentification();
   }
 
   function handleTypeNext() {
@@ -155,7 +177,7 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
   function handleSave() {
     submitMutation.mutate(draft, {
       onSuccess: () => {
-        clearAssistantDraft();
+        discardActiveDraft();
         setResumeAssistantDraft(false);
         goToSaved();
       },
@@ -171,7 +193,7 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
         {routeStep === 'start' ? (
           <StartStep
             onStartAssistant={handleStartAssistant}
-            onStartManual={goToIdentification}
+            onStartManual={handleStartManual}
             onCancelInspection={handleClose}
           />
         ) : null}

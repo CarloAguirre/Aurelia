@@ -13,6 +13,7 @@ import { useSubmitNewInspection } from './hooks/useSubmitNewInspection';
 import {
   clearNewInspectionDraftSnapshot,
   loadNewInspectionDraftSnapshot,
+  type NewInspectionDraft,
   useNewInspectionDraftStore,
 } from './state/newInspectionDraft.store';
 import { useNewInspectionFlowStore } from './state/newInspectionFlow.store';
@@ -65,6 +66,30 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
     return () => window.removeEventListener(resumeDraftEventName, requestDraftResume);
   }, []);
 
+  function routeManualDraft(nextDraft: NewInspectionDraft) {
+    if (!nextDraft.areaId || !nextDraft.sectorId) {
+      goToIdentification();
+      return;
+    }
+    if (!nextDraft.findingTypeId && !nextDraft.templateId) {
+      goToType();
+      return;
+    }
+    if (nextDraft.inspectionType === InspectionType.ENVIRONMENTAL) {
+      if (nextDraft.findingObservations.length > 0 && nextDraft.findingCompanyId && nextDraft.findingResponsibleIds.length > 0) {
+        goToSummary();
+        return;
+      }
+      goToFindingObservations();
+      return;
+    }
+    if (Object.keys(nextDraft.answersByItemId).length > 0 && nextDraft.findingCompanyId && nextDraft.findingResponsibleIds.length > 0) {
+      goToSummary();
+      return;
+    }
+    goToChecklistObservations();
+  }
+
   useEffect(() => {
     if (!open) return;
     const fullName = user?.fullName ?? 'Karen Opazo S.';
@@ -78,8 +103,12 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
       clearResumeStoredDraft();
       hydrateDraft(snapshot.draft);
       submitMutation.reset();
-      setResumeAssistantDraft(true);
-      goToAssistantChat();
+      if (snapshot.draft.inspectionType === InspectionType.ENVIRONMENTAL) {
+        setResumeAssistantDraft(true);
+        goToAssistantChat();
+        return;
+      }
+      routeManualDraft(snapshot.draft);
       return;
     }
     resumeDraftOnOpenRef.current = false;

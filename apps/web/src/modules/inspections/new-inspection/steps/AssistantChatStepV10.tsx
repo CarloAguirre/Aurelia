@@ -182,7 +182,8 @@ function EarlyResumeStep({ props, onHandoff }: { props: AssistantChatStepProps; 
 export function AssistantChatStep(props: AssistantChatStepProps) {
   const draft = useNewInspectionDraftStore();
   const [handoff, setHandoff] = useState(false);
-  const earlyResume = props.resumeFromDraft && draft.flowMode === 'assistant' && !draft.locationCaptured && !handoff;
+  const resumeMode = props.resumeFromDraft && draft.flowMode !== 'manual';
+  const earlyResume = resumeMode && !draft.locationCaptured && !handoff;
 
   useEffect(() => {
     scheduleSuggestionPatch();
@@ -196,5 +197,5 @@ export function AssistantChatStep(props: AssistantChatStepProps) {
   }, []);
 
   if (earlyResume) return <EarlyResumeStep props={props} onHandoff={() => setHandoff(true)} />;
-  return <><AssistantChatStepV9 {...props} />{props.resumeFromDraft ? <TranscriptPortal /> : null}</>;
+  return <><AssistantChatStepV9 {...props} resumeFromDraft={props.resumeFromDraft || resumeMode} />{resumeMode ? <TranscriptPortal /> : null}</>;
 }

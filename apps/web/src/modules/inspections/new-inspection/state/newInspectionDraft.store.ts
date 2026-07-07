@@ -28,6 +28,7 @@ export interface NewInspectionChecklistItemDetail {
 }
 
 export type NewInspectionCorrectiveActionSource = 'ai' | 'manual' | null;
+export type NewInspectionFlowMode = 'assistant' | 'manual' | null;
 
 export interface NewInspectionFindingObservationDraft {
   id: string;
@@ -42,6 +43,7 @@ export interface NewInspectionFindingObservationDraft {
 }
 
 export interface NewInspectionDraft {
+  flowMode: NewInspectionFlowMode;
   inspectorName: string;
   inspectorCompanyName: string;
   areaId: string | null;
@@ -49,6 +51,7 @@ export interface NewInspectionDraft {
   sectorId: string | null;
   sectorName: string | null;
   inspectionDate: string;
+  inspectionDateSelected: boolean;
   locationLabel: string;
   locationAccuracyLabel: string;
   locationCaptured: boolean;
@@ -58,6 +61,7 @@ export interface NewInspectionDraft {
   locationCapturedAt: string | null;
   inspectionType: InspectionType;
   inspectionTypeLabel: string;
+  inspectionTypeSelected: boolean;
   findingTypeId: string | null;
   findingTypeLabel: string | null;
   findingObservations: NewInspectionFindingObservationDraft[];
@@ -74,6 +78,7 @@ export interface NewInspectionDraft {
 }
 
 interface NewInspectionDraftState extends NewInspectionDraft {
+  setFlowMode: (mode: NewInspectionFlowMode) => void;
   setInspector: (name: string, companyName: string) => void;
   setArea: (id: string, name: string) => void;
   setSector: (id: string, name: string) => void;
@@ -110,6 +115,7 @@ function currentDateLabel() {
 }
 
 const initialDraft: NewInspectionDraft = {
+  flowMode: null,
   inspectorName: 'Karen Opazo S.',
   inspectorCompanyName: 'Gold Fields',
   areaId: null,
@@ -117,6 +123,7 @@ const initialDraft: NewInspectionDraft = {
   sectorId: null,
   sectorName: null,
   inspectionDate: currentDateLabel(),
+  inspectionDateSelected: false,
   locationLabel: 'Ubicacion no capturada',
   locationAccuracyLabel: 'Sin precision',
   locationCaptured: false,
@@ -126,6 +133,7 @@ const initialDraft: NewInspectionDraft = {
   locationCapturedAt: null,
   inspectionType: InspectionType.REGULATORY,
   inspectionTypeLabel: 'Checklist normativo',
+  inspectionTypeSelected: false,
   findingTypeId: null,
   findingTypeLabel: null,
   findingObservations: [],
@@ -160,12 +168,29 @@ function normalizeFindingObservation(observation: Partial<NewInspectionFindingOb
   };
 }
 
+function hasTypedContent(draft: NewInspectionDraft) {
+  return Boolean(
+    draft.findingTypeId ||
+    draft.findingObservations.length > 0 ||
+    draft.templateId ||
+    Object.keys(draft.answersByItemId).length > 0 ||
+    draft.generalPhoto ||
+    draft.findingCompanyId ||
+    draft.findingResponsibleIds.length > 0,
+  );
+}
+
 function serializableDraft(draft: NewInspectionDraft): NewInspectionDraft {
-  return {
+  const normalizedObservations = draft.findingObservations.map(normalizeFindingObservation);
+  const normalizedDraft = {
+    ...initialDraft,
     ...draft,
+    flowMode: draft.flowMode ?? null,
+    inspectionTypeSelected: draft.inspectionTypeSelected ?? hasTypedContent(draft),
+    inspectionDateSelected: draft.inspectionDateSelected ?? Boolean(draft.locationCaptured || hasTypedContent(draft)),
     generalPhoto: stripAsset(draft.generalPhoto),
     detailsByItemId: Object.fromEntries(
-      Object.entries(draft.detailsByItemId).map(([itemId, detail]) => [
+      Object.entries(draft.detailsByItemId ?? {}).map(([itemId, detail]) => [
         itemId,
         {
           ...detail,
@@ -173,8 +198,9 @@ function serializableDraft(draft: NewInspectionDraft): NewInspectionDraft {
         },
       ]),
     ),
-    findingObservations: draft.findingObservations.map(normalizeFindingObservation),
+    findingObservations: normalizedObservations,
   };
+  return normalizedDraft;
 }
 
 export function hasNewInspectionDraftProgress(draft: NewInspectionDraft): boolean {
@@ -208,8 +234,9 @@ export function loadNewInspectionDraftSnapshot(): { savedAt: string; draft: NewI
   try {
     const parsed = JSON.parse(raw) as { savedAt?: string; draft?: NewInspectionDraft };
     if (!parsed.savedAt || !parsed.draft) return null;
-    if (!hasNewInspectionDraftProgress(parsed.draft)) return null;
-    return { savedAt: parsed.savedAt, draft: serializableDraft(parsed.draft) };
+    const draft = serializableDraft(parsed.draft);
+    if (!hasNewInspectionDraftProgress(draft)) return null;
+    return { savedAt: parsed.savedAt, draft };
   } catch {
     return null;
   }
@@ -226,10 +253,11 @@ export function hasNewInspectionDraftSnapshot() {
 
 export const useNewInspectionDraftStore = create<NewInspectionDraftState>((set) => ({
   ...initialDraft,
+  setFlowMode: (flowMode) => set({ flowMode }),
   setInspector: (inspectorName, inspectorCompanyName) => set({ inspectorName, inspectorCompanyName }),
   setArea: (areaId, areaName) => set({ areaId, areaName, sectorId: null, sectorName: null }),
   setSector: (sectorId, sectorName) => set({ sectorId, sectorName }),
-  setInspectionDate: (inspectionDate) => set({ inspectionDate }),
+  setInspectionDate: (inspectionDate) => set({ inspectionDate, inspectionDateSelected: true }),
   setLocation: ({ label, accuracy, latitude, longitude, altitude }) =>
     set({
       locationLabel: label,
@@ -244,6 +272,7 @@ export const useNewInspectionDraftStore = create<NewInspectionDraftState>((set) 
     set({
       inspectionType,
       inspectionTypeLabel,
+      inspectionTypeSelected: true,
       findingTypeId: null,
       findingTypeLabel: null,
       findingObservations: [],

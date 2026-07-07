@@ -2,16 +2,22 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { TwoStepTableSelectFilter } from './TwoStepTableSelectFilter';
 
-type AreaSectorTarget = {
+type SelectTarget = {
   select: HTMLSelectElement;
   host: HTMLElement;
 };
 
-const areaSectorSelectSelector = 'table thead tr:nth-child(2) td:nth-child(4) select';
+type SelectBridgeConfig = {
+  selector: string;
+  width: number;
+  allLabel: string;
+  detailTitle?: (group: string) => string;
+};
+
 const dateInputSelector = 'table thead tr:nth-child(2) td:nth-child(2) input';
 
-function findAreaSectorTarget(): AreaSectorTarget | null {
-  const select = document.querySelector<HTMLSelectElement>(areaSectorSelectSelector);
+function findSelectTarget(selector: string): SelectTarget | null {
+  const select = document.querySelector<HTMLSelectElement>(selector);
   const host = select?.parentElement;
   if (!select || !host) return null;
   return { select, host };
@@ -23,8 +29,8 @@ function readSelectOptions(select: HTMLSelectElement) {
     .filter(Boolean);
 }
 
-function readSelectLabel(select: HTMLSelectElement) {
-  return select.options[0]?.textContent?.trim() || 'Todas las áreas';
+function readSelectLabel(select: HTMLSelectElement, fallback: string) {
+  return select.options[0]?.textContent?.trim() || fallback;
 }
 
 function toShortYearDate(value: string) {
@@ -45,15 +51,15 @@ function normalizeDateInput() {
   input.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-export function InspectionAreaSectorFilterBridge() {
-  const [target, setTarget] = useState<AreaSectorTarget | null>(null);
+function SelectFilterBridge({ selector, width, allLabel, detailTitle }: SelectBridgeConfig) {
+  const [target, setTarget] = useState<SelectTarget | null>(null);
   const [value, setValue] = useState('');
-  const [allLabel, setAllLabel] = useState('Todas las áreas');
+  const [label, setLabel] = useState(allLabel);
   const [options, setOptions] = useState<string[]>([]);
 
   useEffect(() => {
     function syncTarget() {
-      const nextTarget = findAreaSectorTarget();
+      const nextTarget = findSelectTarget(selector);
       normalizeDateInput();
       if (!nextTarget) {
         setTarget(null);
@@ -65,7 +71,7 @@ export function InspectionAreaSectorFilterBridge() {
       nextTarget.select.tabIndex = -1;
       setTarget(nextTarget);
       setValue(nextTarget.select.value);
-      setAllLabel(readSelectLabel(nextTarget.select));
+      setLabel(readSelectLabel(nextTarget.select, allLabel));
       setOptions(readSelectOptions(nextTarget.select));
     }
 
@@ -77,7 +83,7 @@ export function InspectionAreaSectorFilterBridge() {
       observer.disconnect();
       window.clearInterval(interval);
     };
-  }, []);
+  }, [allLabel, selector]);
 
   useEffect(() => {
     if (!target) return undefined;
@@ -98,5 +104,9 @@ export function InspectionAreaSectorFilterBridge() {
 
   if (!target) return null;
 
-  return createPortal(<div className="absolute left-0 top-0 z-[1]"><TwoStepTableSelectFilter value={value} onChange={changeValue} width={184} allLabel={allLabel} options={options} /></div>, target.host);
+  return createPortal(<div className="absolute left-0 top-0 z-[1]"><TwoStepTableSelectFilter value={value} onChange={changeValue} width={width} allLabel={label} options={options} detailTitle={detailTitle} /></div>, target.host);
+}
+
+export function InspectionAreaSectorFilterBridge() {
+  return <><SelectFilterBridge selector="table thead tr:nth-child(2) td:nth-child(4) select" width={184} allLabel="Todas las áreas" detailTitle={(group) => `Sectores de ${group}`} /><SelectFilterBridge selector="table thead tr:nth-child(2) td:nth-child(7) select" width={172} allLabel="Todas" detailTitle={(group) => group} /></>;
 }

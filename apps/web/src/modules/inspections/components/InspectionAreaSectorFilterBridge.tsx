@@ -30,6 +30,16 @@ function findSelectTarget(selector: string): SelectTarget | null {
   return { select, host };
 }
 
+function prepareSelectTarget(target: SelectTarget) {
+  target.host.style.position = 'relative';
+  target.host.style.borderColor = 'transparent';
+  target.host.style.background = 'transparent';
+  target.host.style.boxShadow = 'none';
+  target.select.style.opacity = '0';
+  target.select.style.pointerEvents = 'none';
+  target.select.tabIndex = -1;
+}
+
 function readSelectOptions(select: HTMLSelectElement) {
   return Array.from(select.options)
     .map((option) => option.value.trim())
@@ -89,10 +99,7 @@ function SelectFilterBridge({ selector, width, allLabel, detailTitle }: SelectBr
         setTarget(null);
         return;
       }
-      nextTarget.host.style.position = 'relative';
-      nextTarget.select.style.opacity = '0';
-      nextTarget.select.style.pointerEvents = 'none';
-      nextTarget.select.tabIndex = -1;
+      prepareSelectTarget(nextTarget);
       setTarget(nextTarget);
       setValue(nextTarget.select.value);
       setLabel(readSelectLabel(nextTarget.select, allLabel));
@@ -145,10 +152,7 @@ function MultiSelectFilterBridge({ selector, width, allLabel }: MultiSelectBridg
         setTarget(null);
         return;
       }
-      nextTarget.host.style.position = 'relative';
-      nextTarget.select.style.opacity = '0';
-      nextTarget.select.style.pointerEvents = 'none';
-      nextTarget.select.tabIndex = -1;
+      prepareSelectTarget(nextTarget);
       setTarget(nextTarget);
       setValue(nextTarget.select.value);
       setLabel(readSelectLabel(nextTarget.select, allLabel));

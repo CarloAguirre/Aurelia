@@ -44,7 +44,6 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
   const goToSaved = useNewInspectionFlowStore((state) => state.goToSaved);
   const resetFlow = useNewInspectionFlowStore((state) => state.reset);
   const submitMutation = useSubmitNewInspection();
-  const [assistantDraftSavedAt, setAssistantDraftSavedAt] = useState<string | null>(null);
   const [resumeAssistantDraft, setResumeAssistantDraft] = useState(false);
   const resumeDraftOnOpenRef = useRef(false);
 
@@ -61,11 +60,9 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
     const fullName = user?.fullName ?? 'Karen Opazo S.';
     const companyName = 'Gold Fields';
     const snapshot = loadNewInspectionDraftSnapshot();
-    const shouldResumeDraft = resumeDraftOnOpenRef.current && snapshot;
-    setAssistantDraftSavedAt(snapshot?.savedAt ?? null);
     setResumeAssistantDraft(false);
     setInspector(fullName, companyName);
-    if (shouldResumeDraft) {
+    if (resumeDraftOnOpenRef.current && snapshot) {
       resumeDraftOnOpenRef.current = false;
       hydrateDraft(snapshot.draft);
       submitMutation.reset();
@@ -75,11 +72,10 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
     }
     resumeDraftOnOpenRef.current = false;
     goToStart();
-  }, [goToAssistantChat, goToStart, hydrateDraft, open, setInspector, submitMutation, user?.fullName]);
+  }, [goToAssistantChat, goToStart, hydrateDraft, open, setInspector, user?.fullName]);
 
   function clearAssistantDraft() {
     clearNewInspectionDraftSnapshot();
-    setAssistantDraftSavedAt(null);
   }
 
   function handleClose() {

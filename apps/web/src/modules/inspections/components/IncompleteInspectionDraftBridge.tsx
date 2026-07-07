@@ -7,6 +7,7 @@ type DraftSnapshot = NonNullable<ReturnType<typeof loadNewInspectionDraftSnapsho
 
 const hostId = 'aurelia-incomplete-inspection-draft-host';
 const resumeDraftEventName = 'aurelia:resume-new-inspection-draft';
+const resumeDraftStorageKey = 'aurelia:resume-new-inspection-draft';
 
 function isInspectionsRoute() {
   return window.location.pathname.startsWith('/inspections');
@@ -149,12 +150,14 @@ export function IncompleteInspectionDraftBridge(): JSX.Element | null {
   }, []);
 
   function resumeDraft() {
+    window.sessionStorage.setItem(resumeDraftStorageKey, '1');
     window.dispatchEvent(new Event(resumeDraftEventName));
     window.setTimeout(clickNewInspectionButton, 0);
   }
 
   function discardDraft() {
     clearNewInspectionDraftSnapshot();
+    window.sessionStorage.removeItem(resumeDraftStorageKey);
     setSnapshot(null);
     removeHost();
   }

@@ -433,11 +433,14 @@ export class InspectionDashboardService {
   }
 
   private observationMatches(observations: InspectionManagementTableObservationSummaryResponse, filter?: string): boolean {
-    if (!filter?.trim()) return true;
-    if (filter === 'executed') return observations.executed > 0;
-    if (filter === 'open') return observations.open > 0;
-    if (filter === 'closed') return observations.closed > 0;
-    return true;
+    const filters = filter?.split(',').map((value) => value.trim()).filter(Boolean) ?? [];
+    if (filters.length === 0) return true;
+    return filters.some((value) => {
+      if (value === 'executed') return observations.executed > 0;
+      if (value === 'open') return observations.open > 0;
+      if (value === 'closed') return observations.closed > 0;
+      return false;
+    });
   }
 
   private numberMatches(value: number, filter: string | undefined, comparator: 'min' | 'max' | 'equals'): boolean {
@@ -528,26 +531,32 @@ export class InspectionDashboardService {
     return finding.status !== InspectionFindingStatus.CLOSED && finding.status !== InspectionFindingStatus.CANCELLED;
   }
 
-  private inspectionBelongsToYear(inspection: InspectionEntity, year: number): boolean {
-    return getDashboardInspectionDate(inspection)?.getFullYear() === year;
+  private isSevereFinding(finding: InspectionFindingEntity): boolean {
+    return finding.severity === InspectionFindingSeverity.CRITICAL || finding.severity === InspectionFindingSeverity.HIGH;
   }
 
-  private isSevereFinding(finding: InspectionFindingEntity): boolean {
-    return finding.severity === InspectionFindingSeverity.HIGH || finding.severity === InspectionFindingSeverity.CRITICAL;
+  private resolveMaxSeverity(current: InspectionFindingSeverity | null, next: InspectionFindingSeverity | null): InspectionFindingSeverity | null {
+    return this.getUrgencyWeight(next) > this.getUrgencyWeight(current) ? next : current;
+  }
+
+  private getUrgencyWeightForInspection(inspection: InspectionEntity): number {
+    if (inspection.status === InspectionStatus.SUBMITTED || inspection.status === InspectionStatus.UNDER_REVIEW) return 2;
+    if (inspection.status === InspectionStatus.DRAFT) return 1;
+    if (inspection.status === InspectionStatus.CLOSED) return 0;
+    return 1;
+  }
+
+  private inspectionBelongsToYear(inspection: InspectionEntity, year: number): boolean {
+    const date = getDashboardInspectionDate(inspection);
+    return date ? date.getFullYear() === year : inspection.createdAt.getFullYear() === year;
   }
 
   private resolveInspectionNumber(inspection: InspectionEntity, index: number): string {
-    const titleNumber = inspection.title.match(/\d+/)?.[0];
-    return titleNumber ?? String(index + 1).padStart(2, '0');
+    return inspection.code?.trim() || String(index + 1).padStart(2, '0');
   }
 
-  private resolveMaxSeverity(current: InspectionFindingSeverity | null, candidate: InspectionFindingSeverity): InspectionFindingSeverity {
-    const order = [InspectionFindingSeverity.LOW, InspectionFindingSeverity.MEDIUM, InspectionFindingSeverity.HIGH, InspectionFindingSeverity.CRITICAL];
-    return order.indexOf(candidate) > order.indexOf(current ?? InspectionFindingSeverity.LOW) ? candidate : current ?? candidate;
-  }
-
-  private daysBetween(from: Date, to: Date): number {
-    const millisecondsPerDay = 1000 * 60 * 60 * 24;
-    return Math.max(0, Math.floor((to.getTime() - from.getTime()) / millisecondsPerDay));
+  private daysBetween(start: Date, end: Date): number {
+    const dayMs = 24 * 60 * 60 * 1000;
+    return Math.max(0, Math.ceil((end.getTime() - start.getTime()) / dayMs));
   }
 }

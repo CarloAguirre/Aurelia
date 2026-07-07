@@ -3,9 +3,7 @@ import { InspectionType } from '@aurelia/contracts';
 import { loadNewInspectionDraftSnapshot } from '../new-inspection/state/newInspectionDraft.store';
 
 const hostId = 'aurelia-incomplete-inspection-draft-host';
-const resumeDraftEventName = 'aurelia:resume-new-inspection-draft';
 export const openAssistantDraftEventName = 'aurelia:open-assistant-inspection-draft';
-const resumeDraftStorageKey = 'aurelia:resume-new-inspection-draft';
 
 type DraftSnapshot = NonNullable<ReturnType<typeof loadNewInspectionDraftSnapshot>>;
 
@@ -60,30 +58,12 @@ function syncBannerProgress() {
 
 export function IncompleteDraftResumeControllerBridge() {
   useEffect(() => {
-    function interceptResume(event: MouseEvent) {
-      const host = document.getElementById(hostId);
-      const target = event.target as HTMLElement | null;
-      const button = target?.closest('button');
-      if (!host || !target || !button || !host.contains(button)) return;
-      if (button.textContent?.includes('Descartar')) return;
-      const snapshot = loadNewInspectionDraftSnapshot();
-      if (snapshot?.draft.flowMode !== 'assistant') return;
-      event.preventDefault();
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-      window.sessionStorage.setItem(resumeDraftStorageKey, '1');
-      window.dispatchEvent(new Event(resumeDraftEventName));
-      window.dispatchEvent(new Event(openAssistantDraftEventName));
-    }
-
     syncBannerProgress();
     const interval = window.setInterval(syncBannerProgress, 500);
-    window.addEventListener('click', interceptResume, true);
     window.addEventListener('storage', syncBannerProgress);
     window.addEventListener('focus', syncBannerProgress);
     return () => {
       window.clearInterval(interval);
-      window.removeEventListener('click', interceptResume, true);
       window.removeEventListener('storage', syncBannerProgress);
       window.removeEventListener('focus', syncBannerProgress);
     };

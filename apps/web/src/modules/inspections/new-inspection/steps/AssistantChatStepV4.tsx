@@ -1,1 +1,1 @@
-export { AssistantChatStep } from './AssistantChatStepV6';
+export { AssistantChatStep } from './AssistantChatStepV7';

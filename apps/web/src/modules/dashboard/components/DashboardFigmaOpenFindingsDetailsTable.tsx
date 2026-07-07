@@ -93,6 +93,10 @@ function rowBackground(row: InspectionDashboardOpenFindingRowResponse, expanded:
   return row.hasSevereOpenFindings ? 'bg-[#ffd0db]' : 'bg-white';
 }
 
+function rowBorder(row: InspectionDashboardOpenFindingRowResponse, expanded: boolean) {
+  return row.hasSevereOpenFindings && !expanded ? 'border-[#570b1d]' : 'border-[#e3e3e3]';
+}
+
 export function DashboardFigmaOpenFindingsDetailsTable({ rows, severeOpenFindings, openInspections, sortIconPath, expandIconPath, isLoading = false, isError = false }: DashboardFigmaOpenFindingsDetailsTableProps) {
   const [expandedInspectionId, setExpandedInspectionId] = useState<string | null>(null);
 
@@ -110,11 +114,11 @@ export function DashboardFigmaOpenFindingsDetailsTable({ rows, severeOpenFinding
               <p className="font-['Inter:Regular',sans-serif] font-normal leading-[normal] text-[#646464] text-[11px] whitespace-nowrap">Ordenadas por días abierto · seguimiento prioritario</p>
             </div>
             <div className="flex gap-[12px] items-center relative shrink-0">
-              <div className="bg-[#ffd0db] h-[21px] relative rounded-[6px] shrink-0 w-[252px]">
-                <p className="absolute font-['Inter:Bold',sans-serif] font-bold leading-[normal] left-[10px] text-[#570b1d] text-[11px] top-[4px] whitespace-nowrap">{severeOpenFindings} tienen observaciones en estado grave</p>
+              <div className="bg-[#ffd0db] inline-flex items-center justify-center rounded-[6px] shrink-0 px-[10px] py-[4px]">
+                <p className="font-['Inter:Bold',sans-serif] font-bold leading-[normal] text-[#570b1d] text-[11px] whitespace-nowrap">{severeOpenFindings} tienen observaciones en estado grave</p>
               </div>
-              <div className="bg-[#e6f3ff] h-[21px] relative rounded-[6px] shrink-0 w-[150.594px]">
-                <p className="absolute font-['Inter:Bold',sans-serif] font-bold leading-[normal] left-[10px] text-[#24588b] text-[11px] top-[4px] whitespace-nowrap">{openInspections} inspecciones abiertas</p>
+              <div className="bg-[#e6f3ff] inline-flex items-center justify-center rounded-[6px] shrink-0 px-[10px] py-[4px]">
+                <p className="font-['Inter:Bold',sans-serif] font-bold leading-[normal] text-[#24588b] text-[11px] whitespace-nowrap">{openInspections} inspecciones abiertas</p>
               </div>
             </div>
           </div>
@@ -141,26 +145,27 @@ export function DashboardFigmaOpenFindingsDetailsTable({ rows, severeOpenFinding
               rows.map((row) => {
                 const isExpanded = expandedInspectionId === row.inspectionId;
                 const bgClass = rowBackground(row, isExpanded);
+                const borderClass = rowBorder(row, isExpanded);
 
                 return (
                   <div key={row.inspectionId}>
                     <div className="grid h-[33px]" style={{ gridTemplateColumns: tableColumns }}>
-                      <div className={`${bgClass} border-b border-r border-[#e3e3e3] border-solid flex items-center px-[12px]`}>
+                      <div className={`${bgClass} border-b border-r ${borderClass} border-solid flex items-center px-[12px]`}>
                         <p className="font-['Inter:Bold',sans-serif] font-bold leading-[normal] text-[#24588b] text-[12px] whitespace-nowrap">{row.inspectionNumber}</p>
                       </div>
-                      <div className={`${bgClass} border-b border-r border-[#e3e3e3] border-solid flex items-center px-[12px] min-w-0`}>
+                      <div className={`${bgClass} border-b border-r ${borderClass} border-solid flex items-center px-[12px] min-w-0`}>
                         <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold leading-[normal] text-[#131313] text-[12px] truncate">{row.company}</p>
                       </div>
-                      <div className={`${bgClass} border-b border-r border-[#e3e3e3] border-solid flex items-center px-[12px] min-w-0`}>
+                      <div className={`${bgClass} border-b border-r ${borderClass} border-solid flex items-center px-[12px] min-w-0`}>
                         <p className="font-['Inter:Regular',sans-serif] font-normal leading-[normal] text-[#333] text-[12px] truncate">{row.area}</p>
                       </div>
-                      <div className={`${bgClass} border-b border-r border-[#e3e3e3] border-solid flex items-center justify-center px-[12px]`}>
+                      <div className={`${bgClass} border-b border-r ${borderClass} border-solid flex items-center justify-center px-[12px]`}>
                         <p className={`font-['Inter:Bold',sans-serif] font-bold leading-[normal] text-[12px] whitespace-nowrap ${getAgeTextClass(row)}`}>{row.ageDays}</p>
                       </div>
-                      <div className={`${bgClass} border-b border-r border-[#e3e3e3] border-solid flex items-center justify-center px-[12px]`}>
+                      <div className={`${bgClass} border-b border-r ${borderClass} border-solid flex items-center justify-center px-[12px]`}>
                         <p className="font-['Inter:Regular',sans-serif] font-normal leading-[normal] text-[#333] text-[12px] whitespace-nowrap">{row.openFindings}</p>
                       </div>
-                      <button className={`${bgClass} border-b border-r border-[#e3e3e3] border-solid flex items-center justify-center px-[12px] cursor-pointer`} type="button" onClick={() => toggleRow(row.inspectionId)}>
+                      <button className={`${bgClass} border-b border-r ${borderClass} border-solid flex items-center justify-center px-[12px] cursor-pointer`} type="button" onClick={() => toggleRow(row.inspectionId)}>
                         <ExpandIcon path={expandIconPath} expanded={isExpanded} />
                       </button>
                     </div>

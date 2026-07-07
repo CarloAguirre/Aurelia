@@ -64,6 +64,11 @@ function draftSubtitle(snapshot: DraftSnapshot) {
   return [snapshot.draft.areaName, snapshot.draft.sectorName, snapshot.draft.findingCompanyName || snapshot.draft.inspectorCompanyName, formatSavedAt(snapshot.savedAt)].filter(Boolean).join(' · ');
 }
 
+function snapshotKey(snapshot: DraftSnapshot | null) {
+  if (!snapshot) return 'empty';
+  return [snapshot.savedAt, snapshot.draft.areaId, snapshot.draft.sectorId, snapshot.draft.inspectionType, snapshot.draft.findingTypeId, snapshot.draft.templateId, snapshot.draft.locationCaptured ? '1' : '0'].join('|');
+}
+
 function resolveDraftStep(snapshot: DraftSnapshot) {
   const draft = snapshot.draft;
   if (!draft.areaId || !draft.sectorId) return 1;
@@ -117,7 +122,7 @@ function IncompleteDraftBanner({ snapshot, onResume, onDiscard }: { snapshot: Dr
   );
 }
 
-export function IncompleteInspectionDraftBridge() {
+export function IncompleteInspectionDraftBridge(): JSX.Element | null {
   const [host, setHost] = useState<HTMLElement | null>(null);
   const [snapshot, setSnapshot] = useState<DraftSnapshot | null>(null);
 
@@ -125,22 +130,21 @@ export function IncompleteInspectionDraftBridge() {
     function sync() {
       const nextSnapshot = isInspectionsRoute() ? loadNewInspectionDraftSnapshot() : null;
       const nextHost = nextSnapshot ? findOrCreateHost() : null;
-      setSnapshot(nextSnapshot);
-      setHost(nextHost);
+      setSnapshot((previous) => (snapshotKey(previous) === snapshotKey(nextSnapshot) ? previous : nextSnapshot));
+      setHost((previous) => (previous === nextHost ? previous : nextHost));
       if (!nextSnapshot) removeHost();
     }
 
     sync();
-    const observer = new MutationObserver(sync);
-    const interval = window.setInterval(sync, 1200);
-    observer.observe(document.body, { childList: true, subtree: true });
+    const interval = window.setInterval(sync, 1500);
     window.addEventListener('storage', sync);
     window.addEventListener('focus', sync);
+    window.addEventListener('popstate', sync);
     return () => {
-      observer.disconnect();
       window.clearInterval(interval);
       window.removeEventListener('storage', sync);
       window.removeEventListener('focus', sync);
+      window.removeEventListener('popstate', sync);
     };
   }, []);
 

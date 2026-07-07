@@ -23,6 +23,29 @@ type MultiSelectBridgeConfig = {
 
 const dateInputSelector = 'table thead tr:nth-child(2) td:nth-child(2) input';
 
+function isInspectionsRoute() {
+  return window.location.pathname.startsWith('/inspections');
+}
+
+function sameOptions(left: string[], right: string[]) {
+  if (left.length !== right.length) return false;
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) return false;
+  }
+  return true;
+}
+
+function sameMultiOptions(left: MultiSelectOption[], right: MultiSelectOption[]) {
+  if (left.length !== right.length) return false;
+  for (let index = 0; index < left.length; index += 1) {
+    const leftOption = left[index];
+    const rightOption = right[index];
+    if (!leftOption || !rightOption) return false;
+    if (leftOption.value !== rightOption.value || leftOption.label !== rightOption.label) return false;
+  }
+  return true;
+}
+
 function findSelectTarget(selector: string): SelectTarget | null {
   const select = document.querySelector<HTMLSelectElement>(selector);
   const host = select?.parentElement;
@@ -93,26 +116,41 @@ function SelectFilterBridge({ selector, width, allLabel, detailTitle }: SelectBr
 
   useEffect(() => {
     function syncTarget() {
+      if (!isInspectionsRoute()) {
+        setTarget(null);
+        return;
+      }
+
       const nextTarget = findSelectTarget(selector);
       normalizeDateInput();
       if (!nextTarget) {
         setTarget(null);
         return;
       }
+
       prepareSelectTarget(nextTarget);
-      setTarget(nextTarget);
-      setValue(nextTarget.select.value);
-      setLabel(readSelectLabel(nextTarget.select, allLabel));
-      setOptions(readSelectOptions(nextTarget.select));
+      setTarget((previous) => {
+        if (previous && previous.select === nextTarget.select && previous.host === nextTarget.host) return previous;
+        return nextTarget;
+      });
+
+      const nextValue = nextTarget.select.value;
+      const nextLabel = readSelectLabel(nextTarget.select, allLabel);
+      const nextOptions = readSelectOptions(nextTarget.select);
+
+      setValue((previous) => (previous === nextValue ? previous : nextValue));
+      setLabel((previous) => (previous === nextLabel ? previous : nextLabel));
+      setOptions((previous) => (sameOptions(previous, nextOptions) ? previous : nextOptions));
     }
 
     syncTarget();
-    const observer = new MutationObserver(syncTarget);
-    const interval = window.setInterval(normalizeDateInput, 100);
-    observer.observe(document.body, { childList: true, subtree: true });
+    const interval = window.setInterval(syncTarget, 600);
+    window.addEventListener('focus', syncTarget);
+    window.addEventListener('popstate', syncTarget);
     return () => {
-      observer.disconnect();
       window.clearInterval(interval);
+      window.removeEventListener('focus', syncTarget);
+      window.removeEventListener('popstate', syncTarget);
     };
   }, [allLabel, selector]);
 
@@ -146,23 +184,42 @@ function MultiSelectFilterBridge({ selector, width, allLabel }: MultiSelectBridg
 
   useEffect(() => {
     function syncTarget() {
+      if (!isInspectionsRoute()) {
+        setTarget(null);
+        return;
+      }
+
       const nextTarget = findSelectTarget(selector);
       normalizeDateInput();
       if (!nextTarget) {
         setTarget(null);
         return;
       }
+
       prepareSelectTarget(nextTarget);
-      setTarget(nextTarget);
-      setValue(nextTarget.select.value);
-      setLabel(readSelectLabel(nextTarget.select, allLabel));
-      setOptions(readMultiSelectOptions(nextTarget.select));
+      setTarget((previous) => {
+        if (previous && previous.select === nextTarget.select && previous.host === nextTarget.host) return previous;
+        return nextTarget;
+      });
+
+      const nextValue = nextTarget.select.value;
+      const nextLabel = readSelectLabel(nextTarget.select, allLabel);
+      const nextOptions = readMultiSelectOptions(nextTarget.select);
+
+      setValue((previous) => (previous === nextValue ? previous : nextValue));
+      setLabel((previous) => (previous === nextLabel ? previous : nextLabel));
+      setOptions((previous) => (sameMultiOptions(previous, nextOptions) ? previous : nextOptions));
     }
 
     syncTarget();
-    const observer = new MutationObserver(syncTarget);
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
+    const interval = window.setInterval(syncTarget, 600);
+    window.addEventListener('focus', syncTarget);
+    window.addEventListener('popstate', syncTarget);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', syncTarget);
+      window.removeEventListener('popstate', syncTarget);
+    };
   }, [allLabel, selector]);
 
   useEffect(() => {

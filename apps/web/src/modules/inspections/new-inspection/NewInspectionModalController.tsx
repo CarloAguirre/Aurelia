@@ -67,6 +67,7 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
   const goToSaved = useNewInspectionFlowStore((state) => state.goToSaved);
   const resetFlow = useNewInspectionFlowStore((state) => state.reset);
   const submitMutation = useSubmitNewInspection();
+  const [initialized, setInitialized] = useState(false);
   const [resumeAssistantDraft, setResumeAssistantDraft] = useState(false);
   const resumeDraftOnOpenRef = useRef(false);
   const handledOpenRef = useRef(false);
@@ -80,13 +81,16 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
   }, []);
 
   useEffect(() => {
-    if (!open) handledOpenRef.current = false;
+    if (!open) {
+      handledOpenRef.current = false;
+      setInitialized(false);
+    }
   }, [open]);
 
   useEffect(() => {
-    if (!open || routeStep === 'start') return undefined;
+    if (!open || !initialized || routeStep === 'start') return undefined;
     return useNewInspectionDraftStore.subscribe((state) => saveNewInspectionDraftSnapshot(state));
-  }, [open, routeStep]);
+  }, [initialized, open, routeStep]);
 
   function routeManualDraft(nextDraft: NewInspectionDraft) {
     if (!nextDraft.areaId || !nextDraft.sectorId) {
@@ -131,9 +135,11 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
       if (nextDraft.flowMode === 'assistant') {
         setResumeAssistantDraft(true);
         goToAssistantChat();
+        setInitialized(true);
         return;
       }
       routeManualDraft(nextDraft);
+      setInitialized(true);
       return;
     }
     resumeDraftOnOpenRef.current = false;
@@ -144,6 +150,7 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
     submitMutation.reset();
     setInspector(fullName, companyName);
     goToStart();
+    setInitialized(true);
   }, [goToAssistantChat, goToStart, hydrateDraft, open, resetDraft, resetFlow, setInspector, user?.fullName]);
 
   function discardActiveDraft() {
@@ -224,49 +231,50 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
     <div className="fixed inset-0 z-[1000] bg-[rgba(0,0,0,0.68)]">
       <div className="flex h-full w-full items-center justify-end px-[20px] py-[16px]">
         <div className="new-inspection-modal-panel relative flex h-[calc(100vh-32px)] max-h-[920px] w-[360px] max-w-[calc(100vw-40px)] flex-col overflow-hidden rounded-[22px] bg-white shadow-[0_24px_70px_rgba(0,0,0,0.35)]">
-        {routeStep === 'start' ? (
-          <StartStep
-            onStartAssistant={handleStartAssistant}
-            onStartManual={handleStartManual}
-            onCancelInspection={handleClose}
-          />
-        ) : null}
+          {!initialized ? null : null}
+          {initialized && routeStep === 'start' ? (
+            <StartStep
+              onStartAssistant={handleStartAssistant}
+              onStartManual={handleStartManual}
+              onCancelInspection={handleClose}
+            />
+          ) : null}
 
-        {routeStep === 'assistant-chat' ? (
-          <AssistantChatStep
-            onBack={handleAssistantBack}
-            onSave={handleSave}
-            onCancelInspection={handleClose}
-            saving={submitMutation.isPending}
-            errorMessage={submitMutation.error instanceof Error ? submitMutation.error.message : null}
-            resumeFromDraft={resumeAssistantDraft}
-          />
-        ) : null}
+          {initialized && routeStep === 'assistant-chat' ? (
+            <AssistantChatStep
+              onBack={handleAssistantBack}
+              onSave={handleSave}
+              onCancelInspection={handleClose}
+              saving={submitMutation.isPending}
+              errorMessage={submitMutation.error instanceof Error ? submitMutation.error.message : null}
+              resumeFromDraft={resumeAssistantDraft}
+            />
+          ) : null}
 
-        {routeStep === 'identification' ? (
-          <IdentificationStep onCancel={handleClose} onNext={goToType} />
-        ) : null}
+          {initialized && routeStep === 'identification' ? (
+            <IdentificationStep onCancel={handleClose} onNext={goToType} />
+          ) : null}
 
-        {routeStep === 'type' ? <TypeStep onBack={goToIdentification} onNext={handleTypeNext} /> : null}
+          {initialized && routeStep === 'type' ? <TypeStep onBack={goToIdentification} onNext={handleTypeNext} /> : null}
 
-        {routeStep === 'observations-finding' ? (
-          <FindingObservationsStep onBack={goToType} onNext={goToSummary} />
-        ) : null}
+          {initialized && routeStep === 'observations-finding' ? (
+            <FindingObservationsStep onBack={goToType} onNext={goToSummary} />
+          ) : null}
 
-        {routeStep === 'observations-checklist' ? (
-          <ChecklistObservationsStep onBack={goToType} onNext={goToSummary} />
-        ) : null}
+          {initialized && routeStep === 'observations-checklist' ? (
+            <ChecklistObservationsStep onBack={goToType} onNext={goToSummary} />
+          ) : null}
 
-        {routeStep === 'summary' ? (
-          <SummaryStep
-            onBack={selectedInspectionType === InspectionType.ENVIRONMENTAL ? goToFindingObservations : goToChecklistObservations}
-            onSave={handleSave}
-            saving={submitMutation.isPending}
-            errorMessage={submitMutation.error instanceof Error ? submitMutation.error.message : null}
-          />
-        ) : null}
+          {initialized && routeStep === 'summary' ? (
+            <SummaryStep
+              onBack={selectedInspectionType === InspectionType.ENVIRONMENTAL ? goToFindingObservations : goToChecklistObservations}
+              onSave={handleSave}
+              saving={submitMutation.isPending}
+              errorMessage={submitMutation.error instanceof Error ? submitMutation.error.message : null}
+            />
+          ) : null}
 
-        {routeStep === 'saved' ? <SavedStep onClose={handleClose} onCreateAnother={handleCreateAnother} /> : null}
+          {initialized && routeStep === 'saved' ? <SavedStep onClose={handleClose} onCreateAnother={handleCreateAnother} /> : null}
         </div>
       </div>
     </div>

@@ -69,6 +69,7 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
   const submitMutation = useSubmitNewInspection();
   const [resumeAssistantDraft, setResumeAssistantDraft] = useState(false);
   const resumeDraftOnOpenRef = useRef(false);
+  const handledOpenRef = useRef(false);
 
   useEffect(() => {
     function requestDraftResume() {
@@ -77,6 +78,10 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
     window.addEventListener(resumeDraftEventName, requestDraftResume);
     return () => window.removeEventListener(resumeDraftEventName, requestDraftResume);
   }, []);
+
+  useEffect(() => {
+    if (!open) handledOpenRef.current = false;
+  }, [open]);
 
   useEffect(() => {
     if (!open || routeStep === 'start') return undefined;
@@ -108,7 +113,8 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
   }
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || handledOpenRef.current) return;
+    handledOpenRef.current = true;
     const fullName = user?.fullName ?? 'Karen Opazo S.';
     const companyName = 'Gold Fields';
     const snapshot = loadNewInspectionDraftSnapshot();

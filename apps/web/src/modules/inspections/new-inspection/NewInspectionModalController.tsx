@@ -131,7 +131,8 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
   }
 
   function handleClose() {
-    discardActiveDraft();
+    if (routeStep !== 'start') discardActiveDraft();
+    else clearResumeStoredDraft();
     onClose();
     resetFlow();
     resetDraft();

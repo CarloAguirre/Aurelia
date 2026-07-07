@@ -42,6 +42,10 @@ export class InspectionEntity {
   @Column({ type: 'varchar', length: 180 })
   title: string;
 
+  get code(): string {
+    return this.title;
+  }
+
   @Column({ type: 'text', nullable: true })
   description: string | null;
 

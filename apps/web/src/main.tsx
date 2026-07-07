@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from 'react-router-dom';
+import { DraftProgressBridge } from './modules/inspections/components/DraftProgressBridge';
 import { IncompleteInspectionDraftBridge } from './modules/inspections/components/IncompleteInspectionDraftBridge';
 import { InspectionAreaSectorFilterBridge } from './modules/inspections/components/InspectionAreaSectorFilterBridge';
 import { router } from './routes/router';
@@ -16,6 +17,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       <RouterProvider router={router} />
       <InspectionAreaSectorFilterBridge key={bridgeKey} />
       <IncompleteInspectionDraftBridge />
+      <DraftProgressBridge />
     </QueryClientProvider>
   </React.StrictMode>,
 );

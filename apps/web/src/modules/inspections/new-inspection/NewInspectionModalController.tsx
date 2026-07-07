@@ -16,6 +16,7 @@ import {
   clearActiveNewInspectionDraftSession,
   clearNewInspectionDraftSnapshot,
   loadNewInspectionDraftSnapshot,
+  saveNewInspectionDraftSnapshot,
   type NewInspectionDraft,
   useNewInspectionDraftStore,
 } from './state/newInspectionDraft.store';
@@ -69,6 +70,11 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
     window.addEventListener(resumeDraftEventName, requestDraftResume);
     return () => window.removeEventListener(resumeDraftEventName, requestDraftResume);
   }, []);
+
+  useEffect(() => {
+    if (!open || routeStep === 'start') return undefined;
+    return useNewInspectionDraftStore.subscribe((state) => saveNewInspectionDraftSnapshot(state));
+  }, [open, routeStep]);
 
   function routeManualDraft(nextDraft: NewInspectionDraft) {
     if (!nextDraft.areaId || !nextDraft.sectorId) {

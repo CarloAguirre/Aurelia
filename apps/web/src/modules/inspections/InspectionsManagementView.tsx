@@ -8,6 +8,8 @@ import { NewInspectionModalController } from './new-inspection/NewInspectionModa
 type KpiIconKind = 'total' | 'open' | 'approval' | 'closed';
 type BadgeTone = 'blue' | 'mint' | 'pink' | 'orange' | 'yellow' | 'green';
 type BadgeIcon = 'search' | 'checklist' | 'clock' | 'check' | 'alert';
+type SortDirection = 'asc' | 'desc';
+type SortKey = 'id' | 'date' | 'inspector' | 'area' | 'company' | 'type' | 'urgency' | 'count' | 'obs' | 'days' | 'closure';
 
 type KpiCardProps = {
   icon: KpiIconKind;
@@ -57,6 +59,11 @@ type ActiveFilter = {
   label: string;
 };
 
+type SortState = {
+  key: SortKey;
+  direction: SortDirection;
+} | null;
+
 const tableColumns = [72, 147, 199, 208, 197, 132, 196, 84, 155, 132, 119, 83.5];
 const tableWidth = tableColumns.reduce((total, width) => total + width, 0);
 const numberFormatter = new Intl.NumberFormat('es-CL');
@@ -64,6 +71,7 @@ const percentFormatter = new Intl.NumberFormat('es-CL', { maximumFractionDigits:
 const pageSizeOptions: InspectionManagementPageSize[] = [10, 25, 50];
 const emptyTableFilters: TableFilters = { id: '', date: '', inspector: '', area: '', company: '', type: '', urgency: '', count: '', obs: '', daysMin: '', daysMax: '', closure: '' };
 const emptyFilterOptions: InspectionManagementTableFilterOptionsResponse = { inspectors: [], areas: [], companies: [], types: [], urgencies: [] };
+const weekDays = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
 function formatNumber(value: number) {
   return numberFormatter.format(value);
@@ -174,6 +182,65 @@ function buildManagementKpis(data: InspectionManagementKpisResponse | undefined,
   };
 }
 
+function parseRowDate(value: string) {
+  const [dayText, monthText, yearText] = value.split('-');
+  const day = Number(dayText);
+  const month = Number(monthText);
+  const year = Number(yearText);
+  if (!day || !month || Number.isNaN(year)) return 0;
+  return new Date(year < 100 ? 2000 + year : year, month - 1, day).getTime();
+}
+
+function sortableValue(row: Row, key: SortKey) {
+  if (key === 'date') return parseRowDate(row.date);
+  if (key === 'count' || key === 'days' || key === 'closure') return row[key];
+  if (key === 'obs') return row.obs.join(' ');
+  return row[key].toString().toLocaleLowerCase();
+}
+
+function sortRows(rows: Row[], sort: SortState) {
+  if (!sort) return rows;
+  const modifier = sort.direction === 'asc' ? 1 : -1;
+  return [...rows].sort((left, right) => {
+    const leftValue = sortableValue(left, sort.key);
+    const rightValue = sortableValue(right, sort.key);
+    if (typeof leftValue === 'number' && typeof rightValue === 'number') return (leftValue - rightValue) * modifier;
+    return leftValue.localeCompare(rightValue, 'es', { numeric: true, sensitivity: 'base' }) * modifier;
+  });
+}
+
+function nextSort(current: SortState, key: SortKey): SortState {
+  if (!current || current.key !== key) return { key, direction: 'asc' };
+  return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' };
+}
+
+function parseFilterDate(value: string) {
+  const parts = value.split(/[/-]/).map((part) => Number(part));
+  const [day, month, year] = parts;
+  if (parts.length !== 3 || !day || !month || !year || parts.some((part) => Number.isNaN(part))) return null;
+  const fullYear = year < 100 ? 2000 + year : year;
+  const date = new Date(fullYear, month - 1, day);
+  if (date.getFullYear() !== fullYear || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return date;
+}
+
+function formatFullDate(date: Date) {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  return `${day}-${month}-${date.getFullYear()}`;
+}
+
+function formatTypedDate(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}-${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;
+}
+
+function calendarMonthLabel(date: Date) {
+  return new Intl.DateTimeFormat('es-CL', { month: 'long', year: 'numeric' }).format(date);
+}
+
 function KpiIcon({ kind, color }: { kind: KpiIconKind; color: string }) {
   const className = 'h-[11px] w-[13.75px] shrink-0';
   if (kind === 'total') return <svg className={className} fill="none" viewBox="0 0 13.75 11" aria-hidden><rect x="2.25" y="0.75" width="7.5" height="9.5" rx="1.2" stroke={color} strokeWidth="1.5" /><path d="M4.25 3.2h3.4M4.25 5.4h3.4M4.25 7.6h2" stroke={color} strokeWidth="1.2" strokeLinecap="round" /></svg>;
@@ -186,9 +253,12 @@ function CaretIcon() {
   return <svg className="h-[10px] w-[12.5px] shrink-0" fill="none" viewBox="0 0 13 10" aria-hidden><path d="M3 3.5L6.25 6.5L9.5 3.5" stroke="#131313" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
-function SortIcon({ gold = false }: { gold?: boolean }) {
-  const fill = gold ? '#c8a064' : 'rgba(255,255,255,0.7)';
-  return <svg className="h-[10px] w-[12.5px] shrink-0" fill="none" viewBox="0 0 13 10" aria-hidden><path d="M6.25 1L10 4.5H2.5L6.25 1Z" fill={fill} /><path d="M6.25 9L2.5 5.5H10L6.25 9Z" fill={fill} /></svg>;
+function SortIcon({ gold = false, direction, active = false }: { gold?: boolean; direction?: SortDirection; active?: boolean }) {
+  const baseFill = gold ? '#c8a064' : 'rgba(255,255,255,0.7)';
+  const activeFill = gold ? '#f1c982' : '#ffffff';
+  const upFill = active && direction === 'asc' ? activeFill : baseFill;
+  const downFill = active && direction === 'desc' ? activeFill : baseFill;
+  return <svg className="h-[10px] w-[12.5px] shrink-0" fill="none" viewBox="0 0 13 10" aria-hidden><path d="M6.25 1L10 4.5H2.5L6.25 1Z" fill={upFill} /><path d="M6.25 9L2.5 5.5H10L6.25 9Z" fill={downFill} /></svg>;
 }
 
 function FilterIcon() {
@@ -197,6 +267,10 @@ function FilterIcon() {
 
 function CalendarIcon() {
   return <svg className="size-[18px] shrink-0" fill="none" viewBox="0 0 18 18" aria-hidden><path d="M4.5 2.5v2M13.5 2.5v2M3.5 6.5h11" stroke="#646464" strokeWidth="1.5" strokeLinecap="round" /><rect x="3" y="4" width="12" height="11" rx="1.5" fill="#646464" opacity="0.22" /><path d="M5.5 8.5h2M9.5 8.5h2M5.5 11h2M9.5 11h2" stroke="#646464" strokeWidth="1" strokeLinecap="round" /></svg>;
+}
+
+function CalendarInputIcon() {
+  return <svg className="size-[24px] shrink-0" fill="none" viewBox="0 0 24 24" aria-hidden><rect x="4" y="5.5" width="16" height="15" rx="2" fill="#131313" /><path d="M4 10h16M8 3.5v4M16 3.5v4" stroke="#f6faff" strokeWidth="2" strokeLinecap="round" /></svg>;
 }
 
 function FileIcon() {
@@ -243,15 +317,49 @@ function Badge({ children, tone, icon, small = false }: { children: string; tone
 }
 
 function TableFilterShell({ children, width }: { children: ReactNode; width: number }) {
-  return <div className="bg-white border border-[#d1d1d1] border-solid flex h-[26px] items-center justify-center overflow-hidden rounded-[8px] px-[8px]" style={{ width: `${width}px` }}>{children}</div>;
+  return <div className="bg-white border border-[#d1d1d1] border-solid flex h-[26px] items-center justify-center overflow-visible rounded-[8px] px-[8px]" style={{ width: `${width}px` }}>{children}</div>;
 }
 
 function TableTextFilter({ value, onChange, width, placeholder, type = 'text' }: { value: string; onChange: (value: string) => void; width: number; placeholder: string; type?: 'text' | 'number' }) {
   return <TableFilterShell width={width}><input className="min-w-0 flex-1 border-0 bg-transparent p-0 font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] text-[#131313] outline-none placeholder:text-[#acacac]" value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} type={type} /></TableFilterShell>;
 }
 
+function CalendarPopup({ value, onSelect }: { value: string; onSelect: (value: string) => void }) {
+  const selectedDate = parseFilterDate(value);
+  const [viewDate, setViewDate] = useState(() => selectedDate ?? new Date());
+  const firstDay = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+  const offset = (firstDay.getDay() + 6) % 7;
+  const start = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1 - offset);
+  const days = Array.from({ length: 42 }, (_, index) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + index));
+
+  return (
+    <div className="absolute left-0 top-[32px] z-[80] w-[364px] rounded-[2px] border-[1.5px] border-[#646464] bg-white p-[18px] shadow-[0_10px_30px_rgba(0,0,0,0.22)]">
+      <div className="flex items-center justify-between">
+        <button type="button" className="flex items-center gap-[6px] font-['Inter:Bold',sans-serif] text-[19px] font-bold leading-none text-[#131313]" onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))}>{calendarMonthLabel(viewDate)} <span className="text-[13px]">▼</span></button>
+        <div className="flex items-center gap-[24px] pr-[14px] text-[42px] leading-none text-[#131313]">
+          <button type="button" className="h-[42px] w-[42px] leading-none" onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))}>↑</button>
+          <button type="button" className="h-[42px] w-[42px] leading-none" onClick={() => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))}>↓</button>
+        </div>
+      </div>
+      <div className="mt-[30px] grid grid-cols-7 text-center font-['Inter:Bold',sans-serif] text-[19px] font-bold leading-none text-[#131313]">{weekDays.map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}</div>
+      <div className="mt-[22px] grid grid-cols-7 gap-y-[18px] text-center font-['Inter:Regular',sans-serif] text-[20px] leading-[36px] text-[#131313]">
+        {days.map((day) => {
+          const selected = selectedDate && day.toDateString() === selectedDate.toDateString();
+          const muted = day.getMonth() !== viewDate.getMonth();
+          return <button key={day.toISOString()} type="button" className={`mx-auto flex h-[36px] w-[36px] items-center justify-center rounded-[4px] ${selected ? 'bg-[#0b84ff] font-bold text-white shadow-[0_0_0_3px_#006fe6]' : muted ? 'text-[#888]' : 'text-[#131313]'}`} onClick={() => onSelect(formatFullDate(day))}>{day.getDate()}</button>;
+        })}
+      </div>
+      <div className="mt-[28px] flex items-center justify-between px-[22px] font-['Inter:Semi_Bold',sans-serif] text-[20px] font-semibold leading-none text-[#0b84ff]">
+        <button type="button" onClick={() => onSelect('')}>Borrar</button>
+        <button type="button" onClick={() => onSelect(formatFullDate(new Date()))}>Hoy</button>
+      </div>
+    </div>
+  );
+}
+
 function TableDateFilter({ value, onChange }: { value: string; onChange: (value: string) => void }) {
-  return <TableFilterShell width={123}><input className="min-w-0 flex-1 border-0 bg-transparent p-0 font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] text-[#131313] outline-none placeholder:text-[#acacac]" value={value} onChange={(event) => onChange(event.target.value)} placeholder="dd-mm-aaaa" type="text" /><CalendarIcon /></TableFilterShell>;
+  const [open, setOpen] = useState(false);
+  return <div className="relative"><TableFilterShell width={123}><input className="min-w-0 flex-1 border-0 bg-transparent p-0 font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] text-[#131313] outline-none placeholder:text-[#acacac]" value={value} onChange={(event) => onChange(formatTypedDate(event.target.value))} placeholder="dd-mm-aaaa" type="text" /><button className="flex size-[18px] shrink-0 items-center justify-center" type="button" onClick={() => setOpen((current) => !current)}><CalendarIcon /></button></TableFilterShell>{open ? <CalendarPopup value={value} onSelect={(date) => { onChange(date); setOpen(false); }} /> : null}</div>;
 }
 
 function TableSelectFilter({ value, onChange, width, allLabel, options }: { value: string; onChange: (value: string) => void; width: number; allLabel: string; options: string[] }) {
@@ -262,8 +370,9 @@ function TableObservationFilter({ value, onChange }: { value: string; onChange: 
   return <TableFilterShell width={131}><select className="min-w-0 flex-1 border-0 bg-transparent p-0 font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] text-[#131313] outline-none" value={value} onChange={(event) => onChange(event.target.value)}><option value="">Todos</option><option value="executed">Ejecutadas</option><option value="open">Abiertas</option><option value="closed">Cerradas</option></select></TableFilterShell>;
 }
 
-function HeaderCell({ children, gold = false }: { children: string; gold?: boolean }) {
-  return <th className="h-[32px] bg-[#001e39] border-r border-[#122e47] px-[12px] py-0 text-left align-middle"><div className="flex h-[32px] items-center gap-[3px] whitespace-nowrap"><span className={`font-['Inter:Semi_Bold',sans-serif] text-[11px] font-semibold uppercase leading-[11px] tracking-[0.44px] ${gold ? 'text-[#c8a064]' : 'text-[rgba(255,255,255,0.7)]'}`}>{children}</span><SortIcon gold={gold} /></div></th>;
+function HeaderCell({ children, gold = false, sortKey, sort, onSort }: { children: string; gold?: boolean; sortKey: SortKey; sort: SortState; onSort: (key: SortKey) => void }) {
+  const active = sort?.key === sortKey;
+  return <th className="h-[32px] bg-[#001e39] border-r border-[#122e47] px-[12px] py-0 text-left align-middle"><button className="flex h-[32px] items-center gap-[3px] whitespace-nowrap" type="button" onClick={() => onSort(sortKey)}><span className={`font-['Inter:Semi_Bold',sans-serif] text-[11px] font-semibold uppercase leading-[11px] tracking-[0.44px] ${gold ? 'text-[#c8a064]' : 'text-[rgba(255,255,255,0.7)]'}`}>{children}</span><SortIcon gold={gold} active={active} direction={active ? sort.direction : undefined} /></button></th>;
 }
 
 function ActionHeaderCell() {
@@ -304,12 +413,14 @@ function getObsBadge(item: string) {
   return { tone: 'yellow' as const, icon: 'clock' as const };
 }
 
-function InspectionTable({ rows, total, page, totalPages, pageSize, isLoading, isError, filters, options, onFilterChange, onClearFilters, onPageChange, onPageSizeChange }: { rows: Row[]; total: number; page: number; totalPages: number; pageSize: InspectionManagementPageSize; isLoading: boolean; isError: boolean; filters: TableFilters; options: InspectionManagementTableFilterOptionsResponse; onFilterChange: (key: TableFilterKey, value: string) => void; onClearFilters: () => void; onPageChange: (page: number) => void; onPageSizeChange: (pageSize: InspectionManagementPageSize) => void }) {
+function InspectionTable({ rows, total, page, totalPages, pageSize, isLoading, isError, filters, options, sort, onSort, onFilterChange, onClearFilters, onPageChange, onPageSizeChange }: { rows: Row[]; total: number; page: number; totalPages: number; pageSize: InspectionManagementPageSize; isLoading: boolean; isError: boolean; filters: TableFilters; options: InspectionManagementTableFilterOptionsResponse; sort: SortState; onSort: (key: SortKey) => void; onFilterChange: (key: TableFilterKey, value: string) => void; onClearFilters: () => void; onPageChange: (page: number) => void; onPageSizeChange: (pageSize: InspectionManagementPageSize) => void }) {
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
   const footerText = isLoading ? 'Cargando inspecciones...' : isError ? 'No fue posible cargar las inspecciones' : `Mostrando ${from}–${to} de ${total} inspecciones`;
   const typeOptions = uniqueSorted(options.types);
-  return <div className="bg-white border border-[#e3e3e3] border-solid w-full overflow-hidden rounded-[8px] shadow-[0px_1px_4px_rgba(0,0,0,0.05)]"><div className="overflow-x-auto overflow-y-hidden"><table className="table-fixed border-collapse" style={{ minWidth: `${tableWidth}px`, width: `${tableWidth}px` }}><colgroup>{tableColumns.map((width, index) => <col key={index} style={{ width: `${width}px` }} />)}</colgroup><thead><tr className="h-[32px]"><HeaderCell>Nº</HeaderCell><HeaderCell>Fecha</HeaderCell><HeaderCell>Inspector</HeaderCell><HeaderCell>Área. Sector</HeaderCell><HeaderCell>Empresa</HeaderCell><HeaderCell>Tipo</HeaderCell><HeaderCell gold>Urgencia máxima</HeaderCell><HeaderCell>Nº obs</HeaderCell><HeaderCell>Obs.</HeaderCell><HeaderCell>Días</HeaderCell><HeaderCell>Cierre</HeaderCell><ActionHeaderCell /></tr><tr className="h-[37px] bg-[#f0f4f8]"><FilterCell><TableTextFilter value={filters.id} onChange={(value) => onFilterChange('id', value)} width={48} placeholder="#" /></FilterCell><FilterCell><TableDateFilter value={filters.date} onChange={(value) => onFilterChange('date', value)} /></FilterCell><FilterCell><TableSelectFilter value={filters.inspector} onChange={(value) => onFilterChange('inspector', value)} width={175} allLabel="Todos los inspectores" options={options.inspectors} /></FilterCell><FilterCell><TableSelectFilter value={filters.area} onChange={(value) => onFilterChange('area', value)} width={184} allLabel="Todas las áreas" options={options.areas} /></FilterCell><FilterCell><TableSelectFilter value={filters.company} onChange={(value) => onFilterChange('company', value)} width={173} allLabel="Todas las empresas" options={options.companies} /></FilterCell><FilterCell><TableSelectFilter value={filters.type} onChange={(value) => onFilterChange('type', value)} width={108} allLabel="Todos" options={typeOptions} /></FilterCell><FilterCell><TableSelectFilter value={filters.urgency} onChange={(value) => onFilterChange('urgency', value)} width={172} allLabel="Todas" options={options.urgencies} /></FilterCell><FilterCell><TableTextFilter value={filters.count} onChange={(value) => onFilterChange('count', value)} width={60} placeholder="#" type="number" /></FilterCell><FilterCell><TableObservationFilter value={filters.obs} onChange={(value) => onFilterChange('obs', value)} /></FilterCell><FilterCell><div className="flex items-center gap-[4px]"><TableTextFilter value={filters.daysMin} onChange={(value) => onFilterChange('daysMin', value)} width={47} placeholder="Min" type="number" /><span className="font-['Inter:Regular',sans-serif] text-[13px] text-[#131313]">-</span><TableTextFilter value={filters.daysMax} onChange={(value) => onFilterChange('daysMax', value)} width={47} placeholder="Max" type="number" /></div></FilterCell><FilterCell><TableTextFilter value={filters.closure} onChange={(value) => onFilterChange('closure', value)} width={95} placeholder="#%" type="number" /></FilterCell><td className="h-[37px] border-b border-[#e3e3e3] bg-[#f0f4f8] px-[12px] py-[5.5px] align-middle"><button className="flex h-[26px] w-[59.5px] items-center justify-center gap-[4px] rounded-[5px] border border-[#d1d1d1] bg-white px-px py-[7px] font-['Inter:Semi_Bold',sans-serif] text-[10px] font-semibold leading-[normal] text-[#646464]" type="button" onClick={onClearFilters}>↺ Limpiar</button></td></tr></thead><tbody>{rows.map((row) => <tr key={row.uniqueKey} style={{ height: `${row.height}px` }}><IdCell value={row.id} /><DataCell>{row.date}</DataCell><DataCell bold>{row.inspector}</DataCell><DataCell>{row.area}</DataCell><DataCell>{row.company}</DataCell><DataCell><Badge tone={row.type.toLowerCase().includes('check') ? 'mint' : 'blue'} icon={row.type.toLowerCase().includes('check') ? 'checklist' : 'search'}>{row.type}</Badge></DataCell><DataCell><Badge tone={row.urgencyTone} icon={row.urgency.includes('Ejecutada') ? 'check' : row.urgency.includes('Grave') ? 'alert' : 'clock'}>{row.urgency}</Badge></DataCell><DataCell center>{row.count}</DataCell><DataCell><div className="flex w-[95.5px] flex-col items-start gap-[4px]">{row.obs.map((item, index) => { const badge = getObsBadge(item); return <Badge key={`${row.uniqueKey}-${item}-${index}`} tone={badge.tone} icon={badge.icon} small>{item}</Badge>; })}</div></DataCell><DaysCell value={row.days} /><ProgressCell value={row.closure} /><td className="border-b border-[#e3e3e3] bg-white px-[12px] py-[8.5px] text-center align-middle"><button className="inline-flex size-[26px] items-center justify-center rounded-[5px] border border-[#e3e3e3] bg-white p-px" type="button"><MoreIcon /></button></td></tr>)}{!isLoading && rows.length === 0 ? <tr className="h-[61px]"><td colSpan={12} className="border-b border-[#e3e3e3] bg-white px-[12px] py-[13.5px] text-center font-['Inter:Regular',sans-serif] text-[12px] text-[#646464]">No hay inspecciones para mostrar</td></tr> : null}</tbody></table></div><div className="border-t border-[#e3e3e3] bg-white px-[16px] py-[10px] flex items-center justify-between"><p className="font-['Inter:Regular',sans-serif] text-[12px] text-[#646464]">{footerText}</p><div className="flex items-center gap-[4px]"><button className="size-[32px] rounded-[6px] border border-[#e3e3e3] disabled:opacity-35" disabled={page <= 1} onClick={() => onPageChange(page - 1)} type="button">‹</button><button className="size-[32px] rounded-[6px] border border-[#c8a064] bg-[#c8a064] font-semibold text-[#001e39]" type="button">{page}</button><button className="size-[32px] rounded-[6px] border border-[#e3e3e3] disabled:opacity-35" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)} type="button">›</button></div><div className="flex items-center gap-[8px]"><span className="text-[12px] text-[#646464]">Filas por página</span><PageSizeSelect value={pageSize} onChange={onPageSizeChange} /></div></div></div>;
+  const sortedRows = useMemo(() => sortRows(rows, sort), [rows, sort]);
+
+  return <div className="bg-white border border-[#e3e3e3] border-solid w-full overflow-hidden rounded-[8px] shadow-[0px_1px_4px_rgba(0,0,0,0.05)]"><div className="overflow-x-auto overflow-y-visible"><table className="table-fixed border-collapse" style={{ minWidth: `${tableWidth}px`, width: `${tableWidth}px` }}><colgroup>{tableColumns.map((width, index) => <col key={index} style={{ width: `${width}px` }} />)}</colgroup><thead><tr className="h-[32px]"><HeaderCell sortKey="id" sort={sort} onSort={onSort}>Nº</HeaderCell><HeaderCell sortKey="date" sort={sort} onSort={onSort}>Fecha</HeaderCell><HeaderCell sortKey="inspector" sort={sort} onSort={onSort}>Inspector</HeaderCell><HeaderCell sortKey="area" sort={sort} onSort={onSort}>Área. Sector</HeaderCell><HeaderCell sortKey="company" sort={sort} onSort={onSort}>Empresa</HeaderCell><HeaderCell sortKey="type" sort={sort} onSort={onSort}>Tipo</HeaderCell><HeaderCell sortKey="urgency" sort={sort} onSort={onSort} gold>Urgencia máxima</HeaderCell><HeaderCell sortKey="count" sort={sort} onSort={onSort}>Nº obs</HeaderCell><HeaderCell sortKey="obs" sort={sort} onSort={onSort}>Obs.</HeaderCell><HeaderCell sortKey="days" sort={sort} onSort={onSort}>Días</HeaderCell><HeaderCell sortKey="closure" sort={sort} onSort={onSort}>Cierre</HeaderCell><ActionHeaderCell /></tr><tr className="h-[37px] bg-[#f0f4f8]"><FilterCell><TableTextFilter value={filters.id} onChange={(value) => onFilterChange('id', value)} width={48} placeholder="#" /></FilterCell><FilterCell><TableDateFilter value={filters.date} onChange={(value) => onFilterChange('date', value)} /></FilterCell><FilterCell><TableSelectFilter value={filters.inspector} onChange={(value) => onFilterChange('inspector', value)} width={175} allLabel="Todos los inspectores" options={options.inspectors} /></FilterCell><FilterCell><TableSelectFilter value={filters.area} onChange={(value) => onFilterChange('area', value)} width={184} allLabel="Todas las áreas" options={options.areas} /></FilterCell><FilterCell><TableSelectFilter value={filters.company} onChange={(value) => onFilterChange('company', value)} width={173} allLabel="Todas las empresas" options={options.companies} /></FilterCell><FilterCell><TableSelectFilter value={filters.type} onChange={(value) => onFilterChange('type', value)} width={108} allLabel="Todos" options={typeOptions} /></FilterCell><FilterCell><TableSelectFilter value={filters.urgency} onChange={(value) => onFilterChange('urgency', value)} width={172} allLabel="Todas" options={options.urgencies} /></FilterCell><FilterCell><TableTextFilter value={filters.count} onChange={(value) => onFilterChange('count', value)} width={60} placeholder="#" type="number" /></FilterCell><FilterCell><TableObservationFilter value={filters.obs} onChange={(value) => onFilterChange('obs', value)} /></FilterCell><FilterCell><div className="flex items-center gap-[4px]"><TableTextFilter value={filters.daysMin} onChange={(value) => onFilterChange('daysMin', value)} width={47} placeholder="Min" type="number" /><span className="font-['Inter:Regular',sans-serif] text-[13px] text-[#131313]">-</span><TableTextFilter value={filters.daysMax} onChange={(value) => onFilterChange('daysMax', value)} width={47} placeholder="Max" type="number" /></div></FilterCell><FilterCell><TableTextFilter value={filters.closure} onChange={(value) => onFilterChange('closure', value)} width={95} placeholder="#%" type="number" /></FilterCell><td className="h-[37px] border-b border-[#e3e3e3] bg-[#f0f4f8] px-[12px] py-[5.5px] align-middle"><button className="flex h-[26px] w-[59.5px] items-center justify-center gap-[4px] rounded-[5px] border border-[#d1d1d1] bg-white px-px py-[7px] font-['Inter:Semi_Bold',sans-serif] text-[10px] font-semibold leading-[normal] text-[#646464]" type="button" onClick={onClearFilters}>↺ Limpiar</button></td></tr></thead><tbody>{sortedRows.map((row) => <tr key={row.uniqueKey} style={{ height: `${row.height}px` }}><IdCell value={row.id} /><DataCell>{row.date}</DataCell><DataCell bold>{row.inspector}</DataCell><DataCell>{row.area}</DataCell><DataCell>{row.company}</DataCell><DataCell><Badge tone={row.type.toLowerCase().includes('check') ? 'mint' : 'blue'} icon={row.type.toLowerCase().includes('check') ? 'checklist' : 'search'}>{row.type}</Badge></DataCell><DataCell><Badge tone={row.urgencyTone} icon={row.urgency.includes('Ejecutada') ? 'check' : row.urgency.includes('Grave') ? 'alert' : 'clock'}>{row.urgency}</Badge></DataCell><DataCell center>{row.count}</DataCell><DataCell><div className="flex w-[95.5px] flex-col items-start gap-[4px]">{row.obs.map((item, index) => { const badge = getObsBadge(item); return <Badge key={`${row.uniqueKey}-${item}-${index}`} tone={badge.tone} icon={badge.icon} small>{item}</Badge>; })}</div></DataCell><DaysCell value={row.days} /><ProgressCell value={row.closure} /><td className="border-b border-[#e3e3e3] bg-white px-[12px] py-[8.5px] text-center align-middle"><button className="inline-flex size-[26px] items-center justify-center rounded-[5px] border border-[#e3e3e3] bg-white p-px" type="button"><MoreIcon /></button></td></tr>)}{!isLoading && sortedRows.length === 0 ? <tr className="h-[61px]"><td colSpan={12} className="border-b border-[#e3e3e3] bg-white px-[12px] py-[13.5px] text-center font-['Inter:Regular',sans-serif] text-[12px] text-[#646464]">No hay inspecciones para mostrar</td></tr> : null}</tbody></table></div><div className="border-t border-[#e3e3e3] bg-white px-[16px] py-[10px] flex items-center justify-between"><p className="font-['Inter:Regular',sans-serif] text-[12px] text-[#646464]">{footerText}</p><div className="flex items-center gap-[4px]"><button className="size-[32px] rounded-[6px] border border-[#e3e3e3] disabled:opacity-35" disabled={page <= 1} onClick={() => onPageChange(page - 1)} type="button">‹</button><button className="size-[32px] rounded-[6px] border border-[#c8a064] bg-[#c8a064] font-semibold text-[#001e39]" type="button">{page}</button><button className="size-[32px] rounded-[6px] border border-[#e3e3e3] disabled:opacity-35" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)} type="button">›</button></div><div className="flex items-center gap-[8px]"><span className="text-[12px] text-[#646464]">Filas por página</span><PageSizeSelect value={pageSize} onChange={onPageSizeChange} /></div></div></div>;
 }
 
 export function InspectionsManagementView() {
@@ -317,6 +428,7 @@ export function InspectionsManagementView() {
   const [filters, setFilters] = useState<TableFilters>(emptyTableFilters);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<InspectionManagementPageSize>(10);
+  const [sort, setSort] = useState<SortState>(null);
   const kpisQuery = useInspectionManagementKpis();
   const tableParams = useMemo<InspectionManagementTableParams>(() => ({ page, pageSize, ...filters }), [filters, page, pageSize]);
   const tableQuery = useInspectionManagementTable(tableParams);
@@ -351,5 +463,9 @@ export function InspectionsManagementView() {
     setNewInspectionOpen(true);
   }
 
-  return <><div className="bg-[#f7f7f7] flex h-[calc(100vh-56px)] w-full flex-col items-start overflow-y-auto overflow-x-hidden px-[24px] py-[20px]"><div className="grid w-full grid-cols-[repeat(auto-fit,minmax(244px,1fr))] gap-[12px]"><KpiCard icon="total" iconColor="#24588b" label={`Total ${kpis.year}`} value={kpis.totalInspections} helper={kpis.totalHelper} /><KpiCard icon="open" iconColor="#806000" label="Inspecciones abiertas" value={kpis.openInspections} helper={kpis.openHelper} valueClass="text-[#463100]" /><KpiCard icon="approval" iconColor="#bd3b5b" label="Pend. de aprobación" value={kpis.pendingApproval} helper="Ejecutadas esperando Admin GF" valueClass="text-[#bd3b5b]" /><KpiCard icon="closed" iconColor="#53bd49" label="% Obs. cerradas" value={kpis.closedFindingsRate} helper="Meta >99%" valueClass="text-[#2a5c16]" /></div><ActiveFiltersBar filters={activeFilters} onRemove={removeFilter} onNewInspection={openNewInspection} /><div className="w-full pt-[16px]"><InspectionTable rows={tableRows} total={total} page={tableQuery.data?.page ?? page} totalPages={totalPages} pageSize={pageSize} isLoading={tableQuery.isLoading} isError={tableQuery.isError} filters={filters} options={filterOptions} onFilterChange={updateFilter} onClearFilters={clearFilters} onPageChange={setPage} onPageSizeChange={changePageSize} /></div></div><NewInspectionModalController open={newInspectionOpen} onClose={() => setNewInspectionOpen(false)} /></>;
+  function handleSort(key: SortKey) {
+    setSort((current) => nextSort(current, key));
+  }
+
+  return <><div className="bg-[#f7f7f7] flex h-[calc(100vh-56px)] w-full flex-col items-start overflow-y-auto overflow-x-hidden px-[24px] py-[20px]"><div className="grid w-full grid-cols-[repeat(auto-fit,minmax(244px,1fr))] gap-[12px]"><KpiCard icon="total" iconColor="#24588b" label={`Total ${kpis.year}`} value={kpis.totalInspections} helper={kpis.totalHelper} /><KpiCard icon="open" iconColor="#806000" label="Inspecciones abiertas" value={kpis.openInspections} helper={kpis.openHelper} valueClass="text-[#463100]" /><KpiCard icon="approval" iconColor="#bd3b5b" label="Pend. de aprobación" value={kpis.pendingApproval} helper="Ejecutadas esperando Admin GF" valueClass="text-[#bd3b5b]" /><KpiCard icon="closed" iconColor="#53bd49" label="% Obs. cerradas" value={kpis.closedFindingsRate} helper="Meta >99%" valueClass="text-[#2a5c16]" /></div><ActiveFiltersBar filters={activeFilters} onRemove={removeFilter} onNewInspection={openNewInspection} /><div className="w-full pt-[16px]"><InspectionTable rows={tableRows} total={total} page={tableQuery.data?.page ?? page} totalPages={totalPages} pageSize={pageSize} isLoading={tableQuery.isLoading} isError={tableQuery.isError} filters={filters} options={filterOptions} sort={sort} onSort={handleSort} onFilterChange={updateFilter} onClearFilters={clearFilters} onPageChange={setPage} onPageSizeChange={changePageSize} /></div></div><NewInspectionModalController open={newInspectionOpen} onClose={() => setNewInspectionOpen(false)} /></>;
 }

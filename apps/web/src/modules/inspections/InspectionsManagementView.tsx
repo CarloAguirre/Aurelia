@@ -359,7 +359,7 @@ function CalendarPopup({ value, onSelect }: { value: string; onSelect: (value: s
 
 function TableDateFilter({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const [open, setOpen] = useState(false);
-  return <div className="relative"><TableFilterShell width={123}><input className="min-w-0 flex-1 border-0 bg-transparent p-0 font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] text-[#131313] outline-none placeholder:text-[#acacac]" value={value} onChange={(event) => onChange(formatTypedDate(event.target.value))} placeholder="dd-mm-aaaa" type="text" /><button className="flex size-[18px] shrink-0 items-center justify-center" type="button" onClick={() => setOpen((current) => !current)}><CalendarIcon /></button></TableFilterShell>{open ? <CalendarPopup value={value} onSelect={(date) => { onChange(date); setOpen(false); }} /> : null}</div>;
+  return <div className="relative"><TableFilterShell width={123}><input className="min-w-0 flex-1 border-0 bg-transparent p-0 font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] text-[#131313] outline-none placeholder:text-[#acacac]" value={value} onChange={(event) => onChange(formatTypedDate(event.target.value))} placeholder="dd-mm-aaaa" type="text" /><button className="flex size-[18px] shrink-0 items-center justify-center" type="button" onClick={() => setOpen((current) => !current)}><CalendarInputIcon /></button></TableFilterShell>{open ? <CalendarPopup value={value} onSelect={(date) => { onChange(date); setOpen(false); }} /> : null}</div>;
 }
 
 function TableSelectFilter({ value, onChange, width, allLabel, options }: { value: string; onChange: (value: string) => void; width: number; allLabel: string; options: string[] }) {

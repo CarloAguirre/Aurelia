@@ -1,5 +1,5 @@
 import { useEffect, type ComponentProps } from 'react';
-import { useNewInspectionDraftStore, type NewInspectionCorrectiveActionSource, type NewInspectionFindingObservationDraft } from '../state/newInspectionDraft.store';
+import { clearNewInspectionDraftSnapshot, useNewInspectionDraftStore, type NewInspectionCorrectiveActionSource, type NewInspectionFindingObservationDraft } from '../state/newInspectionDraft.store';
 import { AssistantChatStep as AssistantChatStepV7 } from './AssistantChatStepV7';
 
 type AssistantChatStepProps = ComponentProps<typeof AssistantChatStepV7>;
@@ -52,10 +52,23 @@ export function AssistantChatStep(props: AssistantChatStepProps) {
   applyAiSourcePatch();
 
   useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const state = useNewInspectionDraftStore.getState();
+      if (!props.resumeFromDraft && state.flowMode !== 'assistant') state.setFlowMode('assistant');
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [props.resumeFromDraft]);
+
+  useEffect(() => {
     scheduleAiBadgeSync();
     const unsubscribe = useNewInspectionDraftStore.subscribe(scheduleAiBadgeSync);
     return unsubscribe;
   }, []);
 
-  return <AssistantChatStepV7 {...props} />;
+  function handleCancelInspection() {
+    clearNewInspectionDraftSnapshot();
+    props.onCancelInspection();
+  }
+
+  return <AssistantChatStepV7 {...props} onCancelInspection={handleCancelInspection} />;
 }

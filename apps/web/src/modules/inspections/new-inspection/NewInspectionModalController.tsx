@@ -120,6 +120,7 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
       clearResumeStoredDraft();
       activateNewInspectionDraftSnapshot(snapshot.id);
       hydrateDraft(nextDraft);
+      saveNewInspectionDraftSnapshot(nextDraft);
       submitMutation.reset();
       if (nextDraft.flowMode === 'assistant') {
         setResumeAssistantDraft(true);

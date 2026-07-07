@@ -138,6 +138,18 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
     submitMutation.reset();
   }
 
+  function handleAssistantBack() {
+    if (resumeAssistantDraft) {
+      discardActiveDraft();
+      setResumeAssistantDraft(false);
+      resetDraft();
+      submitMutation.reset();
+      goToStart();
+      return;
+    }
+    goToStart();
+  }
+
   function handleCreateAnother() {
     discardActiveDraft();
     resetDraft();
@@ -200,7 +212,7 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
 
         {routeStep === 'assistant-chat' ? (
           <AssistantChatStep
-            onBack={goToStart}
+            onBack={handleAssistantBack}
             onSave={handleSave}
             onCancelInspection={handleClose}
             saving={submitMutation.isPending}

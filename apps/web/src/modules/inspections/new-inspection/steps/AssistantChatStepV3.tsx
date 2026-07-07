@@ -51,8 +51,8 @@ function formatDate(value: Date) {
 
 function parseDateLabel(value: string) {
   const parts = value.split(/[/-]/).map((part) => Number(part));
-  if (parts.length !== 3 || parts.some((part) => Number.isNaN(part))) return null;
   const [day, month, year] = parts;
+  if (parts.length !== 3 || day === undefined || month === undefined || year === undefined || parts.some((part) => Number.isNaN(part))) return null;
   const date = new Date(year, month - 1, day);
   if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
   return date;
@@ -103,9 +103,11 @@ function receiptText(fileName: string) {
 
 function parsePoint(value: string) {
   const match = value.match(/(-?\d+(?:[.,]\d+)?)\s*,\s*(-?\d+(?:[.,]\d+)?)/);
-  if (!match) return null;
-  const latitude = Number(match[1].replace(',', '.'));
-  const longitude = Number(match[2].replace(',', '.'));
+  const latitudeText = match?.[1];
+  const longitudeText = match?.[2];
+  if (!latitudeText || !longitudeText) return null;
+  const latitude = Number(latitudeText.replace(',', '.'));
+  const longitude = Number(longitudeText.replace(',', '.'));
   if (Number.isNaN(latitude) || Number.isNaN(longitude)) return null;
   return { latitude, longitude };
 }
@@ -261,7 +263,7 @@ function SlaConfirmWidget({ initialDays, observationNumber, resolved, onSave }: 
 
 function ObservationSavedCard({ observation, index, onRemove }: { observation: NewInspectionFindingObservationDraft | null; index: number; onRemove: () => void }) {
   if (!observation) return null;
-  return <div className="mb-[10px] ml-[33px] w-[286px] max-w-[calc(100%-45px)] rounded-[10px] border border-[#E3E3E3] bg-white px-[12px] py-[9px] shadow-[0_1px_2px_rgba(0,0,0,0.04)]"><div className="flex items-start gap-[8px]"><span className="shrink-0 rounded-[5px] bg-[#E6F3FF] px-[7px] py-[2px] text-[10px] font-bold leading-[14px] text-[#0D3862]">Obs. {index}</span><div className="min-w-0 flex-1"><p className="truncate text-[12px] font-semibold leading-[17px] text-[#131313]">{observation.detectedCondition}</p><div className="mt-[3px] flex flex-wrap items-center gap-[4px]"><span className="rounded-[4px] bg-[#FFEAB8] px-[6px] py-[2px] text-[9px] font-bold leading-[12px] text-[#463100]">{observation.severityLabel ?? 'Manual'} · {parseSlaDays(observation.severityClosureTimeLabel, 7)}d</span><span className="rounded-[4px] bg-[#F4F6F9] px-[6px] py-[2px] text-[9px] font-bold leading-[12px] text-[#646464]">Manual</span>{observation.evidence ? <span className="inline-flex items-center gap-[1px]"><EvidenceIcon /><CheckMiniIcon /></span> : null}</div></div><button type="button" aria-label="Eliminar observación" onClick={onRemove} className="flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-[5px] border border-[#E3E3E3] bg-[#F4F6F9] text-[#646464]"><TrashIcon /></button></div></div>;
+  return <div className="mb-[10px] ml-[33px] mr-[12px] rounded-[10px] border border-[#E3E3E3] bg-white px-[12px] py-[9px] shadow-[0_1px_2px_rgba(0,0,0,0.04)]"><div className="flex items-start gap-[8px]"><span className="shrink-0 rounded-[5px] bg-[#E6F3FF] px-[7px] py-[2px] text-[10px] font-bold leading-[14px] text-[#0D3862]">Obs. {index}</span><div className="min-w-0 flex-1"><p className="truncate text-[12px] font-semibold leading-[17px] text-[#131313]">{observation.detectedCondition}</p><div className="mt-[3px] flex flex-wrap items-center gap-[4px]"><span className="rounded-[4px] bg-[#FFEAB8] px-[6px] py-[2px] text-[9px] font-bold leading-[12px] text-[#463100]">{observation.severityLabel ?? 'Manual'} · {parseSlaDays(observation.severityClosureTimeLabel, 7)}d</span><span className="rounded-[4px] bg-[#F4F6F9] px-[6px] py-[2px] text-[9px] font-bold leading-[12px] text-[#646464]">Manual</span>{observation.evidence ? <span className="inline-flex items-center gap-[1px]"><EvidenceIcon /><CheckMiniIcon /></span> : null}</div></div><button type="button" aria-label="Eliminar observación" onClick={onRemove} className="flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-[5px] border border-[#E3E3E3] bg-[#F4F6F9] text-[#646464]"><TrashIcon /></button></div></div>;
 }
 
 function CompanySuggestionCard({ company, fallback, accepted, onAccept, onOther }: { company: CompanyResponse; fallback: boolean; accepted: boolean; onAccept: () => void; onOther: () => void }) {

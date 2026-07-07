@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { InspectionType } from '@aurelia/contracts';
 import { useSessionStore } from '../../../shared/stores/session.store';
 import { StartStep } from './steps/StartStep';
@@ -24,6 +24,8 @@ interface NewInspectionModalControllerProps {
   onClose: () => void;
 }
 
+const resumeDraftEventName = 'aurelia:resume-new-inspection-draft';
+
 export function NewInspectionModalController({ open, onClose }: NewInspectionModalControllerProps) {
   const user = useSessionStore((state) => state.user);
   const setInspector = useNewInspectionDraftStore((state) => state.setInspector);
@@ -44,17 +46,36 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
   const submitMutation = useSubmitNewInspection();
   const [assistantDraftSavedAt, setAssistantDraftSavedAt] = useState<string | null>(null);
   const [resumeAssistantDraft, setResumeAssistantDraft] = useState(false);
+  const resumeDraftOnOpenRef = useRef(false);
+
+  useEffect(() => {
+    function requestDraftResume() {
+      resumeDraftOnOpenRef.current = true;
+    }
+    window.addEventListener(resumeDraftEventName, requestDraftResume);
+    return () => window.removeEventListener(resumeDraftEventName, requestDraftResume);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
     const fullName = user?.fullName ?? 'Karen Opazo S.';
     const companyName = 'Gold Fields';
     const snapshot = loadNewInspectionDraftSnapshot();
+    const shouldResumeDraft = resumeDraftOnOpenRef.current && snapshot;
     setAssistantDraftSavedAt(snapshot?.savedAt ?? null);
     setResumeAssistantDraft(false);
     setInspector(fullName, companyName);
+    if (shouldResumeDraft) {
+      resumeDraftOnOpenRef.current = false;
+      hydrateDraft(snapshot.draft);
+      submitMutation.reset();
+      setResumeAssistantDraft(true);
+      goToAssistantChat();
+      return;
+    }
+    resumeDraftOnOpenRef.current = false;
     goToStart();
-  }, [goToStart, open, setInspector, user?.fullName]);
+  }, [goToAssistantChat, goToStart, hydrateDraft, open, setInspector, submitMutation, user?.fullName]);
 
   function clearAssistantDraft() {
     clearNewInspectionDraftSnapshot();
@@ -62,7 +83,6 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
   }
 
   function handleClose() {
-    clearAssistantDraft();
     onClose();
     resetFlow();
     resetDraft();
@@ -83,25 +103,6 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
     submitMutation.reset();
     setResumeAssistantDraft(false);
     goToAssistantChat();
-  }
-
-  function handleResumeAssistant() {
-    const snapshot = loadNewInspectionDraftSnapshot();
-    if (!snapshot) {
-      setAssistantDraftSavedAt(null);
-      handleStartAssistant();
-      return;
-    }
-    hydrateDraft(snapshot.draft);
-    submitMutation.reset();
-    setResumeAssistantDraft(true);
-    goToAssistantChat();
-  }
-
-  function handleDiscardAssistantDraft() {
-    clearAssistantDraft();
-    resetDraft();
-    setResumeAssistantDraft(false);
   }
 
   function handleTypeNext() {
@@ -131,12 +132,8 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
         {routeStep === 'start' ? (
           <StartStep
             onStartAssistant={handleStartAssistant}
-            onResumeAssistant={handleResumeAssistant}
-            onDiscardDraft={handleDiscardAssistantDraft}
             onStartManual={goToIdentification}
             onCancelInspection={handleClose}
-            hasAssistantDraft={Boolean(assistantDraftSavedAt)}
-            assistantDraftSavedAt={assistantDraftSavedAt}
           />
         ) : null}
 

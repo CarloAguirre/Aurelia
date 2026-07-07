@@ -41,6 +41,13 @@ function clearResumeStoredDraft() {
   window.sessionStorage.removeItem(resumeDraftStorageKey);
 }
 
+function normalizeDraftForResume(draft: NewInspectionDraft): NewInspectionDraft {
+  if (draft.flowMode === 'assistant' && !draft.inspectionTypeSelected) {
+    return { ...draft, inspectionType: InspectionType.ENVIRONMENTAL, inspectionTypeLabel: '' };
+  }
+  return draft;
+}
+
 export function NewInspectionModalController({ open, onClose }: NewInspectionModalControllerProps) {
   const user = useSessionStore((state) => state.user);
   const setInspector = useNewInspectionDraftStore((state) => state.setInspector);
@@ -108,17 +115,18 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
     const shouldResumeDraft = resumeDraftOnOpenRef.current || shouldResumeStoredDraft();
     setResumeAssistantDraft(false);
     if (shouldResumeDraft && snapshot) {
+      const nextDraft = normalizeDraftForResume(snapshot.draft);
       resumeDraftOnOpenRef.current = false;
       clearResumeStoredDraft();
       activateNewInspectionDraftSnapshot(snapshot.id);
-      hydrateDraft(snapshot.draft);
+      hydrateDraft(nextDraft);
       submitMutation.reset();
-      if (snapshot.draft.flowMode === 'assistant') {
+      if (nextDraft.flowMode === 'assistant') {
         setResumeAssistantDraft(true);
         goToAssistantChat();
         return;
       }
-      routeManualDraft(snapshot.draft);
+      routeManualDraft(nextDraft);
       return;
     }
     resumeDraftOnOpenRef.current = false;

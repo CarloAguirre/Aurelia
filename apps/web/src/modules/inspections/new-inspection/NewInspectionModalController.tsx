@@ -25,6 +25,16 @@ interface NewInspectionModalControllerProps {
 }
 
 const resumeDraftEventName = 'aurelia:resume-new-inspection-draft';
+const resumeDraftStorageKey = 'aurelia:resume-new-inspection-draft';
+
+function shouldResumeStoredDraft() {
+  return typeof window !== 'undefined' && window.sessionStorage.getItem(resumeDraftStorageKey) === '1';
+}
+
+function clearResumeStoredDraft() {
+  if (typeof window === 'undefined') return;
+  window.sessionStorage.removeItem(resumeDraftStorageKey);
+}
 
 export function NewInspectionModalController({ open, onClose }: NewInspectionModalControllerProps) {
   const user = useSessionStore((state) => state.user);
@@ -60,10 +70,12 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
     const fullName = user?.fullName ?? 'Karen Opazo S.';
     const companyName = 'Gold Fields';
     const snapshot = loadNewInspectionDraftSnapshot();
+    const shouldResumeDraft = resumeDraftOnOpenRef.current || shouldResumeStoredDraft();
     setResumeAssistantDraft(false);
     setInspector(fullName, companyName);
-    if (resumeDraftOnOpenRef.current && snapshot) {
+    if (shouldResumeDraft && snapshot) {
       resumeDraftOnOpenRef.current = false;
+      clearResumeStoredDraft();
       hydrateDraft(snapshot.draft);
       submitMutation.reset();
       setResumeAssistantDraft(true);
@@ -71,11 +83,13 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
       return;
     }
     resumeDraftOnOpenRef.current = false;
+    if (shouldResumeDraft) clearResumeStoredDraft();
     goToStart();
   }, [goToAssistantChat, goToStart, hydrateDraft, open, setInspector, user?.fullName]);
 
   function clearAssistantDraft() {
     clearNewInspectionDraftSnapshot();
+    clearResumeStoredDraft();
   }
 
   function handleClose() {

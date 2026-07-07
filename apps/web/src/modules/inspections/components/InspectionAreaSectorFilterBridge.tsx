@@ -8,6 +8,7 @@ type AreaSectorTarget = {
 };
 
 const areaSectorSelectSelector = 'table thead tr:nth-child(2) td:nth-child(4) select';
+const dateInputSelector = 'table thead tr:nth-child(2) td:nth-child(2) input';
 
 function findAreaSectorTarget(): AreaSectorTarget | null {
   const select = document.querySelector<HTMLSelectElement>(areaSectorSelectSelector);
@@ -26,6 +27,25 @@ function readSelectLabel(select: HTMLSelectElement) {
   return select.options[0]?.textContent?.trim() || 'Todas las áreas';
 }
 
+function toShortYearDate(value: string) {
+  return value.replace(/^(\d{2}-\d{2})-(\d{4})$/, '$1-$2'.replace(/(\d{2}-\d{2})-(\d{2})(\d{2})/, '$1-$3'));
+}
+
+function setNativeInputValue(input: HTMLInputElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+  setter?.call(input, value);
+}
+
+function normalizeDateInput() {
+  const input = document.querySelector<HTMLInputElement>(dateInputSelector);
+  if (!input) return;
+  input.placeholder = 'dd-mm-aa';
+  const normalized = toShortYearDate(input.value);
+  if (normalized === input.value) return;
+  setNativeInputValue(input, normalized);
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
 export function InspectionAreaSectorFilterBridge() {
   const [target, setTarget] = useState<AreaSectorTarget | null>(null);
   const [value, setValue] = useState('');
@@ -35,6 +55,7 @@ export function InspectionAreaSectorFilterBridge() {
   useEffect(() => {
     function syncTarget() {
       const nextTarget = findAreaSectorTarget();
+      normalizeDateInput();
       if (!nextTarget) {
         setTarget(null);
         return;
@@ -51,17 +72,22 @@ export function InspectionAreaSectorFilterBridge() {
 
     syncTarget();
     const observer = new MutationObserver(syncTarget);
+    const interval = window.setInterval(normalizeDateInput, 100);
     observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      window.clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {
-    if (!target) return undefined;
+    const currentTarget = target;
+    if (!currentTarget) return undefined;
     function syncValue() {
-      setValue(target.select.value);
+      setValue(currentTarget.select.value);
     }
-    target.select.addEventListener('change', syncValue);
-    return () => target.select.removeEventListener('change', syncValue);
+    currentTarget.select.addEventListener('change', syncValue);
+    return () => currentTarget.select.removeEventListener('change', syncValue);
   }, [target]);
 
   function changeValue(nextValue: string) {

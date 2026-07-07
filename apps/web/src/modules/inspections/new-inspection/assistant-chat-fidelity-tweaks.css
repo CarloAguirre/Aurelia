@@ -230,3 +230,30 @@
   margin-right: 12px !important;
   box-sizing: border-box;
 }
+
+.new-inspection-modal-panel > div[class*="border-t"][class*="bg-white"][class*="px-[14px]"] {
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.new-inspection-modal-panel > div[class*="border-t"][class*="bg-white"][class*="px-[14px]"] > button[class*="bg-[#35A137]"] {
+  display: flex !important;
+  width: 100% !important;
+  height: 48px !important;
+  min-height: 48px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  border-radius: 12px !important;
+  background: #35a137 !important;
+  color: #ffffff !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-align: center !important;
+  box-sizing: border-box !important;
+  padding: 0 16px !important;
+}

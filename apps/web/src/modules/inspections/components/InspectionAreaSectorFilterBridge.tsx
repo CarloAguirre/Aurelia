@@ -29,8 +29,10 @@ function readSelectLabel(select: HTMLSelectElement) {
 
 function toShortYearDate(value: string) {
   const match = value.match(/^(\d{2}-\d{2})-(\d{4})$/);
-  if (!match) return value;
-  return `${match[1]}-${match[2].slice(-2)}`;
+  const prefix = match?.[1];
+  const year = match?.[2];
+  if (!prefix || !year) return value;
+  return `${prefix}-${year.slice(-2)}`;
 }
 
 function setNativeInputValue(input: HTMLInputElement, value: string) {

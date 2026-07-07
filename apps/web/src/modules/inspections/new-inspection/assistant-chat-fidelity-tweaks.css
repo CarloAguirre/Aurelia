@@ -222,7 +222,8 @@
   font-weight: 700;
 }
 
-.new-inspection-modal-panel div[class*="w-[286px]"][class*="max-w-[calc(100%-45px)]"][class*="rounded-[10px]"][class*="border-[#E3E3E3]"] {
+.new-inspection-modal-panel div[class*="w-[286px]"][class*="max-w-[calc(100%-45px)]"][class*="rounded-[10px]"][class*="border-[#E3E3E3]"],
+.new-inspection-modal-panel div[class*="ml-[33px]"][class*="mr-[12px]"][class*="rounded-[10px]"][class*="border-[#E3E3E3]"][class*="bg-white"]:has(> div > span[class*="bg-[#E6F3FF]"]) {
   width: calc(100% - 24px) !important;
   max-width: calc(100% - 24px) !important;
   margin-left: 12px !important;

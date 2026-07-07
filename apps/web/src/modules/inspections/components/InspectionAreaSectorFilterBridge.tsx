@@ -35,18 +35,13 @@ function toShortYearDate(value: string) {
   return `${prefix}-${year.slice(-2)}`;
 }
 
-function setNativeInputValue(input: HTMLInputElement, value: string) {
-  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
-  setter?.call(input, value);
-}
-
 function normalizeDateInput() {
   const input = document.querySelector<HTMLInputElement>(dateInputSelector);
   if (!input) return;
   input.placeholder = 'dd-mm-aa';
   const normalized = toShortYearDate(input.value);
   if (normalized === input.value) return;
-  setNativeInputValue(input, normalized);
+  input.value = normalized;
   input.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
@@ -85,13 +80,13 @@ export function InspectionAreaSectorFilterBridge() {
   }, []);
 
   useEffect(() => {
-    const currentTarget = target;
-    if (!currentTarget) return undefined;
+    if (!target) return undefined;
+    const select = target.select;
     function syncValue() {
-      setValue(currentTarget.select.value);
+      setValue(select.value);
     }
-    currentTarget.select.addEventListener('change', syncValue);
-    return () => currentTarget.select.removeEventListener('change', syncValue);
+    select.addEventListener('change', syncValue);
+    return () => select.removeEventListener('change', syncValue);
   }, [target]);
 
   function changeValue(nextValue: string) {

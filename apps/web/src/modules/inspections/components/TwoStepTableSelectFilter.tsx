@@ -25,9 +25,10 @@ function splitOption(option: string) {
   const normalized = option.trim();
   const separator = separators.find((item) => normalized.includes(item));
   if (!separator) return { group: normalized, label: normalized };
-  const [group, ...rest] = normalized.split(separator);
-  const label = rest.join(separator).trim();
-  return { group: group.trim(), label: label || normalized };
+  const parts = normalized.split(separator);
+  const group = parts[0]?.trim() ?? normalized;
+  const label = parts.slice(1).join(separator).trim();
+  return { group, label: label || normalized };
 }
 
 function buildGroups(options: string[]) {

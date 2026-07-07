@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { InspectionType } from '@aurelia/contracts';
 import { AssistantChatStep } from '../new-inspection/steps/AssistantChatStepV4';
 import { useSubmitNewInspection } from '../new-inspection/hooks/useSubmitNewInspection';
-import { clearNewInspectionDraftSnapshot, loadNewInspectionDraftSnapshot, useNewInspectionDraftStore } from '../new-inspection/state/newInspectionDraft.store';
+import { clearNewInspectionDraftSnapshot, loadNewInspectionDraftSnapshot, type NewInspectionDraft, useNewInspectionDraftStore } from '../new-inspection/state/newInspectionDraft.store';
 import { openAssistantDraftEventName } from './IncompleteDraftResumeControllerBridge';
 
 function ChatBackIcon() {
@@ -15,6 +16,80 @@ function ChatAureliaIcon() {
 
 function ChatMoreIcon() {
   return <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden><circle cx="9" cy="4" r="1.5" fill="currentColor" /><circle cx="9" cy="9" r="1.5" fill="currentColor" /><circle cx="9" cy="14" r="1.5" fill="currentColor" /></svg>;
+}
+
+function nowLabel() {
+  return new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+}
+
+function displayDate(value: string) {
+  return value ? value.replaceAll('-', '/') : '';
+}
+
+function BotMark() {
+  return <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-[#C8A064] text-[#001E39]"><ChatAureliaIcon /></div>;
+}
+
+function BotBubble({ children }: { children: ReactNode }) {
+  return <div className="mb-[10px] flex w-full items-end gap-[7px]"><BotMark /><div className="max-w-[286px] rounded-[16px] border border-[#E3E3E3] bg-white px-[13px] py-[11px] shadow-[0_1px_3px_rgba(0,0,0,0.12)]"><div className="text-[15px] leading-[22px] text-[#131313] [&_strong]:font-bold [&_strong]:text-[#131313]">{children}</div><p className="mt-[7px] text-[12px] leading-none text-[#ACACAC]">{nowLabel()}</p></div></div>;
+}
+
+function UserBubble({ children }: { children: ReactNode }) {
+  return <div className="mb-[10px] ml-auto max-w-[78%] rounded-[16px] bg-[#002659] px-[13px] py-[10px] shadow-[0_1px_3px_rgba(0,0,0,0.08)]"><div className="text-[13px] font-semibold leading-[18px] text-white">{children}</div><p className="mt-[6px] text-[11px] leading-none text-[rgba(255,255,255,0.55)]">{nowLabel()}</p></div>;
+}
+
+function ReconstructedTranscript({ draft }: { draft: NewInspectionDraft }) {
+  const currentObservation = draft.findingObservations.find((item) => !item.saved) ?? draft.findingObservations[draft.findingObservations.length - 1] ?? null;
+  return (
+    <div data-aurelia-reconstructed-chat="true">
+      <BotBubble>¡Hola, <strong>{draft.inspectorName}</strong>! 👋 Soy AurelIA. Voy a ayudarte a registrar esta inspección de forma rápida. ¿En qué <strong>área</strong> estás hoy?</BotBubble>
+      {draft.areaName ? <UserBubble>{draft.areaName}</UserBubble> : null}
+      {draft.areaName ? <BotBubble>Perfecto, <strong>{draft.areaName}</strong> ✓. Ahora el sector — ¿en cuál específicamente?</BotBubble> : null}
+      {draft.sectorName ? <UserBubble>{draft.sectorName}</UserBubble> : null}
+      {draft.areaName && draft.sectorName && draft.inspectionTypeSelected ? <BotBubble><strong>{draft.areaName} · {draft.sectorName} ✓</strong>. ¿Qué tipo de inspección es?</BotBubble> : null}
+      {draft.inspectionTypeSelected ? <UserBubble>{draft.inspectionTypeLabel || 'Hallazgo'}</UserBubble> : null}
+      {draft.inspectionTypeSelected && draft.inspectionDateSelected ? <BotBubble>Selecciona la <strong>fecha de inspección</strong>.</BotBubble> : null}
+      {draft.inspectionDateSelected ? <UserBubble>{displayDate(draft.inspectionDate)}</UserBubble> : null}
+      {draft.inspectionDateSelected && draft.locationCaptured ? <BotBubble>Capturemos la <strong>ubicación obligatoria</strong>.</BotBubble> : null}
+      {draft.locationCaptured ? <UserBubble>Ubicación capturada · {draft.locationAccuracyLabel}</UserBubble> : null}
+      {draft.locationCaptured && draft.findingTypeLabel ? <BotBubble>Selecciona el <strong>tipo de hallazgo</strong>.</BotBubble> : null}
+      {draft.findingTypeLabel ? <UserBubble>{draft.findingTypeLabel}</UserBubble> : null}
+      {draft.findingTypeLabel && currentObservation?.detectedCondition ? <BotBubble>Cuéntame la condición subestándar que detectaste en <strong>{draft.areaName} · {draft.sectorName}</strong>.</BotBubble> : null}
+      {currentObservation?.detectedCondition ? <UserBubble>{currentObservation.detectedCondition}</UserBubble> : null}
+      {currentObservation?.evidence ? <BotBubble>Entendido. Adjunta una foto del hallazgo:</BotBubble> : null}
+      {currentObservation?.evidence ? <BotBubble>Foto recibida ✓. Analicé el historial de <strong>{draft.areaName}</strong> y te propongo:</BotBubble> : null}
+      {currentObservation?.correctiveAction ? <UserBubble>{currentObservation.correctiveActionSource === 'ai' ? '✓ Medida aceptada' : currentObservation.correctiveAction}</UserBubble> : null}
+      {currentObservation?.severityLabel ? <BotBubble>Definamos la criticidad del hallazgo.</BotBubble> : null}
+      {currentObservation?.severityLabel ? <UserBubble>{currentObservation.severityLabel}</UserBubble> : null}
+      {currentObservation?.saved ? <BotBubble>Llevas <strong>{draft.findingObservations.filter((item) => item.saved).length} observación</strong>. Revisa antes de continuar.</BotBubble> : null}
+      {draft.findingCompanyName ? <UserBubble>✓ {draft.findingCompanyName} confirmada</UserBubble> : null}
+    </div>
+  );
+}
+
+function TranscriptPortal({ draft }: { draft: NewInspectionDraft }) {
+  const [host, setHost] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    function syncHost() {
+      const panel = document.querySelector('.new-inspection-modal-panel');
+      const scroller = panel?.querySelector('div.flex-1.overflow-y-auto.bg-\[\#F4F6F9\]') as HTMLElement | null;
+      if (!scroller) return;
+      let nextHost = scroller.querySelector('[data-aurelia-transcript-host="true"]') as HTMLElement | null;
+      if (!nextHost) {
+        nextHost = document.createElement('div');
+        nextHost.dataset.aureliaTranscriptHost = 'true';
+        scroller.insertBefore(nextHost, scroller.firstChild);
+      }
+      setHost(nextHost);
+    }
+    syncHost();
+    const timer = window.setInterval(syncHost, 150);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  if (!host) return null;
+  return createPortal(<ReconstructedTranscript draft={draft} />, host);
 }
 
 function TypeResumeStep({ onBack, onCancel, onSelect }: { onBack: () => void; onCancel: () => void; onSelect: (type: InspectionType, label: string) => void }) {
@@ -30,7 +105,8 @@ function TypeResumeStep({ onBack, onCancel, onSelect }: { onBack: () => void; on
         <div className="px-[16px] pb-[7px]"><div className="mb-[5px] flex gap-[3px]">{Array.from({ length: 6 }).map((_, index) => <div key={index} className={`h-[3px] flex-1 rounded ${index === 0 ? 'bg-[rgba(200,160,100,0.75)]' : 'bg-[rgba(255,255,255,0.22)]'}`} />)}</div><div className="flex h-[17px] items-center justify-between"><p className="text-[12px] font-bold leading-none text-[rgba(255,255,255,0.72)]">Paso 1 · Identificación</p><p className="text-[12px] font-bold leading-none text-[rgba(255,255,255,0.72)]">14%</p></div></div>
       </div>
       <div className="flex-1 overflow-y-auto bg-[#F4F6F9] px-[12px] pb-[16px] pt-[12px]">
-        <div className="mb-[10px] flex w-full items-end gap-[7px]"><div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-[#C8A064] text-[#001E39]"><ChatAureliaIcon /></div><div className="max-w-[286px] rounded-[16px] border border-[#E3E3E3] bg-white px-[13px] py-[11px] shadow-[0_1px_3px_rgba(0,0,0,0.12)]"><p className="text-[15px] leading-[22px] text-[#131313]"><strong>{draft.areaName} · {draft.sectorName} ✓</strong>. ¿Qué tipo de inspección es?</p><p className="mt-[7px] text-[12px] leading-none text-[#ACACAC]">Retomado</p></div></div>
+        <ReconstructedTranscript draft={draft} />
+        <div className="mb-[10px] flex w-full items-end gap-[7px]"><BotMark /><div className="max-w-[286px] rounded-[16px] border border-[#E3E3E3] bg-white px-[13px] py-[11px] shadow-[0_1px_3px_rgba(0,0,0,0.12)]"><p className="text-[15px] leading-[22px] text-[#131313]"><strong>{draft.areaName} · {draft.sectorName} ✓</strong>. ¿Qué tipo de inspección es?</p><p className="mt-[7px] text-[12px] leading-none text-[#ACACAC]">Retomado</p></div></div>
         <div className="mb-[10px] ml-[33px] flex flex-col gap-[6px]">
           <button type="button" onClick={() => onSelect(InspectionType.ENVIRONMENTAL, 'Hallazgo')} className="flex min-h-[34px] items-center justify-center gap-[8px] rounded-full border-[1.5px] border-[#D1D1D1] bg-white px-[13.5px] py-[6px] text-[13px] font-semibold leading-[16px] text-[#0d3862]">⌕ Hallazgo</button>
           <button type="button" onClick={() => onSelect(InspectionType.REGULATORY, 'Checklist normativo')} className="flex min-h-[34px] items-center justify-center gap-[8px] rounded-full border-[1.5px] border-[#D1D1D1] bg-white px-[13.5px] py-[6px] text-[13px] font-semibold leading-[16px] text-[#0d3862]">▣ Checklist normativo</button>
@@ -98,7 +174,7 @@ export function AssistantDraftResumeModalBridge() {
     <div className="fixed inset-0 z-[1000] bg-[rgba(0,0,0,0.68)]">
       <div className="flex h-full w-full items-center justify-end px-[20px] py-[16px]">
         <div className="new-inspection-modal-panel relative flex h-[calc(100vh-32px)] max-h-[920px] w-[360px] max-w-[calc(100vw-40px)] flex-col overflow-hidden rounded-[22px] bg-white shadow-[0_24px_70px_rgba(0,0,0,0.35)]">
-          {typePending ? <TypeResumeStep onBack={closeOnly} onCancel={closeAndDiscard} onSelect={selectType} /> : <AssistantChatStep onBack={closeOnly} onSave={saveInspection} onCancelInspection={closeAndDiscard} saving={submitMutation.isPending} errorMessage={submitMutation.error instanceof Error ? submitMutation.error.message : null} resumeFromDraft />}
+          {typePending ? <TypeResumeStep onBack={closeOnly} onCancel={closeAndDiscard} onSelect={selectType} /> : <><AssistantChatStep onBack={closeOnly} onSave={saveInspection} onCancelInspection={closeAndDiscard} saving={submitMutation.isPending} errorMessage={submitMutation.error instanceof Error ? submitMutation.error.message : null} resumeFromDraft /><TranscriptPortal draft={draft} /></>}
         </div>
       </div>
     </div>

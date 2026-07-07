@@ -221,3 +221,11 @@
   font-size: 15px;
   font-weight: 700;
 }
+
+.new-inspection-modal-panel div[class*="w-[286px]"][class*="max-w-[calc(100%-45px)]"][class*="rounded-[10px]"][class*="border-[#E3E3E3]"] {
+  width: calc(100% - 24px) !important;
+  max-width: calc(100% - 24px) !important;
+  margin-left: 12px !important;
+  margin-right: 12px !important;
+  box-sizing: border-box;
+}

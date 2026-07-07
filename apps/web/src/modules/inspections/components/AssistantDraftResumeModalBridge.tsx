@@ -67,13 +67,20 @@ function ReconstructedTranscript({ draft }: { draft: NewInspectionDraft }) {
   );
 }
 
+function findChatScroller() {
+  const panel = document.querySelector('.new-inspection-modal-panel');
+  return Array.from(panel?.querySelectorAll('div') ?? []).find((node) => {
+    const className = node.className.toString();
+    return className.includes('flex-1') && className.includes('overflow-y-auto') && className.includes('bg-[#F4F6F9]');
+  }) as HTMLElement | undefined;
+}
+
 function TranscriptPortal({ draft }: { draft: NewInspectionDraft }) {
   const [host, setHost] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     function syncHost() {
-      const panel = document.querySelector('.new-inspection-modal-panel');
-      const scroller = panel?.querySelector('div.flex-1.overflow-y-auto.bg-\[\#F4F6F9\]') as HTMLElement | null;
+      const scroller = findChatScroller();
       if (!scroller) return;
       let nextHost = scroller.querySelector('[data-aurelia-transcript-host="true"]') as HTMLElement | null;
       if (!nextHost) {

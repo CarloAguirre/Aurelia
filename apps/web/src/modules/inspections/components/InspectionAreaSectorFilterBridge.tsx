@@ -73,5 +73,5 @@ export function InspectionAreaSectorFilterBridge() {
 
   if (!target) return null;
 
-  return createPortal(<TwoStepTableSelectFilter value={value} onChange={changeValue} width={184} allLabel={allLabel} options={options} />, target.host);
+  return createPortal(<div className="absolute left-0 top-0 z-[1]"><TwoStepTableSelectFilter value={value} onChange={changeValue} width={184} allLabel={allLabel} options={options} /></div>, target.host);
 }

@@ -43,7 +43,7 @@ export class InspectionEntity {
   title: string;
 
   get code(): string {
-    return this.title;
+    return '';
   }
 
   @Column({ type: 'text', nullable: true })

@@ -26,3 +26,73 @@
 div[class*="bg-[#f7f7f7]"] > div[class*="pt-[16px]"] > div[class*="shadow-[0px_1px_4px"] {
   margin-top: 12px;
 }
+
+table thead tr:nth-child(2) td:nth-child(2) div.relative > div.absolute {
+  top: 30px;
+  width: 248px;
+  padding: 12px;
+  border: 1px solid #d1d1d1;
+  border-radius: 6px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
+}
+
+table thead tr:nth-child(2) td:nth-child(2) div.relative:not(:focus-within) > div.absolute {
+  display: none;
+}
+
+table thead tr:nth-child(2) td:nth-child(2) div.relative button svg {
+  width: 18px;
+  height: 18px;
+}
+
+table thead tr:nth-child(2) td:nth-child(2) div.relative button svg rect {
+  fill: #646464;
+}
+
+table thead tr:nth-child(2) td:nth-child(2) div.relative button svg path {
+  stroke: #ffffff;
+}
+
+table thead tr:nth-child(2) td:nth-child(2) div.absolute > div:first-child button:first-child {
+  gap: 4px;
+  font-size: 13px;
+}
+
+table thead tr:nth-child(2) td:nth-child(2) div.absolute > div:first-child button:first-child span {
+  font-size: 10px;
+}
+
+table thead tr:nth-child(2) td:nth-child(2) div.absolute > div:first-child > div {
+  gap: 8px;
+  padding-right: 0;
+  font-size: 18px;
+}
+
+table thead tr:nth-child(2) td:nth-child(2) div.absolute > div:first-child > div button {
+  width: 22px;
+  height: 22px;
+}
+
+table thead tr:nth-child(2) td:nth-child(2) div.absolute > div:nth-child(2) {
+  margin-top: 14px;
+  font-size: 11px;
+}
+
+table thead tr:nth-child(2) td:nth-child(2) div.absolute > div:nth-child(3) {
+  margin-top: 10px;
+  row-gap: 5px;
+  font-size: 13px;
+  line-height: 26px;
+}
+
+table thead tr:nth-child(2) td:nth-child(2) div.absolute > div:nth-child(3) button {
+  width: 26px;
+  height: 26px;
+}
+
+table thead tr:nth-child(2) td:nth-child(2) div.absolute > div:last-child {
+  margin-top: 12px;
+  padding-left: 4px;
+  padding-right: 4px;
+  font-size: 13px;
+}

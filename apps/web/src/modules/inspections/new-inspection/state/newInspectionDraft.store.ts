@@ -27,10 +27,13 @@ export interface NewInspectionChecklistItemDetail {
   slaLabel?: string | null;
 }
 
+export type NewInspectionCorrectiveActionSource = 'ai' | 'manual' | null;
+
 export interface NewInspectionFindingObservationDraft {
   id: string;
   detectedCondition: string;
   correctiveAction: string;
+  correctiveActionSource: NewInspectionCorrectiveActionSource;
   evidence: NewInspectionPickedAsset | null;
   severityId: string | null;
   severityLabel: string | null;
@@ -143,6 +146,20 @@ function stripAsset(asset: NewInspectionPickedAsset | null | undefined): NewInsp
   return { name: asset.name };
 }
 
+function normalizeFindingObservation(observation: Partial<NewInspectionFindingObservationDraft> & { id: string }): NewInspectionFindingObservationDraft {
+  return {
+    id: observation.id,
+    detectedCondition: observation.detectedCondition ?? '',
+    correctiveAction: observation.correctiveAction ?? '',
+    correctiveActionSource: observation.correctiveActionSource ?? null,
+    evidence: stripAsset(observation.evidence),
+    severityId: observation.severityId ?? null,
+    severityLabel: observation.severityLabel ?? null,
+    severityClosureTimeLabel: observation.severityClosureTimeLabel ?? null,
+    saved: observation.saved ?? false,
+  };
+}
+
 function serializableDraft(draft: NewInspectionDraft): NewInspectionDraft {
   return {
     ...draft,
@@ -156,10 +173,7 @@ function serializableDraft(draft: NewInspectionDraft): NewInspectionDraft {
         },
       ]),
     ),
-    findingObservations: draft.findingObservations.map((observation) => ({
-      ...observation,
-      evidence: stripAsset(observation.evidence),
-    })),
+    findingObservations: draft.findingObservations.map(normalizeFindingObservation),
   };
 }
 
@@ -254,6 +268,7 @@ export const useNewInspectionDraftStore = create<NewInspectionDraftState>((set) 
           id,
           detectedCondition: '',
           correctiveAction: '',
+          correctiveActionSource: null,
           evidence: null,
           severityId: null,
           severityLabel: null,

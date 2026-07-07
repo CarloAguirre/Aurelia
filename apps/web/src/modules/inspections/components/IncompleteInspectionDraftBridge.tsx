@@ -5,12 +5,21 @@ import { clearNewInspectionDraftSnapshot, loadNewInspectionDraftSnapshot } from 
 
 type DraftSnapshot = NonNullable<ReturnType<typeof loadNewInspectionDraftSnapshot>>;
 
+type DraftProgress = {
+  step: number;
+  percent: number;
+};
+
 const hostId = 'aurelia-incomplete-inspection-draft-host';
 const resumeDraftEventName = 'aurelia:resume-new-inspection-draft';
 const resumeDraftStorageKey = 'aurelia:resume-new-inspection-draft';
 
 function isInspectionsRoute() {
   return window.location.pathname.startsWith('/inspections');
+}
+
+function isInspectionModalOpen() {
+  return document.querySelector('.new-inspection-modal-panel') !== null;
 }
 
 function findPageContent() {
@@ -67,17 +76,32 @@ function draftSubtitle(snapshot: DraftSnapshot) {
 
 function snapshotKey(snapshot: DraftSnapshot | null) {
   if (!snapshot) return 'empty';
-  return [snapshot.savedAt, snapshot.draft.areaId, snapshot.draft.sectorId, snapshot.draft.inspectionType, snapshot.draft.findingTypeId, snapshot.draft.templateId, snapshot.draft.locationCaptured ? '1' : '0'].join('|');
+  return [
+    snapshot.savedAt,
+    snapshot.draft.areaId,
+    snapshot.draft.sectorId,
+    snapshot.draft.inspectionType,
+    snapshot.draft.findingTypeId,
+    snapshot.draft.templateId,
+    snapshot.draft.locationCaptured ? '1' : '0',
+    snapshot.draft.findingObservations.length,
+    snapshot.draft.findingCompanyId,
+    snapshot.draft.findingResponsibleIds.join(','),
+  ].join('|');
 }
 
-function resolveDraftStep(snapshot: DraftSnapshot) {
+function resolveDraftProgress(snapshot: DraftSnapshot): DraftProgress {
   const draft = snapshot.draft;
-  if (!draft.areaId || !draft.sectorId) return 1;
-  if (!draft.locationCaptured) return 2;
-  if (!draft.findingTypeId && !draft.templateId) return 2;
-  if (draft.findingObservations.length === 0 && Object.keys(draft.answersByItemId).length === 0) return 3;
-  if (!draft.findingCompanyId && draft.findingResponsibleIds.length === 0) return 4;
-  return 5;
+  const savedObservations = draft.findingObservations.filter((item) => item.saved);
+  const currentObservation = draft.findingObservations.find((item) => !item.saved) ?? draft.findingObservations[draft.findingObservations.length - 1] ?? null;
+  if (!draft.areaId || !draft.sectorId) return { step: 1, percent: 14 };
+  if (!draft.locationCaptured || (!draft.findingTypeId && !draft.templateId)) return { step: 2, percent: 28 };
+  if (!currentObservation && Object.keys(draft.answersByItemId).length === 0) return { step: 2, percent: 28 };
+  if (currentObservation && (!currentObservation.detectedCondition || !currentObservation.evidence)) return { step: 2, percent: 28 };
+  if (currentObservation && (!currentObservation.correctiveAction || !currentObservation.severityId || !currentObservation.saved)) return { step: 3, percent: 42 };
+  if (savedObservations.length > 0 && !draft.findingCompanyId) return { step: 4, percent: 57 };
+  if (draft.findingCompanyId && draft.findingResponsibleIds.length === 0) return { step: 5, percent: 71 };
+  return { step: 5, percent: 86 };
 }
 
 function clickNewInspectionButton() {
@@ -94,8 +118,7 @@ function ChevronRightIcon() {
 }
 
 function IncompleteDraftBanner({ snapshot, onResume, onDiscard }: { snapshot: DraftSnapshot; onResume: () => void; onDiscard: () => void }) {
-  const step = resolveDraftStep(snapshot);
-  const progress = Math.max(20, Math.min(100, step * 20));
+  const progress = resolveDraftProgress(snapshot);
   return (
     <div className="relative w-full overflow-hidden rounded-[12px] border border-[#e3e3e3] bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
       <div className="flex min-h-[92px] items-stretch">
@@ -109,12 +132,12 @@ function IncompleteDraftBanner({ snapshot, onResume, onDiscard }: { snapshot: Dr
             <p className="truncate font-['Inter:Bold',sans-serif] text-[13px] font-bold leading-[15.5px] text-[#131313]">{draftKind(snapshot)} · {draftArea(snapshot)}</p>
             <p className="mt-[3px] truncate font-['Inter:Regular',sans-serif] text-[11px] font-normal leading-[normal] text-[#646464]">{draftSubtitle(snapshot)}</p>
             <div className="mt-[8px] flex items-center gap-[8px]">
-              <div className="h-[4px] min-w-[120px] flex-1 overflow-hidden rounded-[2px] bg-[#e3e3e3]"><div className="h-[4px] rounded-[2px] bg-[#c8a064]" style={{ width: `${progress}%` }} /></div>
-              <span className="w-[30px] shrink-0 font-['Inter:Bold',sans-serif] text-[10px] font-bold leading-[12px] text-[#8e6e3e]">{progress}%</span>
+              <div className="h-[4px] min-w-[120px] flex-1 overflow-hidden rounded-[2px] bg-[#e3e3e3]"><div className="h-[4px] rounded-[2px] bg-[#c8a064]" style={{ width: `${progress.percent}%` }} /></div>
+              <span className="w-[30px] shrink-0 font-['Inter:Bold',sans-serif] text-[10px] font-bold leading-[12px] text-[#8e6e3e]">{progress.percent}%</span>
             </div>
           </div>
           <ChevronRightIcon />
-          <span className="absolute right-[46px] top-[11.5px] rounded-[6px] border border-[#e8c86a] bg-[#ffeab8] px-[7px] py-[2px] font-['Inter:Bold',sans-serif] text-[10px] font-bold leading-[12px] text-[#463100]">Paso {step}/5</span>
+          <span className="absolute right-[46px] top-[11.5px] rounded-[6px] border border-[#e8c86a] bg-[#ffeab8] px-[7px] py-[2px] font-['Inter:Bold',sans-serif] text-[10px] font-bold leading-[12px] text-[#463100]">Paso {progress.step}/5</span>
         </button>
       </div>
       <div className="absolute left-[210px] top-[11.4px] size-[16px] rounded-[8px] bg-[#c4365a]" />
@@ -129,7 +152,8 @@ export function IncompleteInspectionDraftBridge(): JSX.Element | null {
 
   useEffect(() => {
     function sync() {
-      const nextSnapshot = isInspectionsRoute() ? loadNewInspectionDraftSnapshot() : null;
+      const storedSnapshot = isInspectionsRoute() ? loadNewInspectionDraftSnapshot() : null;
+      const nextSnapshot = storedSnapshot ?? (isInspectionModalOpen() ? snapshot : null);
       const nextHost = nextSnapshot ? findOrCreateHost() : null;
       setSnapshot((previous) => (snapshotKey(previous) === snapshotKey(nextSnapshot) ? previous : nextSnapshot));
       setHost((previous) => (previous === nextHost ? previous : nextHost));
@@ -137,7 +161,7 @@ export function IncompleteInspectionDraftBridge(): JSX.Element | null {
     }
 
     sync();
-    const interval = window.setInterval(sync, 1500);
+    const interval = window.setInterval(sync, 500);
     window.addEventListener('storage', sync);
     window.addEventListener('focus', sync);
     window.addEventListener('popstate', sync);
@@ -147,7 +171,7 @@ export function IncompleteInspectionDraftBridge(): JSX.Element | null {
       window.removeEventListener('focus', sync);
       window.removeEventListener('popstate', sync);
     };
-  }, []);
+  }, [snapshot]);
 
   function resumeDraft() {
     window.sessionStorage.setItem(resumeDraftStorageKey, '1');

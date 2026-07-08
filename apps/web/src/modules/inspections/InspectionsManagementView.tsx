@@ -3,6 +3,7 @@ import type { InspectionManagementKpisResponse, InspectionManagementTableFilterO
 import { useInspectionManagementKpis } from '../../shared/hooks/useInspectionManagementKpis';
 import { useInspectionManagementTable } from '../../shared/hooks/useInspectionManagementTable';
 import type { InspectionManagementPageSize, InspectionManagementTableParams } from '../../shared/services/inspections.service';
+import { InspectionDetailModal, type InspectionDetailModalRecord } from './components/InspectionDetailModal';
 import { ClearFiltersIcon } from './components/InspectionManagementIcons';
 import { NewInspectionModalController } from './new-inspection/NewInspectionModalController';
 
@@ -221,6 +222,40 @@ function formatTypedDate(value: string) {
   return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;
 }
 
+function expandedYearDate(value: string) {
+  const parts = value.split('-');
+  if (parts.length !== 3) return value;
+  const [day, month, year] = parts;
+  return `${day}-${month}-${year.length === 2 ? `20${year}` : year}`;
+}
+
+function readObsCount(row: Row, token: string) {
+  const item = row.obs.find((value) => value.toLowerCase().includes(token));
+  if (!item) return 0;
+  const value = Number(item.match(/\d+/)?.[0] ?? 0);
+  return Number.isNaN(value) ? 0 : value;
+}
+
+function buildInspectionDetailRecord(row: Row): InspectionDetailModalRecord {
+  const kind = row.type.toLowerCase().includes('check') ? 'checklist' : 'finding';
+  const title = row.company && !row.area.includes(row.company) ? `${row.area} · ${row.company}` : row.area;
+  const date = expandedYearDate(row.date);
+  return {
+    id: row.id,
+    title,
+    kind,
+    metadataLine1: kind === 'checklist' ? 'Checklist · SUSPEL - General - FR-00007' : `${row.type} · ${date} · Campamento Antiguo`,
+    metadataLine2: kind === 'checklist' ? `${date} · Campamento Antiguo` : 'Tipo de hallazgo: [Tipo seleccionado en el form de insp]',
+    progressPercent: row.closure,
+    counts: {
+      executed: readObsCount(row, 'ejec'),
+      open: readObsCount(row, 'abier'),
+      closed: readObsCount(row, 'cer'),
+      rejected: 1,
+    },
+  };
+}
+
 function KpiIcon({ kind, color }: { kind: KpiIconKind; color: string }) {
   const className = 'h-[11px] w-[13.75px] shrink-0';
   if (kind === 'total') return <svg className={className} fill="none" viewBox="0 0 13.75 11" aria-hidden><rect x="2.25" y="0.75" width="7.5" height="9.5" rx="1.2" stroke={color} strokeWidth="1.5" /><path d="M4.25 3.2h3.4M4.25 5.4h3.4M4.25 7.6h2" stroke={color} strokeWidth="1.2" strokeLinecap="round" /></svg>;
@@ -357,16 +392,16 @@ function getObsBadge(item: string) {
   return { tone: 'yellow' as const, icon: 'clock' as const };
 }
 
-function ActionsDropdown() {
+function ActionsDropdown({ onViewDetails }: { onViewDetails: () => void }) {
   return (
     <div className="absolute right-0 top-[32px] z-[90] flex w-[220px] flex-col items-start rounded-[12px] border border-[#d1d1d1] bg-white p-[8px] shadow-[0px_4px_8px_rgba(19,19,19,0.24)]">
-      <button type="button" className="flex h-[40px] w-full items-center rounded-[8px] bg-white px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313]">Ver detalles</button>
+      <button type="button" onClick={onViewDetails} className="flex h-[40px] w-full items-center rounded-[8px] bg-white px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313]">Ver detalles</button>
       <button type="button" className="flex h-[40px] w-full items-center rounded-[8px] px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313]">PDF (.pdf)</button>
     </div>
   );
 }
 
-function InspectionTable({ rows, total, page, totalPages, pageSize, isLoading, isError, filters, options, sort, onSort, onFilterChange, onClearFilters, onPageChange, onPageSizeChange }: { rows: Row[]; total: number; page: number; totalPages: number; pageSize: InspectionManagementPageSize; isLoading: boolean; isError: boolean; filters: TableFilters; options: InspectionManagementTableFilterOptionsResponse; sort: SortState; onSort: (key: SortKey) => void; onFilterChange: (key: TableFilterKey, value: string) => void; onClearFilters: () => void; onPageChange: (page: number) => void; onPageSizeChange: (pageSize: InspectionManagementPageSize) => void }) {
+function InspectionTable({ rows, total, page, totalPages, pageSize, isLoading, isError, filters, options, sort, onSort, onFilterChange, onClearFilters, onPageChange, onPageSizeChange, onViewDetails }: { rows: Row[]; total: number; page: number; totalPages: number; pageSize: InspectionManagementPageSize; isLoading: boolean; isError: boolean; filters: TableFilters; options: InspectionManagementTableFilterOptionsResponse; sort: SortState; onSort: (key: SortKey) => void; onFilterChange: (key: TableFilterKey, value: string) => void; onClearFilters: () => void; onPageChange: (page: number) => void; onPageSizeChange: (pageSize: InspectionManagementPageSize) => void; onViewDetails: (row: Row) => void }) {
   const [openActionKey, setOpenActionKey] = useState<string | null>(null);
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
@@ -413,7 +448,7 @@ function InspectionTable({ rows, total, page, totalPages, pageSize, isLoading, i
                 <td className="border-b border-[#e3e3e3] bg-white px-[12px] py-[8.5px] text-center align-middle">
                   <div className="relative inline-flex">
                     <button className="inline-flex size-[26px] items-center justify-center rounded-[5px] border border-[#e3e3e3] bg-white p-px" type="button" aria-haspopup="menu" aria-expanded={openActionKey === row.uniqueKey} onClick={() => setOpenActionKey((current) => current === row.uniqueKey ? null : row.uniqueKey)}><MoreIcon /></button>
-                    {openActionKey === row.uniqueKey ? <ActionsDropdown /> : null}
+                    {openActionKey === row.uniqueKey ? <ActionsDropdown onViewDetails={() => { onViewDetails(row); setOpenActionKey(null); }} /> : null}
                   </div>
                 </td>
               </tr>
@@ -429,6 +464,7 @@ function InspectionTable({ rows, total, page, totalPages, pageSize, isLoading, i
 
 export function InspectionsManagementView() {
   const [newInspectionOpen, setNewInspectionOpen] = useState(false);
+  const [selectedDetail, setSelectedDetail] = useState<InspectionDetailModalRecord | null>(null);
   const [filters, setFilters] = useState<TableFilters>(emptyTableFilters);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<InspectionManagementPageSize>(10);
@@ -467,6 +503,10 @@ export function InspectionsManagementView() {
     setNewInspectionOpen(true);
   }
 
+  function openInspectionDetail(row: Row) {
+    setSelectedDetail(buildInspectionDetailRecord(row));
+  }
+
   function handleSort(key: SortKey) {
     setSort((current) => nextSort(current, key));
   }
@@ -476,9 +516,10 @@ export function InspectionsManagementView() {
       <div className="flex h-[calc(100vh-56px)] w-full flex-col items-start overflow-x-hidden overflow-y-auto bg-[#f7f7f7] px-[24px] py-[20px]">
         <div className="grid w-full grid-cols-[repeat(auto-fit,minmax(244px,1fr))] gap-[12px]"><KpiCard icon="total" iconColor="#24588b" label={`Total ${kpis.year}`} value={kpis.totalInspections} helper={kpis.totalHelper} /><KpiCard icon="open" iconColor="#806000" label="Inspecciones abiertas" value={kpis.openInspections} helper={kpis.openHelper} valueClass="text-[#463100]" /><KpiCard icon="approval" iconColor="#bd3b5b" label="Pend. de aprobación" value={kpis.pendingApproval} helper="Ejecutadas esperando Admin GF" valueClass="text-[#bd3b5b]" /><KpiCard icon="closed" iconColor="#53bd49" label="% Obs. cerradas" value={kpis.closedFindingsRate} helper="Meta >99%" valueClass="text-[#2a5c16]" /></div>
         <ActiveFiltersBar filters={activeFilters} onRemove={removeFilter} onNewInspection={openNewInspection} />
-        <div className="w-full pt-[16px]"><InspectionTable rows={tableRows} total={total} page={tableQuery.data?.page ?? page} totalPages={totalPages} pageSize={pageSize} isLoading={tableQuery.isLoading} isError={tableQuery.isError} filters={filters} options={filterOptions} sort={sort} onSort={handleSort} onFilterChange={updateFilter} onClearFilters={clearFilters} onPageChange={setPage} onPageSizeChange={changePageSize} /></div>
+        <div className="w-full pt-[16px]"><InspectionTable rows={tableRows} total={total} page={tableQuery.data?.page ?? page} totalPages={totalPages} pageSize={pageSize} isLoading={tableQuery.isLoading} isError={tableQuery.isError} filters={filters} options={filterOptions} sort={sort} onSort={handleSort} onFilterChange={updateFilter} onClearFilters={clearFilters} onPageChange={setPage} onPageSizeChange={changePageSize} onViewDetails={openInspectionDetail} /></div>
       </div>
       <NewInspectionModalController open={newInspectionOpen} onClose={() => setNewInspectionOpen(false)} />
+      <InspectionDetailModal open={Boolean(selectedDetail)} record={selectedDetail} onClose={() => setSelectedDetail(null)} />
     </>
   );
 }

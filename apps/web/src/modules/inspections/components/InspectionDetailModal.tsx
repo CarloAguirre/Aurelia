@@ -3,6 +3,7 @@ import {
   InspectionDetailApproveIcon,
   InspectionDetailCaretDownIcon,
   InspectionDetailCloseIcon,
+  InspectionDetailFollowupIcon,
   InspectionDetailImageIcon,
   InspectionDetailPdfIcon,
   InspectionDetailRejectIcon,
@@ -30,6 +31,7 @@ type InspectionDetailModalProps = {
 };
 
 type StatusKey = InspectionDetailIconStatus;
+type DetailTab = 'observations' | 'result' | 'followups' | 'general';
 
 type StatusConfig = {
   key: StatusKey;
@@ -46,6 +48,19 @@ type OpenFindingObservation = {
   severityClassName: string;
 };
 
+type TabConfig = {
+  id: DetailTab;
+  label: string;
+};
+
+type FollowupStep = {
+  title: string;
+  date: string;
+  summary?: string;
+  bullets?: string[];
+  completed: boolean;
+};
+
 const statusConfigByKey: Record<StatusKey, StatusConfig> = {
   executed: { key: 'executed', label: 'Ejecutadas', chipLabel: 'Ejecutada', itemLabel: 'Ejecutado', textClass: 'text-[#570b1d]', chipClass: 'bg-[#ffd0db] text-[#570b1d]' },
   open: { key: 'open', label: 'Abiertas', chipLabel: 'Abiertas', itemLabel: 'Abierto', textClass: 'text-[#463100]', chipClass: 'bg-[#ffeab8] text-[#463100]' },
@@ -58,6 +73,17 @@ const openFindingObservations: OpenFindingObservation[] = [
   { idLabel: 'Obs. 2', severityLabel: 'Moderado', severityClassName: 'bg-[#fbe1d0] text-[#69462e]' },
   { idLabel: 'Obs. 3', severityLabel: 'Menor', severityClassName: 'bg-[#e0ffd3] text-[#2a5c16]' },
 ];
+const followupSteps: FollowupStep[] = [
+  { title: 'Inspección inicial', date: '03-06-2026', summary: '5 observaciones detectadas', completed: true },
+  { title: 'Seguimiento 1', date: '[dd-mm-aaaa (Fecha de primer seguimiento)]', bullets: ['Observaciones cerradas: 1 obs / 20%', 'Observaciones pendientes: 4 obs / 80%'], completed: true },
+  { title: 'Seguimiento 2', date: '—', completed: false },
+  { title: 'Seguimiento 3', date: '—', completed: false },
+];
+
+function getTabs(kind: InspectionDetailModalKind): TabConfig[] {
+  if (kind === 'checklist') return [{ id: 'observations', label: 'Ítems No' }, { id: 'result', label: 'Resultado completo' }, { id: 'followups', label: 'Seguimientos' }, { id: 'general', label: 'Datos generales' }];
+  return [{ id: 'observations', label: 'Observaciones' }, { id: 'followups', label: 'Seguimientos' }, { id: 'general', label: 'Datos generales' }];
+}
 
 function StatusChip({ status, count }: { status: StatusKey; count: number }) {
   const config = statusConfigByKey[status];
@@ -74,9 +100,9 @@ function ProgressSummary({ counts, progressPercent }: { counts: Record<StatusKey
   );
 }
 
-function Tabs({ kind }: { kind: InspectionDetailModalKind }) {
-  const tabs = kind === 'checklist' ? ['Ítems No', 'Resultado completo', 'Seguimientos', 'Datos generales'] : ['Observaciones', 'Seguimientos', 'Datos generales'];
-  return <div className="grid shrink-0 border-b-2 border-[#e3e3e3] bg-[#f7f7f7]" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>{tabs.map((tab, index) => <button key={tab} type="button" className={`flex h-[37px] items-center justify-center border-b-2 px-[6px] pb-[2px] text-center font-['Inter:Semi_Bold',sans-serif] text-[12px] font-semibold leading-[14px] ${index === 0 ? 'border-[#c8a064] text-[#8e6e3e]' : 'border-transparent text-[#646464]'}`}>{tab}</button>)}</div>;
+function Tabs({ kind, activeTab, onChange }: { kind: InspectionDetailModalKind; activeTab: DetailTab; onChange: (tab: DetailTab) => void }) {
+  const tabs = getTabs(kind);
+  return <div className="grid shrink-0 border-b-2 border-[#e3e3e3] bg-[#f7f7f7]" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>{tabs.map((tab) => <button key={tab.id} type="button" onClick={() => onChange(tab.id)} className={`flex h-[37px] items-center justify-center border-b-2 px-[6px] pb-[2px] text-center font-['Inter:Semi_Bold',sans-serif] text-[12px] font-semibold leading-[14px] ${tab.id === activeTab ? 'border-[#c8a064] text-[#8e6e3e]' : 'border-transparent text-[#646464]'}`}>{tab.label}</button>)}</div>;
 }
 
 function StatusRow({ config, count, expanded, onToggle }: { config: StatusConfig; count: number; expanded: boolean; onToggle: () => void }) {
@@ -206,8 +232,8 @@ function RejectedFindingObservationsPanel() {
   return <div className="flex shrink-0 flex-col bg-white px-[14px] pb-[24px] pt-[14px]"><RejectedFindingObservationCard /></div>;
 }
 
-function DetailRows({ kind, counts }: { kind: InspectionDetailModalKind; counts: Record<StatusKey, number> }) {
-  const [expandedStatus, setExpandedStatus] = useState<StatusKey | null>(kind === 'checklist' ? 'open' : 'open');
+function DetailRows({ counts }: { counts: Record<StatusKey, number> }) {
+  const [expandedStatus, setExpandedStatus] = useState<StatusKey | null>('open');
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-white">
       {statusConfigs.map((config) => {
@@ -217,6 +243,44 @@ function DetailRows({ kind, counts }: { kind: InspectionDetailModalKind; counts:
       })}
     </div>
   );
+}
+
+function FollowupTimelineMarker({ completed }: { completed: boolean }) {
+  return <div className={`flex size-[24px] shrink-0 items-center justify-center rounded-[12px] text-[10px] font-normal leading-none ${completed ? 'bg-[#6cc24a] text-white' : 'bg-[#e3e3e3] text-[#acacac]'}`}>{completed ? '✓' : '○'}</div>;
+}
+
+function FollowupTimelineItem({ step, isLast }: { step: FollowupStep; isLast: boolean }) {
+  return (
+    <div className={`relative flex w-full gap-[12px] ${isLast ? '' : 'pb-[16px]'}`}>
+      <FollowupTimelineMarker completed={step.completed} />
+      {!isLast ? <div className={`absolute left-[11px] top-[24px] w-[2px] bg-[#e3e3e3] ${step.bullets ? 'h-[38px]' : 'h-[23px]'}`} /> : null}
+      <div className="min-w-0 flex-1 pt-[2px]">
+        <p className="text-[12px] font-bold leading-none text-[#131313]">{step.title}</p>
+        <p className="pt-[4px] text-[11px] font-normal leading-none text-[#646464]">{step.date}</p>
+        {step.summary ? <p className="pt-[5px] text-[11px] font-normal leading-none text-[#646464]">{step.summary}</p> : null}
+        {step.bullets ? <ul className="list-disc pt-[4px] pl-[20px] text-[11px] font-normal leading-[14px] text-[#646464]">{step.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}</ul> : null}
+      </div>
+    </div>
+  );
+}
+
+function FollowupsPanel() {
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto bg-white px-[14px] py-[20px]">
+      <div className="flex items-center gap-[6px]"><InspectionDetailFollowupIcon /><p className="text-[11px] font-bold uppercase leading-none tracking-[0.55px] text-[#646464]">Historial de seguimientos</p></div>
+      <div className="pt-[10px]">{followupSteps.map((step, index) => <FollowupTimelineItem key={step.title} step={step} isLast={index === followupSteps.length - 1} />)}</div>
+    </div>
+  );
+}
+
+function EmptyDetailPanel() {
+  return <div className="min-h-0 flex-1 bg-white" />;
+}
+
+function DetailContent({ activeTab, counts }: { activeTab: DetailTab; counts: Record<StatusKey, number> }) {
+  if (activeTab === 'followups') return <FollowupsPanel />;
+  if (activeTab === 'observations' || activeTab === 'result') return <DetailRows counts={counts} />;
+  return <EmptyDetailPanel />;
 }
 
 function DownloadPdfButton() {
@@ -238,6 +302,7 @@ function buildDetailMockCounts(record: InspectionDetailModalRecord): Record<Stat
 }
 
 export function InspectionDetailModal({ open, record, onClose }: InspectionDetailModalProps) {
+  const [activeTab, setActiveTab] = useState<DetailTab>('observations');
   if (!open || !record) return null;
   const counts: Record<StatusKey, number> = buildDetailMockCounts(record);
   const progressPercent = record.progressPercent ?? 20;
@@ -249,8 +314,8 @@ export function InspectionDetailModal({ open, record, onClose }: InspectionDetai
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="shrink-0 rounded-t-[16px] bg-white px-[14px] py-[12px]"><div className="flex items-center gap-[12px]"><div className="min-w-0 flex-1 font-['Inter:Bold',sans-serif] font-bold"><p className="whitespace-nowrap text-[13px] leading-none text-[#001e39]">{record.id}</p><h2 id="inspection-detail-title" className="mt-[5px] text-[16px] font-bold leading-[22px] tracking-[0.32px] text-[#2a2a2a]">{record.title}</h2><div className="mt-[4px]">{metadataFor(record)}</div></div><button type="button" className="flex size-[32px] shrink-0 items-center justify-center" onClick={onClose} aria-label="Cerrar detalle"><InspectionDetailCloseIcon /></button></div></div>
             <ProgressSummary counts={counts} progressPercent={progressPercent} />
-            <Tabs kind={record.kind} />
-            <DetailRows kind={record.kind} counts={counts} />
+            <Tabs kind={record.kind} activeTab={activeTab} onChange={setActiveTab} />
+            <DetailContent activeTab={activeTab} counts={counts} />
           </div>
           <DownloadPdfButton />
         </section>

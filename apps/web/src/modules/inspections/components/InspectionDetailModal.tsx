@@ -27,12 +27,14 @@ type StatusConfig = {
   dotClass: string;
 };
 
-const statusConfigs: StatusConfig[] = [
-  { key: 'executed', label: 'Ejecutadas', chipLabel: 'Ejecutada', textClass: 'text-[#570b1d]', chipClass: 'bg-[#ffd0db] text-[#570b1d]', dotClass: 'bg-[#570b1d]' },
-  { key: 'open', label: 'Abiertas', chipLabel: 'Abiertas', textClass: 'text-[#463100]', chipClass: 'bg-[#ffeab8] text-[#463100]', dotClass: 'bg-[#463100]' },
-  { key: 'closed', label: 'Cerradas', chipLabel: 'Cerrada', textClass: 'text-[#2a5c16]', chipClass: 'bg-[#e0ffd3] text-[#2a5c16]', dotClass: 'bg-[#2a5c16]' },
-  { key: 'rejected', label: 'Rechazadas', chipLabel: 'Rechazada', textClass: 'text-[#646464]', chipClass: 'bg-[#f7f7f7] text-[#646464]', dotClass: 'bg-[#646464]' },
-];
+const statusConfigByKey: Record<StatusKey, StatusConfig> = {
+  executed: { key: 'executed', label: 'Ejecutadas', chipLabel: 'Ejecutada', textClass: 'text-[#570b1d]', chipClass: 'bg-[#ffd0db] text-[#570b1d]', dotClass: 'bg-[#570b1d]' },
+  open: { key: 'open', label: 'Abiertas', chipLabel: 'Abiertas', textClass: 'text-[#463100]', chipClass: 'bg-[#ffeab8] text-[#463100]', dotClass: 'bg-[#463100]' },
+  closed: { key: 'closed', label: 'Cerradas', chipLabel: 'Cerrada', textClass: 'text-[#2a5c16]', chipClass: 'bg-[#e0ffd3] text-[#2a5c16]', dotClass: 'bg-[#2a5c16]' },
+  rejected: { key: 'rejected', label: 'Rechazadas', chipLabel: 'Rechazada', textClass: 'text-[#646464]', chipClass: 'bg-[#f7f7f7] text-[#646464]', dotClass: 'bg-[#646464]' },
+};
+
+const statusConfigs = Object.values(statusConfigByKey);
 
 function CloseIcon() {
   return <svg className="size-[32px]" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M7 7 25 25M25 7 7 25" stroke="#131313" strokeWidth="2.4" strokeLinecap="round" /></svg>;
@@ -47,7 +49,7 @@ function PdfIcon() {
 }
 
 function StatusDot({ status }: { status: StatusKey }) {
-  const config = statusConfigs.find((item) => item.key === status) ?? statusConfigs[0];
+  const config = statusConfigByKey[status];
   if (status === 'closed') {
     return <span className={`relative inline-flex h-[11px] w-[13.75px] items-center justify-center rounded-full ${config.dotClass}`}><svg className="h-[7px] w-[8px]" viewBox="0 0 8 7" fill="none" aria-hidden="true"><path d="M1.4 3.5 3 5.1 6.5 1.5" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg></span>;
   }
@@ -58,7 +60,7 @@ function StatusDot({ status }: { status: StatusKey }) {
 }
 
 function StatusChip({ status, count }: { status: StatusKey; count: number }) {
-  const config = statusConfigs.find((item) => item.key === status) ?? statusConfigs[0];
+  const config = statusConfigByKey[status];
   return <span className={`inline-flex h-[16px] items-center gap-[3px] rounded-[5px] px-[7px] py-[2px] font-['Inter:Semi_Bold',sans-serif] text-[10px] font-semibold leading-none ${config.chipClass}`}><span className={`size-[6px] rounded-full ${config.dotClass}`} />{count} {config.chipLabel}</span>;
 }
 

@@ -23,6 +23,7 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <DashboardPage /> },
+      { path: 'inspections/dashboard', element: <DashboardPage /> },
       { path: 'inspections', element: <InspectionsPage /> },
       { path: 'incidents', element: <IncidentsPage /> },
       { path: 'critical-controls', element: <CriticalControlsPage /> },

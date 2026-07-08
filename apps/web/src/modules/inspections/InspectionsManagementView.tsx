@@ -225,7 +225,10 @@ function formatTypedDate(value: string) {
 function expandedYearDate(value: string) {
   const parts = value.split('-');
   if (parts.length !== 3) return value;
-  const [day, month, year] = parts;
+  const day = parts[0];
+  const month = parts[1];
+  const year = parts[2];
+  if (!day || !month || !year) return value;
   return `${day}-${month}-${year.length === 2 ? `20${year}` : year}`;
 }
 

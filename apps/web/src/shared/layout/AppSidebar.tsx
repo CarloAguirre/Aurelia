@@ -24,12 +24,17 @@ type SidebarIconName =
   | 'role'
   | 'more';
 
+type SidebarTone = 'green' | 'gold';
+type SidebarLineMode = 'single' | 'double';
+
 type SidebarChildItem = {
   label: string;
   to?: string;
   end?: boolean;
   icon?: SidebarIconName;
   disabled?: boolean;
+  lineMode?: SidebarLineMode;
+  tone?: SidebarTone;
 };
 
 type SidebarItem = {
@@ -49,10 +54,10 @@ const mainItems: SidebarItem[] = [
     icon: 'search',
     to: '/inspections',
     children: [
-      { label: 'Dashboard', to: '/', end: true },
-      { label: 'Gestión de inspecciones', to: '/inspections', end: true },
-      { label: 'Historial', disabled: true },
-      { label: 'Administración', icon: 'sliders', disabled: true },
+      { label: 'Dashboard', to: '/inspections/dashboard', end: true, lineMode: 'single' },
+      { label: 'Gestión de inspecciones', to: '/inspections', end: true, lineMode: 'double' },
+      { label: 'Historial', disabled: true, lineMode: 'single' },
+      { label: 'Administración', to: '/inspections/admin', icon: 'sliders', disabled: true, lineMode: 'single', tone: 'gold' },
     ],
   },
   { label: 'Incidentes', icon: 'alert', disabled: true, badge: 'Próximo' },
@@ -127,16 +132,7 @@ function iconPath(name: SidebarIconName) {
 function SidebarIcon({ name, active = false, className = '' }: { name: SidebarIconName; active?: boolean; className?: string }) {
   const strokeIcon = name !== 'dashboard';
   return (
-    <svg
-      aria-hidden
-      className={`shrink-0 ${className}`}
-      fill={strokeIcon ? 'none' : 'currentColor'}
-      stroke={strokeIcon ? 'currentColor' : 'none'}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="1.8"
-      viewBox="0 0 24 24"
-    >
+    <svg aria-hidden className={`shrink-0 ${className}`} fill={strokeIcon ? 'none' : 'currentColor'} stroke={strokeIcon ? 'currentColor' : 'none'} strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" viewBox="0 0 24 24">
       <path d={iconPath(name)} opacity={active ? 1 : undefined} />
     </svg>
   );
@@ -152,11 +148,7 @@ function SidebarSectionTitle({ children }: { children: ReactNode }) {
 }
 
 function ComingSoonBadge() {
-  return (
-    <span className="flex h-[14px] shrink-0 items-center rounded-[4px] bg-[rgba(255,255,255,0.07)] px-[6px] font-['Inter:Semi_Bold',sans-serif] text-[8.5px] font-semibold leading-none text-[rgba(255,255,255,0.32)]">
-      Próximo
-    </span>
-  );
+  return <span className="flex h-[14px] shrink-0 items-center rounded-[4px] bg-[rgba(255,255,255,0.07)] px-[6px] font-['Inter:Semi_Bold',sans-serif] text-[8.5px] font-semibold leading-none text-[rgba(255,255,255,0.32)]">Próximo</span>;
 }
 
 function SidebarModuleItem({ item }: { item: SidebarItem }) {
@@ -173,15 +165,11 @@ function SidebarModuleItem({ item }: { item: SidebarItem }) {
   }
 
   return (
-    <button className={baseClass} disabled={item.disabled && !item.to} onClick={handleClick} type="button" aria-current={isActive ? 'page' : undefined}>
+    <button aria-current={isActive ? 'page' : undefined} className={baseClass} disabled={item.disabled && !item.to} onClick={handleClick} type="button">
       <SidebarIcon name={item.icon} active={isActive} className={`h-[17px] w-[18px] ${isActive ? 'text-[#00b398]' : 'text-[rgba(255,255,255,0.38)]'}`} />
       <span className={`min-w-0 flex-1 truncate font-['Inter:Medium',sans-serif] text-[12.5px] font-medium leading-[15px] ${isActive ? 'text-white' : 'text-[rgba(255,255,255,0.55)]'}`}>{item.label}</span>
       {item.badge ? <ComingSoonBadge /> : null}
-      {hasChildren ? (
-        <svg aria-hidden className="h-[10px] w-[12.5px] shrink-0 rotate-90 text-[rgba(255,255,255,0.4)]" fill="currentColor" viewBox="0 0 12.5 10">
-          <path d="M3.2 1.2 8.1 5 3.2 8.8" />
-        </svg>
-      ) : null}
+      {hasChildren ? <svg aria-hidden className="h-[10px] w-[12.5px] shrink-0 rotate-90 text-[rgba(255,255,255,0.4)]" fill="currentColor" viewBox="0 0 12.5 10"><path d="M3.2 1.2 8.1 5 3.2 8.8" /></svg> : null}
     </button>
   );
 }
@@ -190,18 +178,37 @@ function SidebarSubItem({ item }: { item: SidebarChildItem }) {
   const location = useLocation();
   const navigate = useNavigate();
   const isActive = item.to ? isRouteActive(location.pathname, item.to, item.end) : false;
-  const className = `relative w-full rounded-[6px] text-left transition-colors duration-150 ${isActive ? 'h-[41px] bg-[rgba(0,179,152,0.09)]' : 'h-[26.5px] hover:bg-[rgba(255,255,255,0.04)]'}`;
+  const hasIcon = Boolean(item.icon);
+  const isDoubleLine = item.lineMode === 'double';
+  const tone = item.tone ?? 'green';
+  const activeColor = tone === 'gold' ? '#c8a064' : '#00b398';
+  const activeBg = tone === 'gold' ? 'bg-[rgba(255,255,255,0.055)]' : 'bg-[rgba(0,179,152,0.09)]';
+  const activeHeight = hasIcon ? 'h-[32px]' : isDoubleLine ? 'h-[41px]' : 'h-[26.5px]';
+  const inactiveHeight = hasIcon ? 'h-[22px]' : 'h-[26.5px]';
+  const className = `relative w-full rounded-[6px] text-left transition-colors duration-150 ${isActive ? `${activeHeight} ${activeBg}` : `${inactiveHeight} hover:bg-[rgba(255,255,255,0.04)]`}`;
 
   function handleClick() {
     if (item.to && !item.disabled) navigate(item.to);
   }
 
+  if (hasIcon) {
+    return (
+      <button aria-current={isActive ? 'page' : undefined} className={className} disabled={item.disabled} onClick={handleClick} type="button">
+        {isActive ? <span className="absolute left-[23px] top-[9.5px] h-[13px] w-[2.5px] rounded-[2px]" style={{ backgroundColor: activeColor }} /> : null}
+        <SidebarIcon name={item.icon as SidebarIconName} active={isActive} className={`absolute left-[38px] ${isActive ? 'top-[11px]' : 'top-[6px]'} h-[10px] w-[12px] ${isActive ? 'text-[#c8a064]' : 'text-[rgba(255,255,255,0.22)]'}`} />
+        <span className={`absolute left-[58px] ${isActive ? 'top-[14px]' : 'top-[9px]'} size-[4px] rounded-[2px]`} style={{ backgroundColor: isActive ? activeColor : 'rgba(255,255,255,0.12)' }} />
+        <span className={`absolute left-[70px] ${isActive ? 'top-[8.5px] text-[12px] font-semibold text-[#c8a064]' : 'top-[4px] text-[11px] font-medium text-[rgba(255,255,255,0.32)]'} truncate font-['Inter:Semi_Bold',sans-serif] leading-[14px]`}>{item.label}</span>
+      </button>
+    );
+  }
+
+  const barTop = isDoubleLine ? 'top-[14px]' : 'top-[6.75px]';
+  const dotTop = isDoubleLine ? 'top-[18.5px]' : 'top-[11.25px]';
   return (
-    <button className={className} disabled={item.disabled && !item.to} onClick={handleClick} type="button" aria-current={isActive ? 'page' : undefined}>
-      {isActive ? <span className="absolute left-[23px] top-[14px] h-[13px] w-[2.5px] rounded-[2px] bg-[#00b398]" /> : null}
-      {item.icon ? <SidebarIcon name={item.icon} className="absolute left-[38px] top-[4px] h-[10px] w-[12px] text-[rgba(255,255,255,0.22)]" /> : null}
-      <span className={`absolute size-[4px] rounded-[2px] ${isActive ? 'left-[39.5px] top-[18.5px] bg-[#00b398]' : item.icon ? 'left-[58px] top-[6.5px] bg-[rgba(255,255,255,0.12)]' : 'left-[39.5px] top-[11.25px] bg-[rgba(255,255,255,0.2)]'}`} />
-      <span className={`absolute font-['Inter:Semi_Bold',sans-serif] leading-[14px] ${isActive ? 'left-[50.5px] top-[6px] max-w-[140px] whitespace-normal text-[12px] font-semibold text-[#00b398]' : item.icon ? 'left-[70px] top-[1.5px] text-[11px] font-medium text-[rgba(255,255,255,0.32)]' : 'left-[50.5px] top-[6px] whitespace-nowrap text-[12px] font-normal text-[rgba(255,255,255,0.44)]'}`}>{item.label}</span>
+    <button aria-current={isActive ? 'page' : undefined} className={className} disabled={item.disabled} onClick={handleClick} type="button">
+      {isActive ? <span className={`absolute left-[23px] ${barTop} h-[13px] w-[2.5px] rounded-[2px] bg-[#00b398]`} /> : null}
+      <span className={`absolute left-[39.5px] ${isActive ? dotTop : 'top-[11.25px]'} size-[4px] rounded-[2px] ${isActive ? 'bg-[#00b398]' : 'bg-[rgba(255,255,255,0.2)]'}`} />
+      <span className={`absolute left-[50.5px] top-[6px] max-w-[140px] font-['Inter:Semi_Bold',sans-serif] text-[12px] leading-[14px] ${isActive ? 'font-semibold text-[#00b398]' : 'font-normal text-[rgba(255,255,255,0.44)]'} ${isDoubleLine ? 'whitespace-normal' : 'whitespace-nowrap'}`}>{item.label}</span>
     </button>
   );
 }
@@ -210,14 +217,8 @@ function SidebarChildren({ children }: { children: SidebarChildItem[] }) {
   return (
     <div className="flex max-h-[400px] w-full flex-col overflow-hidden">
       {children.slice(0, 3).map((item) => <SidebarSubItem key={item.label} item={item} />)}
-      <div className="w-full pl-[38px] pr-[10px] pt-[4px]">
-        <div className="h-px w-full bg-[rgba(255,255,255,0.06)]" />
-      </div>
-      {children.slice(3).map((item) => (
-        <div key={item.label} className="w-full pt-[4px]">
-          <SidebarSubItem item={item} />
-        </div>
-      ))}
+      <div className="w-full pl-[38px] pr-[10px] pt-[4px]"><div className="h-px w-full bg-[rgba(255,255,255,0.06)]" /></div>
+      {children.slice(3).map((item) => <div key={item.label} className="w-full pt-[4px]"><SidebarSubItem item={item} /></div>)}
     </div>
   );
 }
@@ -226,21 +227,12 @@ function SidebarNotifications() {
   return (
     <div className="flex w-full flex-col gap-[8px]">
       <div className="flex w-full items-center justify-between px-[8px] pb-[6px] pt-[2px]">
-        <div className="flex items-center gap-[4px] text-[rgba(255,255,255,0.28)]">
-          <SidebarIcon name="bell" className="h-[13px] w-[13.75px]" />
-          <span className="font-['Inter:Regular',sans-serif] text-[11px] font-normal leading-none">Notificaciones</span>
-        </div>
+        <div className="flex items-center gap-[4px] text-[rgba(255,255,255,0.28)]"><SidebarIcon name="bell" className="h-[13px] w-[13.75px]" /><span className="font-['Inter:Regular',sans-serif] text-[11px] font-normal leading-none">Notificaciones</span></div>
         <span className="flex size-[16px] items-center justify-center rounded-[8px] bg-[#c4365a] font-['Inter:Bold',sans-serif] text-[9px] font-bold leading-none text-white">7</span>
       </div>
       <div className="flex w-full items-center justify-between px-[8px] pb-[6px] pt-[2px]">
-        <div className="flex items-center gap-[4px] text-[rgba(255,255,255,0.28)]">
-          <SidebarIcon name="globe" className="h-[13px] w-[13.75px]" />
-          <span className="font-['Inter:Regular',sans-serif] text-[11px] font-normal leading-none">Idioma</span>
-        </div>
-        <div className="flex h-[18px] w-[60.32px] overflow-hidden rounded-[20px] border border-[rgba(255,255,255,0.1)] p-px">
-          <div className="relative h-full w-[29.695px]"><span className="absolute left-[8px] top-[2px] font-['Inter:Bold',sans-serif] text-[10px] font-bold leading-none text-[rgba(255,255,255,0.3)]">EN</span></div>
-          <div className="relative h-full w-[28.625px] bg-[#00b398]"><span className="absolute left-[8px] top-[2px] font-['Inter:Bold',sans-serif] text-[10px] font-bold leading-none text-white">ES</span></div>
-        </div>
+        <div className="flex items-center gap-[4px] text-[rgba(255,255,255,0.28)]"><SidebarIcon name="globe" className="h-[13px] w-[13.75px]" /><span className="font-['Inter:Regular',sans-serif] text-[11px] font-normal leading-none">Idioma</span></div>
+        <div className="flex h-[18px] w-[60.32px] overflow-hidden rounded-[20px] border border-[rgba(255,255,255,0.1)] p-px"><div className="relative h-full w-[29.695px]"><span className="absolute left-[8px] top-[2px] font-['Inter:Bold',sans-serif] text-[10px] font-bold leading-none text-[rgba(255,255,255,0.3)]">EN</span></div><div className="relative h-full w-[28.625px] bg-[#00b398]"><span className="absolute left-[8px] top-[2px] font-['Inter:Bold',sans-serif] text-[10px] font-bold leading-none text-white">ES</span></div></div>
       </div>
     </div>
   );
@@ -250,13 +242,7 @@ function SidebarUser() {
   return (
     <div className="flex w-full items-center gap-[8px] rounded-[7px] px-[8px] py-[6px]">
       <div className="flex size-[28px] shrink-0 items-center justify-center rounded-[14px] bg-[#c8a064] font-['Inter:Bold',sans-serif] text-[11px] font-bold leading-none text-[#001e39]">KO</div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-['Inter:Semi_Bold',sans-serif] text-[11.5px] font-semibold leading-[14px] text-[rgba(255,255,255,0.75)]">Karen Opazo S.</p>
-        <div className="mt-[1px] flex items-center gap-[4px] text-[rgba(255,255,255,0.32)]">
-          <SidebarIcon name="role" className="h-[8px] w-[10px]" />
-          <p className="truncate font-['Inter:Regular',sans-serif] text-[10px] font-normal leading-[12px]">Admin GF HSE</p>
-        </div>
-      </div>
+      <div className="min-w-0 flex-1"><p className="truncate font-['Inter:Semi_Bold',sans-serif] text-[11.5px] font-semibold leading-[14px] text-[rgba(255,255,255,0.75)]">Karen Opazo S.</p><div className="mt-[1px] flex items-center gap-[4px] text-[rgba(255,255,255,0.32)]"><SidebarIcon name="role" className="h-[8px] w-[10px]" /><p className="truncate font-['Inter:Regular',sans-serif] text-[10px] font-normal leading-[12px]">Admin GF HSE</p></div></div>
       <SidebarIcon name="more" className="h-[11px] w-[13.75px] text-[rgba(255,255,255,0.2)]" />
     </div>
   );
@@ -266,17 +252,12 @@ export function AppSidebar() {
   return (
     <>
       <DashboardSidebarTopBrandBar />
-      <aside className="fixed bottom-0 left-0 top-[56px] z-[80] flex w-[220px] flex-col overflow-hidden bg-gradient-to-b from-[#002659] to-[#004a3a]" aria-label="Navegación lateral">
+      <aside aria-label="Navegación lateral" className="fixed bottom-0 left-0 top-[56px] z-[80] flex w-[220px] flex-col overflow-hidden bg-gradient-to-b from-[#002659] to-[#004a3a]">
         <div className="min-h-0 flex-1 overflow-hidden pb-[4px]">
           <div className="flex w-full flex-col items-start px-[10px] pb-[6px] pt-[8px]">
             <SidebarSectionTitle>Módulos</SidebarSectionTitle>
             <div className="flex w-full flex-col items-start">
-              {mainItems.map((item) => (
-                <div key={item.label} className="w-full">
-                  <SidebarModuleItem item={item} />
-                  {item.children ? <SidebarChildren>{item.children}</SidebarChildren> : null}
-                </div>
-              ))}
+              {mainItems.map((item) => <div key={item.label} className="w-full"><SidebarModuleItem item={item} />{item.children ? <SidebarChildren>{item.children}</SidebarChildren> : null}</div>)}
             </div>
           </div>
           <div className="flex w-full flex-col items-start px-[10px] py-[6px]">
@@ -284,10 +265,7 @@ export function AppSidebar() {
             {configItems.map((item) => <SidebarModuleItem key={item.label} item={item} />)}
           </div>
         </div>
-        <div className="w-[220px] shrink-0 border-t border-[rgba(255,255,255,0.08)] bg-[rgba(0,38,89,0.6)] px-[10px] pb-[10px] pt-[9px]">
-          <SidebarNotifications />
-          <SidebarUser />
-        </div>
+        <div className="w-[220px] shrink-0 border-t border-[rgba(255,255,255,0.08)] bg-[rgba(0,38,89,0.6)] px-[10px] pb-[10px] pt-[9px]"><SidebarNotifications /><SidebarUser /></div>
       </aside>
     </>
   );

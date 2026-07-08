@@ -4,6 +4,7 @@ import { useDashboardChartsFiltered } from './hooks/useDashboardChartsFiltered';
 import { useDashboardCompanyAnalysisFiltered } from './hooks/useDashboardCompanyAnalysisFiltered';
 import { useDashboardKpisFiltered } from './hooks/useDashboardKpisFiltered';
 import { useDashboardDetailsFiltered } from './hooks/useDashboardDetailsFiltered';
+import { AppSidebar } from '../../shared/layout/AppSidebar';
 import { useInspectionDashboardCompanies } from '../../shared/hooks/useInspectionDashboardCompanies';
 import type { InspectionDashboardPeriod } from '../../shared/services/inspections.service';
 import {
@@ -27,8 +28,6 @@ import {
   DashboardMainPanelsLayout,
   DashboardSecondaryPanelStack,
   DashboardPageHeader,
-  DashboardSidebar,
-  DashboardSidebarTopBrandBar,
   DashboardTopKpis,
 } from './components/DashboardSections';
 import {
@@ -47,7 +46,6 @@ import { DashboardFigmaCompanyAnalysisChart } from './components/DashboardFigmaC
 import { DashboardFigmaOpenFindingsDetailsTable } from './components/DashboardFigmaOpenFindingsDetailsTable';
 import { DashboardPeriodLite, getCurrentDashboardPeriod } from './components/DashboardPeriodLite';
 import { DashboardCompanyFilter } from './components/DashboardCompanyFilter';
-import { DashboardSidebarNavigationOverlay } from './components/DashboardSidebarNavigationOverlay';
 import {
   DashboardCompanyCardOpenCompanies,
   DashboardCompanyCardOpenDays,
@@ -106,9 +104,7 @@ export function DashboardPage() {
 
   return (
     <div className="relative h-screen w-full overflow-hidden" data-name="Dashboard inspecciones">
-      <DashboardSidebarTopBrandBar />
-      <DashboardSidebar />
-      <DashboardSidebarNavigationOverlay />
+      <AppSidebar />
       <DashboardFrameShell
         header={<DashboardPageHeader />}
         content={

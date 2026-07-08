@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
-import { AiSuggestDto, AiSuggestResponse, AiSuggestType } from './dto/ai-suggest.dto';
+import { AiSuggestType, type AiSuggestResponse } from '@aurelia/contracts';
+import { AiSuggestDto } from './dto/ai-suggest.dto';
 
 const FALLBACKS: Record<AiSuggestType, string> = {
   [AiSuggestType.CORRECTIVE_MEASURE]:

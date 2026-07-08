@@ -1,6 +1,7 @@
 import { Body, Controller, Post } from '@nestjs/common';
+import type { AiSuggestResponse } from '@aurelia/contracts';
 import { AiService } from './ai.service';
-import { AiSuggestDto, AiSuggestResponse } from './dto/ai-suggest.dto';
+import { AiSuggestDto } from './dto/ai-suggest.dto';
 
 @Controller('ai')
 export class AiController {

@@ -6,10 +6,12 @@ import { router } from 'expo-router';
 import {
   InspectionAnswerValue,
   InspectionType,
+  type CompanyResponse,
   type InspectionChecklistItem,
   type InspectionChecklistTemplateResponse,
   type InspectionFindingSeverityResponse,
   type InspectionFindingTypeResponse,
+  type UserResponse,
 } from '@aurelia/contracts';
 import { BotBubble } from '../../shared/components/chat/BotBubble';
 import { UserBubble } from '../../shared/components/chat/UserBubble';
@@ -108,13 +110,13 @@ interface FindingNextData {
 }
 
 interface CompanyPickData {
-  companies: Array<{ id: string; name: string; isContractor: boolean }>;
-  company: { id: string; name: string; isContractor: boolean };
+  companies: CompanyResponse[];
+  company: CompanyResponse;
   reason: string;
 }
 
 interface PeopleData {
-  users: Array<{ id: string; fullName: string; firstName: string; lastName: string; position?: string | null }>;
+  users: UserResponse[];
   suggestedUserId: string | null;
 }
 
@@ -1105,7 +1107,7 @@ export function InspectionChatScreenV2() {
     push('companies', companies);
   }
 
-  async function selectCompany(company: { id: string; name: string; isContractor: boolean }, messageId: string) {
+  async function selectCompany(company: CompanyResponse, messageId: string) {
     markResolved(messageId);
     draft.setFindingCompany(company.id, company.name);
     push('user', `${company.name} confirmada`);
@@ -1143,7 +1145,7 @@ export function InspectionChatScreenV2() {
     }
   }
 
-  async function confirmPeople(users: Array<{ id: string; fullName: string }>, messageId: string) {
+  async function confirmPeople(users: UserResponse[], messageId: string) {
     setConfirmedPeople((prev) => new Set(prev).add(messageId));
 
     if (users.length === 0) {
@@ -1776,7 +1778,7 @@ export function InspectionChatScreenV2() {
     }
 
     if (message.t === 'companies') {
-      const companies = message.data as Array<{ id: string; name: string; isContractor: boolean }>;
+      const companies = message.data as CompanyResponse[];
       return (
         <ChipRow
           key={message.id}
@@ -1795,7 +1797,7 @@ export function InspectionChatScreenV2() {
     }
 
     if (message.t === 'people') {
-      const payload = message.data as PeopleData | Array<{ id: string; fullName: string; firstName: string; lastName: string; position?: string | null }>;
+      const payload = message.data as PeopleData | UserResponse[];
       const users = Array.isArray(payload) ? payload : payload.users;
       const suggestedUserId = Array.isArray(payload) ? null : payload.suggestedUserId;
       return (

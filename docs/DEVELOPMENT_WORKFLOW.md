@@ -2,12 +2,12 @@
 
 ## Estado del proyecto (importante)
 
-> **Desarrollo funcional en pausa intencional.** El modelo relacional, las entidades definitivas y las reglas de negocio **aún no están definidos**.
+> **Desarrollo activo por fases.** Existen módulos y flujos funcionales en implementación, con madurez distinta por dominio.
 >
-> - **No** crear entidades definitivas ni migraciones de dominio todavía.
-> - Las entidades en `apps/api/src/modules/*/entities` son **placeholders marcados** (banner en cada archivo). No representan el esquema final.
-> - Los módulos `inspections` e `incidents` son **referencias vivas** del patrón contracts↔DTO, no funcionalidad final.
-> - Objetivo actual: dejar una base clara y consistente para que los equipos de API, Web y Mobile construyan sobre criterios comunes.
+> - Foco actual confirmado: `apps/web` (módulo inspecciones) y `apps/mobile-inspecciones`.
+> - `apps/mobile-incidentes` se mantiene en estado base/placeholder y no es foco funcional actual.
+> - API y base de datos evolucionan incrementalmente por fases; mantener alineación entre contratos, DTOs y migraciones.
+> - Antes de extender módulos no priorizados, confirmar alcance con PMO/owner funcional.
 
 ## Requisitos
 

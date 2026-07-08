@@ -13,9 +13,21 @@ Antes de cualquier cambio:
 1. Leer [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md).
 2. Leer [ARCHITECTURE.md](ARCHITECTURE.md).
 3. Leer [DEVELOPMENT_WORKFLOW.md](DEVELOPMENT_WORKFLOW.md).
-4. Elegir una ruta de intervención de la sección 2.
+4. Si eres colaborador nuevo, leer [ONBOARDING_PLAYBOOK.md](ONBOARDING_PLAYBOOK.md).
+5. Elegir una ruta de intervención de la sección 2.
 
 ## 2) Rutas de lectura por tipo de intervención
+
+### 2.0 Foco funcional asignado (antes del tipo de cambio)
+
+Si el desarrollador parte con una instruccion orientada a modulo, usar primero esta decision:
+
+- `inspections` web: seguir lectura de frontend + estado + contratos.
+- `mobile-inspecciones`: seguir lectura de mobile offline + contratos.
+- `incidents` web/mobile: leer contexto y arquitectura, pero asumir estado parcial / placeholder salvo autorizacion explicita.
+- `api` / `contracts` / `database`: seguir rutas A, B o E segun corresponda.
+
+Cuando el foco sea `incidents`, la IA debe detenerse y explicitar en su plan que el modulo no esta hoy en expansion funcional por defecto.
 
 ### A. Cambio de endpoint API
 1. [API_GUIDELINES.md](API_GUIDELINES.md)
@@ -71,6 +83,10 @@ Cada intervención debe cerrar con:
 3. Evidencia: migracion/endpoint/tabla/contrato actualizado.
 4. Riesgos: impactos pendientes o drift conocido.
 5. Siguiente accion: quien valida y que falta.
+
+Si el cambio nace desde un foco de modulo (por ejemplo: "hoy trabajaras en incidentes web"), el reporte debe indicar ademas:
+6. Documentos leidos en orden.
+7. Confirmacion de si el modulo estaba habilitado para expansion funcional o solo mantenimiento tecnico.
 
 ## 5) Regla anti-drift (DDL vs entidades)
 

@@ -45,13 +45,15 @@ La matriz de permisos por rol se definirá junto con las reglas de negocio.
 | --- | --- | --- | --- |
 | Dashboard | ✓ | | |
 | Inspecciones | ✓ | ✓ (app inspecciones) | ✓ |
-| Incidentes | ✓ | ✓ (app incidentes) | ✓ |
+| Incidentes | Parcial / placeholder | Parcial / placeholder (app incidentes) | ✓ |
 | Controles críticos | ✓ | | ✓ |
 | Evidencias | ✓ | ✓ | ✓ |
 | Workflows / aprobaciones | ✓ | | ✓ |
 | Reportes | ✓ | | ✓ |
 | Administración (usuarios, roles, MUE, áreas) | ✓ | | ✓ |
 | Notificaciones / IA | (futuro) | | (futuro) |
+
+Nota de estado actual (2026-07): el desarrollo funcional activo está concentrado en inspecciones (web + mobile-inspecciones). El módulo de incidentes no está en foco funcional de implementación en esta etapa.
 
 ## Motivo del monorepo
 

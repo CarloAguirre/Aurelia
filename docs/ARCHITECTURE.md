@@ -25,12 +25,20 @@ tsconfig.base.json      Config TypeScript compartida (strict)
 | --- | --- |
 | Monorepo | pnpm workspaces, Turborepo |
 | Backend | NestJS 11, TypeScript, TypeORM 0.3, PostgreSQL |
-| Web | React 19, Vite 6, TypeScript |
-| Mobile | React Native 0.76 (Expo SDK 52), TypeScript |
+| Web | React 18.3, Vite 6, TypeScript |
+| Mobile inspecciones | Expo SDK 54, React Native 0.81, React 19.1, TypeScript |
+| Mobile incidentes | Expo SDK 52, React Native 0.76, React 18.3, TypeScript |
 | Contratos | TypeScript puro (dual build ESM + CJS) |
 | Estado (web) | TanStack Query + Zustand (ver STATE_MANAGEMENT.md) |
 
 Todo el código es **TypeScript en modo estricto** (`tsconfig.base.json`).
+
+## Estado funcional por app (2026-07)
+
+- `apps/web`: desarrollo activo principalmente en módulo de inspecciones.
+- `apps/mobile-inspecciones`: desarrollo activo (flujo principal de inspecciones).
+- `apps/mobile-incidentes`: base técnica y placeholders; no es foco actual de implementación funcional.
+- `apps/api`: evolución por fases, con módulos en diferentes niveles de madurez según dominio.
 
 ## Flujo de datos
 

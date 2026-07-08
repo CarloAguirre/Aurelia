@@ -108,7 +108,7 @@ function TemplateCard({ loading, error, empty, errorMessage, onOpen, onRetry }: 
 }
 
 function ProgressCard({ answeredCount, totalCount }: { answeredCount: number; totalCount: number }) {
-  const width = totalCount ? `${(answeredCount / totalCount) * 100}%` : '0%';
+  const width: `${number}%` = totalCount ? `${(answeredCount / totalCount) * 100}%` : '0%';
   return <View style={styles.progressCard}><Text style={styles.progressText}>{answeredCount} de {totalCount} respondidos</Text><View style={styles.progressRail}><View style={[styles.progressFill, { width }]} /></View></View>;
 }
 

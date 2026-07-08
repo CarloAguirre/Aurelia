@@ -1,20 +1,10 @@
 import { IsEnum, IsObject } from 'class-validator';
+import { AiSuggestRequest, AiSuggestType } from '@aurelia/contracts';
 
-export enum AiSuggestType {
-  CORRECTIVE_MEASURE = 'corrective_measure',
-  COMPANY_SUGGESTION = 'company_suggestion',
-}
-
-export class AiSuggestDto {
+export class AiSuggestDto implements AiSuggestRequest {
   @IsEnum(AiSuggestType)
   type: AiSuggestType;
 
   @IsObject()
   context: Record<string, unknown>;
-}
-
-export interface AiSuggestResponse {
-  suggestion: string;
-  type: AiSuggestType;
-  fallback: boolean;
 }

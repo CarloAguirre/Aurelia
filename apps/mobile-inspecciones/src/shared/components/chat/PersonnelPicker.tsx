@@ -18,6 +18,14 @@ interface Props {
   suggestedUserId?: string | null;
 }
 
+function userSubtitle(user: UserResponse): string {
+  const companyName = user.companies?.[0]?.name ?? null;
+  if (companyName && user.position) return `${companyName} · ${user.position}`;
+  if (companyName) return companyName;
+  if (user.position) return user.position;
+  return 'Responsable';
+}
+
 export function PersonnelPicker({ users, onConfirm, confirmed = false, suggestedUserId = null }: Props) {
   const effectiveSuggestedUserId = useMemo(() => suggestedUserId ?? users[0]?.id ?? null, [suggestedUserId, users]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
@@ -67,9 +75,7 @@ export function PersonnelPicker({ users, onConfirm, confirmed = false, suggested
               </View>
               <View style={styles.info}>
                 <Text style={styles.name}>{user.fullName}</Text>
-                <Text style={styles.position}>
-                  {`${user.companyName ?? ''}${user.position ? `${user.companyName ? ' · ' : ''}${user.position}` : ''}` || 'Responsable'}
-                </Text>
+                <Text style={styles.position}>{userSubtitle(user)}</Text>
               </View>
               {isSuggested ? (
                 <View style={styles.suggestedTag}>

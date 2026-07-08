@@ -1,13 +1,13 @@
-export enum SyncStatus {
-  PENDING = 'PENDING',
-  SYNCED = 'SYNCED',
-  ERROR = 'ERROR',
-}
+import { MobileSyncOperationType, MobileSyncStatus } from '@aurelia/contracts';
+
+export { MobileSyncOperationType, MobileSyncStatus };
 
 export interface SyncQueueItem<TPayload> {
   id: string;
   payload: TPayload;
-  status: SyncStatus;
+  status: MobileSyncStatus;
+  operationType: MobileSyncOperationType;
+  entityType: 'incident';
   createdAt: string;
   lastError?: string;
 }

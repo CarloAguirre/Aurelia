@@ -186,12 +186,12 @@ function mapTileUrl(latitude: number, longitude: number, zoom = 14): string {
 }
 
 function getLocalPoint(event: GestureResponderEvent) {
-  const nativeEvent = event.nativeEvent as Record<string, unknown>;
-  const locationX = typeof nativeEvent.locationX === 'number' && Number.isFinite(nativeEvent.locationX) ? nativeEvent.locationX : undefined;
-  const locationY = typeof nativeEvent.locationY === 'number' && Number.isFinite(nativeEvent.locationY) ? nativeEvent.locationY : undefined;
+  const locationX = Number.isFinite(event.nativeEvent.locationX) ? event.nativeEvent.locationX : undefined;
+  const locationY = Number.isFinite(event.nativeEvent.locationY) ? event.nativeEvent.locationY : undefined;
 
   if (locationX !== undefined && locationY !== undefined) return { x: locationX, y: locationY };
 
+  const nativeEvent = event.nativeEvent as unknown as { offsetX?: number; offsetY?: number };
   const offsetX = typeof nativeEvent.offsetX === 'number' && Number.isFinite(nativeEvent.offsetX) ? nativeEvent.offsetX : undefined;
   const offsetY = typeof nativeEvent.offsetY === 'number' && Number.isFinite(nativeEvent.offsetY) ? nativeEvent.offsetY : undefined;
 

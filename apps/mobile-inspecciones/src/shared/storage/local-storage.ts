@@ -100,7 +100,7 @@ class AsyncStorageDriver implements LocalStorageDriver {
   async clear(prefix = ''): Promise<void> {
     const keys = await this.keys(prefix);
     if (keys.length === 0) return;
-    await AsyncStorage.multiRemove(keys.map((key) => this.toKey(key)));
+    await Promise.all(keys.map((key) => AsyncStorage.removeItem(this.toKey(key))));
   }
 
   private toKey(key: string): string {

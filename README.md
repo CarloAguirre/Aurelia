@@ -4,6 +4,78 @@ Plataforma ambiental centralizada para gestión de controles críticos, inspecci
 
 Monorepo con `pnpm workspaces` + `Turborepo`. Las apps se despliegan de forma independiente pero comparten contratos de tipos en tiempo de desarrollo/build mediante `@aurelia/contracts`.
 
+## Punto de entrada recomendado para IA
+
+Si un desarrollador trabaja con IA, el **README raiz no debe ser la unica lectura**. Este archivo funciona como puerta de entrada y debe llevar a la IA al recorrido correcto segun el foco del dia.
+
+Orden minimo obligatorio despues de leer este archivo:
+
+1. [docs/START_HERE.md](docs/START_HERE.md)
+2. [docs/ONBOARDING_PLAYBOOK.md](docs/ONBOARDING_PLAYBOOK.md)
+3. [docs/PROJECT_CONTEXT.md](docs/PROJECT_CONTEXT.md)
+4. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+5. [docs/DEVELOPMENT_WORKFLOW.md](docs/DEVELOPMENT_WORKFLOW.md)
+
+## Estado funcional actual (2026-07)
+
+- Foco funcional activo: `apps/web` en modulo de inspecciones y `apps/mobile-inspecciones`.
+- `apps/mobile-incidentes` y modulo web de incidentes estan en estado parcial / placeholder.
+- API y base de datos evolucionan por fases; cualquier cambio debe mantener consistencia con `@aurelia/contracts`.
+
+## Rutas de lectura por foco de trabajo
+
+Usar estas rutas cuando el desarrollador le diga a su IA algo como: "hoy trabajaremos en el modulo X".
+
+### Foco: inspecciones web
+
+Leer en este orden:
+
+1. [docs/START_HERE.md](docs/START_HERE.md)
+2. [docs/ONBOARDING_PLAYBOOK.md](docs/ONBOARDING_PLAYBOOK.md)
+3. [docs/FRONTEND_GUIDELINES.md](docs/FRONTEND_GUIDELINES.md)
+4. [docs/STATE_MANAGEMENT.md](docs/STATE_MANAGEMENT.md)
+5. [docs/UI_UX_GUIDELINES.md](docs/UI_UX_GUIDELINES.md)
+6. [docs/CONTRACTS_GUIDELINES.md](docs/CONTRACTS_GUIDELINES.md)
+
+### Foco: mobile-inspecciones
+
+Leer en este orden:
+
+1. [docs/START_HERE.md](docs/START_HERE.md)
+2. [docs/ONBOARDING_PLAYBOOK.md](docs/ONBOARDING_PLAYBOOK.md)
+3. [docs/MOBILE_OFFLINE_STRATEGY.md](docs/MOBILE_OFFLINE_STRATEGY.md)
+4. [docs/MOBILE_OFFLINE_STORAGE_MIGRATION_PLAN.md](docs/MOBILE_OFFLINE_STORAGE_MIGRATION_PLAN.md)
+5. [docs/CONTRACTS_GUIDELINES.md](docs/CONTRACTS_GUIDELINES.md)
+
+### Foco: incidentes web o mobile
+
+Leer en este orden:
+
+1. [docs/START_HERE.md](docs/START_HERE.md)
+2. [docs/ONBOARDING_PLAYBOOK.md](docs/ONBOARDING_PLAYBOOK.md)
+3. [docs/PROJECT_CONTEXT.md](docs/PROJECT_CONTEXT.md)
+4. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+5. [docs/CONTRACTS_GUIDELINES.md](docs/CONTRACTS_GUIDELINES.md)
+6. [docs/FRONTEND_GUIDELINES.md](docs/FRONTEND_GUIDELINES.md) o [docs/MOBILE_OFFLINE_STRATEGY.md](docs/MOBILE_OFFLINE_STRATEGY.md), segun app
+
+Restriccion actual:
+
+- Incidentes no esta habilitado para expansion funcional nueva sin autorizacion explicita.
+- Solo se permiten hoy tareas de mantenimiento tecnico, alineacion de contratos, calidad, sync, docs o deuda critica.
+
+### Foco: API / contratos / DB
+
+Seguir la ruta indicada en [docs/START_HERE.md](docs/START_HERE.md) segun el tipo de cambio.
+
+## Regla de cierre documental
+
+Cada cambio implementado debe cerrar con:
+
+1. Reporte de archivos tocados.
+2. Comandos ejecutados y resultado.
+3. Riesgos o pendientes.
+4. Si hay drift o decision nueva, actualizar documentacion relevante o registrar la deuda en [docs/DOCS_CLEANUP_BACKLOG.md](docs/DOCS_CLEANUP_BACKLOG.md).
+
 ## Estructura
 
 ```txt

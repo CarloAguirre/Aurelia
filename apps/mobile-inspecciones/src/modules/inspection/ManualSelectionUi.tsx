@@ -22,7 +22,7 @@ interface SelectSheetProps {
 }
 
 export function ManualFormStepper({ activeStep, steps }: { activeStep: number; steps: string[] }) {
-  const progressWidth = `${Math.max(1, activeStep) / steps.length * 100}%`;
+  const progressWidth: `${number}%` = `${(Math.max(1, activeStep) / steps.length) * 100}%`;
 
   return (
     <View style={styles.stepperWrap}>

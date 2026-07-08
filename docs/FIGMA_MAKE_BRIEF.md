@@ -10,7 +10,7 @@
 
 1. **¿A cuál app del monorepo va este diseño?**
    - `apps/web` — Web central por roles (React 18 + Vite + Tailwind v4 + shadcn/ui).
-   - `apps/mobile-inspecciones` — App móvil de inspecciones (React Native + Expo SDK 52).
+  - `apps/mobile-inspecciones` — App móvil de inspecciones (React Native + Expo SDK 54).
    - `apps/mobile-incidentes` — App móvil de incidentes (React Native + Expo SDK 52).
 
 2. **¿A qué módulo de negocio pertenece?** (`dashboard`, `inspections`, `incidents`, `critical-controls`, `evidences`, `workflows`, `reports`, `admin`).
@@ -28,7 +28,8 @@ No asumas. Si falta contexto, pide más antes de generar.
 | App | Framework | Estilos | Componentes base |
 | --- | --- | --- | --- |
 | `apps/web` | React 18.3 + Vite 6 + TS estricto | **Tailwind CSS v4** (tokens en `src/styles/theme.css`) | **shadcn/ui** instalado en `src/app/components/ui` |
-| `apps/mobile-*` | React Native 0.76 + Expo SDK 52 + TS estricto | StyleSheet de RN | Componentes propios en `src/screens` y `src/shared/components` |
+| `apps/mobile-inspecciones` | React Native 0.81 + Expo SDK 54 + TS estricto | StyleSheet de RN | Componentes propios en `src/modules` y `src/shared/components` |
+| `apps/mobile-incidentes` | React Native 0.76 + Expo SDK 52 + TS estricto | StyleSheet de RN | Componentes propios en `src/screens` y `src/shared/components` |
 
 ### 1.2 Layout responsive (REQUISITO CRÍTICO)
 
@@ -332,6 +333,10 @@ Si necesitas más contexto, los siguientes documentos viven en `/docs/`:
 
 ## 10. Estado del proyecto (importante)
 
-El desarrollo funcional está **en pausa intencional**. El modelo relacional y las reglas de negocio definitivas no están definidos. Las entidades en `apps/api` son **placeholders marcados**. Los módulos `inspections` e `incidents` son **referencias vivas** del patrón contracts ↔ DTO, no funcionalidad final.
+El desarrollo funcional avanza **por fases** y no todos los modulos tienen la misma madurez.
 
-Esto significa que el diseño que generes puede asumir tipos razonables sobre los placeholders existentes, pero **prioriza siempre lo que ya está en `@aurelia/contracts`**. Si un campo no existe en el contrato, propón agregarlo antes de inventarlo en el componente.
+- Foco activo actual: `apps/web` en inspecciones y `apps/mobile-inspecciones`.
+- `apps/mobile-incidentes` y el modulo web de incidentes estan en estado parcial / placeholder y no deben recibir expansion funcional nueva sin autorizacion explicita.
+- Mantener prioridad en lo ya implementado y en lo que existe hoy en `@aurelia/contracts`.
+
+Esto significa que el diseño o cambio que generes debe respetar la madurez real del modulo. Si el foco es `incidents`, asume mantenimiento tecnico o preparacion estructural salvo indicacion funcional explicita. Si un campo no existe en el contrato, propón agregarlo antes de inventarlo en el componente.

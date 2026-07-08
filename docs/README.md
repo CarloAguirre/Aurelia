@@ -15,6 +15,10 @@ Base documental y técnica para los equipos de API, Web y Mobile. El objetivo es
 | --- | --- |
 | [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) | Qué es Aurelia, dominio funcional, roles, módulos y motivo del monorepo. |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Estructura del monorepo, apps, packages, stack y flujo de datos. |
+| [ONBOARDING_PLAYBOOK.md](ONBOARDING_PLAYBOOK.md) | Estado real por módulo, prioridades activas, guardrails y checklist operativo para nuevos devs. |
+| [ONBOARDING_BRIEF_2_DEVS.md](ONBOARDING_BRIEF_2_DEVS.md) | Brief ejecutivo para arrancar onboarding de 2 devs con foco actual del proyecto. |
+| [AI_PROMPT_MASTER_2_DEVS.md](AI_PROMPT_MASTER_2_DEVS.md) | Prompt maestro paste-ready para ejecutar tareas con IA bajo restricciones del proyecto. |
+| [DAILY_REPORT_TEMPLATE_2_DEVS.md](DAILY_REPORT_TEMPLATE_2_DEVS.md) | Plantilla de reporte diario estandarizada para seguimiento PMO. |
 | [CONTRACTS_GUIDELINES.md](CONTRACTS_GUIDELINES.md) | Cómo se usa y se extiende `@aurelia/contracts` (la fuente de verdad de tipos). |
 | [API_GUIDELINES.md](API_GUIDELINES.md) | Convenciones del backend NestJS: módulos, DTOs, validación, migraciones. |
 | [FRONTEND_GUIDELINES.md](FRONTEND_GUIDELINES.md) | Convenciones de la web React + Vite. |

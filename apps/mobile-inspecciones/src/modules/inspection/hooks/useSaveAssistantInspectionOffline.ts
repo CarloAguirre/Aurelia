@@ -132,7 +132,7 @@ export function useSaveAssistantInspectionOffline() {
         scheduledAt: createdAt,
         latitude: null,
         longitude: null,
-        notes: createPayload.notes,
+        notes: createPayload.notes ?? null,
         findingsCount: input.observations.length,
         openFindingsCount: input.observations.length,
         closed: false,

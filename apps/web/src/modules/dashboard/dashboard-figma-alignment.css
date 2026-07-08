@@ -96,3 +96,24 @@ table thead tr:nth-child(2) td:nth-child(2) div.absolute > div:last-child {
   padding-right: 4px;
   font-size: 13px;
 }
+
+aside[aria-label="Navegación lateral"] > div:first-of-type {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+  scrollbar-width: thin;
+}
+
+aside[aria-label="Navegación lateral"] > div:first-of-type::-webkit-scrollbar {
+  width: 4px;
+}
+
+aside[aria-label="Navegación lateral"] > div:first-of-type::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+aside[aria-label="Navegación lateral"] > div:first-of-type::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+}

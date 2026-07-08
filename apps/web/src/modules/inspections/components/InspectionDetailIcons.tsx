@@ -103,3 +103,14 @@ export function InspectionDetailApproveIcon({ className = 'h-[12px] w-[15px]' }:
     </svg>
   );
 }
+
+export function InspectionDetailFollowupIcon({ className = 'h-[11px] w-[13.75px]' }: IconProps) {
+  return (
+    <svg className={className} width="14" height="11" viewBox="0 0 14 11" fill="none" aria-hidden="true">
+      <circle cx="2.8" cy="2.2" r="1.7" fill="#24588B" />
+      <circle cx="10.95" cy="2.2" r="1.7" fill="#24588B" />
+      <circle cx="6.875" cy="8.15" r="1.7" fill="#24588B" />
+      <path d="M3.7 3.55L5.95 6.85M10.05 3.55L7.8 6.85M4.65 2.2H9.1" stroke="#24588B" strokeWidth="1.25" strokeLinecap="round" />
+    </svg>
+  );
+}

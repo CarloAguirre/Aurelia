@@ -19,7 +19,6 @@ type SidebarIconName =
   | 'clipboard'
   | 'settings'
   | 'sliders'
-  | 'bell'
   | 'globe'
   | 'role'
   | 'more';
@@ -116,8 +115,6 @@ function iconPath(name: SidebarIconName) {
       return 'M12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8Zm8 4h2M2 12h2m14.4-6.4 1.4-1.4M4.2 19.8l1.4-1.4m0-12.8L4.2 4.2m15.6 15.6-1.4-1.4';
     case 'sliders':
       return 'M4 7h7M15 7h5M13 5v4M4 12h3M11 12h9M9 10v4M4 17h10M18 17h2M16 15v4';
-    case 'bell':
-      return 'M18 16H6l1.5-2V9a4.5 4.5 0 0 1 9 0v5L18 16Zm-4 3h-4';
     case 'globe':
       return 'M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18Zm-9-9h18M12 3c2.5 2.5 2.5 15 0 18M12 3c-2.5 2.5-2.5 15 0 18';
     case 'role':
@@ -223,16 +220,20 @@ function SidebarChildren({ children }: { children: SidebarChildItem[] }) {
   );
 }
 
-function SidebarNotifications() {
+function SidebarLanguage() {
   return (
-    <div className="flex w-full flex-col gap-[8px]">
-      <div className="flex w-full items-center justify-between px-[8px] pb-[6px] pt-[2px]">
-        <div className="flex items-center gap-[4px] text-[rgba(255,255,255,0.28)]"><SidebarIcon name="bell" className="h-[13px] w-[13.75px]" /><span className="font-['Inter:Regular',sans-serif] text-[11px] font-normal leading-none">Notificaciones</span></div>
-        <span className="flex size-[16px] items-center justify-center rounded-[8px] bg-[#c4365a] font-['Inter:Bold',sans-serif] text-[9px] font-bold leading-none text-white">7</span>
-      </div>
-      <div className="flex w-full items-center justify-between px-[8px] pb-[6px] pt-[2px]">
-        <div className="flex items-center gap-[4px] text-[rgba(255,255,255,0.28)]"><SidebarIcon name="globe" className="h-[13px] w-[13.75px]" /><span className="font-['Inter:Regular',sans-serif] text-[11px] font-normal leading-none">Idioma</span></div>
-        <div className="flex h-[18px] w-[60.32px] overflow-hidden rounded-[20px] border border-[rgba(255,255,255,0.1)] p-px"><div className="relative h-full w-[29.695px]"><span className="absolute left-[8px] top-[2px] font-['Inter:Bold',sans-serif] text-[10px] font-bold leading-none text-[rgba(255,255,255,0.3)]">EN</span></div><div className="relative h-full w-[28.625px] bg-[#00b398]"><span className="absolute left-[8px] top-[2px] font-['Inter:Bold',sans-serif] text-[10px] font-bold leading-none text-white">ES</span></div></div>
+    <div className="relative w-full shrink-0" data-name="Container">
+      <div className="flex size-full items-center justify-between px-[8px] pb-[6px] pt-[2px]">
+        <div className="relative h-[13px] w-[52.516px] shrink-0">
+          <SidebarIcon name="globe" className="absolute left-0 top-[0.88px] h-[11px] w-[13.75px] text-[rgba(255,255,255,0.28)]" />
+          <p className="absolute left-[17.75px] top-0 whitespace-nowrap font-['Inter:Regular',sans-serif] text-[11px] font-normal leading-[normal] text-[rgba(255,255,255,0.28)]">Idioma</p>
+        </div>
+        <div className="relative h-[18px] w-[60.32px] shrink-0 rounded-[20px] border border-[rgba(255,255,255,0.1)]">
+          <div className="flex size-full items-start overflow-hidden rounded-[inherit] p-px">
+            <div className="relative h-full w-[29.695px] shrink-0"><p className="absolute left-[8px] top-[2px] whitespace-nowrap font-['Inter:Bold',sans-serif] text-[10px] font-bold leading-[normal] text-[rgba(255,255,255,0.3)]">EN</p></div>
+            <div className="relative h-full w-[28.625px] shrink-0 bg-[#00b398]"><p className="absolute left-[8px] top-[2px] whitespace-nowrap font-['Inter:Bold',sans-serif] text-[10px] font-bold leading-[normal] text-white">ES</p></div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -240,10 +241,26 @@ function SidebarNotifications() {
 
 function SidebarUser() {
   return (
-    <div className="flex w-full items-center gap-[8px] rounded-[7px] px-[8px] py-[6px]">
-      <div className="flex size-[28px] shrink-0 items-center justify-center rounded-[14px] bg-[#c8a064] font-['Inter:Bold',sans-serif] text-[11px] font-bold leading-none text-[#001e39]">KO</div>
-      <div className="min-w-0 flex-1"><p className="truncate font-['Inter:Semi_Bold',sans-serif] text-[11.5px] font-semibold leading-[14px] text-[rgba(255,255,255,0.75)]">Karen Opazo S.</p><div className="mt-[1px] flex items-center gap-[4px] text-[rgba(255,255,255,0.32)]"><SidebarIcon name="role" className="h-[8px] w-[10px]" /><p className="truncate font-['Inter:Regular',sans-serif] text-[10px] font-normal leading-[12px]">Admin GF HSE</p></div></div>
-      <SidebarIcon name="more" className="h-[11px] w-[13.75px] text-[rgba(255,255,255,0.2)]" />
+    <div className="relative w-full shrink-0 rounded-[7px]" data-name="Container">
+      <div className="flex size-full items-center gap-[8px] px-[8px] py-[6px]">
+        <div className="flex size-[28px] shrink-0 items-center justify-center rounded-[14px] bg-[#c8a064]">
+          <p className="whitespace-nowrap font-['Inter:Bold',sans-serif] text-[11px] font-bold leading-[normal] text-[#001e39]">KO</p>
+        </div>
+        <div className="w-[85.813px] shrink-0">
+          <div className="flex w-full flex-col items-start">
+            <p className="w-full whitespace-nowrap font-['Inter:Semi_Bold',sans-serif] text-[11.5px] font-semibold leading-[normal] text-[rgba(255,255,255,0.75)]">Karen Opazo S.</p>
+            <div className="flex w-full items-center gap-[4px]">
+              <SidebarIcon name="role" className="h-[8px] w-[10px] text-[rgba(255,255,255,0.32)]" />
+              <p className="whitespace-nowrap font-['Inter:Regular',sans-serif] text-[10px] font-normal leading-[normal] text-[rgba(255,255,255,0.32)]">Admin GF HSE</p>
+            </div>
+          </div>
+        </div>
+        <div className="min-w-px flex-[1_0_0]">
+          <div className="flex size-full items-start justify-end">
+            <SidebarIcon name="more" className="h-[11px] w-[13.75px] text-[rgba(255,255,255,0.2)]" />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -265,7 +282,10 @@ export function AppSidebar() {
             {configItems.map((item) => <SidebarModuleItem key={item.label} item={item} />)}
           </div>
         </div>
-        <div className="w-[220px] shrink-0 border-t border-[rgba(255,255,255,0.08)] bg-[rgba(0,38,89,0.6)] px-[10px] pb-[10px] pt-[9px]"><SidebarNotifications /><SidebarUser /></div>
+        <div className="flex w-[220px] shrink-0 flex-col items-start border-t border-[rgba(255,255,255,0.08)] bg-[rgba(0,38,89,0.6)] px-[10px] pb-[10px] pt-[9px]">
+          <SidebarLanguage />
+          <SidebarUser />
+        </div>
       </aside>
     </>
   );

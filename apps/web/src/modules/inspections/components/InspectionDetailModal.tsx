@@ -169,6 +169,27 @@ function ClosedFindingObservationCard() {
   );
 }
 
+function RejectedFindingObservationCard() {
+  const config = statusConfigByKey.executed;
+  return (
+    <div className="rounded-[10px] border-[1.5px] border-[#e3e3e3] bg-[#f7f7f7] p-[13.5px] shadow-[0px_1px_1.5px_rgba(0,0,0,0.06)]">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-[8px]"><FindingPill className="bg-[#e6f3ff] text-[#24588b]">Obs. 1</FindingPill><FindingPill className="bg-[#ffd0db] text-[#570b1d]">Grave</FindingPill></div>
+        <span className={`inline-flex h-[19px] items-center gap-[4px] rounded-[6px] px-[8px] py-[4px] text-[10px] font-bold leading-none ${config.chipClass}`}><InspectionDetailStatusChipIcon status="executed" />{config.itemLabel}</span>
+      </div>
+      <div className="flex flex-col gap-[4px] pt-[12px]">
+        <FindingTextBlock title="Condición detectada" bordered>[Descripción realizada por el usuario que levanta la inspección]</FindingTextBlock>
+        <FindingTextBlock title="Medida correctiva propuesta">[Medida correctiva que recomienda el usuario que tomó la inspección]</FindingTextBlock>
+        <FindingTextBlock title="Descripción de la acción tomada">[Acción que realizó el usuario al momento de ejecutar el hallazgo]</FindingTextBlock>
+        <FindingTextBlock title="Motivo de rechazo">[Motivo ingresado por usuario que rechazó la observación]</FindingTextBlock>
+        <div className="flex gap-[4px] pt-[8px]"><EvidencePreview title="Antes"><InspectionDetailImageIcon tone="#24588b" /></EvidencePreview><EvidencePreview title="Después" afterClosed><InspectionDetailImageIcon tone="#2a5c16" /></EvidencePreview></div>
+        <div className="mt-[4px] flex h-[33px] items-center justify-between rounded-[8px] bg-white px-[12px] py-[9px]"><p className="text-[12px] font-medium leading-none text-[#646464]">SLA calculado</p><div className="flex items-center gap-[3px]"><InspectionDetailStatusRowIcon status="executed" className="h-[9px] w-[11.25px]" /><p className="text-[11px] font-bold leading-none text-[#570b1d]">XX días</p></div></div>
+        <button type="button" className="flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#c8a064] px-[12px] text-[15px] font-bold text-white shadow-[0px_2px_5px_rgba(200,160,100,0.3)]">Ejecutar observación rechazada</button>
+      </div>
+    </div>
+  );
+}
+
 function ExecutedFindingObservationsPanel() {
   return <div className="flex shrink-0 flex-col bg-white px-[14px] pb-[24px] pt-[14px]"><ExecutedFindingObservationCard /></div>;
 }
@@ -181,13 +202,17 @@ function ClosedFindingObservationsPanel() {
   return <div className="flex shrink-0 flex-col bg-white px-[14px] pb-[24px] pt-[14px]"><ClosedFindingObservationCard /></div>;
 }
 
+function RejectedFindingObservationsPanel() {
+  return <div className="flex shrink-0 flex-col bg-white px-[14px] pb-[24px] pt-[14px]"><RejectedFindingObservationCard /></div>;
+}
+
 function DetailRows({ kind, counts }: { kind: InspectionDetailModalKind; counts: Record<StatusKey, number> }) {
   const [expandedStatus, setExpandedStatus] = useState<StatusKey | null>(kind === 'finding' ? 'open' : null);
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-white">
       {statusConfigs.map((config) => {
         const expanded = expandedStatus === config.key;
-        const panel = kind === 'finding' && config.key === 'executed' && expanded ? <ExecutedFindingObservationsPanel /> : kind === 'finding' && config.key === 'open' && expanded ? <OpenFindingObservationsPanel /> : kind === 'finding' && config.key === 'closed' && expanded ? <ClosedFindingObservationsPanel /> : null;
+        const panel = kind === 'finding' && config.key === 'executed' && expanded ? <ExecutedFindingObservationsPanel /> : kind === 'finding' && config.key === 'open' && expanded ? <OpenFindingObservationsPanel /> : kind === 'finding' && config.key === 'closed' && expanded ? <ClosedFindingObservationsPanel /> : kind === 'finding' && config.key === 'rejected' && expanded ? <RejectedFindingObservationsPanel /> : null;
         return <div key={config.key}><StatusRow config={config} count={counts[config.key]} expanded={expanded} onToggle={() => setExpandedStatus((current) => current === config.key ? null : config.key)} />{panel}</div>;
       })}
     </div>

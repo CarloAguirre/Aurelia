@@ -83,7 +83,7 @@ function StatusRow({ config, count, expanded, onToggle }: { config: StatusConfig
   return (
     <button type="button" className="flex h-[56px] w-full shrink-0 items-center justify-between border-b border-[#e3e3e3] bg-white px-[14px] py-[16px]" onClick={onToggle} aria-expanded={expanded}>
       <div className="flex items-center gap-[10px]"><InspectionDetailStatusRowIcon status={config.key} /><p className={`font-['Inter:Bold',sans-serif] text-[11px] font-bold uppercase leading-[13px] tracking-[0.66px] ${config.textClass}`}>{config.label}</p><span className={`flex h-[14px] min-w-[19px] items-center justify-center rounded-[8px] px-[7px] font-['Inter:Bold',sans-serif] text-[10px] font-bold leading-[12px] tracking-[0.6px] ${config.chipClass}`}>{count}</span></div>
-      <InspectionDetailCaretDownIcon />
+      <InspectionDetailCaretDownIcon className={expanded ? 'size-[16px] rotate-180' : 'size-[16px]'} />
     </button>
   );
 }
@@ -101,11 +101,11 @@ function FindingTextBlock({ title, children, bordered = false }: { title: string
   );
 }
 
-function EvidencePreview({ title, children }: { title: string; children: ReactNode }) {
+function EvidencePreview({ title, children, afterClosed = false }: { title: string; children: ReactNode; afterClosed?: boolean }) {
   return (
     <div className="flex h-[91px] min-w-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-[#e3e3e3] bg-white p-px">
       <div className="flex h-[20px] items-center bg-[#001e39] px-[8px] py-[4px]"><p className="text-[9px] font-bold uppercase leading-none text-[rgba(255,255,255,0.7)]">{title}</p></div>
-      <div className="flex min-h-0 flex-1 items-center justify-center bg-gradient-to-br from-[#e8f4fd] to-[#c8e6f0]">{children}</div>
+      <div className={`flex min-h-0 flex-1 items-center justify-center ${afterClosed ? 'bg-[#dafccb]' : 'bg-gradient-to-br from-[#e8f4fd] to-[#c8e6f0]'}`}>{children}</div>
     </div>
   );
 }
@@ -122,7 +122,7 @@ function ExecutedFindingObservationCard() {
         <FindingTextBlock title="Condición detectada" bordered>[Descripción realizada por el usuario que levanta la inspección]</FindingTextBlock>
         <FindingTextBlock title="Medida correctiva propuesta">[Medida correctiva que recomienda el usuario que tomó la inspección]</FindingTextBlock>
         <FindingTextBlock title="Descripción de la acción tomada">[Acción que realizó el usuario al momento de ejecutar el hallazgo]</FindingTextBlock>
-        <div className="flex gap-[4px] pt-[8px]"><EvidencePreview title="Antes"><InspectionDetailImageIcon tone="#24588b" /></EvidencePreview><EvidencePreview title="Después"><InspectionDetailImageIcon tone="#2a5c16" /></EvidencePreview></div>
+        <div className="flex gap-[4px] pt-[8px]"><EvidencePreview title="Antes"><InspectionDetailImageIcon tone="#24588b" /></EvidencePreview><EvidencePreview title="Después" afterClosed><InspectionDetailImageIcon tone="#2a5c16" /></EvidencePreview></div>
         <div className="mt-[4px] flex h-[33px] items-center justify-between rounded-[8px] bg-white px-[12px] py-[9px]"><p className="text-[12px] font-medium leading-none text-[#646464]">SLA calculado</p><div className="flex items-center gap-[3px]"><InspectionDetailStatusRowIcon status="executed" className="h-[9px] w-[11.25px]" /><p className="text-[11px] font-bold leading-none text-[#570b1d]">XX días</p></div></div>
         <div className="flex items-center gap-[8px] rounded-[8px] bg-white px-[12px] py-[9px]"><button type="button" className="flex h-[40px] items-center justify-center gap-[5px] rounded-[9px] border-2 border-[#c4365a] bg-white px-[16px] py-[2px] text-[12px] font-bold text-[#570b1d]"><InspectionDetailRejectIcon />Rechazar</button><button type="button" className="flex h-[40px] min-w-0 flex-1 items-center justify-center gap-[5px] rounded-[9px] bg-[#3a9b3a] px-[12px] text-[12px] font-bold text-white"><InspectionDetailApproveIcon />Aprobar cierre</button></div>
       </div>
@@ -149,6 +149,26 @@ function OpenFindingObservationCard({ observation }: { observation: OpenFindingO
   );
 }
 
+function ClosedFindingObservationCard() {
+  const config = statusConfigByKey.closed;
+  return (
+    <div className="rounded-[10px] border-[1.5px] border-[#e3e3e3] bg-[#f7f7f7] p-[13.5px] shadow-[0px_1px_1.5px_rgba(0,0,0,0.06)]">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-[8px]"><FindingPill className="bg-[#e6f3ff] text-[#24588b]">Obs. 4</FindingPill><FindingPill className="bg-[#fbe1d0] text-[#69462e]">Moderado</FindingPill></div>
+        <span className={`inline-flex h-[19px] items-center gap-[4px] rounded-[6px] px-[8px] py-[4px] text-[10px] font-bold leading-none ${config.chipClass}`}><InspectionDetailStatusChipIcon status="closed" />{config.itemLabel}</span>
+      </div>
+      <div className="flex flex-col gap-[4px] pt-[12px]">
+        <FindingTextBlock title="Condición detectada" bordered>[Descripción realizada por el usuario que levanta la inspección]</FindingTextBlock>
+        <FindingTextBlock title="Medida correctiva propuesta">[Medida correctiva que recomienda el usuario que tomó la inspección]</FindingTextBlock>
+        <FindingTextBlock title="Descripción de la acción tomada">[Acción que realizó el usuario al momento de ejecutar el hallazgo]</FindingTextBlock>
+        <div className="flex gap-[4px] pt-[8px]"><EvidencePreview title="Antes"><InspectionDetailImageIcon tone="#24588b" /></EvidencePreview><EvidencePreview title="Después" afterClosed><InspectionDetailImageIcon tone="#2a5c16" /></EvidencePreview></div>
+        <div className="mt-[4px] flex h-[33px] items-center justify-between rounded-[8px] bg-white px-[12px] py-[9px]"><p className="text-[12px] font-medium leading-none text-[#646464]">SLA cerrado</p><div className="flex items-center gap-[3px]"><InspectionDetailStatusRowIcon status="open" className="h-[9px] w-[11.25px]" /><p className="text-[11px] font-bold leading-none text-[#532a0e]">XX días</p></div></div>
+        <div className="flex h-[33px] items-center justify-between rounded-[8px] bg-white px-[12px] py-[9px]"><p className="text-[12px] font-medium leading-none text-[#646464]">Fecha de cierre</p><p className="text-right text-[11px] font-bold leading-none text-[#646464]">dd/mm/aaaa</p></div>
+      </div>
+    </div>
+  );
+}
+
 function ExecutedFindingObservationsPanel() {
   return <div className="flex shrink-0 flex-col bg-white px-[14px] pb-[24px] pt-[14px]"><ExecutedFindingObservationCard /></div>;
 }
@@ -157,13 +177,17 @@ function OpenFindingObservationsPanel() {
   return <div className="flex shrink-0 flex-col gap-[24px] bg-white px-[14px] pb-[24px] pt-[14px]">{openFindingObservations.map((observation) => <OpenFindingObservationCard key={observation.idLabel} observation={observation} />)}</div>;
 }
 
+function ClosedFindingObservationsPanel() {
+  return <div className="flex shrink-0 flex-col bg-white px-[14px] pb-[24px] pt-[14px]"><ClosedFindingObservationCard /></div>;
+}
+
 function DetailRows({ kind, counts }: { kind: InspectionDetailModalKind; counts: Record<StatusKey, number> }) {
   const [expandedStatus, setExpandedStatus] = useState<StatusKey | null>(kind === 'finding' ? 'open' : null);
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-white">
       {statusConfigs.map((config) => {
         const expanded = expandedStatus === config.key;
-        const panel = kind === 'finding' && config.key === 'executed' && expanded ? <ExecutedFindingObservationsPanel /> : kind === 'finding' && config.key === 'open' && expanded ? <OpenFindingObservationsPanel /> : null;
+        const panel = kind === 'finding' && config.key === 'executed' && expanded ? <ExecutedFindingObservationsPanel /> : kind === 'finding' && config.key === 'open' && expanded ? <OpenFindingObservationsPanel /> : kind === 'finding' && config.key === 'closed' && expanded ? <ClosedFindingObservationsPanel /> : null;
         return <div key={config.key}><StatusRow config={config} count={counts[config.key]} expanded={expanded} onToggle={() => setExpandedStatus((current) => current === config.key ? null : config.key)} />{panel}</div>;
       })}
     </div>

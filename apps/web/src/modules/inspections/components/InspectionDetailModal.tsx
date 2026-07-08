@@ -1,3 +1,12 @@
+import {
+  InspectionDetailCaretDownIcon,
+  InspectionDetailCloseIcon,
+  InspectionDetailPdfIcon,
+  InspectionDetailStatusChipIcon,
+  InspectionDetailStatusRowIcon,
+  type InspectionDetailIconStatus,
+} from './InspectionDetailIcons';
+
 export type InspectionDetailModalKind = 'finding' | 'checklist';
 
 export type InspectionDetailModalRecord = {
@@ -16,7 +25,7 @@ type InspectionDetailModalProps = {
   onClose: () => void;
 };
 
-type StatusKey = 'executed' | 'open' | 'closed' | 'rejected';
+type StatusKey = InspectionDetailIconStatus;
 
 type StatusConfig = {
   key: StatusKey;
@@ -24,44 +33,20 @@ type StatusConfig = {
   chipLabel: string;
   textClass: string;
   chipClass: string;
-  dotClass: string;
 };
 
 const statusConfigByKey: Record<StatusKey, StatusConfig> = {
-  executed: { key: 'executed', label: 'Ejecutadas', chipLabel: 'Ejecutada', textClass: 'text-[#570b1d]', chipClass: 'bg-[#ffd0db] text-[#570b1d]', dotClass: 'bg-[#570b1d]' },
-  open: { key: 'open', label: 'Abiertas', chipLabel: 'Abiertas', textClass: 'text-[#463100]', chipClass: 'bg-[#ffeab8] text-[#463100]', dotClass: 'bg-[#463100]' },
-  closed: { key: 'closed', label: 'Cerradas', chipLabel: 'Cerrada', textClass: 'text-[#2a5c16]', chipClass: 'bg-[#e0ffd3] text-[#2a5c16]', dotClass: 'bg-[#2a5c16]' },
-  rejected: { key: 'rejected', label: 'Rechazadas', chipLabel: 'Rechazada', textClass: 'text-[#646464]', chipClass: 'bg-[#f7f7f7] text-[#646464]', dotClass: 'bg-[#646464]' },
+  executed: { key: 'executed', label: 'Ejecutadas', chipLabel: 'Ejecutada', textClass: 'text-[#570b1d]', chipClass: 'bg-[#ffd0db] text-[#570b1d]' },
+  open: { key: 'open', label: 'Abiertas', chipLabel: 'Abiertas', textClass: 'text-[#463100]', chipClass: 'bg-[#ffeab8] text-[#463100]' },
+  closed: { key: 'closed', label: 'Cerradas', chipLabel: 'Cerrada', textClass: 'text-[#2a5c16]', chipClass: 'bg-[#e0ffd3] text-[#2a5c16]' },
+  rejected: { key: 'rejected', label: 'Rechazadas', chipLabel: 'Rechazada', textClass: 'text-[#646464]', chipClass: 'bg-[#f7f7f7] text-[#646464]' },
 };
 
 const statusConfigs = Object.values(statusConfigByKey);
 
-function CloseIcon() {
-  return <svg className="size-[32px]" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M7 7 25 25M25 7 7 25" stroke="#131313" strokeWidth="2.4" strokeLinecap="round" /></svg>;
-}
-
-function CaretDownIcon() {
-  return <svg className="size-[16px]" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.5 6 8 10.5 12.5 6" fill="#131313" stroke="#131313" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-}
-
-function PdfIcon() {
-  return <svg className="h-[13px] w-[16.25px]" viewBox="0 0 17 14" fill="none" aria-hidden="true"><path d="M4.25 1.25h5.4l3.1 3.15v8.35h-8.5V1.25Z" fill="#333" /><path d="M9.65 1.25V4.4h3.1" stroke="white" strokeWidth="0.8" strokeLinejoin="round" /><text x="5.1" y="12" fill="white" fontSize="3.3" fontWeight="700">PDF</text></svg>;
-}
-
-function StatusDot({ status }: { status: StatusKey }) {
-  const config = statusConfigByKey[status];
-  if (status === 'closed') {
-    return <span className={`relative inline-flex size-[12px] items-center justify-center rounded-full ${config.dotClass}`}><svg className="h-[7px] w-[8px]" viewBox="0 0 8 7" fill="none" aria-hidden="true"><path d="M1.4 3.5 3 5.1 6.5 1.5" stroke="white" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg></span>;
-  }
-  if (status === 'executed' || status === 'rejected') {
-    return <span className={`relative inline-flex size-[12px] items-center justify-center rounded-full ${config.dotClass}`}><span className="h-[1.5px] w-[1.5px] rounded-full bg-white" /><span className="absolute h-[5px] w-[1.5px] -translate-y-[1px] rounded-full bg-white" /></span>;
-  }
-  return <span className={`relative inline-flex size-[12px] items-center justify-center rounded-full ${config.dotClass}`}><span className="h-[4.4px] w-[1.3px] -translate-y-[1px] rounded-full bg-white" /><span className="absolute h-[1.3px] w-[4px] translate-x-[1px] translate-y-[1.3px] rounded-full bg-white" /></span>;
-}
-
 function StatusChip({ status, count }: { status: StatusKey; count: number }) {
   const config = statusConfigByKey[status];
-  return <span className={`inline-flex h-[16px] items-center gap-[3px] rounded-[5px] px-[7px] py-[2px] font-['Inter:Semi_Bold',sans-serif] text-[10px] font-semibold leading-none ${config.chipClass}`}><span className={`size-[6px] rounded-full ${config.dotClass}`} />{count} {config.chipLabel}</span>;
+  return <span className={`inline-flex h-[16px] items-center gap-[3px] rounded-[5px] px-[7px] py-[2px] font-['Inter:Semi_Bold',sans-serif] text-[10px] font-semibold leading-none ${config.chipClass}`}><InspectionDetailStatusChipIcon status={status} />{count} {config.chipLabel}</span>;
 }
 
 function ProgressSummary({ counts, progressPercent }: { counts: Record<StatusKey, number>; progressPercent: number }) {
@@ -82,14 +67,14 @@ function Tabs({ kind }: { kind: InspectionDetailModalKind }) {
 function StatusRow({ config, count }: { config: StatusConfig; count: number }) {
   return (
     <button type="button" className="flex h-[56px] w-full shrink-0 items-center justify-between border-b border-[#e3e3e3] bg-white px-[14px] py-[16px]">
-      <div className="flex items-center gap-[10px]"><StatusDot status={config.key} /><p className={`font-['Inter:Bold',sans-serif] text-[11px] font-bold uppercase leading-[13px] tracking-[0.66px] ${config.textClass}`}>{config.label}</p><span className={`flex h-[14px] min-w-[19px] items-center justify-center rounded-[8px] px-[7px] font-['Inter:Bold',sans-serif] text-[10px] font-bold leading-[12px] tracking-[0.6px] ${config.chipClass}`}>{count}</span></div>
-      <CaretDownIcon />
+      <div className="flex items-center gap-[10px]"><InspectionDetailStatusRowIcon status={config.key} /><p className={`font-['Inter:Bold',sans-serif] text-[11px] font-bold uppercase leading-[13px] tracking-[0.66px] ${config.textClass}`}>{config.label}</p><span className={`flex h-[14px] min-w-[19px] items-center justify-center rounded-[8px] px-[7px] font-['Inter:Bold',sans-serif] text-[10px] font-bold leading-[12px] tracking-[0.6px] ${config.chipClass}`}>{count}</span></div>
+      <InspectionDetailCaretDownIcon />
     </button>
   );
 }
 
 function DownloadPdfButton() {
-  return <div className="shrink-0 border-t border-[#e3e3e3] bg-white px-[20px] pb-[14px] pt-[15px]"><button type="button" className="flex h-[40px] w-full items-center justify-center gap-[6px] rounded-[8px] border-[1.5px] border-[#d1d1d1] bg-white px-[15.5px] py-[1.5px] font-['Inter:Semi_Bold',sans-serif] text-[13px] font-semibold leading-none text-[#333]"><PdfIcon />Descargar PDF</button></div>;
+  return <div className="shrink-0 border-t border-[#e3e3e3] bg-white px-[20px] pb-[14px] pt-[15px]"><button type="button" className="flex h-[40px] w-full items-center justify-center gap-[6px] rounded-[8px] border-[1.5px] border-[#d1d1d1] bg-white px-[15.5px] py-[1.5px] font-['Inter:Semi_Bold',sans-serif] text-[13px] font-semibold leading-none text-[#333]"><InspectionDetailPdfIcon />Descargar PDF</button></div>;
 }
 
 function metadataFor(record: InspectionDetailModalRecord) {
@@ -107,7 +92,7 @@ export function InspectionDetailModal({ open, record, onClose }: InspectionDetai
       <div className="flex h-full w-full items-center justify-end px-[20px] py-[16px]">
         <section className="flex h-[calc(100vh-32px)] max-h-[692px] w-[360px] max-w-[calc(100vw-40px)] flex-col justify-between overflow-hidden rounded-[16px] bg-white shadow-[0_24px_70px_rgba(0,0,0,0.35)]" role="dialog" aria-modal="true" aria-labelledby="inspection-detail-title">
           <div className="flex min-h-0 flex-1 flex-col">
-            <div className="shrink-0 rounded-t-[16px] bg-white px-[14px] py-[12px]"><div className="flex items-center gap-[12px]"><div className="min-w-0 flex-1 font-['Inter:Bold',sans-serif] font-bold"><p className="whitespace-nowrap text-[13px] leading-none text-[#001e39]">{record.id}</p><h2 id="inspection-detail-title" className="mt-[5px] text-[16px] font-bold leading-[22px] tracking-[0.32px] text-[#2a2a2a]">{record.title}</h2><div className="mt-[4px]">{metadataFor(record)}</div></div><button type="button" className="flex size-[32px] shrink-0 items-center justify-center" onClick={onClose} aria-label="Cerrar detalle"><CloseIcon /></button></div></div>
+            <div className="shrink-0 rounded-t-[16px] bg-white px-[14px] py-[12px]"><div className="flex items-center gap-[12px]"><div className="min-w-0 flex-1 font-['Inter:Bold',sans-serif] font-bold"><p className="whitespace-nowrap text-[13px] leading-none text-[#001e39]">{record.id}</p><h2 id="inspection-detail-title" className="mt-[5px] text-[16px] font-bold leading-[22px] tracking-[0.32px] text-[#2a2a2a]">{record.title}</h2><div className="mt-[4px]">{metadataFor(record)}</div></div><button type="button" className="flex size-[32px] shrink-0 items-center justify-center" onClick={onClose} aria-label="Cerrar detalle"><InspectionDetailCloseIcon /></button></div></div>
             <ProgressSummary counts={counts} progressPercent={progressPercent} />
             <Tabs kind={record.kind} />
             <div className="min-h-0 flex-1 bg-white">{statusConfigs.map((config) => <StatusRow key={config.key} config={config} count={counts[config.key]} />)}</div>

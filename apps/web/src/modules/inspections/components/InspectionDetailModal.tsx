@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   InspectionDetailCaretDownIcon,
   InspectionDetailCloseIcon,
@@ -99,7 +99,7 @@ function FindingTextBlock({ title, children, bordered = false }: { title: string
   );
 }
 
-function EvidencePreview({ title, children }: { title: string; children: React.ReactNode }) {
+function EvidencePreview({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="flex h-[91px] min-w-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-[#e3e3e3] bg-white p-px">
       <div className="flex h-[20px] items-center bg-[#001e39] px-[8px] py-[4px]"><p className="text-[9px] font-bold uppercase leading-none text-[rgba(255,255,255,0.7)]">{title}</p></div>

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { DashboardSidebarTopBrandBar } from '../../modules/dashboard/components/DashboardSections';
 
 type SidebarIconName =
@@ -161,13 +161,19 @@ function ComingSoonBadge() {
 
 function SidebarModuleItem({ item }: { item: SidebarItem }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const hasChildren = Boolean(item.children?.length);
   const activeByRoute = item.to ? isRouteActive(location.pathname, item.to, item.end) : false;
   const activeByChild = item.children?.some((child) => child.to && isRouteActive(location.pathname, child.to, child.end)) ?? false;
   const isActive = activeByRoute || activeByChild;
   const baseClass = `group flex h-[32px] w-full items-center gap-[9px] rounded-[7px] px-[10px] py-[7px] text-left transition-colors duration-150 ${isActive ? 'bg-[rgba(255,255,255,0.1)]' : item.disabled ? '' : 'hover:bg-[rgba(255,255,255,0.055)]'}`;
-  const content = (
-    <>
+
+  function handleClick() {
+    if (item.to && !item.disabled) navigate(item.to);
+  }
+
+  return (
+    <button className={baseClass} disabled={item.disabled && !item.to} onClick={handleClick} type="button" aria-current={isActive ? 'page' : undefined}>
       <SidebarIcon name={item.icon} active={isActive} className={`h-[17px] w-[18px] ${isActive ? 'text-[#00b398]' : 'text-[rgba(255,255,255,0.38)]'}`} />
       <span className={`min-w-0 flex-1 truncate font-['Inter:Medium',sans-serif] text-[12.5px] font-medium leading-[15px] ${isActive ? 'text-white' : 'text-[rgba(255,255,255,0.55)]'}`}>{item.label}</span>
       {item.badge ? <ComingSoonBadge /> : null}
@@ -176,35 +182,28 @@ function SidebarModuleItem({ item }: { item: SidebarItem }) {
           <path d="M3.2 1.2 8.1 5 3.2 8.8" />
         </svg>
       ) : null}
-    </>
+    </button>
   );
-
-  if (item.to && !item.disabled) {
-    return <NavLink className={baseClass} end={item.end} to={item.to}>{content}</NavLink>;
-  }
-
-  return <button className={baseClass} disabled={item.disabled} type="button">{content}</button>;
 }
 
 function SidebarSubItem({ item }: { item: SidebarChildItem }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const isActive = item.to ? isRouteActive(location.pathname, item.to, item.end) : false;
-  const content = (
-    <>
+  const className = `relative w-full rounded-[6px] text-left transition-colors duration-150 ${isActive ? 'h-[41px] bg-[rgba(0,179,152,0.09)]' : 'h-[26.5px] hover:bg-[rgba(255,255,255,0.04)]'}`;
+
+  function handleClick() {
+    if (item.to && !item.disabled) navigate(item.to);
+  }
+
+  return (
+    <button className={className} disabled={item.disabled && !item.to} onClick={handleClick} type="button" aria-current={isActive ? 'page' : undefined}>
       {isActive ? <span className="absolute left-[23px] top-[14px] h-[13px] w-[2.5px] rounded-[2px] bg-[#00b398]" /> : null}
       {item.icon ? <SidebarIcon name={item.icon} className="absolute left-[38px] top-[4px] h-[10px] w-[12px] text-[rgba(255,255,255,0.22)]" /> : null}
       <span className={`absolute size-[4px] rounded-[2px] ${isActive ? 'left-[39.5px] top-[18.5px] bg-[#00b398]' : item.icon ? 'left-[58px] top-[6.5px] bg-[rgba(255,255,255,0.12)]' : 'left-[39.5px] top-[11.25px] bg-[rgba(255,255,255,0.2)]'}`} />
       <span className={`absolute font-['Inter:Semi_Bold',sans-serif] leading-[14px] ${isActive ? 'left-[50.5px] top-[6px] max-w-[140px] whitespace-normal text-[12px] font-semibold text-[#00b398]' : item.icon ? 'left-[70px] top-[1.5px] text-[11px] font-medium text-[rgba(255,255,255,0.32)]' : 'left-[50.5px] top-[6px] whitespace-nowrap text-[12px] font-normal text-[rgba(255,255,255,0.44)]'}`}>{item.label}</span>
-    </>
+    </button>
   );
-
-  const className = `relative w-full rounded-[6px] text-left transition-colors duration-150 ${isActive ? 'h-[41px] bg-[rgba(0,179,152,0.09)]' : 'h-[26.5px] hover:bg-[rgba(255,255,255,0.04)]'}`;
-
-  if (item.to && !item.disabled) {
-    return <NavLink className={className} end={item.end} to={item.to}>{content}</NavLink>;
-  }
-
-  return <button className={className} disabled={item.disabled} type="button">{content}</button>;
 }
 
 function SidebarChildren({ children }: { children: SidebarChildItem[] }) {

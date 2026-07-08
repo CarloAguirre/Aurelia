@@ -77,3 +77,29 @@ export function InspectionDetailPdfIcon({ className = 'h-[13px] w-[16.25px]' }: 
     </svg>
   );
 }
+
+export function InspectionDetailImageIcon({ className = 'h-[18px] w-[22.5px]', tone = '#24588B' }: IconProps & { tone?: string }) {
+  return (
+    <svg className={className} width="23" height="18" viewBox="0 0 23 18" fill="none" aria-hidden="true">
+      <rect x="1.5" y="1" width="20" height="16" rx="2.5" fill={tone} />
+      <circle cx="7.2" cy="6" r="2" fill="white" />
+      <path d="M4.3 14.2L9.1 9.6L12.2 12.4L15.3 8.8L19.2 14.2H4.3Z" fill="white" />
+    </svg>
+  );
+}
+
+export function InspectionDetailRejectIcon({ className = 'h-[12px] w-[15px]' }: IconProps) {
+  return (
+    <svg className={className} width="15" height="12" viewBox="0 0 15 12" fill="none" aria-hidden="true">
+      <path d="M3.75 2.25L11.25 9.75M11.25 2.25L3.75 9.75" stroke="#570B1D" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function InspectionDetailApproveIcon({ className = 'h-[12px] w-[15px]' }: IconProps) {
+  return (
+    <svg className={className} width="15" height="12" viewBox="0 0 15 12" fill="none" aria-hidden="true">
+      <path d="M3.1 6.2L6.15 9.25L11.9 2.75" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}

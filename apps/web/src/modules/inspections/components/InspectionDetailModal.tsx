@@ -207,12 +207,12 @@ function RejectedFindingObservationsPanel() {
 }
 
 function DetailRows({ kind, counts }: { kind: InspectionDetailModalKind; counts: Record<StatusKey, number> }) {
-  const [expandedStatus, setExpandedStatus] = useState<StatusKey | null>(kind === 'finding' ? 'open' : null);
+  const [expandedStatus, setExpandedStatus] = useState<StatusKey | null>(kind === 'checklist' ? 'open' : 'open');
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-white">
       {statusConfigs.map((config) => {
         const expanded = expandedStatus === config.key;
-        const panel = kind === 'finding' && config.key === 'executed' && expanded ? <ExecutedFindingObservationsPanel /> : kind === 'finding' && config.key === 'open' && expanded ? <OpenFindingObservationsPanel /> : kind === 'finding' && config.key === 'closed' && expanded ? <ClosedFindingObservationsPanel /> : kind === 'finding' && config.key === 'rejected' && expanded ? <RejectedFindingObservationsPanel /> : null;
+        const panel = config.key === 'executed' && expanded ? <ExecutedFindingObservationsPanel /> : config.key === 'open' && expanded ? <OpenFindingObservationsPanel /> : config.key === 'closed' && expanded ? <ClosedFindingObservationsPanel /> : config.key === 'rejected' && expanded ? <RejectedFindingObservationsPanel /> : null;
         return <div key={config.key}><StatusRow config={config} count={counts[config.key]} expanded={expanded} onToggle={() => setExpandedStatus((current) => current === config.key ? null : config.key)} />{panel}</div>;
       })}
     </div>
@@ -228,7 +228,7 @@ function metadataFor(record: InspectionDetailModalRecord) {
   return <p className="font-['Inter:Bold',sans-serif] text-[11px] font-bold leading-none text-[#646464]">{record.metadataLine1}</p>;
 }
 
-function buildFindingMockCounts(record: InspectionDetailModalRecord): Record<StatusKey, number> {
+function buildDetailMockCounts(record: InspectionDetailModalRecord): Record<StatusKey, number> {
   return {
     executed: Math.max(record.counts?.executed ?? 0, 1),
     open: Math.max(record.counts?.open ?? 0, 2),
@@ -239,7 +239,7 @@ function buildFindingMockCounts(record: InspectionDetailModalRecord): Record<Sta
 
 export function InspectionDetailModal({ open, record, onClose }: InspectionDetailModalProps) {
   if (!open || !record) return null;
-  const counts: Record<StatusKey, number> = record.kind === 'finding' ? buildFindingMockCounts(record) : { executed: record.counts?.executed ?? 1, open: record.counts?.open ?? 2, closed: record.counts?.closed ?? 1, rejected: record.counts?.rejected ?? 1 };
+  const counts: Record<StatusKey, number> = buildDetailMockCounts(record);
   const progressPercent = record.progressPercent ?? 20;
 
   return (

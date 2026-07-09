@@ -20,7 +20,7 @@ export function SlaReassignSheet({ visible, calculatedLabel, severityLabel, onCl
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-[16px] right-[20px] top-[16px] z-[1200] flex w-[360px] max-w-[calc(100vw-40px)] items-end overflow-hidden rounded-[22px] bg-black/40" onClick={onClose}>
+    <div className="absolute inset-0 z-[1200] flex items-end overflow-hidden bg-black/40" onClick={onClose}>
       <div className="w-full rounded-t-[16px] bg-white px-[14px] pb-[24px] pt-[12px]" onClick={(event) => event.stopPropagation()}>
         <div className="flex w-full flex-col items-center pt-[10px]"><div className="h-[4px] w-[40px] rounded-[2px] bg-[#D1D1D1]" /></div>
         <p className="mt-[24px] w-full text-[14px] font-bold leading-none text-[#131313]">Reasignar SLA</p>

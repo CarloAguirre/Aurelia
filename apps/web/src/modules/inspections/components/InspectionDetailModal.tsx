@@ -37,6 +37,7 @@ type InspectionDetailModalProps = {
 
 type StatusKey = InspectionDetailIconStatus;
 type DetailTab = 'observations' | 'result' | 'followups' | 'general';
+type ChecklistResultStatus = 'yes' | 'no' | 'na';
 
 type StatusConfig = {
   key: StatusKey;
@@ -94,6 +95,13 @@ type ReassignOption = {
   avatarClassName: string;
 };
 
+type ChecklistResultItem = {
+  number: number;
+  question: string;
+  status: ChecklistResultStatus;
+  comment?: boolean;
+};
+
 const statusConfigByKey: Record<StatusKey, StatusConfig> = {
   executed: { key: 'executed', label: 'Ejecutadas', chipLabel: 'Ejecutada', itemLabel: 'Ejecutado', textClass: 'text-[#570b1d]', chipClass: 'bg-[#ffd0db] text-[#570b1d]' },
   open: { key: 'open', label: 'Abiertas', chipLabel: 'Abiertas', itemLabel: 'Abierto', textClass: 'text-[#463100]', chipClass: 'bg-[#ffeab8] text-[#463100]' },
@@ -137,6 +145,33 @@ const reassignOptions: ReassignOption[] = [
   { id: 'roberto-gonzalez', initials: 'RG', name: 'Roberto González', area: 'Planta Procesos', avatarClassName: 'bg-[#24588b] text-white' },
   { id: 'carlos-lopez', initials: 'CL', name: 'Carlos López', area: 'Mantención', avatarClassName: 'bg-[#00b398] text-white' },
   { id: 'patricia-soto', initials: 'PS', name: 'Patricia Soto', area: 'Servicios Generales', avatarClassName: 'bg-[#532a0e] text-white' },
+];
+const checklistResultItems: ChecklistResultItem[] = [
+  { number: 1, question: '¿El almacenamiento se realiza en lugar protegido, techado?', status: 'yes', comment: true },
+  { number: 2, question: '¿Tiene acceso con candado y señaliza encargado?', status: 'yes' },
+  { number: 3, question: '¿Está alejado más de 5 metros de fuentes inflamables?', status: 'yes' },
+  { number: 4, question: '¿Tiene señalética NCh 382:2021 y NCh 2190:2019?', status: 'yes', comment: true },
+  { number: 5, question: '¿SUSPEL almacenadas según clase, tipo y peligrosidad?', status: 'yes', comment: true },
+  { number: 6, question: '¿Los envases son adecuados e impiden pérdidas?', status: 'yes' },
+  { number: 7, question: '¿Tiene visible el rombo NFPA 704 y NCh 1411:2000?', status: 'no' },
+  { number: 8, question: '¿Los envases están rotulados con contenido y peligrosidad?', status: 'yes' },
+  { number: 9, question: '¿Tiene señalética "NO FUMAR" y "ÁREA RESTRINGIDA"?', status: 'yes' },
+  { number: 10, question: '¿Posee sistema de extinción según la carga de fuego?', status: 'yes' },
+  { number: 11, question: '¿El lugar tiene al menos 1 metro libre hasta el techo?', status: 'yes' },
+  { number: 12, question: '¿Posee contención de derrames de 1,1 veces el total?', status: 'no' },
+  { number: 13, question: '¿Tiene disponibles las HDS según NCh2245:2021?', status: 'yes' },
+  { number: 14, question: '¿Mantiene orden y limpieza en el lugar?', status: 'yes' },
+  { number: 15, question: '¿Existe inventario actualizado con nombre y proveedor?', status: 'yes' },
+  { number: 16, question: '¿El personal está capacitado en manejo de SUSPEL?', status: 'yes' },
+  { number: 17, question: '¿Los recipientes están en buen estado sin deterioro?', status: 'yes' },
+  { number: 18, question: '¿Productos incompatibles con separación adecuada?', status: 'yes' },
+  { number: 19, question: '¿Existe registro de ingresos y egresos actualizado?', status: 'na' },
+  { number: 20, question: '¿El área tiene ventilación que evita acumulación de vapores?', status: 'no' },
+  { number: 21, question: '¿Los derrames anteriores fueron reportados formalmente?', status: 'yes' },
+  { number: 22, question: '¿El sistema eléctrico es antiexplosión o certificado ATEX?', status: 'na' },
+  { number: 23, question: '¿Existe señalética de EPP requerido visible en el acceso?', status: 'yes' },
+  { number: 24, question: '¿Existe ducha de emergencia y lavaojos a menos de 10m?', status: 'yes' },
+  { number: 25, question: '¿Los residuos de SUSPEL se gestionan como RESPEL?', status: 'yes' },
 ];
 
 function getTabs(kind: InspectionDetailModalKind): TabConfig[] {
@@ -304,6 +339,60 @@ function DetailRows({ counts }: { counts: Record<StatusKey, number> }) {
   );
 }
 
+function ChecklistResultMetric({ value, label, tone, marker }: { value: string; label: string; tone: string; marker?: string }) {
+  return (
+    <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-[2px]">
+      <p className={`text-[18px] font-bold leading-[22px] ${tone}`}>{value}</p>
+      <div className="flex h-[15px] items-center justify-center gap-[3px]"><span className={`text-[11px] font-normal leading-none ${tone}`}>{marker}</span><span className={`text-[11px] font-normal leading-none ${tone}`}>{label}</span></div>
+    </div>
+  );
+}
+
+function ChecklistResultSummary() {
+  return (
+    <div className="flex h-[71px] shrink-0 items-start gap-[8px] border-b border-[#e3e3e3] bg-white px-[14px] pb-[13px] pt-[12px]">
+      <ChecklistResultMetric value="20" label="SÍ" tone="text-[#2a5c16]" marker="✓" />
+      <div className="h-full w-px shrink-0 bg-[#e3e3e3]" />
+      <ChecklistResultMetric value="5" label="NO" tone="text-[#570b1d]" marker="×" />
+      <div className="h-full w-px shrink-0 bg-[#e3e3e3]" />
+      <ChecklistResultMetric value="2" label="N/A" tone="text-[#646464]" />
+    </div>
+  );
+}
+
+function ChecklistResultStatusBadge({ status }: { status: ChecklistResultStatus }) {
+  if (status === 'no') return <span className="inline-flex h-[16px] items-center rounded-[6px] bg-[#ffd0db] px-[8px] py-[2px] text-[10px] font-bold leading-none text-[#570b1d]">NO</span>;
+  if (status === 'na') return <span className="inline-flex h-[16px] items-center rounded-[6px] bg-[#f7f7f7] px-[8px] py-[2px] text-[10px] font-bold leading-none text-[#646464]">N/A</span>;
+  return <span className="inline-flex h-[16px] items-center rounded-[6px] bg-[#e0ffd3] px-[8px] py-[2px] text-[10px] font-bold leading-none text-[#2a5c16]">SÍ</span>;
+}
+
+function ChecklistResultItemRow({ item, isLast }: { item: ChecklistResultItem; isLast: boolean }) {
+  const isNo = item.status === 'no';
+  return (
+    <div className={`flex gap-[10px] px-[12px] pb-[10px] pt-[9px] ${isNo ? 'bg-[#ffd0db]' : 'bg-white'} ${isLast ? '' : 'border-b border-[#e3e3e3]'}`}>
+      <p className={`shrink-0 pt-px text-[10px] font-bold leading-none ${isNo ? 'text-[#bd3b5b]' : 'text-[#acacac]'}`}>{item.number}</p>
+      <div className="min-w-0 flex-1">
+        <p className={`text-[12px] leading-[16.8px] ${isNo ? 'font-semibold text-[#570b1d]' : 'font-normal text-[#333]'}`}>{item.question}</p>
+        {item.comment ? <p className="pt-[8px] text-[12px] font-semibold leading-[16.8px] text-[#333]">Comentario:<br />[Comentario a considerar ingresado por el inspector al momento de realizar la inspección]</p> : null}
+      </div>
+      <div className="shrink-0 pt-px"><ChecklistResultStatusBadge status={item.status} /></div>
+    </div>
+  );
+}
+
+function ChecklistResultItemsSection() {
+  return (
+    <div className="shrink-0 bg-white py-[20px]">
+      <div className="flex items-center gap-[6px] px-[14px]"><InspectionDetailListIcon className="h-[11px] w-[13.75px]" /><p className="text-[11px] font-bold uppercase leading-none tracking-[0.55px] text-[#646464]">Detalle ítem a ítem</p></div>
+      <div className="pt-[10px]"><div className="overflow-hidden border border-[#e3e3e3] bg-white">{checklistResultItems.map((item, index) => <ChecklistResultItemRow key={item.number} item={item} isLast={index === checklistResultItems.length - 1} />)}</div></div>
+    </div>
+  );
+}
+
+function ChecklistResultPanel() {
+  return <div className="min-h-0 flex-1 overflow-y-auto bg-white"><ChecklistResultSummary /><ChecklistResultItemsSection /></div>;
+}
+
 function FollowupTimelineMarker({ completed }: { completed: boolean }) {
   return <div className={`flex size-[24px] shrink-0 items-center justify-center rounded-[12px] text-[10px] font-normal leading-none ${completed ? 'bg-[#6cc24a] text-white' : 'bg-[#e3e3e3] text-[#acacac]'}`}>{completed ? '✓' : '○'}</div>;
 }
@@ -450,7 +539,8 @@ function EmptyDetailPanel() {
 function DetailContent({ activeTab, counts, kind, onReassignClick }: { activeTab: DetailTab; counts: Record<StatusKey, number>; kind: InspectionDetailModalKind; onReassignClick: () => void }) {
   if (activeTab === 'followups') return <FollowupsPanel />;
   if (activeTab === 'general' && kind === 'finding') return <FindingGeneralDataPanel onReassignClick={onReassignClick} />;
-  if (activeTab === 'observations' || activeTab === 'result') return <DetailRows counts={counts} />;
+  if (activeTab === 'result' && kind === 'checklist') return <ChecklistResultPanel />;
+  if (activeTab === 'observations') return <DetailRows counts={counts} />;
   return <EmptyDetailPanel />;
 }
 

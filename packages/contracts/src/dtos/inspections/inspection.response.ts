@@ -135,6 +135,7 @@ export interface InspectionManagementTableObservationSummaryResponse {
   executed: number;
   open: number;
   closed: number;
+  rejected: number;
 }
 
 export interface InspectionManagementTableRowResponse {

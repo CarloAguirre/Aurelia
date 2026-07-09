@@ -184,27 +184,9 @@ export function getInspectionFindingSeverities(): Promise<InspectionFindingSever
   return httpGet<InspectionFindingSeverityResponse[]>('/inspections/finding-catalogs/severities');
 }
 
-function extractStatusCode(error: unknown): number | null {
-  if (!(error instanceof Error)) return null;
-  const match = error.message.match(/failed:\s*(\d{3})/i);
-  if (!match) return null;
-  const status = Number(match[1]);
-  return Number.isFinite(status) ? status : null;
-}
-
-export async function getCompanyUsers(companyId: string): Promise<UserResponse[]> {
+export function getCompanyUsers(companyId: string): Promise<UserResponse[]> {
   const query = `?companyId=${encodeURIComponent(companyId)}`;
-  try {
-    return await httpGet<UserResponse[]>(`/users${query}`);
-  } catch (error) {
-    const status = extractStatusCode(error);
-    if (status !== 403) throw error;
-
-    const bootstrap = await httpGet<MobileBootstrapResponse>('/mobile/bootstrap');
-    return (bootstrap.catalogs.users ?? []).filter(
-      (user) => user.companyId === companyId || user.companies?.some((company) => company.id === companyId),
-    );
-  }
+  return httpGet<UserResponse[]>(`/inspections/responsible-users${query}`);
 }
 
 export function suggestCorrectiveMeasure(params: {

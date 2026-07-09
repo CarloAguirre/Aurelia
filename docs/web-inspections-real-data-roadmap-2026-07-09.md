@@ -61,7 +61,7 @@ Avance:
 - Las evidencias de observación y generales se renderizan con previsualización de imagen usando contenido binario real del archivo.
 - Datos generales vuelve a respetar la estructura Figma del nodo `1534:14183`: inspección, dónde/cuándo, fotografía, observaciones y responsables al final.
 - La sección Responsables vuelve a usar la card Figma con fila EECC, avatares, chip `Tú` y botón dashed `Reasignar a otro compañero ...`.
-- Al presionar reasignar se vuelve a abrir una bottom sheet visual de reasignación; la persistencia real de responsables queda separada para Etapa 4.
+- Al presionar reasignar se vuelve a abrir una bottom sheet visual de reasignación; la persistencia visual queda para conectarse contra el hook de Etapa 4.
 - Se mantiene `getInspectionExportPayload(inspectionId)` para PDF/reporting y compatibilidad con export.
 
 ### Etapa 4 - Acciones operativas desde modal
@@ -77,12 +77,16 @@ Implementado:
 - Aprobar cierre actualizando estado a `closed`.
 - Rechazar cierre actualizando estado a `rejected` y guardando motivo.
 - Reasignar SLA actualizando `dueAt`.
+- Contrato `UpdateInspectionFindingRequest` acepta `responsibleUserIds`.
+- API `PATCH /api/inspections/findings/:findingId` reemplaza responsables asociados al hallazgo cuando recibe `responsibleUserIds`.
+- Hook `useInspectionFindingActions` expone `reassignResponsibleUsers` para persistir responsables sin cambiar el diseño Figma.
 - Invalidación de queries de detalle, gestión y dashboard tras cada acción.
 
 Pendiente:
 
+- Conectar la bottom sheet Figma de reasignación al hook `reassignResponsibleUsers`.
+- Cargar candidatos reales de responsables por EECC sin alterar el layout visual.
 - Subir evidencia después como `inspection_finding/after_photo` durante ejecución.
-- Reasignar responsable real modificando responsables asociados al hallazgo.
 - Reemplazar prompts nativos por modales visuales fieles a Figma si QA lo requiere.
 
 ### Etapa 5 - QA / cierre MVP web inspecciones
@@ -102,4 +106,4 @@ Checks mínimos:
 
 ## Próxima iteración recomendada
 
-Implementar persistencia real de reasignación de responsables y carga de evidencia `after_photo` desde el modal al ejecutar una observación, usando el mismo patrón de subida y vinculación ya aplicado en creación de inspecciones.
+Conectar la bottom sheet Figma de reasignación a `reassignResponsibleUsers`, cargando candidatos reales por empresa desde `GET /api/inspections/responsible-users?companyId=...`, sin modificar el diseño visual.

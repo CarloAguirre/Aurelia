@@ -9,6 +9,8 @@ export interface CreateInspectionFindingRequest {
   responsibleUserIds?: ID[];
   title: string;
   description?: string | null;
+  detectedCondition?: string | null;
+  proposedCorrectiveAction?: string | null;
   severity: InspectionFindingSeverity;
   ownerUserId?: ID | null;
   dueAt?: ISODateString | null;

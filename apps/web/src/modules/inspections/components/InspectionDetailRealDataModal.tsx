@@ -1,5 +1,11 @@
 import { useState, type ReactNode } from 'react';
-import type { InspectionDetailFindingGroupKey, InspectionDetailFindingItemResponse, InspectionDetailResponse } from '@aurelia/contracts';
+import type {
+  InspectionDetailEvidenceResponse,
+  InspectionDetailFindingGroupKey,
+  InspectionDetailFindingItemResponse,
+  InspectionDetailResponse,
+  InspectionDetailResponsibleResponse,
+} from '@aurelia/contracts';
 import { useInspectionFindingActions } from '../../../shared/hooks/useInspectionFindingActions';
 import {
   InspectionDetailApproveIcon,
@@ -44,6 +50,9 @@ type FindingObservationCardProps = {
   actions: ReturnType<typeof useInspectionFindingActions>;
 };
 
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
+const apiOrigin = API_URL.replace(/\/api\/?$/, '');
+
 const statusConfigByKey: Record<StatusKey, StatusConfig> = {
   executed: { key: 'executed', label: 'Ejecutadas', chipLabel: 'Ejecutada', itemLabel: 'Ejecutado', textClass: 'text-[#570b1d]', chipClass: 'bg-[#ffd0db] text-[#570b1d]' },
   open: { key: 'open', label: 'Abiertas', chipLabel: 'Abiertas', itemLabel: 'Abierto', textClass: 'text-[#463100]', chipClass: 'bg-[#ffeab8] text-[#463100]' },
@@ -81,6 +90,18 @@ function severityClassName(value: string) {
   if (normalized.includes('crítico') || normalized.includes('critico') || normalized.includes('alto')) return 'bg-[#ffd0db] text-[#570b1d]';
   if (normalized.includes('moder')) return 'bg-[#fbe1d0] text-[#69462e]';
   return 'bg-[#e0ffd3] text-[#2a5c16]';
+}
+
+function resolveEvidenceContentUrl(evidence: InspectionDetailEvidenceResponse) {
+  if (evidence.fileId) return `${apiOrigin}/api/files/${encodeURIComponent(evidence.fileId)}/content`;
+  if (!evidence.url) return null;
+  if (evidence.url.startsWith('http')) return evidence.url;
+  if (evidence.url.startsWith('/api/')) return `${apiOrigin}${evidence.url}`;
+  return evidence.url;
+}
+
+function evidenceLabel(evidence: InspectionDetailEvidenceResponse, index: number) {
+  return evidence.title ?? evidence.description ?? `Evidencia ${index + 1}`;
 }
 
 function StatusChip({ status, count }: { status: StatusKey; count: number }) {
@@ -125,20 +146,25 @@ function FindingTextBlock({ title, children, bordered = false }: { title: string
   );
 }
 
-function EvidencePreview({ title, count, afterClosed = false }: { title: string; count: number; afterClosed?: boolean }) {
+function EvidencePreview({ title, evidences, afterClosed = false }: { title: string; evidences: InspectionDetailEvidenceResponse[]; afterClosed?: boolean }) {
+  const firstEvidence = evidences[0] ?? null;
+  const firstUrl = firstEvidence ? resolveEvidenceContentUrl(firstEvidence) : null;
   return (
     <div className="flex h-[91px] min-w-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-[#e3e3e3] bg-white p-px">
       <div className="flex h-[20px] items-center bg-[#001e39] px-[8px] py-[4px]"><p className="text-[9px] font-bold uppercase leading-none text-[rgba(255,255,255,0.7)]">{title}</p></div>
-      <div className={`flex min-h-0 flex-1 flex-col items-center justify-center gap-[4px] ${afterClosed ? 'bg-[#dafccb]' : 'bg-gradient-to-br from-[#e8f4fd] to-[#c8e6f0]'}`}>{count > 0 ? <><InspectionDetailImageIcon tone={afterClosed ? '#2a5c16' : '#24588b'} /><p className="text-[10px] font-semibold leading-none text-[#333]">{count} evidencia{count === 1 ? '' : 's'}</p></> : <p className="text-[11px] font-normal leading-none text-[#acacac]">Pendiente</p>}</div>
+      <div className={`relative flex min-h-0 flex-1 flex-col items-center justify-center gap-[4px] overflow-hidden ${afterClosed ? 'bg-[#dafccb]' : 'bg-gradient-to-br from-[#e8f4fd] to-[#c8e6f0]'}`}>{firstUrl ? <><img className="h-full w-full object-cover" src={firstUrl} alt={evidenceLabel(firstEvidence, 0)} /><span className="absolute bottom-[4px] left-[4px] rounded-[4px] bg-[rgba(0,30,57,0.78)] px-[5px] py-[2px] text-[9px] font-bold text-white">{evidences.length} evidencia{evidences.length === 1 ? '' : 's'}</span></> : evidences.length > 0 ? <><InspectionDetailImageIcon tone={afterClosed ? '#2a5c16' : '#24588b'} /><p className="text-[10px] font-semibold leading-none text-[#333]">{evidences.length} evidencia{evidences.length === 1 ? '' : 's'}</p></> : <p className="text-[11px] font-normal leading-none text-[#acacac]">Pendiente</p>}</div>
     </div>
   );
+}
+
+function EvidenceGallery({ evidences }: { evidences: InspectionDetailEvidenceResponse[] }) {
+  if (evidences.length === 0) return <div className="flex h-[80px] items-center justify-center rounded-[8px] bg-[linear-gradient(165deg,#1e3050_0%,#0f1f35_100%)]"><p className="text-[11px] font-semibold text-white">0 evidencias generales</p></div>;
+  return <div className="grid grid-cols-2 gap-[6px]">{evidences.map((evidence, index) => { const url = resolveEvidenceContentUrl(evidence); return <div key={evidence.evidenceId} className="relative h-[80px] overflow-hidden rounded-[8px] bg-[#dceef8]">{url ? <img className="h-full w-full object-cover" src={url} alt={evidenceLabel(evidence, index)} /> : <div className="flex h-full w-full items-center justify-center"><InspectionDetailImageIcon tone="#24588b" /></div>}<span className="absolute bottom-[4px] left-[4px] max-w-[calc(100%-8px)] truncate rounded-[4px] bg-[rgba(0,30,57,0.78)] px-[5px] py-[2px] text-[9px] font-bold text-white">{evidenceLabel(evidence, index)}</span></div>; })}</div>;
 }
 
 function FindingObservationCard({ inspectionId, item, actions }: FindingObservationCardProps) {
   const config = statusConfigByKey[item.statusGroup];
   const status = item.statusGroup;
-  const beforeCount = item.beforeEvidence.length;
-  const afterCount = item.afterEvidence.length;
   const actionDisabled = actions.isPending;
 
   function execute() {
@@ -177,7 +203,7 @@ function FindingObservationCard({ inspectionId, item, actions }: FindingObservat
         <FindingTextBlock title="Medida correctiva propuesta">{item.proposedCorrectiveAction ?? ''}</FindingTextBlock>
         {status !== 'open' ? <FindingTextBlock title="Descripción de la acción tomada">{item.executedActionDescription ?? ''}</FindingTextBlock> : null}
         {status === 'rejected' ? <FindingTextBlock title="Motivo de rechazo">{item.rejectionReason ?? ''}</FindingTextBlock> : null}
-        <div className="flex gap-[4px] pt-[8px]"><EvidencePreview title="Antes" count={beforeCount} /><EvidencePreview title="Después" count={afterCount} afterClosed={status === 'closed' || status === 'executed' || status === 'rejected'} /></div>
+        <div className="flex gap-[4px] pt-[8px]"><EvidencePreview title="Antes" evidences={item.beforeEvidence} /><EvidencePreview title="Después" evidences={item.afterEvidence} afterClosed={status === 'closed' || status === 'executed' || status === 'rejected'} /></div>
         {status === 'open' ? <div className="mt-[4px] flex min-h-[64px] items-center justify-between rounded-[10px] border-[1.5px] border-[#d1d1d1] bg-[#f7f7f7] p-[15.5px]"><div><p className="w-[78px] text-[9px] font-bold uppercase leading-none tracking-[0.63px] text-[#333]">SLA calculado</p><p className="pt-[2px] text-[20px] font-bold leading-[20px] text-[#532a0e]">{daysLabel(item.dueAt)}</p></div><button type="button" className="flex h-[40px] items-center justify-center rounded-[8px] border-[1.5px] border-[#d1d1d1] bg-white px-[15.5px] py-[1.5px] text-[13px] font-semibold text-[#333] disabled:opacity-50" disabled={actionDisabled} onClick={reschedule}>Reasignar SLA</button></div> : <div className="mt-[4px] flex h-[33px] items-center justify-between rounded-[8px] bg-white px-[12px] py-[9px]"><p className="text-[12px] font-medium leading-none text-[#646464]">Fecha de estado</p><p className="text-right text-[11px] font-bold leading-none text-[#646464]">{formatDate(item.closedAt ?? item.executedAt ?? item.rejectedAt)}</p></div>}
         {status === 'open' ? <button type="button" className="flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#c8a064] px-[12px] text-[15px] font-bold text-white shadow-[0px_2px_5px_rgba(200,160,100,0.3)] disabled:opacity-50" disabled={actionDisabled} onClick={execute}>Ejecutar observación</button> : null}
         {status === 'executed' ? <div className="flex items-center gap-[8px] rounded-[8px] bg-white px-[12px] py-[9px]"><button type="button" className="flex h-[40px] items-center justify-center gap-[5px] rounded-[9px] border-2 border-[#c4365a] bg-white px-[16px] py-[2px] text-[12px] font-bold text-[#570b1d] disabled:opacity-50" disabled={actionDisabled} onClick={reject}><InspectionDetailRejectIcon />Rechazar</button><button type="button" className="flex h-[40px] min-w-0 flex-1 items-center justify-center gap-[5px] rounded-[9px] bg-[#3a9b3a] px-[12px] text-[12px] font-bold text-white disabled:opacity-50" disabled={actionDisabled} onClick={approve}><InspectionDetailApproveIcon />Aprobar cierre</button></div> : null}
@@ -227,6 +253,24 @@ function GeneralInfoRows({ rows }: { rows: { label: string; value: string }[] })
   return <div>{rows.map((row, index) => <div key={row.label} className={`flex items-center justify-between px-[12px] py-[9px] ${index < rows.length - 1 ? 'border-b border-[#e3e3e3]' : ''}`}><p className="text-[12px] font-medium leading-none text-[#646464]">{row.label}</p><p className="text-right text-[12px] font-bold leading-none text-[#131313]">{row.value}</p></div>)}</div>;
 }
 
+function responsibleCompanyName(responsible: InspectionDetailResponsibleResponse, detail: InspectionDetailResponse) {
+  if (responsible.companyName) return responsible.companyName;
+  const finding = Object.values(detail.findings).flat().find((item) => item.responsibleUsers.some((user) => user.userId === responsible.userId));
+  return finding?.responsibleCompanyName ?? '—';
+}
+
+function ResponsiblesPanel({ detail }: { detail: InspectionDetailResponse }) {
+  const responsibles = detail.general.responsibles;
+  return (
+    <GeneralSection icon={<InspectionDetailPersonIcon />} title={`Responsables (${responsibles.length})`}>
+      <div className="px-[12px] py-[10px]">
+        {responsibles.length > 0 ? <div className="flex flex-col gap-[8px]">{responsibles.map((responsible) => <div key={responsible.userId} className="rounded-[8px] border border-[#e3e3e3] bg-[#f7f7f7] px-[10px] py-[9px]"><p className="text-[12px] font-bold leading-none text-[#131313]">{responsible.fullName}</p><p className="pt-[4px] text-[11px] font-normal leading-none text-[#646464]">{responsible.position ?? 'Sin cargo'} · {responsibleCompanyName(responsible, detail)}</p>{responsible.currentUser ? <span className="mt-[7px] inline-flex rounded-[5px] bg-[#e6f3ff] px-[7px] py-[2px] text-[10px] font-bold text-[#24588b]">Usuario actual</span> : null}</div>)}</div> : <p className="rounded-[8px] border border-dashed border-[#d1d1d1] bg-[#f7f7f7] px-[10px] py-[14px] text-center text-[12px] text-[#646464]">Sin responsables asignados</p>}
+        <button type="button" className="mt-[10px] flex h-[40px] w-full items-center justify-center rounded-[8px] border-[1.5px] border-[#d1d1d1] bg-white px-[15.5px] py-[1.5px] text-[13px] font-semibold text-[#333]" onClick={() => window.alert('Reasignación real pendiente de endpoint específico de responsables.')}>Reasignar responsables</button>
+      </div>
+    </GeneralSection>
+  );
+}
+
 function GeneralPanel({ detail }: { detail: InspectionDetailResponse }) {
   const general = detail.general;
   const locationRows = [
@@ -241,8 +285,9 @@ function GeneralPanel({ detail }: { detail: InspectionDetailResponse }) {
     <div className="min-h-0 flex-1 overflow-y-auto bg-white px-[14px] pb-[20px] pt-[14px]">
       <div className="flex flex-col gap-[12px]">
         <GeneralSection icon={<InspectionDetailPersonIcon />} title="Quién realizó la inspección"><GeneralInfoRows rows={[{ label: 'Nombre', value: general.inspectorName ?? '—' }, { label: 'Empresa', value: general.inspectorCompanyName ?? general.companyName ?? '—' }]} /></GeneralSection>
+        <ResponsiblesPanel detail={detail} />
         <GeneralSection icon={<InspectionDetailLocationIcon />} title="Donde y cuándo"><GeneralInfoRows rows={locationRows} /></GeneralSection>
-        <GeneralSection icon={<InspectionDetailCameraIcon />} title="Fotografía general de la inspección"><div className="px-[12px] py-[9px]"><div className="flex h-[80px] items-center justify-center rounded-[8px] bg-[linear-gradient(165deg,#1e3050_0%,#0f1f35_100%)]"><p className="text-[11px] font-semibold text-white">{general.generalEvidence.length} evidencia{general.generalEvidence.length === 1 ? '' : 's'} general{general.generalEvidence.length === 1 ? '' : 'es'}</p></div></div></GeneralSection>
+        <GeneralSection icon={<InspectionDetailCameraIcon />} title="Fotografía general de la inspección"><div className="px-[12px] py-[9px]"><EvidenceGallery evidences={general.generalEvidence} /></div></GeneralSection>
         <GeneralSection icon={<InspectionDetailListIcon />} title={`Observaciones (${Object.values(detail.header.counts).reduce((sum, value) => sum + value, 0)})`}><div>{Object.values(detail.findings).flat().map((item, index, items) => <div key={item.findingId} className={`flex flex-col gap-[8px] px-[12px] py-[10px] ${index === items.length - 1 ? '' : 'border-b border-[#e3e3e3]'}`}><div className="flex items-center gap-[8px]"><FindingPill className="bg-[#e6f3ff] text-[#24588b]">{item.title}</FindingPill><FindingPill className={severityClassName(item.severityLabel)}>{item.severityLabel}</FindingPill></div><p className="text-[12px] font-normal leading-[16.8px] text-[#131313]">{item.condition ?? '—'}</p></div>)}</div></GeneralSection>
       </div>
     </div>
@@ -256,7 +301,7 @@ function DetailContent({ activeTab, detail, actions }: { activeTab: DetailTab; d
 }
 
 function DownloadPdfButton({ inspectionId }: { inspectionId: string }) {
-  return <div className="shrink-0 border-t border-[#e3e3e3] bg-white px-[20px] pb-[14px] pt-[15px]"><button type="button" className="flex h-[40px] w-full items-center justify-center gap-[6px] rounded-[8px] border-[1.5px] border-[#d1d1d1] bg-white px-[15.5px] py-[1.5px] font-['Inter:Semi_Bold',sans-serif] text-[13px] font-semibold leading-none text-[#333]" onClick={() => window.open(`/api/inspections/${inspectionId}/export/pdf`, '_blank')}><InspectionDetailPdfIcon />Descargar PDF</button></div>;
+  return <div className="shrink-0 border-t border-[#e3e3e3] bg-white px-[20px] pb-[14px] pt-[15px]"><button type="button" className="flex h-[40px] w-full items-center justify-center gap-[6px] rounded-[8px] border-[1.5px] border-[#d1d1d1] bg-white px-[15.5px] py-[1.5px] font-['Inter:Semi_Bold',sans-serif] text-[13px] font-semibold leading-none text-[#333]" onClick={() => window.open(`${apiOrigin}/api/inspections/${inspectionId}/export/pdf`, '_blank')}><InspectionDetailPdfIcon />Descargar PDF</button></div>;
 }
 
 export function InspectionDetailRealDataModal({ open, record, detail, onClose }: { open: boolean; record: InspectionDetailModalRecord; detail: InspectionDetailResponse; onClose: () => void }) {

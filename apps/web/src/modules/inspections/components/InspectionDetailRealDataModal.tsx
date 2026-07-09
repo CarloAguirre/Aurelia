@@ -10,8 +10,12 @@ import { env } from '../../../shared/config/env';
 import { useInspectionFindingActions } from '../../../shared/hooks/useInspectionFindingActions';
 import {
   InspectionDetailApproveIcon,
+  InspectionDetailAssignIcon,
   InspectionDetailCameraIcon,
   InspectionDetailCaretDownIcon,
+  InspectionDetailChecklistListIcon,
+  InspectionDetailChecklistNoIcon,
+  InspectionDetailChecklistYesIcon,
   InspectionDetailCloseIcon,
   InspectionDetailFollowupIcon,
   InspectionDetailImageIcon,
@@ -24,10 +28,11 @@ import {
   InspectionDetailStatusRowIcon,
   type InspectionDetailIconStatus,
 } from './InspectionDetailIcons';
-import type { InspectionDetailModalRecord } from './InspectionDetailModal';
+import type { InspectionDetailModalKind, InspectionDetailModalRecord } from './InspectionDetailModal';
 
 type StatusKey = InspectionDetailIconStatus;
-type DetailTab = 'observations' | 'followups' | 'general';
+type DetailTab = 'observations' | 'result' | 'followups' | 'general';
+type ChecklistResultStatus = 'yes' | 'no' | 'na';
 
 type StatusConfig = {
   key: StatusKey;
@@ -36,6 +41,33 @@ type StatusConfig = {
   itemLabel: string;
   textClass: string;
   chipClass: string;
+};
+
+type TabConfig = {
+  id: DetailTab;
+  label: string;
+};
+
+type FollowupStep = {
+  id: string;
+  title: string;
+  date: string;
+  summary?: string;
+  bullets?: string[];
+  completed: boolean;
+};
+
+type GeneralInfoRow = {
+  label: string;
+  value: string;
+  mono?: boolean;
+};
+
+type ChecklistResultItem = {
+  number: number;
+  question: string;
+  status: ChecklistResultStatus;
+  comment?: boolean;
 };
 
 type DetailRowsProps = {
@@ -63,6 +95,38 @@ const statusConfigByKey: Record<StatusKey, StatusConfig> = {
 
 const statusConfigs = Object.values(statusConfigByKey);
 const avatarColors = ['bg-[#c8a064] text-[#001e39]', 'bg-[#24588b] text-white', 'bg-[#00b398] text-white', 'bg-[#532a0e] text-white'];
+const checklistResultItems: ChecklistResultItem[] = [
+  { number: 1, question: '¿El almacenamiento se realiza en lugar protegido, techado?', status: 'yes', comment: true },
+  { number: 2, question: '¿Tiene acceso con candado y señaliza encargado?', status: 'yes' },
+  { number: 3, question: '¿Está alejado más de 5 metros de fuentes inflamables?', status: 'yes' },
+  { number: 4, question: '¿Tiene señalética NCh 382:2021 y NCh 2190:2019?', status: 'yes', comment: true },
+  { number: 5, question: '¿SUSPEL almacenadas según clase, tipo y peligrosidad?', status: 'yes', comment: true },
+  { number: 6, question: '¿Los envases son adecuados e impiden pérdidas?', status: 'yes' },
+  { number: 7, question: '¿Tiene visible el rombo NFPA 704 y NCh 1411:2000?', status: 'no' },
+  { number: 8, question: '¿Los envases están rotulados con contenido y peligrosidad?', status: 'yes' },
+  { number: 9, question: '¿Tiene señalética "NO FUMAR" y "ÁREA RESTRINGIDA"?', status: 'yes' },
+  { number: 10, question: '¿Posee sistema de extinción según la carga de fuego?', status: 'yes' },
+  { number: 11, question: '¿El lugar tiene al menos 1 metro libre hasta el techo?', status: 'yes' },
+  { number: 12, question: '¿Posee contención de derrames de 1,1 veces el total?', status: 'no' },
+  { number: 13, question: '¿Tiene disponibles las HDS según NCh2245:2021?', status: 'yes' },
+  { number: 14, question: '¿Mantiene orden y limpieza en el lugar?', status: 'yes' },
+  { number: 15, question: '¿Existe inventario actualizado con nombre y proveedor?', status: 'yes' },
+  { number: 16, question: '¿El personal está capacitado en manejo de SUSPEL?', status: 'yes' },
+  { number: 17, question: '¿Los recipientes están en buen estado sin deterioro?', status: 'yes' },
+  { number: 18, question: '¿Productos incompatibles con separación adecuada?', status: 'yes' },
+  { number: 19, question: '¿Existe registro de ingresos y egresos actualizado?', status: 'na' },
+  { number: 20, question: '¿El área tiene ventilación que evita acumulación de vapores?', status: 'no' },
+  { number: 21, question: '¿Los derrames anteriores fueron reportados formalmente?', status: 'yes' },
+  { number: 22, question: '¿El sistema eléctrico es antiexplosión o certificado ATEX?', status: 'na' },
+  { number: 23, question: '¿Existe señalética de EPP requerido visible en el acceso?', status: 'yes' },
+  { number: 24, question: '¿Existe ducha de emergencia y lavaojos a menos de 10m?', status: 'yes' },
+  { number: 25, question: '¿Los residuos de SUSPEL se gestionan como RESPEL?', status: 'yes' },
+];
+
+function getTabs(kind: InspectionDetailModalKind): TabConfig[] {
+  if (kind === 'checklist') return [{ id: 'observations', label: 'Ítems No' }, { id: 'result', label: 'Resultado completo' }, { id: 'followups', label: 'Seguimientos' }, { id: 'general', label: 'Datos generales' }];
+  return [{ id: 'observations', label: 'Observaciones' }, { id: 'followups', label: 'Seguimientos' }, { id: 'general', label: 'Datos generales' }];
+}
 
 function formatDate(value: string | null | undefined) {
   if (!value) return '—';
@@ -84,12 +148,12 @@ function formatDateTime(value: string | null | undefined) {
   return `${day}-${month}-${date.getFullYear()} · ${hours}:${minutes}`;
 }
 
-function daysLabel(value: string | null | undefined) {
-  if (!value) return '—';
+function daysLabel(value: string | null | undefined, fallback = 'XX días') {
+  if (!value) return fallback;
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
+  if (Number.isNaN(date.getTime())) return fallback;
   const days = Math.max(0, Math.ceil((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
-  return `${days} días hábiles`;
+  return `${days} días`;
 }
 
 function dueDateFromDays(days: number) {
@@ -128,12 +192,6 @@ function allFindings(detail: InspectionDetailResponse) {
   return Object.values(detail.findings).flat();
 }
 
-function responsibleCompanyName(responsible: InspectionDetailResponsibleResponse, detail: InspectionDetailResponse) {
-  if (responsible.companyName) return responsible.companyName;
-  const finding = allFindings(detail).find((item) => item.responsibleUsers.some((user) => user.userId === responsible.userId));
-  return finding?.responsibleCompanyName ?? detail.general.companyName ?? '—';
-}
-
 function primaryResponsibleCompany(detail: InspectionDetailResponse) {
   return allFindings(detail).find((item) => item.responsibleCompanyName)?.responsibleCompanyName ?? detail.general.companyName ?? '—';
 }
@@ -153,9 +211,9 @@ function ProgressSummary({ counts, progressPercent }: { counts: Record<Inspectio
   );
 }
 
-function Tabs({ activeTab, onChange }: { activeTab: DetailTab; onChange: (tab: DetailTab) => void }) {
-  const tabs: { id: DetailTab; label: string }[] = [{ id: 'observations', label: 'Observaciones' }, { id: 'followups', label: 'Seguimientos' }, { id: 'general', label: 'Datos generales' }];
-  return <div className="grid shrink-0 border-b-2 border-[#e3e3e3] bg-[#f7f7f7]" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>{tabs.map((tab) => <button key={tab.id} type="button" className={`h-[37px] border-b-2 px-[8px] text-[12px] font-semibold leading-none ${activeTab === tab.id ? 'border-[#c8a064] text-[#8e6e3e]' : 'border-transparent text-[#646464]'}`} onClick={() => onChange(tab.id)}>{tab.label}</button>)}</div>;
+function Tabs({ kind, activeTab, onChange }: { kind: InspectionDetailModalKind; activeTab: DetailTab; onChange: (tab: DetailTab) => void }) {
+  const tabs = getTabs(kind);
+  return <div className="grid shrink-0 border-b-2 border-[#e3e3e3] bg-[#f7f7f7]" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>{tabs.map((tab) => <button key={tab.id} type="button" onClick={() => onChange(tab.id)} className={`flex h-[37px] items-center justify-center border-b-2 px-[6px] pb-[2px] text-center font-['Inter:Semi_Bold',sans-serif] text-[12px] font-semibold leading-[14px] ${tab.id === activeTab ? 'border-[#c8a064] text-[#8e6e3e]' : 'border-transparent text-[#646464]'}`}>{tab.label}</button>)}</div>;
 }
 
 function metadataFor(record: InspectionDetailModalRecord) {
@@ -164,7 +222,12 @@ function metadataFor(record: InspectionDetailModalRecord) {
 }
 
 function StatusRow({ config, count, expanded, onToggle }: { config: StatusConfig; count: number; expanded: boolean; onToggle: () => void }) {
-  return <button type="button" className="flex h-[56px] w-full items-center justify-between border-b border-[#e3e3e3] bg-white px-[14px] text-left" onClick={onToggle}><div className="flex items-center gap-[10px]"><InspectionDetailStatusRowIcon status={config.key} className="h-[11px] w-[13.75px]" /><p className={`text-[10px] font-bold uppercase leading-none tracking-[0.6px] ${config.textClass}`}>{config.label}</p><span className={`inline-flex h-[14px] min-w-[19px] items-center justify-center rounded-[8px] px-[7px] text-[10px] font-bold leading-none tracking-[0.6px] ${config.chipClass}`}>{count}</span></div><InspectionDetailCaretDownIcon className={expanded ? 'size-[16px] rotate-180' : 'size-[16px]'} /></button>;
+  return (
+    <button type="button" className="flex h-[56px] w-full shrink-0 items-center justify-between border-b border-[#e3e3e3] bg-white px-[14px] py-[16px]" onClick={onToggle} aria-expanded={expanded}>
+      <div className="flex items-center gap-[10px]"><InspectionDetailStatusRowIcon status={config.key} /><p className={`font-['Inter:Bold',sans-serif] text-[11px] font-bold uppercase leading-[13px] tracking-[0.66px] ${config.textClass}`}>{config.label}</p><span className={`flex h-[14px] min-w-[19px] items-center justify-center rounded-[8px] px-[7px] font-['Inter:Bold',sans-serif] text-[10px] font-bold leading-[12px] tracking-[0.6px] ${config.chipClass}`}>{count}</span></div>
+      <InspectionDetailCaretDownIcon className={expanded ? 'size-[16px] rotate-180' : 'size-[16px]'} />
+    </button>
+  );
 }
 
 function FindingPill({ children, className }: { children: string; className: string }) {
@@ -180,13 +243,13 @@ function FindingTextBlock({ title, children, bordered = false }: { title: string
   );
 }
 
-function EvidencePreview({ title, evidences, afterClosed = false }: { title: string; evidences: InspectionDetailEvidenceResponse[]; afterClosed?: boolean }) {
+function EvidencePreview({ title, evidences, afterClosed = false, emptyLabel = 'Pendiente EECC' }: { title: string; evidences: InspectionDetailEvidenceResponse[]; afterClosed?: boolean; emptyLabel?: string }) {
   const firstEvidence = evidences[0];
   const firstUrl = firstEvidence ? resolveEvidenceContentUrl(firstEvidence) : null;
   return (
     <div className="flex h-[91px] min-w-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-[#e3e3e3] bg-white p-px">
       <div className="flex h-[20px] items-center bg-[#001e39] px-[8px] py-[4px]"><p className="text-[9px] font-bold uppercase leading-none text-[rgba(255,255,255,0.7)]">{title}</p></div>
-      <div className={`relative flex min-h-0 flex-1 flex-col items-center justify-center gap-[4px] overflow-hidden ${afterClosed ? 'bg-[#dafccb]' : 'bg-gradient-to-br from-[#e8f4fd] to-[#c8e6f0]'}`}>{firstEvidence && firstUrl ? <><img className="h-full w-full object-cover" src={firstUrl} alt={evidenceLabel(firstEvidence, 0)} /><span className="absolute bottom-[4px] left-[4px] rounded-[4px] bg-[rgba(0,30,57,0.78)] px-[5px] py-[2px] text-[9px] font-bold text-white">{evidences.length} evidencia{evidences.length === 1 ? '' : 's'}</span></> : evidences.length > 0 ? <><InspectionDetailImageIcon tone={afterClosed ? '#2a5c16' : '#24588b'} /><p className="text-[10px] font-semibold leading-none text-[#333]">{evidences.length} evidencia{evidences.length === 1 ? '' : 's'}</p></> : <p className="text-[11px] font-normal leading-none text-[#acacac]">Pendiente</p>}</div>
+      <div className={`flex min-h-0 flex-1 items-center justify-center overflow-hidden ${afterClosed ? 'bg-[#dafccb]' : 'bg-gradient-to-br from-[#e8f4fd] to-[#c8e6f0]'}`}>{firstEvidence && firstUrl ? <img className="h-full w-full object-cover" src={firstUrl} alt={evidenceLabel(firstEvidence, 0)} /> : evidences.length > 0 ? <InspectionDetailImageIcon tone={afterClosed ? '#2a5c16' : '#24588b'} /> : <p className="text-[11px] font-normal leading-none text-[#acacac]">{emptyLabel}</p>}</div>
     </div>
   );
 }
@@ -232,24 +295,23 @@ function FindingObservationCard({ inspectionId, item, actions }: FindingObservat
         <FindingTextBlock title="Medida correctiva propuesta">{item.proposedCorrectiveAction ?? ''}</FindingTextBlock>
         {status !== 'open' ? <FindingTextBlock title="Descripción de la acción tomada">{item.executedActionDescription ?? ''}</FindingTextBlock> : null}
         {status === 'rejected' ? <FindingTextBlock title="Motivo de rechazo">{item.rejectionReason ?? ''}</FindingTextBlock> : null}
-        <div className="flex gap-[4px] pt-[8px]"><EvidencePreview title="Antes" evidences={item.beforeEvidence} /><EvidencePreview title="Después" evidences={item.afterEvidence} afterClosed={status === 'closed' || status === 'executed' || status === 'rejected'} /></div>
-        {status === 'open' ? <div className="mt-[4px] flex min-h-[64px] items-center justify-between rounded-[10px] border-[1.5px] border-[#d1d1d1] bg-[#f7f7f7] p-[15.5px]"><div><p className="w-[78px] text-[9px] font-bold uppercase leading-none tracking-[0.63px] text-[#333]">SLA calculado</p><p className="pt-[2px] text-[20px] font-bold leading-[20px] text-[#532a0e]">{daysLabel(item.dueAt)}</p></div><button type="button" className="flex h-[40px] items-center justify-center rounded-[8px] border-[1.5px] border-[#d1d1d1] bg-white px-[15.5px] py-[1.5px] text-[13px] font-semibold text-[#333] disabled:opacity-50" disabled={actionDisabled} onClick={reschedule}>Reasignar SLA</button></div> : <div className="mt-[4px] flex h-[33px] items-center justify-between rounded-[8px] bg-white px-[12px] py-[9px]"><p className="text-[12px] font-medium leading-none text-[#646464]">Fecha de estado</p><p className="text-right text-[11px] font-bold leading-none text-[#646464]">{formatDate(item.closedAt ?? item.executedAt ?? item.rejectedAt)}</p></div>}
+        <div className="flex gap-[4px] pt-[8px]"><EvidencePreview title="Antes" evidences={item.beforeEvidence} emptyLabel="Pendiente" /><EvidencePreview title="Después" evidences={item.afterEvidence} afterClosed={status === 'closed' || status === 'executed' || status === 'rejected'} /></div>
+        {status === 'open' ? <div className="mt-[4px] flex min-h-[64px] items-center justify-between rounded-[10px] border-[1.5px] border-[#d1d1d1] bg-[#f7f7f7] p-[15.5px]"><div><p className="w-[78px] text-[9px] font-bold uppercase leading-none tracking-[0.63px] text-[#333]">SLA calculado</p><p className="pt-[2px] text-[20px] font-bold leading-[20px] text-[#532a0e]">{daysLabel(item.dueAt, 'X Días')}</p></div><button type="button" className="flex h-[40px] items-center justify-center rounded-[8px] border-[1.5px] border-[#d1d1d1] bg-white px-[15.5px] py-[1.5px] text-[13px] font-semibold text-[#333] disabled:opacity-50" disabled={actionDisabled} onClick={reschedule}>Reasignar SLA</button></div> : null}
+        {status === 'executed' ? <><div className="mt-[4px] flex h-[33px] items-center justify-between rounded-[8px] bg-white px-[12px] py-[9px]"><p className="text-[12px] font-medium leading-none text-[#646464]">SLA calculado</p><div className="flex items-center gap-[3px]"><InspectionDetailStatusRowIcon status="executed" className="h-[9px] w-[11.25px]" /><p className="text-[11px] font-bold leading-none text-[#570b1d]">{daysLabel(item.dueAt)}</p></div></div><div className="flex items-center gap-[8px] rounded-[8px] bg-white px-[12px] py-[9px]"><button type="button" className="flex h-[40px] items-center justify-center gap-[5px] rounded-[9px] border-2 border-[#c4365a] bg-white px-[16px] py-[2px] text-[12px] font-bold text-[#570b1d] disabled:opacity-50" disabled={actionDisabled} onClick={reject}><InspectionDetailRejectIcon />Rechazar</button><button type="button" className="flex h-[40px] min-w-0 flex-1 items-center justify-center gap-[5px] rounded-[9px] bg-[#3a9b3a] px-[12px] text-[12px] font-bold text-white disabled:opacity-50" disabled={actionDisabled} onClick={approve}><InspectionDetailApproveIcon />Aprobar cierre</button></div></> : null}
+        {status === 'closed' ? <><div className="mt-[4px] flex h-[33px] items-center justify-between rounded-[8px] bg-white px-[12px] py-[9px]"><p className="text-[12px] font-medium leading-none text-[#646464]">SLA cerrado</p><div className="flex items-center gap-[3px]"><InspectionDetailStatusRowIcon status="open" className="h-[9px] w-[11.25px]" /><p className="text-[11px] font-bold leading-none text-[#532a0e]">{daysLabel(item.dueAt)}</p></div></div><div className="flex h-[33px] items-center justify-between rounded-[8px] bg-white px-[12px] py-[9px]"><p className="text-[12px] font-medium leading-none text-[#646464]">Fecha de cierre</p><p className="text-right text-[11px] font-bold leading-none text-[#646464]">{formatDate(item.closedAt)}</p></div></> : null}
+        {status === 'rejected' ? <><div className="mt-[4px] flex h-[33px] items-center justify-between rounded-[8px] bg-white px-[12px] py-[9px]"><p className="text-[12px] font-medium leading-none text-[#646464]">SLA calculado</p><div className="flex items-center gap-[3px]"><InspectionDetailStatusRowIcon status="executed" className="h-[9px] w-[11.25px]" /><p className="text-[11px] font-bold leading-none text-[#570b1d]">{daysLabel(item.dueAt)}</p></div></div><button type="button" className="flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#c8a064] px-[12px] text-[15px] font-bold text-white shadow-[0px_2px_5px_rgba(200,160,100,0.3)] disabled:opacity-50" disabled={actionDisabled} onClick={execute}>Ejecutar observación rechazada</button></> : null}
         {status === 'open' ? <button type="button" className="flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#c8a064] px-[12px] text-[15px] font-bold text-white shadow-[0px_2px_5px_rgba(200,160,100,0.3)] disabled:opacity-50" disabled={actionDisabled} onClick={execute}>Ejecutar observación</button> : null}
-        {status === 'executed' ? <div className="flex items-center gap-[8px] rounded-[8px] bg-white px-[12px] py-[9px]"><button type="button" className="flex h-[40px] items-center justify-center gap-[5px] rounded-[9px] border-2 border-[#c4365a] bg-white px-[16px] py-[2px] text-[12px] font-bold text-[#570b1d] disabled:opacity-50" disabled={actionDisabled} onClick={reject}><InspectionDetailRejectIcon />Rechazar</button><button type="button" className="flex h-[40px] min-w-0 flex-1 items-center justify-center gap-[5px] rounded-[9px] bg-[#3a9b3a] px-[12px] text-[12px] font-bold text-white disabled:opacity-50" disabled={actionDisabled} onClick={approve}><InspectionDetailApproveIcon />Aprobar cierre</button></div> : null}
-        {status === 'rejected' ? <button type="button" className="flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#c8a064] px-[12px] text-[15px] font-bold text-white shadow-[0px_2px_5px_rgba(200,160,100,0.3)] disabled:opacity-50" disabled={actionDisabled} onClick={execute}>Ejecutar observación rechazada</button> : null}
       </div>
     </div>
   );
 }
 
 function FindingObservationsPanel({ inspectionId, items, actions }: { inspectionId: string; items: InspectionDetailFindingItemResponse[]; actions: ReturnType<typeof useInspectionFindingActions> }) {
-  if (items.length === 0) return <div className="flex shrink-0 flex-col bg-white px-[14px] pb-[24px] pt-[14px]"><div className="rounded-[10px] border border-dashed border-[#d1d1d1] bg-[#f7f7f7] px-[14px] py-[18px] text-center text-[12px] font-medium text-[#646464]">Sin observaciones en este estado</div></div>;
   return <div className="flex shrink-0 flex-col gap-[24px] bg-white px-[14px] pb-[24px] pt-[14px]">{items.map((item) => <FindingObservationCard key={item.findingId} inspectionId={inspectionId} item={item} actions={actions} />)}</div>;
 }
 
 function DetailRows({ inspectionId, counts, findings, actions }: DetailRowsProps) {
-  const defaultStatus = counts.open > 0 ? 'open' : counts.executed > 0 ? 'executed' : counts.closed > 0 ? 'closed' : 'rejected';
-  const [expandedStatus, setExpandedStatus] = useState<StatusKey | null>(defaultStatus);
+  const [expandedStatus, setExpandedStatus] = useState<StatusKey | null>('open');
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-white">
       {statusConfigs.map((config) => {
@@ -261,122 +323,122 @@ function DetailRows({ inspectionId, counts, findings, actions }: DetailRowsProps
   );
 }
 
+function ChecklistResultMetric({ value, label, tone, icon }: { value: string; label: string; tone: string; icon?: ReactNode }) {
+  return <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-[2px]"><p className={`text-[18px] font-bold leading-[22px] ${tone}`}>{value}</p><div className="flex h-[15px] items-center justify-center gap-[3px]">{icon ? <span className="flex h-[9px] w-[11.25px] items-center justify-center">{icon}</span> : null}<span className={`text-[11px] font-normal leading-none ${tone}`}>{label}</span></div></div>;
+}
+
+function ChecklistResultSummary() {
+  return <div className="flex h-[71px] shrink-0 items-start gap-[8px] border-b border-[#e3e3e3] bg-white px-[14px] pb-[13px] pt-[12px]"><ChecklistResultMetric value="20" label="SÍ" tone="text-[#2a5c16]" icon={<InspectionDetailChecklistYesIcon />} /><div className="h-full w-px shrink-0 bg-[#e3e3e3]" /><ChecklistResultMetric value="5" label="NO" tone="text-[#570b1d]" icon={<InspectionDetailChecklistNoIcon />} /><div className="h-full w-px shrink-0 bg-[#e3e3e3]" /><ChecklistResultMetric value="2" label="N/A" tone="text-[#646464]" /></div>;
+}
+
+function ChecklistResultStatusBadge({ status }: { status: ChecklistResultStatus }) {
+  if (status === 'no') return <span className="inline-flex h-[16px] items-center rounded-[6px] bg-[#ffd0db] px-[8px] py-[2px] text-[10px] font-bold leading-none text-[#570b1d]">NO</span>;
+  if (status === 'na') return <span className="inline-flex h-[16px] items-center rounded-[6px] bg-[#f7f7f7] px-[8px] py-[2px] text-[10px] font-bold leading-none text-[#646464]">N/A</span>;
+  return <span className="inline-flex h-[16px] items-center rounded-[6px] bg-[#e0ffd3] px-[8px] py-[2px] text-[10px] font-bold leading-none text-[#2a5c16]">SÍ</span>;
+}
+
+function ChecklistResultItemRow({ item, isLast }: { item: ChecklistResultItem; isLast: boolean }) {
+  const isNo = item.status === 'no';
+  return <div className={`flex gap-[10px] px-[12px] pb-[10px] pt-[9px] ${isNo ? 'bg-[#ffd0db]' : 'bg-white'} ${isLast ? '' : 'border-b border-[#e3e3e3]'}`}><p className={`shrink-0 pt-px text-[10px] font-bold leading-none ${isNo ? 'text-[#bd3b5b]' : 'text-[#acacac]'}`}>{item.number}</p><div className="min-w-0 flex-1"><p className={`text-[12px] leading-[16.8px] ${isNo ? 'font-semibold text-[#570b1d]' : 'font-normal text-[#333]'}`}>{item.question}</p>{item.comment ? <p className="pt-[8px] text-[12px] font-semibold leading-[16.8px] text-[#333]">Comentario:<br />[Comentario a considerar ingresado por el inspector al momento de realizar la inspección]</p> : null}</div><div className="shrink-0 pt-px"><ChecklistResultStatusBadge status={item.status} /></div></div>;
+}
+
+function ChecklistResultItemsSection() {
+  return <div className="shrink-0 bg-white py-[20px]"><div className="flex items-center gap-[6px] px-[14px]"><InspectionDetailChecklistListIcon /><p className="text-[11px] font-bold uppercase leading-none tracking-[0.55px] text-[#646464]">Detalle ítem a ítem</p></div><div className="pt-[10px]"><div className="overflow-hidden border border-[#e3e3e3] bg-white">{checklistResultItems.map((item, index) => <ChecklistResultItemRow key={item.number} item={item} isLast={index === checklistResultItems.length - 1} />)}</div></div></div>;
+}
+
+function ChecklistResultPanel() {
+  return <div className="min-h-0 flex-1 overflow-y-auto bg-white"><ChecklistResultSummary /><ChecklistResultItemsSection /></div>;
+}
+
 function FollowupTimelineMarker({ completed }: { completed: boolean }) {
   return <div className={`flex size-[24px] shrink-0 items-center justify-center rounded-[12px] text-[10px] font-normal leading-none ${completed ? 'bg-[#6cc24a] text-white' : 'bg-[#e3e3e3] text-[#acacac]'}`}>{completed ? '✓' : '○'}</div>;
 }
 
+function buildFollowupSteps(detail: InspectionDetailResponse): FollowupStep[] {
+  const observedCount = allFindings(detail).length;
+  const actualSteps = detail.followups.slice(0, 3).map((step, index) => ({ id: step.followupId, title: `Seguimiento ${index + 1}`, date: formatDate(step.performedAt), summary: step.description, completed: step.completed }));
+  const paddedSteps = [...actualSteps];
+  while (paddedSteps.length < 3) paddedSteps.push({ id: `pending-${paddedSteps.length + 1}`, title: `Seguimiento ${paddedSteps.length + 1}`, date: '—', completed: false });
+  return [{ id: 'initial', title: 'Inspección inicial', date: formatDate(detail.general.scheduledAt), summary: `${observedCount} observaciones detectadas`, completed: true }, ...paddedSteps];
+}
+
+function FollowupTimelineItem({ step, isLast }: { step: FollowupStep; isLast: boolean }) {
+  return <div className={`relative flex w-full gap-[12px] ${isLast ? '' : 'pb-[16px]'}`}><FollowupTimelineMarker completed={step.completed} />{!isLast ? <div className={`absolute left-[11px] top-[24px] w-[2px] bg-[#e3e3e3] ${step.bullets ? 'h-[38px]' : 'h-[23px]'}`} /> : null}<div className="min-w-0 flex-1 pt-[2px]"><p className="text-[12px] font-bold leading-none text-[#131313]">{step.title}</p><p className="pt-[4px] text-[11px] font-normal leading-none text-[#646464]">{step.date}</p>{step.summary ? <p className="pt-[5px] text-[11px] font-normal leading-none text-[#646464]">{step.summary}</p> : null}{step.bullets ? <ul className="list-disc pt-[4px] pl-[20px] text-[11px] font-normal leading-[14px] text-[#646464]">{step.bullets.map((bullet) => <li key={bullet}>{bullet}</li>)}</ul> : null}</div></div>;
+}
+
 function FollowupsPanel({ detail }: { detail: InspectionDetailResponse }) {
-  const initialStep = { followupId: 'initial', title: 'Inspección inicial', performedAt: detail.general.scheduledAt, description: `${allFindings(detail).length} observaciones detectadas`, performedByName: null, completed: true };
-  const steps = [initialStep, ...detail.followups];
-  return (
-    <div className="min-h-0 flex-1 overflow-y-auto bg-white px-[14px] py-[20px]">
-      <div className="flex items-center gap-[6px]"><InspectionDetailFollowupIcon /><p className="text-[11px] font-bold uppercase leading-none tracking-[0.55px] text-[#646464]">Historial de seguimientos</p></div>
-      <div className="pt-[10px]">{steps.map((step, index) => <div key={step.followupId} className={`relative flex w-full gap-[12px] ${index === steps.length - 1 ? '' : 'pb-[16px]'}`}><FollowupTimelineMarker completed={step.completed} />{index < steps.length - 1 ? <div className="absolute left-[11px] top-[24px] h-[38px] w-[2px] bg-[#e3e3e3]" /> : null}<div className="min-w-0 flex-1 pt-[2px]"><p className="text-[12px] font-bold leading-none text-[#131313]">{step.title}</p><p className="pt-[4px] text-[11px] font-normal leading-none text-[#646464]">{formatDate(step.performedAt)}</p><p className="pt-[5px] text-[11px] font-normal leading-[14px] text-[#646464]">{step.description}</p>{step.performedByName ? <p className="pt-[4px] text-[11px] font-semibold leading-none text-[#646464]">{step.performedByName}</p> : null}</div></div>)}</div>
-    </div>
-  );
+  const steps = buildFollowupSteps(detail);
+  return <div className="min-h-0 flex-1 overflow-y-auto bg-white px-[14px] py-[20px]"><div className="flex items-center gap-[6px]"><InspectionDetailFollowupIcon /><p className="text-[11px] font-bold uppercase leading-none tracking-[0.55px] text-[#646464]">Historial de seguimientos</p></div><div className="pt-[10px]">{steps.map((step, index) => <FollowupTimelineItem key={step.id} step={step} isLast={index === steps.length - 1} />)}</div></div>;
 }
 
 function GeneralSection({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
   return <section className="w-full overflow-hidden rounded-[12px] border border-[#e3e3e3] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]"><div className="flex h-[29px] items-center gap-[6px] border-b border-[#e3e3e3] bg-[#f7f7f7] px-[12px]"><span className="flex h-[10px] w-[12.5px] items-center justify-center">{icon}</span><p className="text-[10px] font-bold uppercase leading-none tracking-[0.5px] text-[#646464]">{title}</p></div>{children}</section>;
 }
 
-function GeneralInfoRows({ rows }: { rows: { label: string; value: string; mono?: boolean }[] }) {
-  return <div>{rows.map((row, index) => <div key={row.label} className={`flex items-center justify-between px-[12px] py-[9px] ${index < rows.length - 1 ? 'border-b border-[#e3e3e3]' : ''}`}><p className="text-[12px] font-medium leading-none text-[#646464]">{row.label}</p><p className={`max-w-[190px] truncate text-right text-[12px] font-bold leading-none text-[#131313] ${row.mono ? "font-['Cousine:Bold',monospace] text-[11px]" : ''}`}>{row.value}</p></div>)}</div>;
+function GeneralInfoRows({ rows }: { rows: GeneralInfoRow[] }) {
+  return <div>{rows.map((row, index) => <div key={row.label} className={`flex items-center justify-between px-[12px] py-[9px] ${index < rows.length - 1 ? 'border-b border-[#e3e3e3]' : ''}`}><p className="text-[12px] font-medium leading-none text-[#646464]">{row.label}</p><p className={`text-right text-[12px] font-bold leading-none text-[#131313] ${row.mono ? "font-['Cousine:Bold',monospace] text-[11px]" : ''}`}>{row.value}</p></div>)}</div>;
 }
 
 function EvidenceGallery({ evidences }: { evidences: InspectionDetailEvidenceResponse[] }) {
   const evidence = evidences[0];
   const url = evidence ? resolveEvidenceContentUrl(evidence) : null;
-  return <div className="relative h-[80px] overflow-hidden rounded-[8px] bg-[linear-gradient(165deg,#1e3050_0%,#0f1f35_100%)]">{evidence && url ? <img className="h-full w-full object-cover" src={url} alt={evidenceLabel(evidence, 0)} /> : null}<span className="absolute left-[8px] top-[6px] rounded-[4px] bg-[rgba(0,0,0,0.55)] px-[7px] py-[2px] text-[9px] font-bold uppercase tracking-[1.5px] text-white">Foto general</span><span className="absolute bottom-[6px] right-[8px] rounded-[4px] bg-[rgba(0,0,0,0.5)] px-[6px] py-[2px] text-[9px] text-[rgba(255,255,255,0.8)]">{formatDateTime(evidence?.capturedAt)}</span>{!url ? <p className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold text-white">{evidences.length} evidencia{evidences.length === 1 ? '' : 's'} general{evidences.length === 1 ? '' : 'es'}</p> : null}</div>;
+  return <div className="relative h-[80px] overflow-hidden rounded-[8px] bg-[linear-gradient(165deg,#1e3050_0%,#0f1f35_100%)]">{evidence && url ? <img className="h-full w-full object-cover" src={url} alt={evidenceLabel(evidence, 0)} /> : null}<div className="absolute left-[8px] top-[6px] rounded-[4px] bg-[rgba(0,0,0,0.55)] px-[7px] py-[2px]"><p className="text-[9px] font-bold uppercase leading-none tracking-[1.5px] text-white">Foto general</p></div><div className="absolute bottom-[6px] right-[8px] rounded-[4px] bg-[rgba(0,0,0,0.5)] px-[6px] py-[2px]"><p className="text-[9px] font-normal leading-none text-[rgba(255,255,255,0.8)]">{formatDateTime(evidence?.capturedAt)}</p></div></div>;
 }
 
 function GeneralObservationSummary({ items }: { items: InspectionDetailFindingItemResponse[] }) {
-  return (
-    <GeneralSection icon={<InspectionDetailListIcon />} title={`Observaciones (${items.length})`}>
-      <div>
-        {items.length > 0 ? items.map((item, index) => <div key={item.findingId} className={`flex flex-col gap-[8px] px-[12px] pb-[10px] pt-[9px] ${index < items.length - 1 ? 'border-b border-[#e3e3e3]' : ''}`}><div className="flex items-center gap-[8px]"><FindingPill className="bg-[#e6f3ff] text-[#24588b]">{item.title}</FindingPill><FindingPill className={severityClassName(item.severityLabel)}>{item.severityLabel}</FindingPill></div><p className="text-[12px] font-normal leading-[16.8px] text-[#131313]">{item.condition ?? '—'}</p><div className="flex items-center justify-between border-t border-[#e3e3e3] pt-[10px]"><p className="text-[12px] font-medium text-[#646464]">SLA calculado</p><p className="text-right text-[12px] font-bold text-[#131313]">{daysLabel(item.dueAt)}</p></div></div>) : <p className="px-[12px] py-[14px] text-center text-[12px] text-[#646464]">Sin observaciones</p>}
-      </div>
-    </GeneralSection>
-  );
+  return <GeneralSection icon={<InspectionDetailListIcon />} title={`Observaciones (${items.length})`}><div>{items.map((item, index) => <div key={item.findingId} className={`flex flex-col gap-[8px] px-[12px] py-[10px] ${index === items.length - 1 ? '' : 'border-b border-[#e3e3e3]'}`}><div className="flex items-center gap-[8px]"><FindingPill className="bg-[#e6f3ff] text-[#24588b]">{item.title}</FindingPill><FindingPill className={severityClassName(item.severityLabel)}>{item.severityLabel}</FindingPill></div><p className="text-[12px] font-normal leading-[16.8px] text-[#131313]">{item.condition ?? '—'}</p><div className="flex items-center justify-between border-t border-[#e3e3e3] pt-[10px]"><p className="text-[12px] font-medium leading-none text-[#646464]">SLA calculado</p><p className="text-right text-[12px] font-bold leading-none text-[#131313]">{daysLabel(item.dueAt, 'xx días hábiles')}</p></div></div>)}</div></GeneralSection>;
 }
 
-function PersonAddIcon() {
-  return <svg className="h-[12px] w-[15px] shrink-0" viewBox="0 0 15 12" fill="none" aria-hidden><path d="M5.1 5.8c1.5 0 2.7-1.2 2.7-2.7S6.6.4 5.1.4 2.4 1.6 2.4 3.1s1.2 2.7 2.7 2.7Zm0 1.2C2.5 7 .5 8.4.5 10.4c0 .5.4.9.9.9h7.4c.5 0 .9-.4.9-.9C9.7 8.4 7.7 7 5.1 7Zm6.6-3.7V1.4h1.2v1.9h1.8v1.2h-1.8v1.9h-1.2V4.5H9.9V3.3h1.8Z" fill="#24588b" /></svg>;
+function initialsAvatar(name: string, index: number, large = false) {
+  return <div className={`flex shrink-0 items-center justify-center rounded-full font-bold leading-none ${large ? 'size-[36px] text-[13px]' : 'size-[32px] text-[12px]'} ${avatarColors[index % avatarColors.length]}`}>{initials(name)}</div>;
 }
 
-function Avatar({ name, index, large = false }: { name: string; index: number; large?: boolean }) {
-  return <div className={`flex shrink-0 items-center justify-center rounded-full font-bold ${large ? 'size-[36px] text-[13px]' : 'size-[32px] text-[12px]'} ${avatarColors[index % avatarColors.length]}`}>{initials(name)}</div>;
+function ResponsibleRow({ responsible, isLast, index }: { responsible: InspectionDetailResponsibleResponse; isLast: boolean; index: number }) {
+  return <div className={`flex items-center gap-[10px] px-[12px] py-[10px] ${isLast ? '' : 'border-b border-[#e3e3e3]'}`}>{initialsAvatar(responsible.fullName, index)}<div className="min-w-0 flex-1"><p className="truncate text-[12px] font-bold leading-none text-[#131313]">{responsible.fullName}</p><p className="pt-[4px] text-[11px] font-normal leading-none text-[#646464]">{responsible.position ?? 'Sin cargo'}</p></div>{responsible.currentUser ? <span className="inline-flex h-[16px] items-center rounded-[5px] bg-[#c5fff6] px-[7px] text-[10px] font-bold leading-none text-[#00b398]">Tú</span> : null}</div>;
 }
 
-function ResponsibleRow({ responsible, index }: { responsible: InspectionDetailResponsibleResponse; index: number }) {
-  return <div className={`flex items-center gap-[10px] px-[12px] py-[10px] ${index > 0 ? 'border-t border-[#e3e3e3]' : ''}`}><Avatar name={responsible.fullName} index={index} /><div className="min-w-0 flex-1"><p className="truncate text-[12px] font-bold leading-none text-[#131313]">{responsible.fullName}</p><p className="pt-[3px] text-[11px] font-normal leading-none text-[#646464]">{responsible.position ?? 'Sin cargo'}</p></div>{responsible.currentUser ? <span className="inline-flex h-[16px] items-center rounded-[5px] bg-[#c5fff6] px-[7px] py-[2px] text-[10px] font-bold leading-none text-[#00b398]">Tú</span> : null}</div>;
-}
-
-function CheckCircle({ active }: { active: boolean }) {
-  if (active) return <span className="flex size-[22px] items-center justify-center rounded-[11px] bg-[#00b398] text-[14px] font-bold leading-none text-white">✓</span>;
-  return <span className="size-[22px] rounded-[11px] border-[2px] border-[#d1d1d1] bg-white" />;
-}
-
-function ReassignResponsibleSheet({ detail, candidates, companyName, onClose }: { detail: InspectionDetailResponse; candidates: InspectionDetailResponsibleResponse[]; companyName: string; onClose: () => void }) {
-  const [selectedIds, setSelectedIds] = useState(() => candidates.map((candidate) => candidate.userId));
-
-  function toggle(userId: string) {
-    setSelectedIds((current) => current.includes(userId) ? current.filter((item) => item !== userId) : [...current, userId]);
-  }
-
-  return (
-    <div className="absolute bottom-[76px] left-[14px] right-[14px] z-30 flex flex-col gap-[24px] rounded-[16px] bg-white px-[14px] pb-[24px] pt-[12px] shadow-[0_4px_14px_rgba(19,19,19,0.24)]">
-      <h3 className="text-[14px] font-bold leading-none text-[#131313]">Reasignar hallazgo · {companyName}</h3>
-      <div className="max-h-[280px] overflow-hidden">
-        {candidates.length > 0 ? candidates.map((candidate, index) => {
-          const active = selectedIds.includes(candidate.userId);
-          return <button key={candidate.userId} type="button" className={`flex h-[61px] w-full items-center gap-[10px] px-[16px] text-left ${index < candidates.length - 1 ? 'border-b border-[#e3e3e3]' : ''}`} onClick={() => toggle(candidate.userId)}><Avatar name={candidate.fullName} index={index} large /><div className="min-w-0 flex-1"><p className="truncate text-[13px] font-semibold leading-none text-[#131313]">{candidate.fullName}</p><p className="truncate pt-[3px] text-[11px] font-normal leading-none text-[#646464]">{candidate.position ?? responsibleCompanyName(candidate, detail)}</p></div><CheckCircle active={active} /></button>;
-        }) : <p className="rounded-[8px] border border-dashed border-[#d1d1d1] bg-[#f7f7f7] px-[12px] py-[18px] text-center text-[12px] text-[#646464]">Sin compañeros disponibles para reasignar</p>}
-      </div>
-      <div className="flex gap-[8px]"><button type="button" className="flex h-[44px] min-w-0 flex-1 items-center justify-center rounded-[14px] border-2 border-[#c8a064] bg-white px-[20px] py-[2px] text-[13px] font-bold text-[#c8a064]" onClick={onClose}>Cancelar</button><button type="button" className="flex h-[44px] min-w-0 flex-1 items-center justify-center rounded-[14px] bg-[#c8a064] px-[12px] py-[13px] text-[15px] font-bold text-white drop-shadow-[0px_2px_5px_rgba(200,160,100,0.3)] disabled:opacity-50" disabled={selectedIds.length === 0} onClick={onClose}>Reasignar</button></div>
-    </div>
-  );
-}
-
-function ResponsiblesPanel({ detail, onOpenReassign }: { detail: InspectionDetailResponse; onOpenReassign: () => void }) {
-  const responsibles = detail.general.responsibles;
+function GeneralResponsiblesSection({ detail, onReassignClick }: { detail: InspectionDetailResponse; onReassignClick: () => void }) {
   const companyName = primaryResponsibleCompany(detail);
-  return (
-    <GeneralSection icon={<InspectionDetailPersonIcon />} title="Responsables">
-      <div className="flex items-center justify-between border-b border-[#e3e3e3] px-[12px] py-[9px]"><p className="text-[12px] font-medium leading-none text-[#646464]">EECC</p><p className="max-w-[160px] truncate text-right text-[11px] font-bold uppercase leading-none text-[#646464]">{companyName}</p></div>
-      <div className="border-b border-[#e3e3e3] bg-white">{responsibles.length > 0 ? responsibles.map((responsible, index) => <ResponsibleRow key={responsible.userId} responsible={responsible} index={index} />) : <p className="px-[12px] py-[14px] text-center text-[12px] text-[#646464]">Sin responsables asignados</p>}</div>
-      <div className="px-[12px] py-[9px]"><button type="button" className="flex h-[42px] w-full items-center justify-center gap-[6px] rounded-[8px] border-[1.5px] border-dashed border-[#d1d1d1] bg-[#f7f7f7] p-[1.5px] text-[12px] font-semibold text-[#24588b]" onClick={onOpenReassign}><PersonAddIcon />Reasignar a otro compañero {companyName}</button></div>
-    </GeneralSection>
-  );
+  const responsibles = detail.general.responsibles;
+  return <GeneralSection icon={<InspectionDetailPersonIcon />} title="Responsables"><GeneralInfoRows rows={[{ label: 'EECC', value: companyName }]} /><div className="border-t border-[#e3e3e3]">{responsibles.map((responsible, index) => <ResponsibleRow key={responsible.userId} responsible={responsible} index={index} isLast={index === responsibles.length - 1} />)}</div><div className="border-t border-[#e3e3e3] px-[12px] py-[9px]"><button type="button" onClick={onReassignClick} className="flex h-[42px] w-full items-center justify-center gap-[6px] rounded-[8px] border-[1.5px] border-dashed border-[#d1d1d1] bg-[#f7f7f7] px-[2px] text-[12px] font-semibold leading-none text-[#24588b]"><InspectionDetailAssignIcon />Reasignar a otro compañero {companyName}</button></div></GeneralSection>;
 }
 
 function GeneralPanel({ detail, onOpenReassign }: { detail: InspectionDetailResponse; onOpenReassign: () => void }) {
   const general = detail.general;
   const items = allFindings(detail);
-  const locationText = general.latitude && general.longitude ? `${general.latitude} · ${general.longitude}` : general.locationLabel ?? '—';
-  const locationRows = [
+  const locationRows: GeneralInfoRow[] = [
     { label: 'Área · Sector', value: [general.areaName, general.sectorName].filter(Boolean).join(' · ') || '—' },
     { label: 'Fecha', value: formatDate(general.scheduledAt) },
     { label: 'Tipo', value: detail.header.kind === 'checklist' ? 'Checklist normativo' : 'Hallazgo' },
-    { label: 'Ubicación UTM', value: locationText, mono: true },
+    { label: 'Ubicación UTM', value: general.latitude && general.longitude ? `${general.latitude} · ${general.longitude}` : general.locationLabel ?? '—', mono: true },
   ];
-  return (
-    <div className="min-h-0 flex-1 overflow-y-auto bg-white px-[14px] pb-[20px] pt-[14px]">
-      <div className="flex flex-col gap-[12px]">
-        <GeneralSection icon={<InspectionDetailPersonIcon />} title="Quién realizó la inspección"><GeneralInfoRows rows={[{ label: 'Nombre', value: general.inspectorName ?? '—' }, { label: 'Empresa', value: general.inspectorCompanyName ?? general.companyName ?? '—' }]} /></GeneralSection>
-        <GeneralSection icon={<InspectionDetailLocationIcon />} title="Donde y cuándo"><GeneralInfoRows rows={locationRows} /></GeneralSection>
-        <GeneralSection icon={<InspectionDetailCameraIcon />} title="Fotografía general de la inspección"><div className="px-[12px] py-[9px]"><EvidenceGallery evidences={general.generalEvidence} /></div></GeneralSection>
-        <GeneralObservationSummary items={items} />
-        <ResponsiblesPanel detail={detail} onOpenReassign={onOpenReassign} />
-      </div>
-    </div>
-  );
+  return <div className="min-h-0 flex-1 overflow-y-auto bg-white px-[14px] pt-[14px] pb-[20px]"><div className="flex flex-col gap-[12px]"><GeneralSection icon={<InspectionDetailPersonIcon />} title="Quién realizó la inspección"><GeneralInfoRows rows={[{ label: 'Nombre', value: general.inspectorName ?? '—' }, { label: 'Empresa', value: general.inspectorCompanyName ?? general.companyName ?? '—' }]} /></GeneralSection><GeneralSection icon={<InspectionDetailLocationIcon />} title="Donde y cuándo"><GeneralInfoRows rows={locationRows} /></GeneralSection><GeneralSection icon={<InspectionDetailCameraIcon />} title="Fotografía general de la inspección"><div className="px-[12px] py-[9px]"><EvidenceGallery evidences={general.generalEvidence} /></div></GeneralSection><GeneralObservationSummary items={items} /><GeneralResponsiblesSection detail={detail} onReassignClick={onOpenReassign} /></div></div>;
+}
+
+function ReassignSelectionControl({ selected }: { selected: boolean }) {
+  if (selected) return <span className="flex size-[22px] shrink-0 items-center justify-center rounded-[11px] border-2 border-[#00b398] bg-[#00b398] text-[12px] font-bold leading-none text-white">✓</span>;
+  return <span className="size-[22px] shrink-0 rounded-[11px] border-2 border-[#d1d1d1] bg-white" />;
+}
+
+function ReassignOptionRow({ option, selected, isLast, onToggle, index }: { option: InspectionDetailResponsibleResponse; selected: boolean; isLast: boolean; onToggle: () => void; index: number }) {
+  return <button type="button" className={`flex w-full items-center gap-[10px] px-[16px] py-[12px] text-left ${isLast ? '' : 'border-b border-[#e3e3e3]'}`} onClick={onToggle} aria-pressed={selected}>{initialsAvatar(option.fullName, index, true)}<div className="min-w-0 flex-1"><p className="truncate text-[13px] font-semibold leading-none text-[#131313]">{option.fullName}</p><p className="pt-[4px] text-[11px] font-normal leading-none text-[#646464]">{option.position ?? 'Sin cargo'}</p></div><ReassignSelectionControl selected={selected} /></button>;
+}
+
+function ReassignPrompt({ open, candidates, selectedIds, onToggle, onCancel, onConfirm, companyName }: { open: boolean; candidates: InspectionDetailResponsibleResponse[]; selectedIds: string[]; onToggle: (id: string) => void; onCancel: () => void; onConfirm: () => void; companyName: string }) {
+  if (!open) return null;
+  return <div className="absolute inset-0 z-20 flex items-center justify-center px-[14px]" role="presentation"><div className="w-[332px] max-w-full overflow-hidden rounded-[16px] bg-white px-[14px] pb-[24px] pt-[12px] shadow-[0_4px_14px_rgba(19,19,19,0.24)]" role="dialog" aria-modal="true" aria-labelledby="reassign-title"><p id="reassign-title" className="text-[14px] font-bold leading-none text-[#131313]">Reasignar hallazgo · {companyName}</p><div className="mt-[24px] flex max-h-[280px] flex-col overflow-hidden">{candidates.map((option, index) => <ReassignOptionRow key={option.userId} option={option} selected={selectedIds.includes(option.userId)} isLast={index === candidates.length - 1} onToggle={() => onToggle(option.userId)} index={index} />)}</div><div className="mt-[24px] flex gap-[8px]"><button type="button" className="flex h-[44px] min-w-0 flex-1 items-center justify-center rounded-[14px] border-2 border-[#c8a064] bg-white px-[20px] py-[2px] text-[13px] font-bold leading-none text-[#c8a064]" onClick={onCancel}>Cancelar</button><button type="button" className="flex h-[44px] min-w-0 flex-1 items-center justify-center rounded-[14px] bg-[#c8a064] px-[12px] py-[13px] text-[15px] font-bold leading-none text-white shadow-[0_2px_5px_rgba(200,160,100,0.3)]" onClick={onConfirm}>Reasignar</button></div></div></div>;
+}
+
+function EmptyDetailPanel() {
+  return <div className="min-h-0 flex-1 bg-white" />;
 }
 
 function DetailContent({ activeTab, detail, actions, onOpenReassign }: { activeTab: DetailTab; detail: InspectionDetailResponse; actions: ReturnType<typeof useInspectionFindingActions>; onOpenReassign: () => void }) {
   if (activeTab === 'followups') return <FollowupsPanel detail={detail} />;
   if (activeTab === 'general') return <GeneralPanel detail={detail} onOpenReassign={onOpenReassign} />;
-  return <DetailRows inspectionId={detail.header.inspectionId} counts={detail.header.counts} findings={detail.findings} actions={actions} />;
+  if (activeTab === 'result' && detail.header.kind === 'checklist') return <ChecklistResultPanel />;
+  if (activeTab === 'observations') return <DetailRows inspectionId={detail.header.inspectionId} counts={detail.header.counts} findings={detail.findings} actions={actions} />;
+  return <EmptyDetailPanel />;
 }
 
 function DownloadPdfButton({ inspectionId }: { inspectionId: string }) {
@@ -386,9 +448,14 @@ function DownloadPdfButton({ inspectionId }: { inspectionId: string }) {
 export function InspectionDetailRealDataModal({ open, record, detail, onClose }: { open: boolean; record: InspectionDetailModalRecord; detail: InspectionDetailResponse; onClose: () => void }) {
   const [activeTab, setActiveTab] = useState<DetailTab>('observations');
   const [reassignOpen, setReassignOpen] = useState(false);
+  const [selectedReassignIds, setSelectedReassignIds] = useState<string[]>(() => detail.general.responsibles.map((responsible) => responsible.userId));
   const actions = useInspectionFindingActions();
   const companyName = primaryResponsibleCompany(detail);
   if (!open) return null;
+  const toggleReassignOption = (id: string) => setSelectedReassignIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  const closeReassignPrompt = () => setReassignOpen(false);
+  const confirmReassignPrompt = () => setReassignOpen(false);
+
   return (
     <div className="fixed inset-0 z-[1000] bg-[rgba(0,0,0,0.68)]">
       <div className="flex h-full w-full items-center justify-end px-[20px] py-[16px]">
@@ -396,11 +463,11 @@ export function InspectionDetailRealDataModal({ open, record, detail, onClose }:
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="shrink-0 rounded-t-[16px] bg-white px-[14px] py-[12px]"><div className="flex items-center gap-[12px]"><div className="min-w-0 flex-1 font-['Inter:Bold',sans-serif] font-bold"><p className="whitespace-nowrap text-[13px] leading-none text-[#001e39]">{record.id}</p><h2 id="inspection-detail-title" className="mt-[5px] text-[16px] font-bold leading-[22px] tracking-[0.32px] text-[#2a2a2a]">{record.title}</h2><div className="mt-[4px]">{metadataFor(record)}</div></div><button type="button" className="flex size-[32px] shrink-0 items-center justify-center" onClick={onClose} aria-label="Cerrar detalle"><InspectionDetailCloseIcon /></button></div></div>
             <ProgressSummary counts={detail.header.counts} progressPercent={detail.header.progressPercent} />
-            <Tabs activeTab={activeTab} onChange={setActiveTab} />
+            <Tabs kind={record.kind} activeTab={activeTab} onChange={setActiveTab} />
             <DetailContent activeTab={activeTab} detail={detail} actions={actions} onOpenReassign={() => setReassignOpen(true)} />
           </div>
           <DownloadPdfButton inspectionId={detail.header.inspectionId} />
-          {reassignOpen ? <ReassignResponsibleSheet detail={detail} candidates={detail.general.responsibles} companyName={companyName} onClose={() => setReassignOpen(false)} /> : null}
+          <ReassignPrompt open={reassignOpen} candidates={detail.general.responsibles} selectedIds={selectedReassignIds} onToggle={toggleReassignOption} onCancel={closeReassignPrompt} onConfirm={confirmReassignPrompt} companyName={companyName} />
         </section>
       </div>
     </div>

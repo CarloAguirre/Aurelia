@@ -4,6 +4,9 @@ import {
   InspectionDetailAssignIcon,
   InspectionDetailCameraIcon,
   InspectionDetailCaretDownIcon,
+  InspectionDetailChecklistListIcon,
+  InspectionDetailChecklistNoIcon,
+  InspectionDetailChecklistYesIcon,
   InspectionDetailCloseIcon,
   InspectionDetailFollowupIcon,
   InspectionDetailImageIcon,
@@ -339,11 +342,11 @@ function DetailRows({ counts }: { counts: Record<StatusKey, number> }) {
   );
 }
 
-function ChecklistResultMetric({ value, label, tone, marker }: { value: string; label: string; tone: string; marker?: string }) {
+function ChecklistResultMetric({ value, label, tone, icon }: { value: string; label: string; tone: string; icon?: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-[2px]">
       <p className={`text-[18px] font-bold leading-[22px] ${tone}`}>{value}</p>
-      <div className="flex h-[15px] items-center justify-center gap-[3px]"><span className={`text-[11px] font-normal leading-none ${tone}`}>{marker}</span><span className={`text-[11px] font-normal leading-none ${tone}`}>{label}</span></div>
+      <div className="flex h-[15px] items-center justify-center gap-[3px]">{icon ? <span className="flex h-[9px] w-[11.25px] items-center justify-center">{icon}</span> : null}<span className={`text-[11px] font-normal leading-none ${tone}`}>{label}</span></div>
     </div>
   );
 }
@@ -351,9 +354,9 @@ function ChecklistResultMetric({ value, label, tone, marker }: { value: string; 
 function ChecklistResultSummary() {
   return (
     <div className="flex h-[71px] shrink-0 items-start gap-[8px] border-b border-[#e3e3e3] bg-white px-[14px] pb-[13px] pt-[12px]">
-      <ChecklistResultMetric value="20" label="SÍ" tone="text-[#2a5c16]" marker="✓" />
+      <ChecklistResultMetric value="20" label="SÍ" tone="text-[#2a5c16]" icon={<InspectionDetailChecklistYesIcon />} />
       <div className="h-full w-px shrink-0 bg-[#e3e3e3]" />
-      <ChecklistResultMetric value="5" label="NO" tone="text-[#570b1d]" marker="×" />
+      <ChecklistResultMetric value="5" label="NO" tone="text-[#570b1d]" icon={<InspectionDetailChecklistNoIcon />} />
       <div className="h-full w-px shrink-0 bg-[#e3e3e3]" />
       <ChecklistResultMetric value="2" label="N/A" tone="text-[#646464]" />
     </div>
@@ -383,7 +386,7 @@ function ChecklistResultItemRow({ item, isLast }: { item: ChecklistResultItem; i
 function ChecklistResultItemsSection() {
   return (
     <div className="shrink-0 bg-white py-[20px]">
-      <div className="flex items-center gap-[6px] px-[14px]"><InspectionDetailListIcon className="h-[11px] w-[13.75px]" /><p className="text-[11px] font-bold uppercase leading-none tracking-[0.55px] text-[#646464]">Detalle ítem a ítem</p></div>
+      <div className="flex items-center gap-[6px] px-[14px]"><InspectionDetailChecklistListIcon /><p className="text-[11px] font-bold uppercase leading-none tracking-[0.55px] text-[#646464]">Detalle ítem a ítem</p></div>
       <div className="pt-[10px]"><div className="overflow-hidden border border-[#e3e3e3] bg-white">{checklistResultItems.map((item, index) => <ChecklistResultItemRow key={item.number} item={item} isLast={index === checklistResultItems.length - 1} />)}</div></div>
     </div>
   );

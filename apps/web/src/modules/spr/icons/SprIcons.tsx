@@ -158,6 +158,18 @@ export function SprProcessStatusRejectedIcon(props: IconProps) {
   );
 }
 
+// Icono aprobacion del gerente en estatus del proceso. Figma node 1672:11251.
+export function SprProcessStatusApprovedIcon(props: IconProps) {
+  return (
+    <svg width="16.25" height="13" viewBox="0 0 16.25 13" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" {...props}>
+      <path
+        d="M13.4781 1.78711C13.8691 2.07148 13.9566 2.61836 13.6723 3.00938L6.67227 12.6344C6.52188 12.8422 6.28945 12.9707 6.03242 12.9926C5.77539 13.0145 5.52656 12.9188 5.34609 12.7383L1.84609 9.23828C1.5043 8.89648 1.5043 8.34141 1.84609 7.99961C2.18789 7.65781 2.74297 7.65781 3.08477 7.99961L5.86016 10.775L12.2586 1.97852C12.543 1.5875 13.0898 1.5 13.4809 1.78438L13.4781 1.78711Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 // Icono documento/editar paso completado. Figma node 1666:3648.
 export function SprProcessStatusDocumentIcon(props: IconProps) {
   return (

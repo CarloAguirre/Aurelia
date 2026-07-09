@@ -38,6 +38,21 @@ export const SPR_CORRECTED_STATUS = {
   emittedStepHelper: 'A la espera de la aprobación y firma de tu gerente de área.',
 } as const;
 
+// PLACEHOLDER: estado post-aprobacion del gerente (Figma 1672:10996).
+export const SPR_APPROVED_STATUS = {
+  formStatusLabel: 'Completado ✓',
+  formStatusHelper: 'Aprobado por tu Gerente',
+  reportStatusLabel: 'Aún no disponible',
+  // MOCK: fallback si approvedAt no viene en los registros.
+  managerApprovalDateFallback: '05-06-2026',
+  kpiPendingStepTitle: (cycleLabel: string) => `A la espera de Validación de KPIs — Reporte SPR ${cycleLabel}`,
+  kpiPendingStepHelper:
+    'Cuándo el reporte sea firmado por Especialistas de Sustentabilidad recibirás una notificación para validar tus datos',
+  kpiPendingBadgeLabel: 'A la espera de firma de Especialistas de Sustentabilidad',
+  approvedStepTitle: (cycleLabel: string) => `Formulario SPR ${cycleLabel} aprobado`,
+  approvedStepHelper: (dateLabel: string) => `Tu Gerente de Área aprobó y firmó el formulario el ${dateLabel}`,
+} as const;
+
 // PLACEHOLDER: estado post-rechazo del formulario (Figma 1672:5810).
 export const SPR_REJECTED_STATUS = {
   formStatusLabel: 'Correcciones pendientes',

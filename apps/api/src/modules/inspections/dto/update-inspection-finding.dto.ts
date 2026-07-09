@@ -1,4 +1,4 @@
-import { IsEnum, IsISO8601, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import { ArrayUnique, IsArray, IsEnum, IsISO8601, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 import { InspectionFindingSeverity, InspectionFindingStatus, UpdateInspectionFindingRequest } from '@aurelia/contracts';
 
 export class UpdateInspectionFindingDto implements UpdateInspectionFindingRequest {
@@ -44,6 +44,12 @@ export class UpdateInspectionFindingDto implements UpdateInspectionFindingReques
   @IsOptional()
   @IsUUID()
   ownerUserId?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsUUID('4', { each: true })
+  responsibleUserIds?: string[];
 
   @IsOptional()
   @IsISO8601()

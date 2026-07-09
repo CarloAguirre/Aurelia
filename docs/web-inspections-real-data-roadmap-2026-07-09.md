@@ -44,7 +44,7 @@ Pendiente:
 
 ### Etapa 3 - Modal detalle con datos reales
 
-Estado: endpoint y hook implementados; pendiente conexión visual.
+Estado: conexión visual inicial implementada; pendiente reemplazo de contenido interno.
 
 Avance:
 
@@ -53,15 +53,13 @@ Avance:
 - El endpoint de detalle devuelve cabecera, contadores por estado, hallazgos agrupados, seguimientos, datos generales, responsables y evidencias por hallazgo.
 - Se agregó servicio web `getInspectionDetail(inspectionId)`.
 - Se agregó hook `useInspectionDetail(inspectionId)` con React Query.
+- La tabla de gestión pasa `inspectionId` real al modal además del número visible.
+- Se agregó `InspectionDetailModalDataBridge` para hidratar cabecera, metadata, progreso y contadores reales sin romper el modal visual existente.
 - Se mantiene `getInspectionExportPayload(inspectionId)` para PDF/reporting y compatibilidad con export.
 
 Pendiente próximo:
 
-- Pasar `inspectionId` real desde la tabla al modal además del número visible `#xx`.
-- Conectar `InspectionDetailModal` a `useInspectionDetail`.
 - Reemplazar gradualmente mocks del modal por payload real:
-  - cabecera y metadata,
-  - contadores ejecutadas / abiertas / cerradas / rechazadas,
   - tarjetas de observaciones,
   - seguimientos,
   - datos generales,
@@ -97,4 +95,4 @@ Checks mínimos:
 
 ## Próxima iteración recomendada
 
-Conectar el modal de detalle al hook `useInspectionDetail` y mantener fallback visual a mock solo mientras la carga está pendiente o falla. Esto permite avanzar sin romper la fidelidad visual actual y habilita reemplazos por sección.
+Reemplazar las tarjetas internas de observaciones del modal por los grupos reales de `InspectionDetailResponse.findings`, manteniendo fallback visual cuando la carga esté pendiente o falle.

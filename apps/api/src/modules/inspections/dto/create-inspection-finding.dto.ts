@@ -34,6 +34,16 @@ export class CreateInspectionFindingDto implements CreateInspectionFindingReques
   @MaxLength(2000)
   description?: string | null;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  detectedCondition?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  proposedCorrectiveAction?: string | null;
+
   @IsEnum(InspectionFindingSeverity)
   severity: InspectionFindingSeverity;
 

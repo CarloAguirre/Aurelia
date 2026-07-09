@@ -83,7 +83,7 @@ para soportes propios de seguimientos posteriores.
 
 ### Etapa 1 - Modelo, contratos y documentación
 
-Estado: en curso.
+Estado: implementada, pendiente validación local extendida.
 
 Alcance:
 
@@ -109,6 +109,8 @@ Criterios de salida:
 
 ### Etapa 2 - Corrección de creación manual y asistente
 
+Estado: implementada, pendiente validación local.
+
 Alcance:
 
 - Ajustar el flujo manual de Hallazgo para enviar `detectedCondition` y `proposedCorrectiveAction` como campos reales.
@@ -122,6 +124,13 @@ Criterios de salida:
 - Una inspección con hallazgos nuevos queda persistida sin parsear texto.
 - Cada hallazgo tiene su evidencia inicial vinculada al hallazgo específico.
 - Los flujos manual y asistido quedan alineados.
+
+Archivos tocados:
+
+```txt
+apps/web/src/shared/services/inspections.service.ts
+apps/web/src/modules/inspections/new-inspection/hooks/useSubmitNewInspection.ts
+```
 
 ### Etapa 3 - Endpoint de detalle para UI
 

@@ -32,6 +32,7 @@ import {
   type InspectionDetailIconStatus,
 } from './InspectionDetailIcons';
 import type { InspectionDetailModalKind, InspectionDetailModalRecord } from './InspectionDetailModal';
+import { SlaReassignSheet } from './SlaReassignSheet';
 
 type StatusKey = InspectionDetailIconStatus;
 type DetailTab = 'observations' | 'result' | 'followups' | 'general';
@@ -275,6 +276,7 @@ function EvidencePreview({ title, evidences, afterClosed = false, emptyLabel = '
 }
 
 function FindingObservationCard({ inspectionId, item, actions }: FindingObservationCardProps) {
+  const [slaSheetOpen, setSlaSheetOpen] = useState(false);
   const config = statusConfigByKey[item.statusGroup];
   const status = item.statusGroup;
   const actionDisabled = actions.isPending;
@@ -296,12 +298,11 @@ function FindingObservationCard({ inspectionId, item, actions }: FindingObservat
     actions.rejectFinding(inspectionId, item.findingId, value.length > 0 ? value : null);
   }
 
-  function reschedule() {
-    const value = window.prompt('Nuevo SLA en días', '7')?.trim();
-    if (value === undefined) return;
-    const days = Number(value);
+  function reschedule(label: string) {
+    const days = Number(label.match(/(\d+)/)?.[1]);
     if (!Number.isFinite(days) || days < 0) return;
     actions.rescheduleFinding(inspectionId, item.findingId, dueDateFromDays(days));
+    setSlaSheetOpen(false);
   }
 
   return (
@@ -316,12 +317,13 @@ function FindingObservationCard({ inspectionId, item, actions }: FindingObservat
         {status !== 'open' ? <FindingTextBlock title="Descripción de la acción tomada">{item.executedActionDescription ?? ''}</FindingTextBlock> : null}
         {status === 'rejected' ? <FindingTextBlock title="Motivo de rechazo">{item.rejectionReason ?? ''}</FindingTextBlock> : null}
         <div className="flex gap-[4px] pt-[8px]"><EvidencePreview title="Antes" evidences={item.beforeEvidence} emptyLabel="Pendiente" /><EvidencePreview title="Después" evidences={item.afterEvidence} afterClosed={status === 'closed' || status === 'executed' || status === 'rejected'} /></div>
-        {status === 'open' ? <div className="mt-[4px] flex min-h-[64px] items-center justify-between rounded-[10px] border-[1.5px] border-[#d1d1d1] bg-[#f7f7f7] p-[15.5px]"><div><p className="w-[78px] text-[9px] font-bold uppercase leading-none tracking-[0.63px] text-[#333]">SLA calculado</p><p className="pt-[2px] text-[20px] font-bold leading-[20px] text-[#532a0e]">{daysLabel(item.dueAt, 'X Días')}</p></div><button type="button" className="flex h-[40px] items-center justify-center rounded-[8px] border-[1.5px] border-[#d1d1d1] bg-white px-[15.5px] py-[1.5px] text-[13px] font-semibold text-[#333] disabled:opacity-50" disabled={actionDisabled} onClick={reschedule}>Reasignar SLA</button></div> : null}
+        {status === 'open' ? <div className="mt-[4px] flex min-h-[64px] items-center justify-between rounded-[10px] border-[1.5px] border-[#d1d1d1] bg-[#f7f7f7] p-[15.5px]"><div><p className="w-[78px] text-[9px] font-bold uppercase leading-none tracking-[0.63px] text-[#333]">SLA calculado</p><p className="pt-[2px] text-[20px] font-bold leading-[20px] text-[#532a0e]">{daysLabel(item.dueAt, 'X Días')}</p></div><button type="button" className="flex h-[40px] items-center justify-center rounded-[8px] border-[1.5px] border-[#d1d1d1] bg-white px-[15.5px] py-[1.5px] text-[13px] font-semibold text-[#333] disabled:opacity-50" disabled={actionDisabled} onClick={() => setSlaSheetOpen(true)}>Reasignar SLA</button></div> : null}
         {status === 'executed' ? <><div className="mt-[4px] flex h-[33px] items-center justify-between rounded-[8px] bg-white px-[12px] py-[9px]"><p className="text-[12px] font-medium leading-none text-[#646464]">SLA calculado</p><div className="flex items-center gap-[3px]"><InspectionDetailStatusRowIcon status="executed" className="h-[9px] w-[11.25px]" /><p className="text-[11px] font-bold leading-none text-[#570b1d]">{daysLabel(item.dueAt)}</p></div></div><div className="flex items-center gap-[8px] rounded-[8px] bg-white px-[12px] py-[9px]"><button type="button" className="flex h-[40px] items-center justify-center gap-[5px] rounded-[9px] border-2 border-[#c4365a] bg-white px-[16px] py-[2px] text-[12px] font-bold text-[#570b1d] disabled:opacity-50" disabled={actionDisabled} onClick={reject}><InspectionDetailRejectIcon />Rechazar</button><button type="button" className="flex h-[40px] min-w-0 flex-1 items-center justify-center gap-[5px] rounded-[9px] bg-[#3a9b3a] px-[12px] text-[12px] font-bold text-white disabled:opacity-50" disabled={actionDisabled} onClick={approve}><InspectionDetailApproveIcon />Aprobar cierre</button></div></> : null}
         {status === 'closed' ? <><div className="mt-[4px] flex h-[33px] items-center justify-between rounded-[8px] bg-white px-[12px] py-[9px]"><p className="text-[12px] font-medium leading-none text-[#646464]">SLA cerrado</p><div className="flex items-center gap-[3px]"><InspectionDetailStatusRowIcon status="open" className="h-[9px] w-[11.25px]" /><p className="text-[11px] font-bold leading-none text-[#532a0e]">{daysLabel(item.dueAt)}</p></div></div><div className="flex h-[33px] items-center justify-between rounded-[8px] bg-white px-[12px] py-[9px]"><p className="text-[12px] font-medium leading-none text-[#646464]">Fecha de cierre</p><p className="text-right text-[11px] font-bold leading-none text-[#646464]">{formatDate(item.closedAt)}</p></div></> : null}
         {status === 'rejected' ? <><div className="mt-[4px] flex h-[33px] items-center justify-between rounded-[8px] bg-white px-[12px] py-[9px]"><p className="text-[12px] font-medium leading-none text-[#646464]">SLA calculado</p><div className="flex items-center gap-[3px]"><InspectionDetailStatusRowIcon status="executed" className="h-[9px] w-[11.25px]" /><p className="text-[11px] font-bold leading-none text-[#570b1d]">{daysLabel(item.dueAt)}</p></div></div><button type="button" className="flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#c8a064] px-[12px] text-[15px] font-bold text-white shadow-[0px_2px_5px_rgba(200,160,100,0.3)] disabled:opacity-50" disabled={actionDisabled} onClick={execute}>Ejecutar observación rechazada</button></> : null}
         {status === 'open' ? <button type="button" className="flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#c8a064] px-[12px] text-[15px] font-bold text-white shadow-[0px_2px_5px_rgba(200,160,100,0.3)] disabled:opacity-50" disabled={actionDisabled} onClick={execute}>Ejecutar observación</button> : null}
       </div>
+      <SlaReassignSheet visible={slaSheetOpen} calculatedLabel={daysLabel(item.dueAt, 'X Días')} severityLabel={item.severityLabel} onClose={() => setSlaSheetOpen(false)} onApply={reschedule} />
     </div>
   );
 }

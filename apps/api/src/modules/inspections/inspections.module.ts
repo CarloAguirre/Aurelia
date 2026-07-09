@@ -7,6 +7,7 @@ import { AreaEntity } from '../organization/entities/area.entity';
 import { CompanyEntity } from '../organization/entities/company.entity';
 import { SectorEntity } from '../organization/entities/sector.entity';
 import { UserEntity } from '../users/entities/user.entity';
+import { UsersModule } from '../users/users.module';
 import { InspectionFindingSeverityEntity } from './entities/inspection-finding-severity.entity';
 import { InspectionFindingResponsibleEntity } from './entities/inspection-finding-responsible.entity';
 import { InspectionFindingTypeEntity } from './entities/inspection-finding-type.entity';
@@ -36,6 +37,7 @@ import { InspectionsService } from './inspections.service';
     AuditModule,
     CommentsModule,
     EvidencesModule,
+    UsersModule,
     TypeOrmModule.forFeature([
       InspectionTypeEntity,
       InspectionFindingTypeEntity,

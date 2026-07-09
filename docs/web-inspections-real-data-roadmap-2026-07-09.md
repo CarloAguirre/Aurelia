@@ -57,6 +57,7 @@ Avance:
 - Se agregó `InspectionDetailModalDataBridge` para hidratar cabecera, metadata, progreso y contadores reales sin romper el modal visual existente.
 - Se agregó `InspectionDetailRealDataModal` para renderizar tarjetas reales por estado usando `InspectionDetailResponse.findings`.
 - Seguimientos, datos generales y botón PDF ya leen del payload real en la vista de detalle real.
+- El bridge dejó de ocultar errores con el mock: si `/api/inspections/:id/detail` falla, muestra un estado de error visible.
 - Se mantiene `getInspectionExportPayload(inspectionId)` para PDF/reporting y compatibilidad con export.
 
 ### Etapa 4 - Acciones operativas desde modal

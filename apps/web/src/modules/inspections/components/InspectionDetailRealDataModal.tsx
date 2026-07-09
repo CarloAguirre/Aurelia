@@ -356,8 +356,8 @@ function FollowupTimelineMarker({ completed }: { completed: boolean }) {
 
 function buildFollowupSteps(detail: InspectionDetailResponse): FollowupStep[] {
   const observedCount = allFindings(detail).length;
-  const actualSteps = detail.followups.slice(0, 3).map((step, index) => ({ id: step.followupId, title: `Seguimiento ${index + 1}`, date: formatDate(step.performedAt), summary: step.description, completed: step.completed }));
-  const paddedSteps = [...actualSteps];
+  const actualSteps: FollowupStep[] = detail.followups.slice(0, 3).map((step, index) => ({ id: step.followupId, title: `Seguimiento ${index + 1}`, date: formatDate(step.performedAt), summary: step.description, completed: step.completed }));
+  const paddedSteps: FollowupStep[] = [...actualSteps];
   while (paddedSteps.length < 3) paddedSteps.push({ id: `pending-${paddedSteps.length + 1}`, title: `Seguimiento ${paddedSteps.length + 1}`, date: '—', completed: false });
   return [{ id: 'initial', title: 'Inspección inicial', date: formatDate(detail.general.scheduledAt), summary: `${observedCount} observaciones detectadas`, completed: true }, ...paddedSteps];
 }

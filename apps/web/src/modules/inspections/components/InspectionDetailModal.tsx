@@ -86,6 +86,14 @@ type Responsible = {
   current?: boolean;
 };
 
+type ReassignOption = {
+  id: string;
+  initials: string;
+  name: string;
+  area: string;
+  avatarClassName: string;
+};
+
 const statusConfigByKey: Record<StatusKey, StatusConfig> = {
   executed: { key: 'executed', label: 'Ejecutadas', chipLabel: 'Ejecutada', itemLabel: 'Ejecutado', textClass: 'text-[#570b1d]', chipClass: 'bg-[#ffd0db] text-[#570b1d]' },
   open: { key: 'open', label: 'Abiertas', chipLabel: 'Abiertas', itemLabel: 'Abierto', textClass: 'text-[#463100]', chipClass: 'bg-[#ffeab8] text-[#463100]' },
@@ -123,6 +131,12 @@ const findingObservationSummaries: GeneralObservationSummary[] = [
 const findingResponsibles: Responsible[] = [
   { initials: 'NA', name: '[Nombre y apellido usuario 1]', role: 'Coordinador', avatarClassName: 'bg-[#c8a064] text-[#001e39]', current: true },
   { initials: 'NA', name: '[Nombre y apellido usuario 1]', role: 'Inspector', avatarClassName: 'bg-[#24588b] text-white' },
+];
+const reassignOptions: ReassignOption[] = [
+  { id: 'miguel-pizarro', initials: 'MP', name: 'Miguel Pizarro', area: 'Planta Procesos', avatarClassName: 'bg-[#c8a064] text-[#001e39]' },
+  { id: 'roberto-gonzalez', initials: 'RG', name: 'Roberto González', area: 'Planta Procesos', avatarClassName: 'bg-[#24588b] text-white' },
+  { id: 'carlos-lopez', initials: 'CL', name: 'Carlos López', area: 'Mantención', avatarClassName: 'bg-[#00b398] text-white' },
+  { id: 'patricia-soto', initials: 'PS', name: 'Patricia Soto', area: 'Servicios Generales', avatarClassName: 'bg-[#532a0e] text-white' },
 ];
 
 function getTabs(kind: InspectionDetailModalKind): TabConfig[] {
@@ -372,17 +386,17 @@ function ResponsibleRow({ responsible, isLast }: { responsible: Responsible; isL
   );
 }
 
-function GeneralResponsiblesSection() {
+function GeneralResponsiblesSection({ onReassignClick }: { onReassignClick: () => void }) {
   return (
     <GeneralSection icon={<InspectionDetailPersonIcon />} title="Responsables">
       <GeneralInfoRows rows={[{ label: 'EECC', value: 'GARDE CORPS' }]} />
       <div className="border-t border-[#e3e3e3]">{findingResponsibles.map((responsible, index) => <ResponsibleRow key={`${responsible.name}-${responsible.role}`} responsible={responsible} isLast={index === findingResponsibles.length - 1} />)}</div>
-      <div className="border-t border-[#e3e3e3] px-[12px] py-[9px]"><button type="button" className="flex h-[42px] w-full items-center justify-center gap-[6px] rounded-[8px] border-[1.5px] border-dashed border-[#d1d1d1] bg-[#f7f7f7] px-[2px] text-[12px] font-semibold leading-none text-[#24588b]"><InspectionDetailAssignIcon />Reasignar a otro compañero SOMACOR</button></div>
+      <div className="border-t border-[#e3e3e3] px-[12px] py-[9px]"><button type="button" onClick={onReassignClick} className="flex h-[42px] w-full items-center justify-center gap-[6px] rounded-[8px] border-[1.5px] border-dashed border-[#d1d1d1] bg-[#f7f7f7] px-[2px] text-[12px] font-semibold leading-none text-[#24588b]"><InspectionDetailAssignIcon />Reasignar a otro compañero SOMACOR</button></div>
     </GeneralSection>
   );
 }
 
-function FindingGeneralDataPanel() {
+function FindingGeneralDataPanel({ onReassignClick }: { onReassignClick: () => void }) {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-white px-[14px] pt-[14px] pb-[20px]">
       <div className="flex flex-col gap-[12px]">
@@ -390,7 +404,40 @@ function FindingGeneralDataPanel() {
         <GeneralSection icon={<InspectionDetailLocationIcon />} title="Donde y cuándo"><GeneralInfoRows rows={findingLocationRows} /></GeneralSection>
         <GeneralPhotoSection />
         <GeneralObservationsSection />
-        <GeneralResponsiblesSection />
+        <GeneralResponsiblesSection onReassignClick={onReassignClick} />
+      </div>
+    </div>
+  );
+}
+
+function ReassignSelectionControl({ selected }: { selected: boolean }) {
+  if (selected) return <span className="flex size-[22px] shrink-0 items-center justify-center rounded-[11px] border-2 border-[#00b398] bg-[#00b398] text-[12px] font-bold leading-none text-white">✓</span>;
+  return <span className="size-[22px] shrink-0 rounded-[11px] border-2 border-[#d1d1d1] bg-white" />;
+}
+
+function ReassignOptionRow({ option, selected, isLast, onToggle }: { option: ReassignOption; selected: boolean; isLast: boolean; onToggle: () => void }) {
+  return (
+    <button type="button" className={`flex w-full items-center gap-[10px] px-[16px] py-[12px] text-left ${isLast ? '' : 'border-b border-[#e3e3e3]'}`} onClick={onToggle} aria-pressed={selected}>
+      <div className={`flex size-[36px] shrink-0 items-center justify-center rounded-[18px] text-[13px] font-bold leading-none ${option.avatarClassName}`}>{option.initials}</div>
+      <div className="min-w-0 flex-1"><p className="truncate text-[13px] font-semibold leading-none text-[#131313]">{option.name}</p><p className="pt-[4px] text-[11px] font-normal leading-none text-[#646464]">{option.area}</p></div>
+      <ReassignSelectionControl selected={selected} />
+    </button>
+  );
+}
+
+function ReassignPrompt({ open, selectedIds, onToggle, onCancel, onConfirm }: { open: boolean; selectedIds: string[]; onToggle: (id: string) => void; onCancel: () => void; onConfirm: () => void }) {
+  if (!open) return null;
+  return (
+    <div className="absolute inset-0 z-20 flex items-center justify-center px-[14px]" role="presentation">
+      <div className="w-[332px] max-w-full overflow-hidden rounded-[16px] bg-white px-[14px] pb-[24px] pt-[12px] shadow-[0_4px_14px_rgba(19,19,19,0.24)]" role="dialog" aria-modal="true" aria-labelledby="reassign-title">
+        <p id="reassign-title" className="text-[14px] font-bold leading-none text-[#131313]">Reasignar hallazgo · GARDE CORPS</p>
+        <div className="mt-[24px] flex max-h-[280px] flex-col overflow-hidden">
+          {reassignOptions.map((option, index) => <ReassignOptionRow key={option.id} option={option} selected={selectedIds.includes(option.id)} isLast={index === reassignOptions.length - 1} onToggle={() => onToggle(option.id)} />)}
+        </div>
+        <div className="mt-[24px] flex gap-[8px]">
+          <button type="button" className="flex h-[44px] min-w-0 flex-1 items-center justify-center rounded-[14px] border-2 border-[#c8a064] bg-white px-[20px] py-[2px] text-[13px] font-bold leading-none text-[#c8a064]" onClick={onCancel}>Cancelar</button>
+          <button type="button" className="flex h-[44px] min-w-0 flex-1 items-center justify-center rounded-[14px] bg-[#c8a064] px-[12px] py-[13px] text-[15px] font-bold leading-none text-white shadow-[0_2px_5px_rgba(200,160,100,0.3)]" onClick={onConfirm}>Reasignar</button>
+        </div>
       </div>
     </div>
   );
@@ -400,9 +447,9 @@ function EmptyDetailPanel() {
   return <div className="min-h-0 flex-1 bg-white" />;
 }
 
-function DetailContent({ activeTab, counts, kind }: { activeTab: DetailTab; counts: Record<StatusKey, number>; kind: InspectionDetailModalKind }) {
+function DetailContent({ activeTab, counts, kind, onReassignClick }: { activeTab: DetailTab; counts: Record<StatusKey, number>; kind: InspectionDetailModalKind; onReassignClick: () => void }) {
   if (activeTab === 'followups') return <FollowupsPanel />;
-  if (activeTab === 'general' && kind === 'finding') return <FindingGeneralDataPanel />;
+  if (activeTab === 'general' && kind === 'finding') return <FindingGeneralDataPanel onReassignClick={onReassignClick} />;
   if (activeTab === 'observations' || activeTab === 'result') return <DetailRows counts={counts} />;
   return <EmptyDetailPanel />;
 }
@@ -427,21 +474,26 @@ function buildDetailMockCounts(record: InspectionDetailModalRecord): Record<Stat
 
 export function InspectionDetailModal({ open, record, onClose }: InspectionDetailModalProps) {
   const [activeTab, setActiveTab] = useState<DetailTab>('observations');
+  const [reassignOpen, setReassignOpen] = useState(false);
+  const [selectedReassignIds, setSelectedReassignIds] = useState<string[]>(['miguel-pizarro', 'roberto-gonzalez']);
   if (!open || !record) return null;
   const counts: Record<StatusKey, number> = buildDetailMockCounts(record);
   const progressPercent = record.progressPercent ?? 20;
+  const toggleReassignOption = (id: string) => setSelectedReassignIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  const closeReassignPrompt = () => setReassignOpen(false);
 
   return (
     <div className="fixed inset-0 z-[1000] bg-[rgba(0,0,0,0.68)]">
       <div className="flex h-full w-full items-center justify-end px-[20px] py-[16px]">
-        <section className="flex h-[calc(100vh-32px)] max-h-[692px] w-[360px] max-w-[calc(100vw-40px)] flex-col justify-between overflow-hidden rounded-[16px] bg-white shadow-[0_24px_70px_rgba(0,0,0,0.35)]" role="dialog" aria-modal="true" aria-labelledby="inspection-detail-title">
+        <section className="relative flex h-[calc(100vh-32px)] max-h-[692px] w-[360px] max-w-[calc(100vw-40px)] flex-col justify-between overflow-hidden rounded-[16px] bg-white shadow-[0_24px_70px_rgba(0,0,0,0.35)]" role="dialog" aria-modal="true" aria-labelledby="inspection-detail-title">
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="shrink-0 rounded-t-[16px] bg-white px-[14px] py-[12px]"><div className="flex items-center gap-[12px]"><div className="min-w-0 flex-1 font-['Inter:Bold',sans-serif] font-bold"><p className="whitespace-nowrap text-[13px] leading-none text-[#001e39]">{record.id}</p><h2 id="inspection-detail-title" className="mt-[5px] text-[16px] font-bold leading-[22px] tracking-[0.32px] text-[#2a2a2a]">{record.title}</h2><div className="mt-[4px]">{metadataFor(record)}</div></div><button type="button" className="flex size-[32px] shrink-0 items-center justify-center" onClick={onClose} aria-label="Cerrar detalle"><InspectionDetailCloseIcon /></button></div></div>
             <ProgressSummary counts={counts} progressPercent={progressPercent} />
             <Tabs kind={record.kind} activeTab={activeTab} onChange={setActiveTab} />
-            <DetailContent activeTab={activeTab} counts={counts} kind={record.kind} />
+            <DetailContent activeTab={activeTab} counts={counts} kind={record.kind} onReassignClick={() => setReassignOpen(true)} />
           </div>
           <DownloadPdfButton />
+          <ReassignPrompt open={reassignOpen} selectedIds={selectedReassignIds} onToggle={toggleReassignOption} onCancel={closeReassignPrompt} onConfirm={closeReassignPrompt} />
         </section>
       </div>
     </div>

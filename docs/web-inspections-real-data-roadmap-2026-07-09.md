@@ -58,6 +58,8 @@ Avance:
 - Se agregó `InspectionDetailRealDataModal` para renderizar tarjetas reales por estado usando `InspectionDetailResponse.findings`.
 - Seguimientos, datos generales y botón PDF ya leen del payload real en la vista de detalle real.
 - El bridge dejó de ocultar errores con el mock: si `/api/inspections/:id/detail` falla, muestra un estado de error visible.
+- Las evidencias de observación y generales se renderizan con previsualización de imagen usando contenido binario real del archivo.
+- Datos generales vuelve a mostrar responsables reales y botón visual de reasignación.
 - Se mantiene `getInspectionExportPayload(inspectionId)` para PDF/reporting y compatibilidad con export.
 
 ### Etapa 4 - Acciones operativas desde modal

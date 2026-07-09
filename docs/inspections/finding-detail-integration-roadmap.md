@@ -83,7 +83,7 @@ para soportes propios de seguimientos posteriores.
 
 ### Etapa 1 - Modelo, contratos y documentación
 
-Estado: implementada, pendiente validación local extendida.
+Estado: implementada y validada localmente.
 
 Alcance:
 
@@ -109,7 +109,7 @@ Criterios de salida:
 
 ### Etapa 2 - Corrección de creación manual y asistente
 
-Estado: implementada, pendiente validación local.
+Estado: implementada y reforzada.
 
 Alcance:
 
@@ -118,24 +118,31 @@ Alcance:
 - Subir evidencia general como `inspection/general_photo` cuando corresponda.
 - Subir evidencia inicial del hallazgo como `inspection_finding/before_photo` usando el `finding.id` retornado por API.
 - Mantener compatibilidad con `description` durante transición.
+- Evitar que la carga de responsables dependa de `users:read`; el selector del flujo de inspecciones consume `inspections/responsible-users` con permisos del módulo de inspecciones.
 
 Criterios de salida:
 
 - Una inspección con hallazgos nuevos queda persistida sin parsear texto.
 - Cada hallazgo tiene su evidencia inicial vinculada al hallazgo específico.
 - Los flujos manual y asistido quedan alineados.
+- Los responsables seleccionados quedan disponibles para enviarse como `responsibleUserIds` al crear cada hallazgo.
 
 Archivos tocados:
 
 ```txt
+apps/api/src/modules/inspections/inspections.controller.ts
+apps/api/src/modules/inspections/inspections.module.ts
 apps/web/src/shared/services/inspections.service.ts
 apps/web/src/modules/inspections/new-inspection/hooks/useSubmitNewInspection.ts
 ```
 
 ### Etapa 3 - Endpoint de detalle para UI
 
+Estado: iniciada.
+
 Alcance:
 
+- Crear contrato compartido `InspectionDetailResponse`.
 - Crear `GET /inspections/:id/detail`.
 - Devolver inspección, hallazgos agrupados por estado, evidencias por relation type, responsables, seguimientos y datos enriquecidos de área, sector, empresa e inspector.
 - Agregar hook y service frontend para consumo con React Query.
@@ -145,6 +152,13 @@ Criterios de salida:
 
 - El modal de Hallazgos deja de depender de mocks para header, progreso, acordeones y datos generales.
 - Loading y error quedan resueltos sin romper el overlay/modal actual.
+
+Archivos iniciados:
+
+```txt
+packages/contracts/src/dtos/inspections/inspection-detail.response.ts
+packages/contracts/src/dtos/inspections/index.ts
+```
 
 ### Etapa 4 - Acciones reales del modal
 

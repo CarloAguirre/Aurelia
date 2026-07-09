@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req } from '@nestjs/common';
 import {
   InspectionChecklistAnswerResponse,
   InspectionChecklistTemplateResponse,
@@ -10,6 +10,7 @@ import {
   InspectionTypeResponse,
   UserResponse,
 } from '@aurelia/contracts';
+import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { RequirePermissions } from '../auth/require-permissions.decorator';
 import { UsersService } from '../users/users.service';
 import { CloseInspectionDto } from './dto/close-inspection.dto';
@@ -58,8 +59,8 @@ export class InspectionsController {
 
   @RequirePermissions('inspections:write')
   @Post()
-  create(@Body() dto: CreateInspectionDto): Promise<InspectionResponse> {
-    return this.inspectionsService.create(dto, null);
+  create(@Body() dto: CreateInspectionDto, @Req() request: AuthenticatedRequest): Promise<InspectionResponse> {
+    return this.inspectionsService.create(dto, request.user.sub);
   }
 
   @Get(':id/findings')
@@ -72,8 +73,9 @@ export class InspectionsController {
   createFinding(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateInspectionFindingDto,
+    @Req() request: AuthenticatedRequest,
   ): Promise<InspectionFindingResponse> {
-    return this.inspectionsService.createFinding(id, dto, null);
+    return this.inspectionsService.createFinding(id, dto, request.user.sub);
   }
 
   @RequirePermissions('inspections:write')
@@ -81,6 +83,7 @@ export class InspectionsController {
   async closeInspection(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CloseInspectionDto,
+    @Req() request: AuthenticatedRequest,
   ): Promise<InspectionResponse> {
     const inspection = await this.inspectionsService.findOne(id);
     if (inspection.openFindingsCount > 0) {
@@ -89,7 +92,7 @@ export class InspectionsController {
     return this.inspectionsService.updateStatus(
       id,
       { status: InspectionStatus.CLOSED, comment: dto.reason ?? undefined },
-      null,
+      request.user.sub,
     );
   }
 
@@ -98,8 +101,9 @@ export class InspectionsController {
   upsertAnswer(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpsertInspectionAnswerDto,
+    @Req() request: AuthenticatedRequest,
   ): Promise<InspectionChecklistAnswerResponse> {
-    return this.inspectionsService.upsertAnswer(id, dto, null);
+    return this.inspectionsService.upsertAnswer(id, dto, request.user.sub);
   }
 
   @Get(':id')
@@ -112,8 +116,9 @@ export class InspectionsController {
   updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateInspectionStatusDto,
+    @Req() request: AuthenticatedRequest,
   ): Promise<InspectionResponse> {
-    return this.inspectionsService.updateStatus(id, dto, null);
+    return this.inspectionsService.updateStatus(id, dto, request.user.sub);
   }
 
   @RequirePermissions('inspections:write')
@@ -121,8 +126,9 @@ export class InspectionsController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateInspectionDto,
+    @Req() request: AuthenticatedRequest,
   ): Promise<InspectionResponse> {
-    return this.inspectionsService.update(id, dto, null);
+    return this.inspectionsService.update(id, dto, request.user.sub);
   }
 
   @RequirePermissions('inspections:write')
@@ -130,8 +136,9 @@ export class InspectionsController {
   createFollowup(
     @Param('findingId', ParseUUIDPipe) findingId: string,
     @Body() dto: CreateInspectionFollowupDto,
+    @Req() request: AuthenticatedRequest,
   ): Promise<InspectionFollowupResponse> {
-    return this.inspectionsService.createFollowup(findingId, dto, null);
+    return this.inspectionsService.createFollowup(findingId, dto, request.user.sub);
   }
 
   @RequirePermissions('inspections:write')
@@ -139,8 +146,9 @@ export class InspectionsController {
   updateFinding(
     @Param('findingId', ParseUUIDPipe) findingId: string,
     @Body() dto: UpdateInspectionFindingDto,
+    @Req() request: AuthenticatedRequest,
   ): Promise<InspectionFindingResponse> {
-    return this.inspectionsService.updateFinding(findingId, dto, null);
+    return this.inspectionsService.updateFinding(findingId, dto, request.user.sub);
   }
 
   @RequirePermissions('inspections:write')

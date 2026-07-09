@@ -27,6 +27,18 @@ export class InspectionFindingEntity {
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
+  @Column({ name: 'detected_condition', type: 'text', nullable: true })
+  detectedCondition: string | null;
+
+  @Column({ name: 'proposed_corrective_action', type: 'text', nullable: true })
+  proposedCorrectiveAction: string | null;
+
+  @Column({ name: 'executed_action_description', type: 'text', nullable: true })
+  executedActionDescription: string | null;
+
+  @Column({ name: 'rejection_reason', type: 'text', nullable: true })
+  rejectionReason: string | null;
+
   @Column({ type: 'enum', enum: InspectionFindingSeverity, enumName: 'inspection_finding_severity' })
   severity: InspectionFindingSeverity;
 
@@ -42,11 +54,23 @@ export class InspectionFindingEntity {
   @Column({ name: 'due_at', type: 'timestamptz', nullable: true })
   dueAt: Date | null;
 
+  @Column({ name: 'executed_at', type: 'timestamptz', nullable: true })
+  executedAt: Date | null;
+
+  @Column({ name: 'executed_by_user_id', type: 'uuid', nullable: true })
+  executedByUserId: string | null;
+
   @Column({ name: 'closed_at', type: 'timestamptz', nullable: true })
   closedAt: Date | null;
 
   @Column({ name: 'closed_by_user_id', type: 'uuid', nullable: true })
   closedByUserId: string | null;
+
+  @Column({ name: 'rejected_at', type: 'timestamptz', nullable: true })
+  rejectedAt: Date | null;
+
+  @Column({ name: 'rejected_by_user_id', type: 'uuid', nullable: true })
+  rejectedByUserId: string | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

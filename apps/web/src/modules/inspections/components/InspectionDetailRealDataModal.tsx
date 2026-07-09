@@ -61,6 +61,7 @@ const statusConfigByKey: Record<StatusKey, StatusConfig> = {
 };
 
 const statusConfigs = Object.values(statusConfigByKey);
+const avatarColors = ['bg-[#c8a064] text-[#001e39]', 'bg-[#24588b] text-white', 'bg-[#00b398] text-white', 'bg-[#6b2e0b] text-white'];
 
 function formatDate(value: string | null | undefined) {
   if (!value) return '—';
@@ -71,12 +72,23 @@ function formatDate(value: string | null | undefined) {
   return `${day}-${month}-${date.getFullYear()}`;
 }
 
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return 'dd-mm-aaaa · 00:00';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'dd-mm-aaaa · 00:00';
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${day}-${month}-${date.getFullYear()} · ${hours}:${minutes}`;
+}
+
 function daysLabel(value: string | null | undefined) {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
   const days = Math.max(0, Math.ceil((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
-  return `${days} días`;
+  return `${days} días hábiles`;
 }
 
 function dueDateFromDays(days: number) {
@@ -87,7 +99,7 @@ function dueDateFromDays(days: number) {
 
 function severityClassName(value: string) {
   const normalized = value.toLowerCase();
-  if (normalized.includes('crítico') || normalized.includes('critico') || normalized.includes('alto')) return 'bg-[#ffd0db] text-[#570b1d]';
+  if (normalized.includes('crítico') || normalized.includes('critico') || normalized.includes('alto')) return normalized.includes('alto') ? 'bg-[#ffe1cd] text-[#532a0e]' : 'bg-[#ffd0db] text-[#570b1d]';
   if (normalized.includes('moder')) return 'bg-[#fbe1d0] text-[#69462e]';
   return 'bg-[#e0ffd3] text-[#2a5c16]';
 }
@@ -102,6 +114,26 @@ function resolveEvidenceContentUrl(evidence: InspectionDetailEvidenceResponse) {
 
 function evidenceLabel(evidence: InspectionDetailEvidenceResponse, index: number) {
   return evidence.title ?? evidence.description ?? `Evidencia ${index + 1}`;
+}
+
+function initials(value: string) {
+  const parts = value.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return 'NA';
+  return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join('');
+}
+
+function allFindings(detail: InspectionDetailResponse) {
+  return Object.values(detail.findings).flat();
+}
+
+function responsibleCompanyName(responsible: InspectionDetailResponsibleResponse, detail: InspectionDetailResponse) {
+  if (responsible.companyName) return responsible.companyName;
+  const finding = allFindings(detail).find((item) => item.responsibleUsers.some((user) => user.userId === responsible.userId));
+  return finding?.responsibleCompanyName ?? detail.general.companyName ?? '—';
+}
+
+function primaryResponsibleCompany(detail: InspectionDetailResponse) {
+  return allFindings(detail).find((item) => item.responsibleCompanyName)?.responsibleCompanyName ?? detail.general.companyName ?? '—';
 }
 
 function StatusChip({ status, count }: { status: StatusKey; count: number }) {
@@ -155,11 +187,6 @@ function EvidencePreview({ title, evidences, afterClosed = false }: { title: str
       <div className={`relative flex min-h-0 flex-1 flex-col items-center justify-center gap-[4px] overflow-hidden ${afterClosed ? 'bg-[#dafccb]' : 'bg-gradient-to-br from-[#e8f4fd] to-[#c8e6f0]'}`}>{firstUrl ? <><img className="h-full w-full object-cover" src={firstUrl} alt={evidenceLabel(firstEvidence, 0)} /><span className="absolute bottom-[4px] left-[4px] rounded-[4px] bg-[rgba(0,30,57,0.78)] px-[5px] py-[2px] text-[9px] font-bold text-white">{evidences.length} evidencia{evidences.length === 1 ? '' : 's'}</span></> : evidences.length > 0 ? <><InspectionDetailImageIcon tone={afterClosed ? '#2a5c16' : '#24588b'} /><p className="text-[10px] font-semibold leading-none text-[#333]">{evidences.length} evidencia{evidences.length === 1 ? '' : 's'}</p></> : <p className="text-[11px] font-normal leading-none text-[#acacac]">Pendiente</p>}</div>
     </div>
   );
-}
-
-function EvidenceGallery({ evidences }: { evidences: InspectionDetailEvidenceResponse[] }) {
-  if (evidences.length === 0) return <div className="flex h-[80px] items-center justify-center rounded-[8px] bg-[linear-gradient(165deg,#1e3050_0%,#0f1f35_100%)]"><p className="text-[11px] font-semibold text-white">0 evidencias generales</p></div>;
-  return <div className="grid grid-cols-2 gap-[6px]">{evidences.map((evidence, index) => { const url = resolveEvidenceContentUrl(evidence); return <div key={evidence.evidenceId} className="relative h-[80px] overflow-hidden rounded-[8px] bg-[#dceef8]">{url ? <img className="h-full w-full object-cover" src={url} alt={evidenceLabel(evidence, index)} /> : <div className="flex h-full w-full items-center justify-center"><InspectionDetailImageIcon tone="#24588b" /></div>}<span className="absolute bottom-[4px] left-[4px] max-w-[calc(100%-8px)] truncate rounded-[4px] bg-[rgba(0,30,57,0.78)] px-[5px] py-[2px] text-[9px] font-bold text-white">{evidenceLabel(evidence, index)}</span></div>; })}</div>;
 }
 
 function FindingObservationCard({ inspectionId, item, actions }: FindingObservationCardProps) {
@@ -249,54 +276,102 @@ function GeneralSection({ icon, title, children }: { icon: ReactNode; title: str
   return <section className="w-full overflow-hidden rounded-[12px] border border-[#e3e3e3] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]"><div className="flex h-[29px] items-center gap-[6px] border-b border-[#e3e3e3] bg-[#f7f7f7] px-[12px]"><span className="flex h-[10px] w-[12.5px] items-center justify-center">{icon}</span><p className="text-[10px] font-bold uppercase leading-none tracking-[0.5px] text-[#646464]">{title}</p></div>{children}</section>;
 }
 
-function GeneralInfoRows({ rows }: { rows: { label: string; value: string }[] }) {
-  return <div>{rows.map((row, index) => <div key={row.label} className={`flex items-center justify-between px-[12px] py-[9px] ${index < rows.length - 1 ? 'border-b border-[#e3e3e3]' : ''}`}><p className="text-[12px] font-medium leading-none text-[#646464]">{row.label}</p><p className="text-right text-[12px] font-bold leading-none text-[#131313]">{row.value}</p></div>)}</div>;
+function GeneralInfoRows({ rows }: { rows: { label: string; value: string; mono?: boolean }[] }) {
+  return <div>{rows.map((row, index) => <div key={row.label} className={`flex items-center justify-between px-[12px] py-[9px] ${index < rows.length - 1 ? 'border-b border-[#e3e3e3]' : ''}`}><p className="text-[12px] font-medium leading-none text-[#646464]">{row.label}</p><p className={`max-w-[190px] truncate text-right text-[12px] font-bold leading-none text-[#131313] ${row.mono ? "font-['Cousine:Bold',monospace] text-[11px]" : ''}`}>{row.value}</p></div>)}</div>;
 }
 
-function responsibleCompanyName(responsible: InspectionDetailResponsibleResponse, detail: InspectionDetailResponse) {
-  if (responsible.companyName) return responsible.companyName;
-  const finding = Object.values(detail.findings).flat().find((item) => item.responsibleUsers.some((user) => user.userId === responsible.userId));
-  return finding?.responsibleCompanyName ?? '—';
+function EvidenceGallery({ evidences }: { evidences: InspectionDetailEvidenceResponse[] }) {
+  const evidence = evidences[0] ?? null;
+  const url = evidence ? resolveEvidenceContentUrl(evidence) : null;
+  return <div className="relative h-[80px] overflow-hidden rounded-[8px] bg-[linear-gradient(165deg,#1e3050_0%,#0f1f35_100%)]">{url ? <img className="h-full w-full object-cover" src={url} alt={evidenceLabel(evidence, 0)} /> : null}<span className="absolute left-[8px] top-[6px] rounded-[4px] bg-[rgba(0,0,0,0.55)] px-[7px] py-[2px] text-[9px] font-bold uppercase tracking-[1.5px] text-white">Foto general</span><span className="absolute bottom-[6px] right-[8px] rounded-[4px] bg-[rgba(0,0,0,0.5)] px-[6px] py-[2px] text-[9px] text-[rgba(255,255,255,0.8)]">{formatDateTime(evidence?.capturedAt)}</span>{!url ? <p className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold text-white">{evidences.length} evidencia{evidences.length === 1 ? '' : 's'} general{evidences.length === 1 ? '' : 'es'}</p> : null}</div>;
 }
 
-function ResponsiblesPanel({ detail }: { detail: InspectionDetailResponse }) {
-  const responsibles = detail.general.responsibles;
+function GeneralObservationSummary({ items }: { items: InspectionDetailFindingItemResponse[] }) {
   return (
-    <GeneralSection icon={<InspectionDetailPersonIcon />} title={`Responsables (${responsibles.length})`}>
-      <div className="px-[12px] py-[10px]">
-        {responsibles.length > 0 ? <div className="flex flex-col gap-[8px]">{responsibles.map((responsible) => <div key={responsible.userId} className="rounded-[8px] border border-[#e3e3e3] bg-[#f7f7f7] px-[10px] py-[9px]"><p className="text-[12px] font-bold leading-none text-[#131313]">{responsible.fullName}</p><p className="pt-[4px] text-[11px] font-normal leading-none text-[#646464]">{responsible.position ?? 'Sin cargo'} · {responsibleCompanyName(responsible, detail)}</p>{responsible.currentUser ? <span className="mt-[7px] inline-flex rounded-[5px] bg-[#e6f3ff] px-[7px] py-[2px] text-[10px] font-bold text-[#24588b]">Usuario actual</span> : null}</div>)}</div> : <p className="rounded-[8px] border border-dashed border-[#d1d1d1] bg-[#f7f7f7] px-[10px] py-[14px] text-center text-[12px] text-[#646464]">Sin responsables asignados</p>}
-        <button type="button" className="mt-[10px] flex h-[40px] w-full items-center justify-center rounded-[8px] border-[1.5px] border-[#d1d1d1] bg-white px-[15.5px] py-[1.5px] text-[13px] font-semibold text-[#333]" onClick={() => window.alert('Reasignación real pendiente de endpoint específico de responsables.')}>Reasignar responsables</button>
+    <GeneralSection icon={<InspectionDetailListIcon />} title={`Observaciones (${items.length})`}>
+      <div>
+        {items.length > 0 ? items.map((item, index) => <div key={item.findingId} className={`flex flex-col gap-[8px] px-[12px] pb-[10px] pt-[9px] ${index < items.length - 1 ? 'border-b border-[#e3e3e3]' : ''}`}><div className="flex items-center gap-[8px]"><FindingPill className="bg-[#e6f3ff] text-[#24588b]">{item.title}</FindingPill><FindingPill className={severityClassName(item.severityLabel)}>{item.severityLabel}</FindingPill></div><p className="text-[12px] font-normal leading-[16.8px] text-[#131313]">{item.condition ?? '—'}</p><div className="flex items-center justify-between border-t border-[#e3e3e3] pt-[10px]"><p className="text-[12px] font-medium text-[#646464]">SLA calculado</p><p className="text-right text-[12px] font-bold text-[#131313]">{daysLabel(item.dueAt)}</p></div></div>) : <p className="px-[12px] py-[14px] text-center text-[12px] text-[#646464]">Sin observaciones</p>}
       </div>
     </GeneralSection>
   );
 }
 
-function GeneralPanel({ detail }: { detail: InspectionDetailResponse }) {
+function PersonAddIcon() {
+  return <svg className="h-[12px] w-[15px] shrink-0" viewBox="0 0 15 12" fill="none" aria-hidden><path d="M5.1 5.8c1.5 0 2.7-1.2 2.7-2.7S6.6.4 5.1.4 2.4 1.6 2.4 3.1s1.2 2.7 2.7 2.7Zm0 1.2C2.5 7 .5 8.4.5 10.4c0 .5.4.9.9.9h7.4c.5 0 .9-.4.9-.9C9.7 8.4 7.7 7 5.1 7Zm6.6-3.7V1.4h1.2v1.9h1.8v1.2h-1.8v1.9h-1.2V4.5H9.9V3.3h1.8Z" fill="#24588b" /></svg>;
+}
+
+function Avatar({ name, index }: { name: string; index: number }) {
+  return <div className={`flex size-[32px] shrink-0 items-center justify-center rounded-[16px] text-[12px] font-bold ${avatarColors[index % avatarColors.length]}`}>{initials(name)}</div>;
+}
+
+function ResponsibleRow({ responsible, detail, index }: { responsible: InspectionDetailResponsibleResponse; detail: InspectionDetailResponse; index: number }) {
+  return <div className={`flex items-center gap-[10px] px-[12px] py-[10px] ${index > 0 ? 'border-t border-[#e3e3e3]' : ''}`}><Avatar name={responsible.fullName} index={index} /><div className="min-w-0 flex-1"><p className="truncate text-[12px] font-bold leading-none text-[#131313]">{responsible.fullName}</p><p className="pt-[3px] text-[11px] font-normal leading-none text-[#646464]">{responsible.position ?? 'Sin cargo'}</p></div>{responsible.currentUser ? <span className="inline-flex h-[16px] items-center rounded-[5px] bg-[#c5fff6] px-[7px] py-[2px] text-[10px] font-bold leading-none text-[#00b398]">Tú</span> : null}</div>;
+}
+
+function CheckCircle({ active }: { active: boolean }) {
+  if (active) return <span className="flex size-[28px] items-center justify-center rounded-[14px] bg-[#00b398] text-[18px] font-bold leading-none text-white">✓</span>;
+  return <span className="size-[28px] rounded-[14px] border-[2px] border-[#d1d1d1] bg-white" />;
+}
+
+function ReassignResponsibleSheet({ detail, candidates, companyName, onClose }: { detail: InspectionDetailResponse; candidates: InspectionDetailResponsibleResponse[]; companyName: string; onClose: () => void }) {
+  const [selectedIds, setSelectedIds] = useState(() => candidates.map((candidate) => candidate.userId));
+
+  function toggle(userId: string) {
+    setSelectedIds((current) => current.includes(userId) ? current.filter((item) => item !== userId) : [...current, userId]);
+  }
+
+  return (
+    <div className="absolute inset-x-0 bottom-[69px] z-30 rounded-t-[16px] bg-white px-[20px] pb-[22px] pt-[17px] shadow-[0_-8px_30px_rgba(0,0,0,0.22)]">
+      <h3 className="text-[16px] font-bold leading-[22px] text-[#131313]">Reasignar hallazgo · {companyName}</h3>
+      <div className="pt-[19px]">
+        {candidates.length > 0 ? candidates.map((candidate, index) => {
+          const active = selectedIds.includes(candidate.userId);
+          return <button key={candidate.userId} type="button" className={`flex h-[64px] w-full items-center gap-[14px] text-left ${index < candidates.length - 1 ? 'border-b border-[#e3e3e3]' : ''}`} onClick={() => toggle(candidate.userId)}><Avatar name={candidate.fullName} index={index} /><div className="min-w-0 flex-1"><p className="truncate text-[14px] font-bold leading-[18px] text-[#131313]">{candidate.fullName}</p><p className="truncate text-[12px] font-normal leading-[16px] text-[#646464]">{candidate.position ?? responsibleCompanyName(candidate, detail)}</p></div><CheckCircle active={active} /></button>;
+        }) : <p className="rounded-[8px] border border-dashed border-[#d1d1d1] bg-[#f7f7f7] px-[12px] py-[18px] text-center text-[12px] text-[#646464]">Sin compañeros disponibles para reasignar</p>}
+      </div>
+      <div className="flex gap-[12px] pt-[20px]"><button type="button" className="flex h-[48px] min-w-0 flex-1 items-center justify-center rounded-[14px] border-[2px] border-[#c8a064] bg-white text-[15px] font-bold text-[#c8a064]" onClick={onClose}>Cancelar</button><button type="button" className="flex h-[48px] min-w-0 flex-1 items-center justify-center rounded-[14px] bg-[#c8a064] text-[15px] font-bold text-white disabled:opacity-50" disabled={selectedIds.length === 0} onClick={onClose}>Reasignar</button></div>
+    </div>
+  );
+}
+
+function ResponsiblesPanel({ detail, onOpenReassign }: { detail: InspectionDetailResponse; onOpenReassign: () => void }) {
+  const responsibles = detail.general.responsibles;
+  const companyName = primaryResponsibleCompany(detail);
+  return (
+    <GeneralSection icon={<InspectionDetailPersonIcon />} title="Responsables">
+      <div className="flex items-center justify-between border-b border-[#e3e3e3] px-[12px] py-[9px]"><p className="text-[12px] font-medium leading-none text-[#646464]">EECC</p><p className="max-w-[160px] truncate text-right text-[11px] font-bold uppercase leading-none text-[#646464]">{companyName}</p></div>
+      <div className="border-b border-[#e3e3e3] bg-white">{responsibles.length > 0 ? responsibles.map((responsible, index) => <ResponsibleRow key={responsible.userId} responsible={responsible} detail={detail} index={index} />) : <p className="px-[12px] py-[14px] text-center text-[12px] text-[#646464]">Sin responsables asignados</p>}</div>
+      <div className="px-[12px] py-[9px]"><button type="button" className="flex h-[42px] w-full items-center justify-center gap-[6px] rounded-[8px] border-[1.5px] border-dashed border-[#d1d1d1] bg-[#f7f7f7] p-[1.5px] text-[12px] font-semibold text-[#24588b]" onClick={onOpenReassign}><PersonAddIcon />Reasignar a otro compañero {companyName}</button></div>
+    </GeneralSection>
+  );
+}
+
+function GeneralPanel({ detail, onOpenReassign }: { detail: InspectionDetailResponse; onOpenReassign: () => void }) {
   const general = detail.general;
+  const items = allFindings(detail);
+  const locationText = general.latitude && general.longitude ? `${general.latitude} · ${general.longitude}` : general.locationLabel ?? '—';
   const locationRows = [
     { label: 'Área · Sector', value: [general.areaName, general.sectorName].filter(Boolean).join(' · ') || '—' },
     { label: 'Fecha', value: formatDate(general.scheduledAt) },
     { label: 'Tipo', value: detail.header.kind === 'checklist' ? 'Checklist normativo' : 'Hallazgo' },
-    { label: 'Plantilla', value: general.templateName ?? '—' },
-    { label: 'Código', value: general.templateCode ?? '—' },
-    { label: 'Ubicación', value: general.locationLabel ?? '—' },
+    { label: 'Ubicación UTM', value: locationText, mono: true },
   ];
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-white px-[14px] pb-[20px] pt-[14px]">
       <div className="flex flex-col gap-[12px]">
         <GeneralSection icon={<InspectionDetailPersonIcon />} title="Quién realizó la inspección"><GeneralInfoRows rows={[{ label: 'Nombre', value: general.inspectorName ?? '—' }, { label: 'Empresa', value: general.inspectorCompanyName ?? general.companyName ?? '—' }]} /></GeneralSection>
-        <ResponsiblesPanel detail={detail} />
         <GeneralSection icon={<InspectionDetailLocationIcon />} title="Donde y cuándo"><GeneralInfoRows rows={locationRows} /></GeneralSection>
         <GeneralSection icon={<InspectionDetailCameraIcon />} title="Fotografía general de la inspección"><div className="px-[12px] py-[9px]"><EvidenceGallery evidences={general.generalEvidence} /></div></GeneralSection>
-        <GeneralSection icon={<InspectionDetailListIcon />} title={`Observaciones (${Object.values(detail.header.counts).reduce((sum, value) => sum + value, 0)})`}><div>{Object.values(detail.findings).flat().map((item, index, items) => <div key={item.findingId} className={`flex flex-col gap-[8px] px-[12px] py-[10px] ${index === items.length - 1 ? '' : 'border-b border-[#e3e3e3]'}`}><div className="flex items-center gap-[8px]"><FindingPill className="bg-[#e6f3ff] text-[#24588b]">{item.title}</FindingPill><FindingPill className={severityClassName(item.severityLabel)}>{item.severityLabel}</FindingPill></div><p className="text-[12px] font-normal leading-[16.8px] text-[#131313]">{item.condition ?? '—'}</p></div>)}</div></GeneralSection>
+        <GeneralObservationSummary items={items} />
+        <ResponsiblesPanel detail={detail} onOpenReassign={onOpenReassign} />
       </div>
     </div>
   );
 }
 
-function DetailContent({ activeTab, detail, actions }: { activeTab: DetailTab; detail: InspectionDetailResponse; actions: ReturnType<typeof useInspectionFindingActions> }) {
+function DetailContent({ activeTab, detail, actions, onOpenReassign }: { activeTab: DetailTab; detail: InspectionDetailResponse; actions: ReturnType<typeof useInspectionFindingActions>; onOpenReassign: () => void }) {
   if (activeTab === 'followups') return <FollowupsPanel detail={detail} />;
-  if (activeTab === 'general') return <GeneralPanel detail={detail} />;
+  if (activeTab === 'general') return <GeneralPanel detail={detail} onOpenReassign={onOpenReassign} />;
   return <DetailRows inspectionId={detail.header.inspectionId} counts={detail.header.counts} findings={detail.findings} actions={actions} />;
 }
 
@@ -306,7 +381,9 @@ function DownloadPdfButton({ inspectionId }: { inspectionId: string }) {
 
 export function InspectionDetailRealDataModal({ open, record, detail, onClose }: { open: boolean; record: InspectionDetailModalRecord; detail: InspectionDetailResponse; onClose: () => void }) {
   const [activeTab, setActiveTab] = useState<DetailTab>('observations');
+  const [reassignOpen, setReassignOpen] = useState(false);
   const actions = useInspectionFindingActions();
+  const companyName = primaryResponsibleCompany(detail);
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[1000] bg-[rgba(0,0,0,0.68)]">
@@ -316,9 +393,10 @@ export function InspectionDetailRealDataModal({ open, record, detail, onClose }:
             <div className="shrink-0 rounded-t-[16px] bg-white px-[14px] py-[12px]"><div className="flex items-center gap-[12px]"><div className="min-w-0 flex-1 font-['Inter:Bold',sans-serif] font-bold"><p className="whitespace-nowrap text-[13px] leading-none text-[#001e39]">{record.id}</p><h2 id="inspection-detail-title" className="mt-[5px] text-[16px] font-bold leading-[22px] tracking-[0.32px] text-[#2a2a2a]">{record.title}</h2><div className="mt-[4px]">{metadataFor(record)}</div></div><button type="button" className="flex size-[32px] shrink-0 items-center justify-center" onClick={onClose} aria-label="Cerrar detalle"><InspectionDetailCloseIcon /></button></div></div>
             <ProgressSummary counts={detail.header.counts} progressPercent={detail.header.progressPercent} />
             <Tabs activeTab={activeTab} onChange={setActiveTab} />
-            <DetailContent activeTab={activeTab} detail={detail} actions={actions} />
+            <DetailContent activeTab={activeTab} detail={detail} actions={actions} onOpenReassign={() => setReassignOpen(true)} />
           </div>
           <DownloadPdfButton inspectionId={detail.header.inspectionId} />
+          {reassignOpen ? <ReassignResponsibleSheet detail={detail} candidates={detail.general.responsibles} companyName={companyName} onClose={() => setReassignOpen(false)} /> : null}
         </section>
       </div>
     </div>

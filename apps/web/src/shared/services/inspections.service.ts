@@ -20,6 +20,7 @@ import type {
   InspectionFindingTypeResponse,
   InspectionResponse,
   InspectionTypeResponse,
+  LinkEvidenceRequest,
   MobileBootstrapResponse,
   SectorResponse,
   UpsertInspectionAnswerRequest,
@@ -259,6 +260,10 @@ export function uploadFile(file: File, uploadedByUserId?: string | null): Promis
 
 export function createEvidence(payload: CreateEvidenceRequest): Promise<EvidenceResponse> {
   return httpPost<CreateEvidenceRequest, EvidenceResponse>('/evidences', payload);
+}
+
+export function linkEvidence(evidenceId: string, payload: LinkEvidenceRequest): Promise<unknown> {
+  return httpPost<LinkEvidenceRequest, unknown>(`/evidences/${evidenceId}/link`, payload);
 }
 
 export function linkInspectionEvidence(

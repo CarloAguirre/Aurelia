@@ -61,7 +61,7 @@ const statusConfigByKey: Record<StatusKey, StatusConfig> = {
 };
 
 const statusConfigs = Object.values(statusConfigByKey);
-const avatarColors = ['bg-[#c8a064] text-[#001e39]', 'bg-[#24588b] text-white', 'bg-[#00b398] text-white', 'bg-[#6b2e0b] text-white'];
+const avatarColors = ['bg-[#c8a064] text-[#001e39]', 'bg-[#24588b] text-white', 'bg-[#00b398] text-white', 'bg-[#532a0e] text-white'];
 
 function formatDate(value: string | null | undefined) {
   if (!value) return '—';
@@ -99,7 +99,8 @@ function dueDateFromDays(days: number) {
 
 function severityClassName(value: string) {
   const normalized = value.toLowerCase();
-  if (normalized.includes('crítico') || normalized.includes('critico') || normalized.includes('alto')) return normalized.includes('alto') ? 'bg-[#ffe1cd] text-[#532a0e]' : 'bg-[#ffd0db] text-[#570b1d]';
+  if (normalized.includes('crítico') || normalized.includes('critico')) return 'bg-[#ffd0db] text-[#570b1d]';
+  if (normalized.includes('alto')) return 'bg-[#ffe1cd] text-[#532a0e]';
   if (normalized.includes('moder')) return 'bg-[#fbe1d0] text-[#69462e]';
   return 'bg-[#e0ffd3] text-[#2a5c16]';
 }
@@ -153,7 +154,7 @@ function ProgressSummary({ counts, progressPercent }: { counts: Record<Inspectio
 
 function Tabs({ activeTab, onChange }: { activeTab: DetailTab; onChange: (tab: DetailTab) => void }) {
   const tabs: { id: DetailTab; label: string }[] = [{ id: 'observations', label: 'Observaciones' }, { id: 'followups', label: 'Seguimientos' }, { id: 'general', label: 'Datos generales' }];
-  return <div className="grid shrink-0 border-b-2 border-[#e3e3e3] bg-[#f7f7f7]" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>{tabs.map((tab) => <button key={tab.id} type="button" className={`h-[42px] border-b-[3px] px-[8px] pt-[2px] text-[12px] font-bold leading-none ${activeTab === tab.id ? 'border-[#c8a064] bg-white text-[#001e39]' : 'border-transparent text-[#646464]'}`} onClick={() => onChange(tab.id)}>{tab.label}</button>)}</div>;
+  return <div className="grid shrink-0 border-b-2 border-[#e3e3e3] bg-[#f7f7f7]" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>{tabs.map((tab) => <button key={tab.id} type="button" className={`h-[37px] border-b-2 px-[8px] text-[12px] font-semibold leading-none ${activeTab === tab.id ? 'border-[#c8a064] text-[#8e6e3e]' : 'border-transparent text-[#646464]'}`} onClick={() => onChange(tab.id)}>{tab.label}</button>)}</div>;
 }
 
 function metadataFor(record: InspectionDetailModalRecord) {
@@ -162,7 +163,7 @@ function metadataFor(record: InspectionDetailModalRecord) {
 }
 
 function StatusRow({ config, count, expanded, onToggle }: { config: StatusConfig; count: number; expanded: boolean; onToggle: () => void }) {
-  return <button type="button" className="flex h-[46px] w-full items-center justify-between border-b border-[#e3e3e3] bg-white px-[14px] text-left" onClick={onToggle}><div className="flex items-center gap-[8px]"><InspectionDetailStatusRowIcon status={config.key} className="h-[14px] w-[17.5px]" /><p className={`text-[13px] font-bold leading-none ${config.textClass}`}>{config.label} ({count})</p></div><InspectionDetailCaretDownIcon className={expanded ? 'size-[16px] rotate-180' : 'size-[16px]'} /></button>;
+  return <button type="button" className="flex h-[56px] w-full items-center justify-between border-b border-[#e3e3e3] bg-white px-[14px] text-left" onClick={onToggle}><div className="flex items-center gap-[10px]"><InspectionDetailStatusRowIcon status={config.key} className="h-[11px] w-[13.75px]" /><p className={`text-[10px] font-bold uppercase leading-none tracking-[0.6px] ${config.textClass}`}>{config.label}</p><span className={`inline-flex h-[14px] min-w-[19px] items-center justify-center rounded-[8px] px-[7px] text-[10px] font-bold leading-none tracking-[0.6px] ${config.chipClass}`}>{count}</span></div><InspectionDetailCaretDownIcon className={expanded ? 'size-[16px] rotate-180' : 'size-[16px]'} /></button>;
 }
 
 function FindingPill({ children, className }: { children: string; className: string }) {
@@ -179,12 +180,12 @@ function FindingTextBlock({ title, children, bordered = false }: { title: string
 }
 
 function EvidencePreview({ title, evidences, afterClosed = false }: { title: string; evidences: InspectionDetailEvidenceResponse[]; afterClosed?: boolean }) {
-  const firstEvidence = evidences[0] ?? null;
+  const firstEvidence = evidences[0];
   const firstUrl = firstEvidence ? resolveEvidenceContentUrl(firstEvidence) : null;
   return (
     <div className="flex h-[91px] min-w-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-[#e3e3e3] bg-white p-px">
       <div className="flex h-[20px] items-center bg-[#001e39] px-[8px] py-[4px]"><p className="text-[9px] font-bold uppercase leading-none text-[rgba(255,255,255,0.7)]">{title}</p></div>
-      <div className={`relative flex min-h-0 flex-1 flex-col items-center justify-center gap-[4px] overflow-hidden ${afterClosed ? 'bg-[#dafccb]' : 'bg-gradient-to-br from-[#e8f4fd] to-[#c8e6f0]'}`}>{firstUrl ? <><img className="h-full w-full object-cover" src={firstUrl} alt={evidenceLabel(firstEvidence, 0)} /><span className="absolute bottom-[4px] left-[4px] rounded-[4px] bg-[rgba(0,30,57,0.78)] px-[5px] py-[2px] text-[9px] font-bold text-white">{evidences.length} evidencia{evidences.length === 1 ? '' : 's'}</span></> : evidences.length > 0 ? <><InspectionDetailImageIcon tone={afterClosed ? '#2a5c16' : '#24588b'} /><p className="text-[10px] font-semibold leading-none text-[#333]">{evidences.length} evidencia{evidences.length === 1 ? '' : 's'}</p></> : <p className="text-[11px] font-normal leading-none text-[#acacac]">Pendiente</p>}</div>
+      <div className={`relative flex min-h-0 flex-1 flex-col items-center justify-center gap-[4px] overflow-hidden ${afterClosed ? 'bg-[#dafccb]' : 'bg-gradient-to-br from-[#e8f4fd] to-[#c8e6f0]'}`}>{firstEvidence && firstUrl ? <><img className="h-full w-full object-cover" src={firstUrl} alt={evidenceLabel(firstEvidence, 0)} /><span className="absolute bottom-[4px] left-[4px] rounded-[4px] bg-[rgba(0,30,57,0.78)] px-[5px] py-[2px] text-[9px] font-bold text-white">{evidences.length} evidencia{evidences.length === 1 ? '' : 's'}</span></> : evidences.length > 0 ? <><InspectionDetailImageIcon tone={afterClosed ? '#2a5c16' : '#24588b'} /><p className="text-[10px] font-semibold leading-none text-[#333]">{evidences.length} evidencia{evidences.length === 1 ? '' : 's'}</p></> : <p className="text-[11px] font-normal leading-none text-[#acacac]">Pendiente</p>}</div>
     </div>
   );
 }
@@ -264,10 +265,12 @@ function FollowupTimelineMarker({ completed }: { completed: boolean }) {
 }
 
 function FollowupsPanel({ detail }: { detail: InspectionDetailResponse }) {
+  const initialStep = { followupId: 'initial', title: 'Inspección inicial', performedAt: detail.general.scheduledAt, description: `${allFindings(detail).length} observaciones detectadas`, performedByName: null, completed: true };
+  const steps = [initialStep, ...detail.followups];
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-white px-[14px] py-[20px]">
       <div className="flex items-center gap-[6px]"><InspectionDetailFollowupIcon /><p className="text-[11px] font-bold uppercase leading-none tracking-[0.55px] text-[#646464]">Historial de seguimientos</p></div>
-      <div className="pt-[10px]">{detail.followups.length > 0 ? detail.followups.map((step, index) => <div key={step.followupId} className={`relative flex w-full gap-[12px] ${index === detail.followups.length - 1 ? '' : 'pb-[16px]'}`}><FollowupTimelineMarker completed={step.completed} />{index < detail.followups.length - 1 ? <div className="absolute left-[11px] top-[24px] h-[23px] w-[2px] bg-[#e3e3e3]" /> : null}<div className="min-w-0 flex-1 pt-[2px]"><p className="text-[12px] font-bold leading-none text-[#131313]">{step.title}</p><p className="pt-[4px] text-[11px] font-normal leading-none text-[#646464]">{formatDate(step.performedAt)}</p><p className="pt-[5px] text-[11px] font-normal leading-[14px] text-[#646464]">{step.description}</p>{step.performedByName ? <p className="pt-[4px] text-[11px] font-semibold leading-none text-[#646464]">{step.performedByName}</p> : null}</div></div>) : <p className="rounded-[10px] border border-dashed border-[#d1d1d1] bg-[#f7f7f7] px-[14px] py-[18px] text-center text-[12px] font-medium text-[#646464]">Sin seguimientos registrados</p>}</div>
+      <div className="pt-[10px]">{steps.map((step, index) => <div key={step.followupId} className={`relative flex w-full gap-[12px] ${index === steps.length - 1 ? '' : 'pb-[16px]'}`}><FollowupTimelineMarker completed={step.completed} />{index < steps.length - 1 ? <div className="absolute left-[11px] top-[24px] h-[38px] w-[2px] bg-[#e3e3e3]" /> : null}<div className="min-w-0 flex-1 pt-[2px]"><p className="text-[12px] font-bold leading-none text-[#131313]">{step.title}</p><p className="pt-[4px] text-[11px] font-normal leading-none text-[#646464]">{formatDate(step.performedAt)}</p><p className="pt-[5px] text-[11px] font-normal leading-[14px] text-[#646464]">{step.description}</p>{step.performedByName ? <p className="pt-[4px] text-[11px] font-semibold leading-none text-[#646464]">{step.performedByName}</p> : null}</div></div>)}</div>
     </div>
   );
 }
@@ -281,9 +284,9 @@ function GeneralInfoRows({ rows }: { rows: { label: string; value: string; mono?
 }
 
 function EvidenceGallery({ evidences }: { evidences: InspectionDetailEvidenceResponse[] }) {
-  const evidence = evidences[0] ?? null;
+  const evidence = evidences[0];
   const url = evidence ? resolveEvidenceContentUrl(evidence) : null;
-  return <div className="relative h-[80px] overflow-hidden rounded-[8px] bg-[linear-gradient(165deg,#1e3050_0%,#0f1f35_100%)]">{url ? <img className="h-full w-full object-cover" src={url} alt={evidenceLabel(evidence, 0)} /> : null}<span className="absolute left-[8px] top-[6px] rounded-[4px] bg-[rgba(0,0,0,0.55)] px-[7px] py-[2px] text-[9px] font-bold uppercase tracking-[1.5px] text-white">Foto general</span><span className="absolute bottom-[6px] right-[8px] rounded-[4px] bg-[rgba(0,0,0,0.5)] px-[6px] py-[2px] text-[9px] text-[rgba(255,255,255,0.8)]">{formatDateTime(evidence?.capturedAt)}</span>{!url ? <p className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold text-white">{evidences.length} evidencia{evidences.length === 1 ? '' : 's'} general{evidences.length === 1 ? '' : 'es'}</p> : null}</div>;
+  return <div className="relative h-[80px] overflow-hidden rounded-[8px] bg-[linear-gradient(165deg,#1e3050_0%,#0f1f35_100%)]">{evidence && url ? <img className="h-full w-full object-cover" src={url} alt={evidenceLabel(evidence, 0)} /> : null}<span className="absolute left-[8px] top-[6px] rounded-[4px] bg-[rgba(0,0,0,0.55)] px-[7px] py-[2px] text-[9px] font-bold uppercase tracking-[1.5px] text-white">Foto general</span><span className="absolute bottom-[6px] right-[8px] rounded-[4px] bg-[rgba(0,0,0,0.5)] px-[6px] py-[2px] text-[9px] text-[rgba(255,255,255,0.8)]">{formatDateTime(evidence?.capturedAt)}</span>{!url ? <p className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold text-white">{evidences.length} evidencia{evidences.length === 1 ? '' : 's'} general{evidences.length === 1 ? '' : 'es'}</p> : null}</div>;
 }
 
 function GeneralObservationSummary({ items }: { items: InspectionDetailFindingItemResponse[] }) {
@@ -300,17 +303,17 @@ function PersonAddIcon() {
   return <svg className="h-[12px] w-[15px] shrink-0" viewBox="0 0 15 12" fill="none" aria-hidden><path d="M5.1 5.8c1.5 0 2.7-1.2 2.7-2.7S6.6.4 5.1.4 2.4 1.6 2.4 3.1s1.2 2.7 2.7 2.7Zm0 1.2C2.5 7 .5 8.4.5 10.4c0 .5.4.9.9.9h7.4c.5 0 .9-.4.9-.9C9.7 8.4 7.7 7 5.1 7Zm6.6-3.7V1.4h1.2v1.9h1.8v1.2h-1.8v1.9h-1.2V4.5H9.9V3.3h1.8Z" fill="#24588b" /></svg>;
 }
 
-function Avatar({ name, index }: { name: string; index: number }) {
-  return <div className={`flex size-[32px] shrink-0 items-center justify-center rounded-[16px] text-[12px] font-bold ${avatarColors[index % avatarColors.length]}`}>{initials(name)}</div>;
+function Avatar({ name, index, large = false }: { name: string; index: number; large?: boolean }) {
+  return <div className={`flex shrink-0 items-center justify-center rounded-full font-bold ${large ? 'size-[36px] text-[13px]' : 'size-[32px] text-[12px]'} ${avatarColors[index % avatarColors.length]}`}>{initials(name)}</div>;
 }
 
-function ResponsibleRow({ responsible, detail, index }: { responsible: InspectionDetailResponsibleResponse; detail: InspectionDetailResponse; index: number }) {
+function ResponsibleRow({ responsible, index }: { responsible: InspectionDetailResponsibleResponse; index: number }) {
   return <div className={`flex items-center gap-[10px] px-[12px] py-[10px] ${index > 0 ? 'border-t border-[#e3e3e3]' : ''}`}><Avatar name={responsible.fullName} index={index} /><div className="min-w-0 flex-1"><p className="truncate text-[12px] font-bold leading-none text-[#131313]">{responsible.fullName}</p><p className="pt-[3px] text-[11px] font-normal leading-none text-[#646464]">{responsible.position ?? 'Sin cargo'}</p></div>{responsible.currentUser ? <span className="inline-flex h-[16px] items-center rounded-[5px] bg-[#c5fff6] px-[7px] py-[2px] text-[10px] font-bold leading-none text-[#00b398]">Tú</span> : null}</div>;
 }
 
 function CheckCircle({ active }: { active: boolean }) {
-  if (active) return <span className="flex size-[28px] items-center justify-center rounded-[14px] bg-[#00b398] text-[18px] font-bold leading-none text-white">✓</span>;
-  return <span className="size-[28px] rounded-[14px] border-[2px] border-[#d1d1d1] bg-white" />;
+  if (active) return <span className="flex size-[22px] items-center justify-center rounded-[11px] bg-[#00b398] text-[14px] font-bold leading-none text-white">✓</span>;
+  return <span className="size-[22px] rounded-[11px] border-[2px] border-[#d1d1d1] bg-white" />;
 }
 
 function ReassignResponsibleSheet({ detail, candidates, companyName, onClose }: { detail: InspectionDetailResponse; candidates: InspectionDetailResponsibleResponse[]; companyName: string; onClose: () => void }) {
@@ -321,15 +324,15 @@ function ReassignResponsibleSheet({ detail, candidates, companyName, onClose }: 
   }
 
   return (
-    <div className="absolute inset-x-0 bottom-[69px] z-30 rounded-t-[16px] bg-white px-[20px] pb-[22px] pt-[17px] shadow-[0_-8px_30px_rgba(0,0,0,0.22)]">
-      <h3 className="text-[16px] font-bold leading-[22px] text-[#131313]">Reasignar hallazgo · {companyName}</h3>
-      <div className="pt-[19px]">
+    <div className="absolute bottom-[76px] left-[14px] right-[14px] z-30 flex flex-col gap-[24px] rounded-[16px] bg-white px-[14px] pb-[24px] pt-[12px] shadow-[0_4px_14px_rgba(19,19,19,0.24)]">
+      <h3 className="text-[14px] font-bold leading-none text-[#131313]">Reasignar hallazgo · {companyName}</h3>
+      <div className="max-h-[280px] overflow-hidden">
         {candidates.length > 0 ? candidates.map((candidate, index) => {
           const active = selectedIds.includes(candidate.userId);
-          return <button key={candidate.userId} type="button" className={`flex h-[64px] w-full items-center gap-[14px] text-left ${index < candidates.length - 1 ? 'border-b border-[#e3e3e3]' : ''}`} onClick={() => toggle(candidate.userId)}><Avatar name={candidate.fullName} index={index} /><div className="min-w-0 flex-1"><p className="truncate text-[14px] font-bold leading-[18px] text-[#131313]">{candidate.fullName}</p><p className="truncate text-[12px] font-normal leading-[16px] text-[#646464]">{candidate.position ?? responsibleCompanyName(candidate, detail)}</p></div><CheckCircle active={active} /></button>;
+          return <button key={candidate.userId} type="button" className={`flex h-[61px] w-full items-center gap-[10px] px-[16px] text-left ${index < candidates.length - 1 ? 'border-b border-[#e3e3e3]' : ''}`} onClick={() => toggle(candidate.userId)}><Avatar name={candidate.fullName} index={index} large /><div className="min-w-0 flex-1"><p className="truncate text-[13px] font-semibold leading-none text-[#131313]">{candidate.fullName}</p><p className="truncate pt-[3px] text-[11px] font-normal leading-none text-[#646464]">{candidate.position ?? responsibleCompanyName(candidate, detail)}</p></div><CheckCircle active={active} /></button>;
         }) : <p className="rounded-[8px] border border-dashed border-[#d1d1d1] bg-[#f7f7f7] px-[12px] py-[18px] text-center text-[12px] text-[#646464]">Sin compañeros disponibles para reasignar</p>}
       </div>
-      <div className="flex gap-[12px] pt-[20px]"><button type="button" className="flex h-[48px] min-w-0 flex-1 items-center justify-center rounded-[14px] border-[2px] border-[#c8a064] bg-white text-[15px] font-bold text-[#c8a064]" onClick={onClose}>Cancelar</button><button type="button" className="flex h-[48px] min-w-0 flex-1 items-center justify-center rounded-[14px] bg-[#c8a064] text-[15px] font-bold text-white disabled:opacity-50" disabled={selectedIds.length === 0} onClick={onClose}>Reasignar</button></div>
+      <div className="flex gap-[8px]"><button type="button" className="flex h-[44px] min-w-0 flex-1 items-center justify-center rounded-[14px] border-2 border-[#c8a064] bg-white px-[20px] py-[2px] text-[13px] font-bold text-[#c8a064]" onClick={onClose}>Cancelar</button><button type="button" className="flex h-[44px] min-w-0 flex-1 items-center justify-center rounded-[14px] bg-[#c8a064] px-[12px] py-[13px] text-[15px] font-bold text-white drop-shadow-[0px_2px_5px_rgba(200,160,100,0.3)] disabled:opacity-50" disabled={selectedIds.length === 0} onClick={onClose}>Reasignar</button></div>
     </div>
   );
 }
@@ -340,7 +343,7 @@ function ResponsiblesPanel({ detail, onOpenReassign }: { detail: InspectionDetai
   return (
     <GeneralSection icon={<InspectionDetailPersonIcon />} title="Responsables">
       <div className="flex items-center justify-between border-b border-[#e3e3e3] px-[12px] py-[9px]"><p className="text-[12px] font-medium leading-none text-[#646464]">EECC</p><p className="max-w-[160px] truncate text-right text-[11px] font-bold uppercase leading-none text-[#646464]">{companyName}</p></div>
-      <div className="border-b border-[#e3e3e3] bg-white">{responsibles.length > 0 ? responsibles.map((responsible, index) => <ResponsibleRow key={responsible.userId} responsible={responsible} detail={detail} index={index} />) : <p className="px-[12px] py-[14px] text-center text-[12px] text-[#646464]">Sin responsables asignados</p>}</div>
+      <div className="border-b border-[#e3e3e3] bg-white">{responsibles.length > 0 ? responsibles.map((responsible, index) => <ResponsibleRow key={responsible.userId} responsible={responsible} index={index} />) : <p className="px-[12px] py-[14px] text-center text-[12px] text-[#646464]">Sin responsables asignados</p>}</div>
       <div className="px-[12px] py-[9px]"><button type="button" className="flex h-[42px] w-full items-center justify-center gap-[6px] rounded-[8px] border-[1.5px] border-dashed border-[#d1d1d1] bg-[#f7f7f7] p-[1.5px] text-[12px] font-semibold text-[#24588b]" onClick={onOpenReassign}><PersonAddIcon />Reasignar a otro compañero {companyName}</button></div>
     </GeneralSection>
   );

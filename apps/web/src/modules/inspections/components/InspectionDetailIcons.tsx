@@ -114,3 +114,53 @@ export function InspectionDetailFollowupIcon({ className = 'h-[11px] w-[13.75px]
     </svg>
   );
 }
+
+export function InspectionDetailPersonIcon({ className = 'h-[10px] w-[12.5px]' }: IconProps) {
+  return (
+    <svg className={className} width="13" height="10" viewBox="0 0 13 10" fill="none" aria-hidden="true">
+      <circle cx="6.25" cy="2.45" r="1.75" fill="#646464" />
+      <path d="M3.2 8.85C3.55 6.9 4.62 5.75 6.25 5.75C7.88 5.75 8.95 6.9 9.3 8.85H3.2Z" fill="#646464" />
+      <path d="M4.85 1.15L6.25 0.3L7.65 1.15" stroke="#646464" strokeWidth="0.9" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function InspectionDetailLocationIcon({ className = 'h-[10px] w-[12.5px]' }: IconProps) {
+  return (
+    <svg className={className} width="13" height="10" viewBox="0 0 13 10" fill="none" aria-hidden="true">
+      <path d="M1.4 1.35L4.25 0.55L8.05 1.35L11.6 0.45V8.65L8.05 9.55L4.25 8.75L1.4 9.55V1.35Z" fill="#646464" />
+      <path d="M4.25 0.7V8.75M8.05 1.35V9.4" stroke="white" strokeOpacity="0.75" strokeWidth="0.7" />
+      <circle cx="8.05" cy="4.2" r="1.35" fill="white" />
+      <path d="M8.05 7.1C8.05 7.1 10.15 5.25 10.15 3.85C10.15 2.72 9.2 1.8 8.05 1.8C6.9 1.8 5.95 2.72 5.95 3.85C5.95 5.25 8.05 7.1 8.05 7.1Z" fill="#646464" />
+    </svg>
+  );
+}
+
+export function InspectionDetailCameraIcon({ className = 'h-[10px] w-[12.5px]' }: IconProps) {
+  return (
+    <svg className={className} width="13" height="10" viewBox="0 0 13 10" fill="none" aria-hidden="true">
+      <path d="M3.95 1.2L4.75 0.25H8.25L9.05 1.2H11.25C11.92 1.2 12.45 1.74 12.45 2.4V8.25C12.45 8.91 11.92 9.45 11.25 9.45H1.25C0.58 9.45 0.05 8.91 0.05 8.25V2.4C0.05 1.74 0.58 1.2 1.25 1.2H3.95Z" fill="#646464" />
+      <circle cx="6.25" cy="5.3" r="2.3" fill="white" />
+      <circle cx="6.25" cy="5.3" r="1.35" fill="#646464" />
+    </svg>
+  );
+}
+
+export function InspectionDetailListIcon({ className = 'h-[10px] w-[12.5px]' }: IconProps) {
+  return (
+    <svg className={className} width="13" height="10" viewBox="0 0 13 10" fill="none" aria-hidden="true">
+      <path d="M1.15 2.1L2.05 3L3.75 1.2M1.15 5.1L2.05 6L3.75 4.2M1.15 8.1L2.05 9L3.75 7.2" stroke="#646464" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5.1 2.2H11.8M5.1 5.2H11.8M5.1 8.2H11.8" stroke="#646464" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function InspectionDetailAssignIcon({ className = 'h-[12px] w-[15px]' }: IconProps) {
+  return (
+    <svg className={className} width="15" height="12" viewBox="0 0 15 12" fill="none" aria-hidden="true">
+      <circle cx="5" cy="4" r="2.1" fill="#24588B" />
+      <path d="M1.35 10.5C1.78 7.95 3.05 6.65 5 6.65C6.95 6.65 8.22 7.95 8.65 10.5H1.35Z" fill="#24588B" />
+      <path d="M10.2 3.25H13.55M11.88 1.58V4.92" stroke="#24588B" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  );
+}

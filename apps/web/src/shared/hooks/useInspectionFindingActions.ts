@@ -58,5 +58,14 @@ export function useInspectionFindingActions() {
       findingId,
       payload: { dueAt },
     }),
+    reassignResponsibleUsers: async (inspectionId: string, findingIds: string[], responsibleUserIds: string[]) => {
+      for (const findingId of findingIds) {
+        await mutation.mutateAsync({
+          inspectionId,
+          findingId,
+          payload: { responsibleUserIds },
+        });
+      }
+    },
   };
 }

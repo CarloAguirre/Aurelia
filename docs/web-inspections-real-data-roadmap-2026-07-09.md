@@ -59,7 +59,9 @@ Avance:
 - Seguimientos, datos generales y botón PDF ya leen del payload real en la vista de detalle real.
 - El bridge dejó de ocultar errores con el mock: si `/api/inspections/:id/detail` falla, muestra un estado de error visible.
 - Las evidencias de observación y generales se renderizan con previsualización de imagen usando contenido binario real del archivo.
-- Datos generales vuelve a mostrar responsables reales y botón visual de reasignación.
+- Datos generales vuelve a respetar la estructura Figma del nodo `1534:14183`: inspección, dónde/cuándo, fotografía, observaciones y responsables al final.
+- La sección Responsables vuelve a usar la card Figma con fila EECC, avatares, chip `Tú` y botón dashed `Reasignar a otro compañero ...`.
+- Al presionar reasignar se vuelve a abrir una bottom sheet visual de reasignación; la persistencia real de responsables queda separada para Etapa 4.
 - Se mantiene `getInspectionExportPayload(inspectionId)` para PDF/reporting y compatibilidad con export.
 
 ### Etapa 4 - Acciones operativas desde modal
@@ -100,4 +102,4 @@ Checks mínimos:
 
 ## Próxima iteración recomendada
 
-Implementar carga de evidencia `after_photo` desde el modal al ejecutar una observación, usando el mismo patrón de subida y vinculación ya aplicado en creación de inspecciones.
+Implementar persistencia real de reasignación de responsables y carga de evidencia `after_photo` desde el modal al ejecutar una observación, usando el mismo patrón de subida y vinculación ya aplicado en creación de inspecciones.

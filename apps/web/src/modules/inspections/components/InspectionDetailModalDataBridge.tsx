@@ -1,6 +1,7 @@
 import type { InspectionDetailResponse } from '@aurelia/contracts';
 import { useInspectionDetail } from '../../../shared/hooks/useInspectionDetail';
 import { InspectionDetailModal, type InspectionDetailModalRecord } from './InspectionDetailModal';
+import { InspectionDetailRealDataModal } from './InspectionDetailRealDataModal';
 
 type InspectionDetailModalDataBridgeProps = {
   open: boolean;
@@ -29,5 +30,6 @@ function buildRecordFromDetail(detail: InspectionDetailResponse, fallback: Inspe
 export function InspectionDetailModalDataBridge({ open, inspectionId, record, onClose }: InspectionDetailModalDataBridgeProps) {
   const detailQuery = useInspectionDetail(inspectionId, open && Boolean(record));
   const resolvedRecord = detailQuery.data && record ? buildRecordFromDetail(detailQuery.data, record) : record;
+  if (detailQuery.data && resolvedRecord) return <InspectionDetailRealDataModal open={open} record={resolvedRecord} detail={detailQuery.data} onClose={onClose} />;
   return <InspectionDetailModal open={open} record={resolvedRecord} onClose={onClose} />;
 }

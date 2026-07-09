@@ -8,8 +8,10 @@ import {
   InspectionResponse,
   InspectionStatus,
   InspectionTypeResponse,
+  UserResponse,
 } from '@aurelia/contracts';
 import { RequirePermissions } from '../auth/require-permissions.decorator';
+import { UsersService } from '../users/users.service';
 import { CloseInspectionDto } from './dto/close-inspection.dto';
 import { CreateInspectionFindingDto } from './dto/create-inspection-finding.dto';
 import { CreateInspectionFollowupDto } from './dto/create-inspection-followup.dto';
@@ -24,7 +26,7 @@ import { InspectionsService } from './inspections.service';
 @RequirePermissions('inspections:read')
 @Controller('inspections')
 export class InspectionsController {
-  constructor(private readonly inspectionsService: InspectionsService) {}
+  constructor(private readonly inspectionsService: InspectionsService, private readonly usersService: UsersService) {}
 
   @Get('types')
   findTypes(): Promise<InspectionTypeResponse[]> {
@@ -34,6 +36,11 @@ export class InspectionsController {
   @Get('templates')
   findTemplates(): Promise<InspectionChecklistTemplateResponse[]> {
     return this.inspectionsService.findTemplates();
+  }
+
+  @Get('responsible-users')
+  findResponsibleUsers(@Query('companyId') companyId?: string): Promise<UserResponse[]> {
+    return this.usersService.findAll({ companyId });
   }
 
   @Get('dashboard/summary')

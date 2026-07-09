@@ -47,7 +47,7 @@ export function SprSubmitModal({
   isSubmitting,
   onClose,
   onConfirm,
-}: SprSubmitModalProps) {
+}: SprSubmitModalProps): JSX.Element | null {
   const user = useSessionStore((state) => state.user);
   const [isSigned, setIsSigned] = useState(false);
   const [signedAt, setSignedAt] = useState<Date | null>(null);

@@ -11,6 +11,7 @@ export interface UpdateInspectionFindingRequest {
   severity?: InspectionFindingSeverity;
   status?: InspectionFindingStatus;
   ownerUserId?: ID | null;
+  responsibleUserIds?: ID[];
   dueAt?: ISODateString | null;
   executedAt?: ISODateString | null;
   closedAt?: ISODateString | null;

@@ -1,13 +1,16 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type {
   InspectionDetailEvidenceResponse,
   InspectionDetailFindingGroupKey,
   InspectionDetailFindingItemResponse,
   InspectionDetailResponse,
   InspectionDetailResponsibleResponse,
+  UserResponse,
 } from '@aurelia/contracts';
 import { env } from '../../../shared/config/env';
 import { useInspectionFindingActions } from '../../../shared/hooks/useInspectionFindingActions';
+import { getCompanyUsers } from '../../../shared/services/inspections.service';
 import {
   InspectionDetailApproveIcon,
   InspectionDetailAssignIcon,
@@ -194,6 +197,23 @@ function allFindings(detail: InspectionDetailResponse) {
 
 function primaryResponsibleCompany(detail: InspectionDetailResponse) {
   return allFindings(detail).find((item) => item.responsibleCompanyName)?.responsibleCompanyName ?? detail.general.companyName ?? '—';
+}
+
+function primaryResponsibleCompanyId(detail: InspectionDetailResponse) {
+  return allFindings(detail).find((item) => item.responsibleCompanyId)?.responsibleCompanyId ?? detail.general.responsibles.find((responsible) => responsible.companyId)?.companyId ?? null;
+}
+
+function mapResponsibleCandidate(user: UserResponse, currentResponsibles: InspectionDetailResponsibleResponse[]): InspectionDetailResponsibleResponse {
+  const current = currentResponsibles.find((responsible) => responsible.userId === user.id);
+  const companyName = user.companies?.find((company) => company.id === user.companyId)?.name ?? current?.companyName ?? null;
+  return {
+    userId: user.id,
+    fullName: user.fullName,
+    position: user.position,
+    companyId: user.companyId,
+    companyName,
+    currentUser: current?.currentUser ?? false,
+  };
 }
 
 function StatusChip({ status, count }: { status: StatusKey; count: number }) {
@@ -448,13 +468,36 @@ function DownloadPdfButton({ inspectionId }: { inspectionId: string }) {
 export function InspectionDetailRealDataModal({ open, record, detail, onClose }: { open: boolean; record: InspectionDetailModalRecord; detail: InspectionDetailResponse; onClose: () => void }) {
   const [activeTab, setActiveTab] = useState<DetailTab>('observations');
   const [reassignOpen, setReassignOpen] = useState(false);
-  const [selectedReassignIds, setSelectedReassignIds] = useState<string[]>(() => detail.general.responsibles.map((responsible) => responsible.userId));
+  const currentResponsibleIds = detail.general.responsibles.map((responsible) => responsible.userId);
+  const currentResponsibleIdsKey = currentResponsibleIds.join('|');
+  const [selectedReassignIds, setSelectedReassignIds] = useState<string[]>(currentResponsibleIds);
   const actions = useInspectionFindingActions();
   const companyName = primaryResponsibleCompany(detail);
+  const companyId = primaryResponsibleCompanyId(detail);
+  const findingIds = useMemo(() => allFindings(detail).map((finding) => finding.findingId), [detail]);
+  const responsibleUsersQuery = useQuery({
+    queryKey: ['inspections', 'responsible-users', companyId],
+    queryFn: () => getCompanyUsers(companyId ?? ''),
+    enabled: open && reassignOpen && Boolean(companyId),
+    staleTime: 60000,
+  });
+  const reassignCandidates = useMemo(() => responsibleUsersQuery.data?.map((user) => mapResponsibleCandidate(user, detail.general.responsibles)) ?? detail.general.responsibles, [detail.general.responsibles, responsibleUsersQuery.data]);
+
+  useEffect(() => {
+    setSelectedReassignIds(currentResponsibleIds);
+  }, [currentResponsibleIdsKey]);
+
   if (!open) return null;
   const toggleReassignOption = (id: string) => setSelectedReassignIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  const openReassignPrompt = () => {
+    setSelectedReassignIds(currentResponsibleIds);
+    setReassignOpen(true);
+  };
   const closeReassignPrompt = () => setReassignOpen(false);
-  const confirmReassignPrompt = () => setReassignOpen(false);
+  const confirmReassignPrompt = async () => {
+    await actions.reassignResponsibleUsers(detail.header.inspectionId, findingIds, selectedReassignIds);
+    setReassignOpen(false);
+  };
 
   return (
     <div className="fixed inset-0 z-[1000] bg-[rgba(0,0,0,0.68)]">
@@ -464,10 +507,10 @@ export function InspectionDetailRealDataModal({ open, record, detail, onClose }:
             <div className="shrink-0 rounded-t-[16px] bg-white px-[14px] py-[12px]"><div className="flex items-center gap-[12px]"><div className="min-w-0 flex-1 font-['Inter:Bold',sans-serif] font-bold"><p className="whitespace-nowrap text-[13px] leading-none text-[#001e39]">{record.id}</p><h2 id="inspection-detail-title" className="mt-[5px] text-[16px] font-bold leading-[22px] tracking-[0.32px] text-[#2a2a2a]">{record.title}</h2><div className="mt-[4px]">{metadataFor(record)}</div></div><button type="button" className="flex size-[32px] shrink-0 items-center justify-center" onClick={onClose} aria-label="Cerrar detalle"><InspectionDetailCloseIcon /></button></div></div>
             <ProgressSummary counts={detail.header.counts} progressPercent={detail.header.progressPercent} />
             <Tabs kind={record.kind} activeTab={activeTab} onChange={setActiveTab} />
-            <DetailContent activeTab={activeTab} detail={detail} actions={actions} onOpenReassign={() => setReassignOpen(true)} />
+            <DetailContent activeTab={activeTab} detail={detail} actions={actions} onOpenReassign={openReassignPrompt} />
           </div>
           <DownloadPdfButton inspectionId={detail.header.inspectionId} />
-          <ReassignPrompt open={reassignOpen} candidates={detail.general.responsibles} selectedIds={selectedReassignIds} onToggle={toggleReassignOption} onCancel={closeReassignPrompt} onConfirm={confirmReassignPrompt} companyName={companyName} />
+          <ReassignPrompt open={reassignOpen} candidates={reassignCandidates} selectedIds={selectedReassignIds} onToggle={toggleReassignOption} onCancel={closeReassignPrompt} onConfirm={confirmReassignPrompt} companyName={companyName} />
         </section>
       </div>
     </div>

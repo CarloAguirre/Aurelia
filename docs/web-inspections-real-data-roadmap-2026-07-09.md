@@ -44,7 +44,7 @@ Pendiente:
 
 ### Etapa 3 - Modal detalle con datos reales
 
-Estado: observaciones reales implementadas; pendiente acciones operativas.
+Estado: implementada para lectura real.
 
 Avance:
 
@@ -59,29 +59,26 @@ Avance:
 - Seguimientos, datos generales y botón PDF ya leen del payload real en la vista de detalle real.
 - Se mantiene `getInspectionExportPayload(inspectionId)` para PDF/reporting y compatibilidad con export.
 
-Pendiente próximo:
-
-- Conectar botones de acción del modal contra API:
-  - ejecutar observación,
-  - aprobar cierre,
-  - rechazar cierre,
-  - reasignar SLA,
-  - reasignar responsable,
-  - subir evidencia después.
-- Afinar visualmente la variante real contra el modal Figma si QA detecta diferencias.
-
 ### Etapa 4 - Acciones operativas desde modal
 
-Estado: pendiente.
+Estado: iniciada.
+
+Implementado:
+
+- Cliente HTTP `PATCH`.
+- Servicio web `updateInspectionFinding`.
+- Hook `useInspectionFindingActions`.
+- Ejecutar observación abierta o rechazada actualizando estado a `in_progress`.
+- Aprobar cierre actualizando estado a `closed`.
+- Rechazar cierre actualizando estado a `rejected` y guardando motivo.
+- Reasignar SLA actualizando `dueAt`.
+- Invalidación de queries de detalle, gestión y dashboard tras cada acción.
 
 Pendiente:
 
-- Ejecutar observación abierta.
-- Subir evidencia después.
-- Reasignar SLA.
-- Aprobar cierre.
-- Rechazar cierre.
-- Reasignar responsable.
+- Subir evidencia después como `inspection_finding/after_photo` durante ejecución.
+- Reasignar responsable real modificando responsables asociados al hallazgo.
+- Reemplazar prompts nativos por modales visuales fieles a Figma si QA lo requiere.
 
 ### Etapa 5 - QA / cierre MVP web inspecciones
 
@@ -100,4 +97,4 @@ Checks mínimos:
 
 ## Próxima iteración recomendada
 
-Implementar endpoints y hooks de acciones operativas del modal, empezando por ejecutar observación y subir evidencia `after_photo`, porque desbloquea el ciclo abierto → ejecutado → cierre/rechazo.
+Implementar carga de evidencia `after_photo` desde el modal al ejecutar una observación, usando el mismo patrón de subida y vinculación ya aplicado en creación de inspecciones.

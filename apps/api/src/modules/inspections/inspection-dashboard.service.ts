@@ -141,7 +141,7 @@ export class InspectionDashboardService {
         inspector: this.formatInspectorLabel(userById.get(inspection.inspectorId ?? '') ?? null),
         areaSector: this.formatAreaSectorLabel(inspection.areaId, inspection.sectorId, areaNameById, sectorNameById),
         company: this.formatCompanyLabel(inspection.companyId, companyNameById),
-        type: this.formatInspectionTypeLabel(typeById.get(inspection.inspectionTypeId) ?? null, inspectionFindings.length),
+        type: this.formatInspectionTypeLabel(inspection, typeById.get(inspection.inspectionTypeId) ?? null, inspectionFindings.length),
         urgencyLabel: this.formatUrgencyLabel(inspection, maxSeverity),
         urgencySeverity: maxSeverity,
         observationsCount: inspectionFindings.length,
@@ -506,9 +506,11 @@ export class InspectionDashboardService {
     return companyId ? companyNames.get(companyId) ?? 'Sin empresa' : 'Sin empresa';
   }
 
-  private formatInspectionTypeLabel(type: InspectionTypeEntity | null, findingsCount: number): string {
-    if (!type) return findingsCount > 0 ? 'Hallazgo' : 'Checklist';
-    return type.code.toLowerCase().includes('check') ? 'Checklist' : 'Hallazgo';
+  private formatInspectionTypeLabel(inspection: InspectionEntity, type: InspectionTypeEntity | null, findingsCount: number): string {
+    if (inspection.templateId) return 'Checklist normativo';
+    if (!type) return findingsCount > 0 ? 'Hallazgo' : 'Checklist normativo';
+    const label = `${type.code} ${type.name}`.toLowerCase();
+    return label.includes('check') ? 'Checklist normativo' : 'Hallazgo';
   }
 
   private formatUrgencyLabel(inspection: InspectionEntity, severity: InspectionFindingSeverity | null): string {

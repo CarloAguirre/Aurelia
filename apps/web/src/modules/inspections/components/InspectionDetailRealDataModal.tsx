@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import type { InspectionDetailFindingGroupKey, InspectionDetailFindingItemResponse, InspectionDetailResponse } from '@aurelia/contracts';
+import { useInspectionFindingActions } from '../../../shared/hooks/useInspectionFindingActions';
 import {
   InspectionDetailApproveIcon,
   InspectionDetailCameraIcon,
@@ -31,8 +32,16 @@ type StatusConfig = {
 };
 
 type DetailRowsProps = {
+  inspectionId: string;
   counts: Record<InspectionDetailFindingGroupKey, number>;
   findings: Record<InspectionDetailFindingGroupKey, InspectionDetailFindingItemResponse[]>;
+  actions: ReturnType<typeof useInspectionFindingActions>;
+};
+
+type FindingObservationCardProps = {
+  inspectionId: string;
+  item: InspectionDetailFindingItemResponse;
+  actions: ReturnType<typeof useInspectionFindingActions>;
 };
 
 const statusConfigByKey: Record<StatusKey, StatusConfig> = {
@@ -59,6 +68,12 @@ function daysLabel(value: string | null | undefined) {
   if (Number.isNaN(date.getTime())) return '—';
   const days = Math.max(0, Math.ceil((date.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
   return `${days} días`;
+}
+
+function dueDateFromDays(days: number) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString();
 }
 
 function severityClassName(value: string) {
@@ -119,11 +134,38 @@ function EvidencePreview({ title, count, afterClosed = false }: { title: string;
   );
 }
 
-function FindingObservationCard({ item }: { item: InspectionDetailFindingItemResponse }) {
+function FindingObservationCard({ inspectionId, item, actions }: FindingObservationCardProps) {
   const config = statusConfigByKey[item.statusGroup];
   const status = item.statusGroup;
   const beforeCount = item.beforeEvidence.length;
   const afterCount = item.afterEvidence.length;
+  const actionDisabled = actions.isPending;
+
+  function execute() {
+    const value = window.prompt('Describe la acción ejecutada', item.proposedCorrectiveAction ?? '')?.trim();
+    if (value === undefined) return;
+    actions.executeFinding(inspectionId, item.findingId, value.length > 0 ? value : item.proposedCorrectiveAction ?? null);
+  }
+
+  function approve() {
+    if (!window.confirm('¿Aprobar cierre de esta observación?')) return;
+    actions.approveFinding(inspectionId, item.findingId);
+  }
+
+  function reject() {
+    const value = window.prompt('Motivo de rechazo', item.rejectionReason ?? '')?.trim();
+    if (value === undefined) return;
+    actions.rejectFinding(inspectionId, item.findingId, value.length > 0 ? value : null);
+  }
+
+  function reschedule() {
+    const value = window.prompt('Nuevo SLA en días', '7')?.trim();
+    if (value === undefined) return;
+    const days = Number(value);
+    if (!Number.isFinite(days) || days < 0) return;
+    actions.rescheduleFinding(inspectionId, item.findingId, dueDateFromDays(days));
+  }
+
   return (
     <div className="rounded-[10px] border-[1.5px] border-[#e3e3e3] bg-[#f7f7f7] p-[13.5px] shadow-[0px_1px_1.5px_rgba(0,0,0,0.06)]">
       <div className="flex items-center justify-between">
@@ -136,28 +178,28 @@ function FindingObservationCard({ item }: { item: InspectionDetailFindingItemRes
         {status !== 'open' ? <FindingTextBlock title="Descripción de la acción tomada">{item.executedActionDescription ?? ''}</FindingTextBlock> : null}
         {status === 'rejected' ? <FindingTextBlock title="Motivo de rechazo">{item.rejectionReason ?? ''}</FindingTextBlock> : null}
         <div className="flex gap-[4px] pt-[8px]"><EvidencePreview title="Antes" count={beforeCount} /><EvidencePreview title="Después" count={afterCount} afterClosed={status === 'closed' || status === 'executed' || status === 'rejected'} /></div>
-        {status === 'open' ? <div className="mt-[4px] flex min-h-[64px] items-center justify-between rounded-[10px] border-[1.5px] border-[#d1d1d1] bg-[#f7f7f7] p-[15.5px]"><div><p className="w-[78px] text-[9px] font-bold uppercase leading-none tracking-[0.63px] text-[#333]">SLA calculado</p><p className="pt-[2px] text-[20px] font-bold leading-[20px] text-[#532a0e]">{daysLabel(item.dueAt)}</p></div><button type="button" className="flex h-[40px] items-center justify-center rounded-[8px] border-[1.5px] border-[#d1d1d1] bg-white px-[15.5px] py-[1.5px] text-[13px] font-semibold text-[#333]">Reasignar SLA</button></div> : <div className="mt-[4px] flex h-[33px] items-center justify-between rounded-[8px] bg-white px-[12px] py-[9px]"><p className="text-[12px] font-medium leading-none text-[#646464]">Fecha de estado</p><p className="text-right text-[11px] font-bold leading-none text-[#646464]">{formatDate(item.closedAt ?? item.executedAt ?? item.rejectedAt)}</p></div>}
-        {status === 'open' ? <button type="button" className="flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#c8a064] px-[12px] text-[15px] font-bold text-white shadow-[0px_2px_5px_rgba(200,160,100,0.3)]">Ejecutar observación</button> : null}
-        {status === 'executed' ? <div className="flex items-center gap-[8px] rounded-[8px] bg-white px-[12px] py-[9px]"><button type="button" className="flex h-[40px] items-center justify-center gap-[5px] rounded-[9px] border-2 border-[#c4365a] bg-white px-[16px] py-[2px] text-[12px] font-bold text-[#570b1d]"><InspectionDetailRejectIcon />Rechazar</button><button type="button" className="flex h-[40px] min-w-0 flex-1 items-center justify-center gap-[5px] rounded-[9px] bg-[#3a9b3a] px-[12px] text-[12px] font-bold text-white"><InspectionDetailApproveIcon />Aprobar cierre</button></div> : null}
-        {status === 'rejected' ? <button type="button" className="flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#c8a064] px-[12px] text-[15px] font-bold text-white shadow-[0px_2px_5px_rgba(200,160,100,0.3)]">Ejecutar observación rechazada</button> : null}
+        {status === 'open' ? <div className="mt-[4px] flex min-h-[64px] items-center justify-between rounded-[10px] border-[1.5px] border-[#d1d1d1] bg-[#f7f7f7] p-[15.5px]"><div><p className="w-[78px] text-[9px] font-bold uppercase leading-none tracking-[0.63px] text-[#333]">SLA calculado</p><p className="pt-[2px] text-[20px] font-bold leading-[20px] text-[#532a0e]">{daysLabel(item.dueAt)}</p></div><button type="button" className="flex h-[40px] items-center justify-center rounded-[8px] border-[1.5px] border-[#d1d1d1] bg-white px-[15.5px] py-[1.5px] text-[13px] font-semibold text-[#333] disabled:opacity-50" disabled={actionDisabled} onClick={reschedule}>Reasignar SLA</button></div> : <div className="mt-[4px] flex h-[33px] items-center justify-between rounded-[8px] bg-white px-[12px] py-[9px]"><p className="text-[12px] font-medium leading-none text-[#646464]">Fecha de estado</p><p className="text-right text-[11px] font-bold leading-none text-[#646464]">{formatDate(item.closedAt ?? item.executedAt ?? item.rejectedAt)}</p></div>}
+        {status === 'open' ? <button type="button" className="flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#c8a064] px-[12px] text-[15px] font-bold text-white shadow-[0px_2px_5px_rgba(200,160,100,0.3)] disabled:opacity-50" disabled={actionDisabled} onClick={execute}>Ejecutar observación</button> : null}
+        {status === 'executed' ? <div className="flex items-center gap-[8px] rounded-[8px] bg-white px-[12px] py-[9px]"><button type="button" className="flex h-[40px] items-center justify-center gap-[5px] rounded-[9px] border-2 border-[#c4365a] bg-white px-[16px] py-[2px] text-[12px] font-bold text-[#570b1d] disabled:opacity-50" disabled={actionDisabled} onClick={reject}><InspectionDetailRejectIcon />Rechazar</button><button type="button" className="flex h-[40px] min-w-0 flex-1 items-center justify-center gap-[5px] rounded-[9px] bg-[#3a9b3a] px-[12px] text-[12px] font-bold text-white disabled:opacity-50" disabled={actionDisabled} onClick={approve}><InspectionDetailApproveIcon />Aprobar cierre</button></div> : null}
+        {status === 'rejected' ? <button type="button" className="flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#c8a064] px-[12px] text-[15px] font-bold text-white shadow-[0px_2px_5px_rgba(200,160,100,0.3)] disabled:opacity-50" disabled={actionDisabled} onClick={execute}>Ejecutar observación rechazada</button> : null}
       </div>
     </div>
   );
 }
 
-function FindingObservationsPanel({ items }: { items: InspectionDetailFindingItemResponse[] }) {
+function FindingObservationsPanel({ inspectionId, items, actions }: { inspectionId: string; items: InspectionDetailFindingItemResponse[]; actions: ReturnType<typeof useInspectionFindingActions> }) {
   if (items.length === 0) return <div className="flex shrink-0 flex-col bg-white px-[14px] pb-[24px] pt-[14px]"><div className="rounded-[10px] border border-dashed border-[#d1d1d1] bg-[#f7f7f7] px-[14px] py-[18px] text-center text-[12px] font-medium text-[#646464]">Sin observaciones en este estado</div></div>;
-  return <div className="flex shrink-0 flex-col gap-[24px] bg-white px-[14px] pb-[24px] pt-[14px]">{items.map((item) => <FindingObservationCard key={item.findingId} item={item} />)}</div>;
+  return <div className="flex shrink-0 flex-col gap-[24px] bg-white px-[14px] pb-[24px] pt-[14px]">{items.map((item) => <FindingObservationCard key={item.findingId} inspectionId={inspectionId} item={item} actions={actions} />)}</div>;
 }
 
-function DetailRows({ counts, findings }: DetailRowsProps) {
+function DetailRows({ inspectionId, counts, findings, actions }: DetailRowsProps) {
   const defaultStatus = counts.open > 0 ? 'open' : counts.executed > 0 ? 'executed' : counts.closed > 0 ? 'closed' : 'rejected';
   const [expandedStatus, setExpandedStatus] = useState<StatusKey | null>(defaultStatus);
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-white">
       {statusConfigs.map((config) => {
         const expanded = expandedStatus === config.key;
-        const panel = expanded ? <FindingObservationsPanel items={findings[config.key]} /> : null;
+        const panel = expanded ? <FindingObservationsPanel inspectionId={inspectionId} items={findings[config.key]} actions={actions} /> : null;
         return <div key={config.key}><StatusRow config={config} count={counts[config.key]} expanded={expanded} onToggle={() => setExpandedStatus((current) => current === config.key ? null : config.key)} />{panel}</div>;
       })}
     </div>
@@ -207,10 +249,10 @@ function GeneralPanel({ detail }: { detail: InspectionDetailResponse }) {
   );
 }
 
-function DetailContent({ activeTab, detail }: { activeTab: DetailTab; detail: InspectionDetailResponse }) {
+function DetailContent({ activeTab, detail, actions }: { activeTab: DetailTab; detail: InspectionDetailResponse; actions: ReturnType<typeof useInspectionFindingActions> }) {
   if (activeTab === 'followups') return <FollowupsPanel detail={detail} />;
   if (activeTab === 'general') return <GeneralPanel detail={detail} />;
-  return <DetailRows counts={detail.header.counts} findings={detail.findings} />;
+  return <DetailRows inspectionId={detail.header.inspectionId} counts={detail.header.counts} findings={detail.findings} actions={actions} />;
 }
 
 function DownloadPdfButton({ inspectionId }: { inspectionId: string }) {
@@ -219,6 +261,7 @@ function DownloadPdfButton({ inspectionId }: { inspectionId: string }) {
 
 export function InspectionDetailRealDataModal({ open, record, detail, onClose }: { open: boolean; record: InspectionDetailModalRecord; detail: InspectionDetailResponse; onClose: () => void }) {
   const [activeTab, setActiveTab] = useState<DetailTab>('observations');
+  const actions = useInspectionFindingActions();
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[1000] bg-[rgba(0,0,0,0.68)]">
@@ -228,7 +271,7 @@ export function InspectionDetailRealDataModal({ open, record, detail, onClose }:
             <div className="shrink-0 rounded-t-[16px] bg-white px-[14px] py-[12px]"><div className="flex items-center gap-[12px]"><div className="min-w-0 flex-1 font-['Inter:Bold',sans-serif] font-bold"><p className="whitespace-nowrap text-[13px] leading-none text-[#001e39]">{record.id}</p><h2 id="inspection-detail-title" className="mt-[5px] text-[16px] font-bold leading-[22px] tracking-[0.32px] text-[#2a2a2a]">{record.title}</h2><div className="mt-[4px]">{metadataFor(record)}</div></div><button type="button" className="flex size-[32px] shrink-0 items-center justify-center" onClick={onClose} aria-label="Cerrar detalle"><InspectionDetailCloseIcon /></button></div></div>
             <ProgressSummary counts={detail.header.counts} progressPercent={detail.header.progressPercent} />
             <Tabs activeTab={activeTab} onChange={setActiveTab} />
-            <DetailContent activeTab={activeTab} detail={detail} />
+            <DetailContent activeTab={activeTab} detail={detail} actions={actions} />
           </div>
           <DownloadPdfButton inspectionId={detail.header.inspectionId} />
         </section>

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   InspectionAnswerValue,
+  InspectionEvidenceRelationType,
   InspectionFindingSeverity,
   InspectionType,
   type CreateEvidenceRequest,
@@ -16,13 +17,14 @@ import {
   createInspectionFinding,
   getInspectionTypes,
   getInspectionTemplates,
-  linkInspectionEvidence,
+  linkEvidence,
   uploadFile,
   upsertInspectionAnswer,
 } from '../../../../shared/services/inspections.service';
 import type { NewInspectionDraft } from '../state/newInspectionDraft.store';
 
 type ChecklistItemRow = InspectionChecklistItem & { index: number };
+type EvidenceEntityType = 'inspection' | 'inspection_finding' | 'inspection_followup';
 
 function parseInspectionDate(value: string): string {
   const parts = value.includes('-') ? value.split('-') : value.split('/');
@@ -47,6 +49,11 @@ function getDueDate(daysAhead = 7): string {
   return date.toISOString();
 }
 
+function trimOrNull(value: string | null | undefined): string | null {
+  const trimmed = value?.trim() ?? '';
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 function checklistItems(template: InspectionChecklistTemplateResponse): ChecklistItemRow[] {
   return template.sections
     .slice()
@@ -65,6 +72,35 @@ function buildChecklistTitle(draft: NewInspectionDraft): string {
 
 function buildFindingTitle(draft: NewInspectionDraft, index: number): string {
   return `${draft.findingTypeLabel ?? 'Hallazgo'} ${index + 1}`.slice(0, 180);
+}
+
+async function createAndLinkEvidence(input: {
+  file: File;
+  title: string;
+  description: string | null;
+  relationType: InspectionEvidenceRelationType;
+  entityType: EvidenceEntityType;
+  entityId: string;
+  latitude: number | null;
+  longitude: number | null;
+}) {
+  const fileResponse = await uploadFile(input.file, null);
+  const evidencePayload: CreateEvidenceRequest = {
+    fileId: fileResponse.id,
+    title: input.title,
+    description: input.description ?? undefined,
+    evidenceType: 'photo',
+    capturedAt: new Date().toISOString(),
+    latitude: input.latitude ?? undefined,
+    longitude: input.longitude ?? undefined,
+  };
+  const evidence = await createEvidence(evidencePayload);
+  await linkEvidence(evidence.id, {
+    entityType: input.entityType,
+    entityId: input.entityId,
+    relationType: input.relationType,
+  });
+  return evidence;
 }
 
 async function submitChecklistFlow(draft: NewInspectionDraft) {
@@ -90,32 +126,16 @@ async function submitChecklistFlow(draft: NewInspectionDraft) {
   const inspection = await createInspection(createPayload);
   const items = checklistItems(template);
 
-  async function createAndLinkEvidence(input: {
-    file: File;
-    title: string;
-    description: string | null;
-    relationType: string;
-  }) {
-    const fileResponse = await uploadFile(input.file, null);
-    const evidencePayload: CreateEvidenceRequest = {
-      fileId: fileResponse.id,
-      title: input.title,
-      description: input.description ?? undefined,
-      evidenceType: 'photo',
-      capturedAt: new Date().toISOString(),
-      latitude: draft.latitude ?? undefined,
-      longitude: draft.longitude ?? undefined,
-    };
-    const evidence = await createEvidence(evidencePayload);
-    await linkInspectionEvidence(inspection.id, evidence.id, input.relationType);
-  }
-
   if (draft.generalPhoto?.file) {
     await createAndLinkEvidence({
       file: draft.generalPhoto.file,
       title: `Foto general: ${buildChecklistTitle(draft)}`.slice(0, 180),
       description: 'Evidencia general de checklist',
-      relationType: 'inspection_evidence',
+      relationType: InspectionEvidenceRelationType.GENERAL_PHOTO,
+      entityType: 'inspection',
+      entityId: inspection.id,
+      latitude: draft.latitude,
+      longitude: draft.longitude,
     });
   }
 
@@ -125,13 +145,15 @@ async function submitChecklistFlow(draft: NewInspectionDraft) {
     if (!answer) continue;
 
     const detail = draft.detailsByItemId[item.id] ?? {};
+    const detectedCondition = trimOrNull(detail.detectedCondition);
+    const correctiveAction = trimOrNull(detail.correctiveAction);
     const answerPayload: UpsertInspectionAnswerRequest = {
       checklistItemId: item.id,
       answerValue: answer,
-      answerText: answer === InspectionAnswerValue.NOT_COMPLIANT ? detail.detectedCondition?.trim() ?? null : detail.comment?.trim() ?? null,
+      answerText: answer === InspectionAnswerValue.NOT_COMPLIANT ? detectedCondition : trimOrNull(detail.comment),
       notes:
         answer === InspectionAnswerValue.NOT_COMPLIANT
-          ? [detail.correctiveAction?.trim() ?? null, detail.evidence?.name ?? null].filter(Boolean).join('\n') || null
+          ? [correctiveAction, detail.evidence?.name ?? null].filter(Boolean).join('\n') || null
           : null,
       answeredAt: new Date().toISOString(),
     };
@@ -140,16 +162,18 @@ async function submitChecklistFlow(draft: NewInspectionDraft) {
 
     if (answer === InspectionAnswerValue.NOT_COMPLIANT) {
       notCompliantCount += 1;
-      await createInspectionFinding(inspection.id, {
+      const finding = await createInspectionFinding(inspection.id, {
         checklistItemId: item.id,
         findingTypeId: null,
         severityId: null,
         responsibleCompanyId: draft.findingCompanyId,
         responsibleUserIds: draft.findingResponsibleIds,
         title: `Obs. ${item.index + 1} · ${item.code}`.slice(0, 200),
-        description: [detail.detectedCondition?.trim() ?? null, detail.correctiveAction?.trim() ?? null, detail.evidence?.name ?? null]
+        description: [detectedCondition, correctiveAction ? `Medida correctiva: ${correctiveAction}` : null, detail.evidence?.name ? `Evidencia: ${detail.evidence.name}` : null]
           .filter(Boolean)
           .join('\n'),
+        detectedCondition,
+        proposedCorrectiveAction: correctiveAction,
         severity: InspectionFindingSeverity.HIGH,
         ownerUserId: draft.findingResponsibleIds[0] ?? null,
         dueAt: getDueDate(7),
@@ -159,8 +183,12 @@ async function submitChecklistFlow(draft: NewInspectionDraft) {
         await createAndLinkEvidence({
           file: detail.evidence.file,
           title: `Evidencia obs. ${item.index + 1} · ${item.code}`.slice(0, 180),
-          description: detail.detectedCondition?.trim() ?? null,
-          relationType: 'inspection_evidence',
+          description: detectedCondition,
+          relationType: InspectionEvidenceRelationType.BEFORE_PHOTO,
+          entityType: 'inspection_finding',
+          entityId: finding.id,
+          latitude: draft.latitude,
+          longitude: draft.longitude,
         });
       }
     }
@@ -196,31 +224,26 @@ async function submitFindingFlow(draft: NewInspectionDraft) {
   const inspection = await createInspection(createPayload);
   const observations = draft.findingObservations.filter((item) => item.saved);
 
-  async function createAndLinkEvidence(input: {
-    file: File;
-    title: string;
-    description: string | null;
-    relationType: string;
-  }) {
-    const fileResponse = await uploadFile(input.file, null);
-    const evidencePayload: CreateEvidenceRequest = {
-      fileId: fileResponse.id,
-      title: input.title,
-      description: input.description ?? undefined,
-      evidenceType: 'photo',
-      capturedAt: new Date().toISOString(),
-      latitude: draft.latitude ?? undefined,
-      longitude: draft.longitude ?? undefined,
-    };
-    const evidence = await createEvidence(evidencePayload);
-    await linkInspectionEvidence(inspection.id, evidence.id, input.relationType);
+  if (draft.generalPhoto?.file) {
+    await createAndLinkEvidence({
+      file: draft.generalPhoto.file,
+      title: `Foto general: ${createPayload.title}`.slice(0, 180),
+      description: 'Evidencia general de inspeccion tipo hallazgo',
+      relationType: InspectionEvidenceRelationType.GENERAL_PHOTO,
+      entityType: 'inspection',
+      entityId: inspection.id,
+      latitude: draft.latitude,
+      longitude: draft.longitude,
+    });
   }
 
   for (const [index, observation] of observations.entries()) {
     const matchDays = (observation.severityClosureTimeLabel ?? '').match(/(\d+)/);
     const dueDays = matchDays ? Number(matchDays[1]) : 7;
+    const detectedCondition = trimOrNull(observation.detectedCondition);
+    const correctiveAction = trimOrNull(observation.correctiveAction);
 
-    await createInspectionFinding(inspection.id, {
+    const finding = await createInspectionFinding(inspection.id, {
       checklistItemId: null,
       findingTypeId: draft.findingTypeId,
       severityId: observation.severityId,
@@ -228,12 +251,14 @@ async function submitFindingFlow(draft: NewInspectionDraft) {
       responsibleUserIds: draft.findingResponsibleIds,
       title: buildFindingTitle(draft, index),
       description: [
-        observation.detectedCondition.trim() || null,
-        observation.correctiveAction.trim() ? `Medida correctiva: ${observation.correctiveAction.trim()}` : null,
+        detectedCondition,
+        correctiveAction ? `Medida correctiva: ${correctiveAction}` : null,
         observation.evidence?.name ? `Evidencia: ${observation.evidence.name}` : null,
       ]
         .filter(Boolean)
         .join('\n'),
+      detectedCondition,
+      proposedCorrectiveAction: correctiveAction,
       severity: mapSeverity(observation.severityLabel),
       ownerUserId: draft.findingResponsibleIds[0] ?? null,
       dueAt: getDueDate(dueDays),
@@ -243,8 +268,12 @@ async function submitFindingFlow(draft: NewInspectionDraft) {
       await createAndLinkEvidence({
         file: observation.evidence.file,
         title: `Evidencia hallazgo ${index + 1}`,
-        description: observation.detectedCondition.trim() || null,
-        relationType: 'inspection_evidence',
+        description: detectedCondition,
+        relationType: InspectionEvidenceRelationType.BEFORE_PHOTO,
+        entityType: 'inspection_finding',
+        entityId: finding.id,
+        latitude: draft.latitude,
+        longitude: draft.longitude,
       });
     }
   }

@@ -44,7 +44,7 @@ Pendiente:
 
 ### Etapa 3 - Modal detalle con datos reales
 
-Estado: conexión visual inicial implementada; pendiente reemplazo de contenido interno.
+Estado: observaciones reales implementadas; pendiente acciones operativas.
 
 Avance:
 
@@ -55,15 +55,20 @@ Avance:
 - Se agregó hook `useInspectionDetail(inspectionId)` con React Query.
 - La tabla de gestión pasa `inspectionId` real al modal además del número visible.
 - Se agregó `InspectionDetailModalDataBridge` para hidratar cabecera, metadata, progreso y contadores reales sin romper el modal visual existente.
+- Se agregó `InspectionDetailRealDataModal` para renderizar tarjetas reales por estado usando `InspectionDetailResponse.findings`.
+- Seguimientos, datos generales y botón PDF ya leen del payload real en la vista de detalle real.
 - Se mantiene `getInspectionExportPayload(inspectionId)` para PDF/reporting y compatibilidad con export.
 
 Pendiente próximo:
 
-- Reemplazar gradualmente mocks del modal por payload real:
-  - tarjetas de observaciones,
-  - seguimientos,
-  - datos generales,
-  - botón PDF apuntando a `/api/inspections/:id/export/pdf`.
+- Conectar botones de acción del modal contra API:
+  - ejecutar observación,
+  - aprobar cierre,
+  - rechazar cierre,
+  - reasignar SLA,
+  - reasignar responsable,
+  - subir evidencia después.
+- Afinar visualmente la variante real contra el modal Figma si QA detecta diferencias.
 
 ### Etapa 4 - Acciones operativas desde modal
 
@@ -95,4 +100,4 @@ Checks mínimos:
 
 ## Próxima iteración recomendada
 
-Reemplazar las tarjetas internas de observaciones del modal por los grupos reales de `InspectionDetailResponse.findings`, manteniendo fallback visual cuando la carga esté pendiente o falle.
+Implementar endpoints y hooks de acciones operativas del modal, empezando por ejecutar observación y subir evidencia `after_photo`, porque desbloquea el ciclo abierto → ejecutado → cierre/rechazo.

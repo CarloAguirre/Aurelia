@@ -377,6 +377,7 @@ export class InspectionsService {
 
     try {
       const saved = await this.findings.save(entity);
+      if (dto.responsibleUserIds !== undefined) await this.replaceFindingResponsibles(saved.id, dto.responsibleUserIds);
       await this.refreshFindingCounters(saved.inspectionId);
       return this.toFindingResponse(saved);
     } catch (err) {
@@ -466,6 +467,12 @@ export class InspectionsService {
     const findingsCount = await this.findings.count({ where: { inspectionId } });
     const openFindingsCount = await this.findings.count({ where: { inspectionId, status: In([InspectionFindingStatus.OPEN, InspectionFindingStatus.IN_PROGRESS]) } });
     await this.inspections.update({ id: inspectionId }, { findingsCount, openFindingsCount });
+  }
+
+  private async replaceFindingResponsibles(findingId: string, responsibleUserIds: string[]): Promise<void> {
+    await this.findingResponsibles.delete({ findingId });
+    if (responsibleUserIds.length === 0) return;
+    await this.findingResponsibles.save(responsibleUserIds.map((userId) => this.findingResponsibles.create({ findingId, userId })));
   }
 
   private toTypeResponse(entity: InspectionTypeEntity): InspectionTypeResponse {

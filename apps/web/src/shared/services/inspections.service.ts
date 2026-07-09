@@ -55,6 +55,33 @@ export interface InspectionManagementTableParams {
   closure?: string;
 }
 
+export interface InspectionEvidenceExportGroup {
+  entityId: string;
+  evidences: EvidenceResponse[];
+}
+
+export interface InspectionExportPayload {
+  generatedAt: string;
+  inspection: Record<string, unknown>;
+  checklist: Record<string, unknown>;
+  answers: Record<string, unknown>[];
+  findings: Array<Record<string, unknown>>;
+  evidences: EvidenceResponse[];
+  evidenceGroups?: {
+    inspection: EvidenceResponse[];
+    findings: InspectionEvidenceExportGroup[];
+    followups: InspectionEvidenceExportGroup[];
+  };
+  comments: Record<string, unknown>[];
+  summary: {
+    answersCount: number;
+    findingsCount: number;
+    openFindingsCount: number;
+    evidencesCount: number;
+    commentsCount: number;
+  };
+}
+
 function buildDashboardQuery(params?: InspectionDashboardQueryParams) {
   if (!params) return '';
   const searchParams = new URLSearchParams({ year: String(params.year), period: params.period });
@@ -209,6 +236,10 @@ export function suggestCompany(params: {
     type: AiSuggestType.COMPANY_SUGGESTION,
     context: params,
   });
+}
+
+export function getInspectionExportPayload(inspectionId: string): Promise<InspectionExportPayload> {
+  return httpGet<InspectionExportPayload>(`/inspections/${encodeURIComponent(inspectionId)}/export`);
 }
 
 export function createInspection(payload: CreateInspectionRequest): Promise<InspectionResponse> {

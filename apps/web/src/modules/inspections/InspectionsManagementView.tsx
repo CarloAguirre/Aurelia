@@ -3,7 +3,8 @@ import type { InspectionManagementKpisResponse, InspectionManagementTableFilterO
 import { useInspectionManagementKpis } from '../../shared/hooks/useInspectionManagementKpis';
 import { useInspectionManagementTable } from '../../shared/hooks/useInspectionManagementTable';
 import type { InspectionManagementPageSize, InspectionManagementTableParams } from '../../shared/services/inspections.service';
-import { InspectionDetailModal, type InspectionDetailModalRecord } from './components/InspectionDetailModal';
+import type { InspectionDetailModalRecord } from './components/InspectionDetailModal';
+import { InspectionDetailModalDataBridge } from './components/InspectionDetailModalDataBridge';
 import { ClearFiltersIcon } from './components/InspectionManagementIcons';
 import { NewInspectionModalController } from './new-inspection/NewInspectionModalController';
 
@@ -24,6 +25,7 @@ type KpiCardProps = {
 
 type Row = {
   uniqueKey: string;
+  inspectionId: string;
   id: string;
   date: string;
   inspector: string;
@@ -37,6 +39,11 @@ type Row = {
   days: number;
   closure: number;
   height: number;
+};
+
+type SelectedInspectionDetail = {
+  inspectionId: string;
+  record: InspectionDetailModalRecord;
 };
 
 type TableFilters = {
@@ -129,6 +136,7 @@ function buildTableRows(rows: InspectionManagementTableRowResponse[] | undefined
     const badges = formatObservationBadges(row);
     return {
       uniqueKey: row.inspectionId,
+      inspectionId: row.inspectionId,
       id: formatInspectionNumber(row.inspectionNumber),
       date: formatDate(row.date),
       inspector: row.inspector,
@@ -526,7 +534,7 @@ function InspectionTable({ rows, total, page, totalPages, pageSize, isLoading, i
 
 export function InspectionsManagementView() {
   const [newInspectionOpen, setNewInspectionOpen] = useState(false);
-  const [selectedDetail, setSelectedDetail] = useState<InspectionDetailModalRecord | null>(null);
+  const [selectedDetail, setSelectedDetail] = useState<SelectedInspectionDetail | null>(null);
   const [filters, setFilters] = useState<TableFilters>(emptyTableFilters);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<InspectionManagementPageSize>(10);
@@ -566,7 +574,7 @@ export function InspectionsManagementView() {
   }
 
   function openInspectionDetail(row: Row) {
-    setSelectedDetail(buildInspectionDetailRecord(row));
+    setSelectedDetail({ inspectionId: row.inspectionId, record: buildInspectionDetailRecord(row) });
   }
 
   function handleSort(key: SortKey) {
@@ -581,7 +589,7 @@ export function InspectionsManagementView() {
         <div className="w-full pt-[16px]"><InspectionTable rows={tableRows} total={total} page={tableQuery.data?.page ?? page} totalPages={totalPages} pageSize={pageSize} isLoading={tableQuery.isLoading} isError={tableQuery.isError} filters={filters} options={filterOptions} sort={sort} onSort={handleSort} onFilterChange={updateFilter} onClearFilters={clearFilters} onPageChange={setPage} onPageSizeChange={changePageSize} onViewDetails={openInspectionDetail} /></div>
       </div>
       <NewInspectionModalController open={newInspectionOpen} onClose={() => setNewInspectionOpen(false)} />
-      <InspectionDetailModal open={Boolean(selectedDetail)} record={selectedDetail} onClose={() => setSelectedDetail(null)} />
+      <InspectionDetailModalDataBridge open={Boolean(selectedDetail)} inspectionId={selectedDetail?.inspectionId ?? null} record={selectedDetail?.record ?? null} onClose={() => setSelectedDetail(null)} />
     </>
   );
 }

@@ -14,6 +14,26 @@ export class UpdateInspectionFindingDto implements UpdateInspectionFindingReques
   description?: string | null;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  detectedCondition?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  proposedCorrectiveAction?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  executedActionDescription?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  rejectionReason?: string | null;
+
+  @IsOptional()
   @IsEnum(InspectionFindingSeverity)
   severity?: InspectionFindingSeverity;
 
@@ -28,6 +48,18 @@ export class UpdateInspectionFindingDto implements UpdateInspectionFindingReques
   @IsOptional()
   @IsISO8601()
   dueAt?: string | null;
+
+  @IsOptional()
+  @IsISO8601()
+  executedAt?: string | null;
+
+  @IsOptional()
+  @IsISO8601()
+  closedAt?: string | null;
+
+  @IsOptional()
+  @IsISO8601()
+  rejectedAt?: string | null;
 
   @IsOptional()
   @IsString()

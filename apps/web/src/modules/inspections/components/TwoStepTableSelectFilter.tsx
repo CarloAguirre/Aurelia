@@ -26,7 +26,8 @@ function splitOption(option: string) {
   const separator = separators.find((item) => normalized.includes(item));
   if (!separator) return { group: normalized, label: normalized };
   const parts = normalized.split(separator);
-  const group = parts[0]?.trim() ?? normalized;
+  const rawGroup = parts[0];
+  const group = (rawGroup ?? normalized).trim();
   const label = parts.slice(1).join(separator).trim();
   return { group, label: label || normalized };
 }

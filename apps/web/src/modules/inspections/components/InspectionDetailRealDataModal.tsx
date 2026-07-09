@@ -85,6 +85,7 @@ type FindingObservationCardProps = {
   inspectionId: string;
   item: InspectionDetailFindingItemResponse;
   actions: ReturnType<typeof useInspectionFindingActions>;
+  index: number;
 };
 
 const API_URL = env.apiUrl;
@@ -275,7 +276,7 @@ function EvidencePreview({ title, evidences, afterClosed = false, emptyLabel = '
   );
 }
 
-function FindingObservationCard({ inspectionId, item, actions }: FindingObservationCardProps) {
+function FindingObservationCard({ inspectionId, item, actions, index }: FindingObservationCardProps) {
   const [slaSheetOpen, setSlaSheetOpen] = useState(false);
   const config = statusConfigByKey[item.statusGroup];
   const status = item.statusGroup;
@@ -308,7 +309,7 @@ function FindingObservationCard({ inspectionId, item, actions }: FindingObservat
   return (
     <div className="rounded-[10px] border-[1.5px] border-[#e3e3e3] bg-[#f7f7f7] p-[13.5px] shadow-[0px_1px_1.5px_rgba(0,0,0,0.06)]">
       <div className="flex items-center justify-between">
-        <div className="flex min-w-0 items-center gap-[8px]"><FindingPill className="bg-[#e6f3ff] text-[#24588b]">{item.title}</FindingPill><FindingPill className={severityClassName(item.severityLabel)}>{item.severityLabel}</FindingPill></div>
+        <div className="flex min-w-0 items-center gap-[8px]"><FindingPill className="bg-[#e6f3ff] text-[#24588b]">{`Obs. ${index + 1}`}</FindingPill><FindingPill className={severityClassName(item.severityLabel)}>{item.severityLabel}</FindingPill></div>
         <span className={`inline-flex h-[19px] items-center gap-[4px] rounded-[6px] px-[8px] py-[4px] text-[10px] font-bold leading-none ${config.chipClass}`}><InspectionDetailStatusChipIcon status={status} />{config.itemLabel}</span>
       </div>
       <div className="flex flex-col gap-[4px] pt-[12px]">
@@ -329,7 +330,7 @@ function FindingObservationCard({ inspectionId, item, actions }: FindingObservat
 }
 
 function FindingObservationsPanel({ inspectionId, items, actions }: { inspectionId: string; items: InspectionDetailFindingItemResponse[]; actions: ReturnType<typeof useInspectionFindingActions> }) {
-  return <div className="flex shrink-0 flex-col gap-[24px] bg-white px-[14px] pb-[24px] pt-[14px]">{items.map((item) => <FindingObservationCard key={item.findingId} inspectionId={inspectionId} item={item} actions={actions} />)}</div>;
+  return <div className="flex shrink-0 flex-col gap-[24px] bg-white px-[14px] pb-[24px] pt-[14px]">{items.map((item, index) => <FindingObservationCard key={item.findingId} inspectionId={inspectionId} item={item} actions={actions} index={index} />)}</div>;
 }
 
 function DetailRows({ inspectionId, counts, findings, actions }: DetailRowsProps) {

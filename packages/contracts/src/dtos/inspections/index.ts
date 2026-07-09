@@ -7,4 +7,5 @@ export * from './update-inspection-finding.request';
 export * from './create-inspection-followup.request';
 export * from './update-inspection-followup.request';
 export * from './inspection.response';
+export * from './inspection-detail.response';
 export * from './inspection-finding-classification.response';

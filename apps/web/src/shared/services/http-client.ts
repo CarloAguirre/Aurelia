@@ -40,6 +40,22 @@ export async function httpPost<TRequest, TResponse>(
   return (await response.json()) as TResponse;
 }
 
+export async function httpPatch<TRequest, TResponse>(
+  path: string,
+  body: TRequest,
+): Promise<TResponse> {
+  const response = await fetch(`${API_URL}${path}`, {
+    method: 'PATCH',
+    headers: buildHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const details = (await response.text()).trim();
+    throw new Error(`PATCH ${path} failed: ${response.status}${details ? ` - ${details}` : ''}`);
+  }
+  return (await response.json()) as TResponse;
+}
+
 export async function httpPostForm<TResponse>(path: string, body: FormData): Promise<TResponse> {
   const response = await fetch(`${API_URL}${path}`, {
     method: 'POST',

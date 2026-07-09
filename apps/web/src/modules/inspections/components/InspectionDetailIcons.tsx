@@ -155,6 +155,31 @@ export function InspectionDetailListIcon({ className = 'h-[10px] w-[12.5px]' }: 
   );
 }
 
+export function InspectionDetailChecklistListIcon({ className = 'h-[11px] w-[13.75px]' }: IconProps) {
+  return (
+    <svg className={className} width="14" height="11" viewBox="0 0 14 11" fill="none" aria-hidden="true">
+      <path d="M1.38 2.04L2.07 2.73L3.44 1.21M1.38 5.49L2.07 6.18L3.44 4.66M1.38 8.94L2.07 9.63L3.44 8.11" stroke="#24588B" strokeWidth="1.15" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5.16 2.08H12.38M5.16 5.53H12.38M5.16 8.98H12.38" stroke="#24588B" strokeWidth="1.35" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function InspectionDetailChecklistYesIcon({ className = 'h-[9px] w-[11.25px]' }: IconProps) {
+  return (
+    <svg className={className} width="12" height="9" viewBox="0 0 12 9" fill="none" aria-hidden="true">
+      <path d="M1.3 4.58L4.23 7.45L10.1 1.38" stroke="#2A5C16" strokeWidth="1.45" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function InspectionDetailChecklistNoIcon({ className = 'h-[9px] w-[11.25px]' }: IconProps) {
+  return (
+    <svg className={className} width="12" height="9" viewBox="0 0 12 9" fill="none" aria-hidden="true">
+      <path d="M2.3 1.42L9.15 7.58M9.15 1.42L2.3 7.58" stroke="#570B1D" strokeWidth="1.45" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function InspectionDetailAssignIcon({ className = 'h-[12px] w-[15px]' }: IconProps) {
   return (
     <svg className={className} width="15" height="12" viewBox="0 0 15 12" fill="none" aria-hidden="true">

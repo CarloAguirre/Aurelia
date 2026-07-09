@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { config } from 'dotenv';
 import { DataSource } from 'typeorm';
+import { readApiEnv } from '../config/env';
 import { UserSessionEntity } from '../modules/auth/entities/user-session.entity';
 import { AuditLogEntity } from '../modules/audit/entities/audit-log.entity';
 import { CommentEntity } from '../modules/comments/entities/comment.entity';
@@ -69,13 +70,15 @@ import { WorkflowInstanceEntity } from '../modules/workflows/entities/workflow-i
 
 config();
 
+const env = readApiEnv();
+
 export const AppDataSource = new DataSource({
   type: 'postgres',
-  host: process.env.DB_HOST ?? 'localhost',
-  port: parseInt(process.env.DB_PORT ?? '5432', 10),
-  username: process.env.DB_USERNAME ?? 'postgres',
-  password: process.env.DB_PASSWORD ?? 'postgres',
-  database: process.env.DB_NAME ?? 'aurelia',
+  host: env.database.host,
+  port: env.database.port,
+  username: env.database.username,
+  password: env.database.password,
+  database: env.database.name,
   entities: [
     BusinessUnitEntity,
     GerenciaEntity,
@@ -144,5 +147,5 @@ export const AppDataSource = new DataSource({
     SprConsolidationRuleEntity,
   ],
   migrations: ['src/database/migrations/*.ts'],
-  synchronize: false,
+  synchronize: env.database.synchronize,
 });

@@ -6,6 +6,7 @@ import type {
   InspectionDetailResponse,
   InspectionDetailResponsibleResponse,
 } from '@aurelia/contracts';
+import { env } from '../../../shared/config/env';
 import { useInspectionFindingActions } from '../../../shared/hooks/useInspectionFindingActions';
 import {
   InspectionDetailApproveIcon,
@@ -50,7 +51,7 @@ type FindingObservationCardProps = {
   actions: ReturnType<typeof useInspectionFindingActions>;
 };
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
+const API_URL = env.apiUrl;
 const apiOrigin = API_URL.replace(/\/api\/?$/, '');
 
 const statusConfigByKey: Record<StatusKey, StatusConfig> = {

@@ -1,6 +1,7 @@
+import { env } from '../config/env';
 import { readStoredToken } from './session-storage';
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
+const API_URL = env.apiUrl;
 
 function buildHeaders(init?: HeadersInit): HeadersInit {
   const headers = new Headers(init);

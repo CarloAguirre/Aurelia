@@ -17,7 +17,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
         autoLoadEntities: true,
         // El esquema se gestiona con migraciones de TypeORM.
         // synchronize solo se habilita explícitamente vía DB_SYNCHRONIZE=true (desarrollo).
-        synchronize: config.get<boolean>('database.synchronize') ?? false,
+        synchronize: config.get<boolean>('database.synchronize'),
         migrations: ['dist/database/migrations/*.js'],
       }),
     }),

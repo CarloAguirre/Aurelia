@@ -3,6 +3,7 @@ import {
   InspectionChecklistAnswerResponse,
   InspectionChecklistTemplateResponse,
   InspectionDashboardSummaryResponse,
+  InspectionDetailResponse,
   InspectionFindingResponse,
   InspectionFollowupResponse,
   InspectionResponse,
@@ -22,12 +23,17 @@ import { UpdateInspectionFollowupDto } from './dto/update-inspection-followup.dt
 import { UpdateInspectionDto } from './dto/update-inspection.dto';
 import { UpdateInspectionStatusDto } from './dto/update-inspection-status.dto';
 import { UpsertInspectionAnswerDto } from './dto/upsert-inspection-answer.dto';
+import { InspectionDetailService } from './inspection-detail.service';
 import { InspectionsService } from './inspections.service';
 
 @RequirePermissions('inspections:read')
 @Controller('inspections')
 export class InspectionsController {
-  constructor(private readonly inspectionsService: InspectionsService, private readonly usersService: UsersService) {}
+  constructor(
+    private readonly inspectionsService: InspectionsService,
+    private readonly usersService: UsersService,
+    private readonly inspectionDetailService: InspectionDetailService,
+  ) {}
 
   @Get('types')
   findTypes(): Promise<InspectionTypeResponse[]> {
@@ -66,6 +72,11 @@ export class InspectionsController {
   @Get(':id/findings')
   findFindings(@Param('id', ParseUUIDPipe) id: string): Promise<InspectionFindingResponse[]> {
     return this.inspectionsService.findFindings(id);
+  }
+
+  @Get(':id/detail')
+  getDetail(@Param('id', ParseUUIDPipe) id: string, @Req() request: AuthenticatedRequest): Promise<InspectionDetailResponse> {
+    return this.inspectionDetailService.getDetail(id, request.user.sub);
   }
 
   @RequirePermissions('inspections:write')

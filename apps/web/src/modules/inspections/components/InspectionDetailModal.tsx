@@ -133,11 +133,22 @@ const findingLocationRows: GeneralInfoRow[] = [
   { label: 'Tipo', value: 'Hallazgo' },
   { label: 'Ubicación UTM', value: '19H 351376E 6295754N', mono: true },
 ];
+const checklistLocationRows: GeneralInfoRow[] = [
+  { label: 'Área · Sector', value: 'Mina · Sector Norte' },
+  { label: 'Fecha', value: '10-06-2026' },
+  { label: 'Tipo', value: 'Checklist normativo' },
+  { label: 'Plantilla', value: 'SUSPEL – General' },
+  { label: 'Código', value: 'FR-00007' },
+  { label: 'Ubicación UTM', value: '19H 351376E 6295754N', mono: true },
+];
 const findingObservationSummaries: GeneralObservationSummary[] = [
   { idLabel: 'Obs. 1', severityLabel: 'Crítico', severityClassName: 'bg-[#ffd0db] text-[#570b1d]' },
   { idLabel: 'Obs. 2', severityLabel: 'Alto', severityClassName: 'bg-[#ffe1cd] text-[#532a0e]' },
   { idLabel: 'Obs. 3', severityLabel: 'Alto', severityClassName: 'bg-[#ffe1cd] text-[#532a0e]' },
   { idLabel: 'Obs. 4', severityLabel: 'Alto', severityClassName: 'bg-[#ffe1cd] text-[#532a0e]' },
+];
+const checklistObservationSummaries: GeneralObservationSummary[] = [
+  { idLabel: 'Ítem. Nº1', severityLabel: 'Alto', severityClassName: 'bg-[#ffe1cd] text-[#532a0e]' },
 ];
 const findingResponsibles: Responsible[] = [
   { initials: 'NA', name: '[Nombre y apellido usuario 1]', role: 'Coordinador', avatarClassName: 'bg-[#c8a064] text-[#001e39]', current: true },
@@ -460,10 +471,22 @@ function GeneralObservationSummaryItem({ observation, isLast }: { observation: G
   );
 }
 
-function GeneralObservationsSection() {
+function GeneralObservationsSection({ title, observations }: { title: string; observations: GeneralObservationSummary[] }) {
   return (
-    <GeneralSection icon={<InspectionDetailListIcon />} title="Observaciones (4)">
-      <div>{findingObservationSummaries.map((observation, index) => <GeneralObservationSummaryItem key={observation.idLabel} observation={observation} isLast={index === findingObservationSummaries.length - 1} />)}</div>
+    <GeneralSection icon={<InspectionDetailListIcon />} title={title}>
+      <div>{observations.map((observation, index) => <GeneralObservationSummaryItem key={observation.idLabel} observation={observation} isLast={index === observations.length - 1} />)}</div>
+    </GeneralSection>
+  );
+}
+
+function ChecklistGeneralResultSection() {
+  return (
+    <GeneralSection icon={<InspectionDetailChecklistListIcon className="h-[10px] w-[12.5px]" />} title="Resultado · 25 ítems">
+      <div>
+        <div className="flex items-center justify-between border-b border-[#e3e3e3] px-[12px] py-[9px]"><p className="text-[12px] font-medium leading-none text-[#646464]">SÍ</p><div className="flex items-center gap-[5px]"><InspectionDetailChecklistYesIcon className="h-[10px] w-[12.5px]" /><p className="text-right text-[12px] font-bold leading-none text-[#2a5c16]">20 ítems conformes</p></div></div>
+        <div className="flex items-center justify-between border-b border-[#e3e3e3] px-[12px] py-[9px]"><p className="text-[12px] font-medium leading-none text-[#646464]">NO</p><div className="flex items-center gap-[5px]"><InspectionDetailChecklistNoIcon className="h-[10px] w-[12.5px]" /><p className="text-right text-[12px] font-bold leading-none text-[#570b1d]">1 · obs. registradas</p></div></div>
+        <div className="flex items-center justify-between px-[12px] py-[9px]"><p className="text-[12px] font-medium leading-none text-[#646464]">N/A</p><p className="text-right text-[12px] font-bold leading-none text-[#646464]">2 ítems</p></div>
+      </div>
     </GeneralSection>
   );
 }
@@ -495,7 +518,22 @@ function FindingGeneralDataPanel({ onReassignClick }: { onReassignClick: () => v
         <GeneralSection icon={<InspectionDetailPersonIcon />} title="Quién realizó la inspección"><GeneralInfoRows rows={findingInspectorRows} /></GeneralSection>
         <GeneralSection icon={<InspectionDetailLocationIcon />} title="Donde y cuándo"><GeneralInfoRows rows={findingLocationRows} /></GeneralSection>
         <GeneralPhotoSection />
-        <GeneralObservationsSection />
+        <GeneralObservationsSection title="Observaciones (4)" observations={findingObservationSummaries} />
+        <GeneralResponsiblesSection onReassignClick={onReassignClick} />
+      </div>
+    </div>
+  );
+}
+
+function ChecklistGeneralDataPanel({ onReassignClick }: { onReassignClick: () => void }) {
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto bg-white px-[14px] pt-[14px] pb-[20px]">
+      <div className="flex flex-col gap-[12px]">
+        <GeneralSection icon={<InspectionDetailPersonIcon />} title="Quién realizó la inspección"><GeneralInfoRows rows={findingInspectorRows} /></GeneralSection>
+        <GeneralSection icon={<InspectionDetailLocationIcon />} title="Donde y cuándo"><GeneralInfoRows rows={checklistLocationRows} /></GeneralSection>
+        <GeneralPhotoSection />
+        <ChecklistGeneralResultSection />
+        <GeneralObservationsSection title="Observaciones (1)" observations={checklistObservationSummaries} />
         <GeneralResponsiblesSection onReassignClick={onReassignClick} />
       </div>
     </div>
@@ -542,6 +580,7 @@ function EmptyDetailPanel() {
 function DetailContent({ activeTab, counts, kind, onReassignClick }: { activeTab: DetailTab; counts: Record<StatusKey, number>; kind: InspectionDetailModalKind; onReassignClick: () => void }) {
   if (activeTab === 'followups') return <FollowupsPanel />;
   if (activeTab === 'general' && kind === 'finding') return <FindingGeneralDataPanel onReassignClick={onReassignClick} />;
+  if (activeTab === 'general' && kind === 'checklist') return <ChecklistGeneralDataPanel onReassignClick={onReassignClick} />;
   if (activeTab === 'result' && kind === 'checklist') return <ChecklistResultPanel />;
   if (activeTab === 'observations') return <DetailRows counts={counts} />;
   return <EmptyDetailPanel />;

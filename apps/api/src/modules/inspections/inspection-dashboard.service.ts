@@ -387,9 +387,10 @@ export class InspectionDashboardService {
     return findings.reduce((summary, finding) => {
       if (finding.status === InspectionFindingStatus.CLOSED) summary.closed += 1;
       else if (finding.status === InspectionFindingStatus.IN_PROGRESS) summary.executed += 1;
+      else if (finding.status === InspectionFindingStatus.REJECTED) summary.rejected += 1;
       else summary.open += 1;
       return summary;
-    }, { executed: 0, open: 0, closed: 0 });
+    }, { executed: 0, open: 0, closed: 0, rejected: 0 });
   }
 
   private buildManagementTableFilterOptions(rows: InspectionManagementTableRowResponse[]): InspectionManagementTableFilterOptionsResponse {
@@ -439,6 +440,7 @@ export class InspectionDashboardService {
       if (value === 'executed') return observations.executed > 0;
       if (value === 'open') return observations.open > 0;
       if (value === 'closed') return observations.closed > 0;
+      if (value === 'rejected') return observations.rejected > 0;
       return false;
     });
   }
@@ -468,7 +470,8 @@ export class InspectionDashboardService {
 
   private resolvePageSize(value?: string): number {
     const parsed = Number(value);
-    return parsed === 25 || parsed === 50 ? parsed : 10;
+    if (!Number.isFinite(parsed)) return 10;
+    return [10, 25, 50].includes(parsed) ? parsed : 10;
   }
 
   private resolvePage(value: string | undefined, totalPages: number): number {
@@ -477,46 +480,51 @@ export class InspectionDashboardService {
     return Math.min(Math.floor(parsed), totalPages);
   }
 
-  private formatAreaLabel(areaId: string | null, areaNameById: Map<string, string>): string {
-    if (!areaId) return 'Sin Área';
-    return areaNameById.get(areaId) ?? `Área ${areaId.slice(0, 8).toUpperCase()}`;
-  }
-
-  private formatAreaSectorLabel(areaId: string | null, sectorId: string | null, areaNameById: Map<string, string>, sectorNameById: Map<string, string>): string {
-    const area = this.formatAreaLabel(areaId, areaNameById);
-    const sector = sectorId ? sectorNameById.get(sectorId) : null;
-    return sector ? `${area} · ${sector}` : area;
-  }
-
-  private formatCompanyLabel(companyId: string | null, companyNameById: Map<string, string>): string {
-    if (!companyId) return 'Sin Empresa';
-    return companyNameById.get(companyId) ?? `Empresa ${companyId.slice(0, 8).toUpperCase()}`;
+  private resolveInspectionNumber(inspection: InspectionEntity, index: number): string {
+    const match = inspection.title.match(/#?(\d+)/);
+    return match?.[1] ?? String(index + 1).padStart(3, '0');
   }
 
   private formatInspectorLabel(user: UserEntity | null): string {
     if (!user) return 'Sin inspector';
-    const lastInitials = user.lastName.split(' ').filter(Boolean).map((part) => `${part[0]?.toUpperCase()}.`).join(' ');
-    return `${user.firstName} ${lastInitials}`.trim();
+    const initials = `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.trim();
+    return initials ? `${user.firstName} ${initials.slice(-1)}.` : user.email;
+  }
+
+  private formatAreaSectorLabel(areaId: string | null, sectorId: string | null, areaNames: Map<string, string>, sectorNames: Map<string, string>): string {
+    const area = areaId ? areaNames.get(areaId) : null;
+    const sector = sectorId ? sectorNames.get(sectorId) : null;
+    if (area && sector) return `${area} · ${sector}`;
+    return area ?? sector ?? 'Sin área';
+  }
+
+  private formatAreaLabel(areaId: string | null, areaNames: Map<string, string>): string {
+    return areaId ? areaNames.get(areaId) ?? 'Sin área' : 'Sin área';
+  }
+
+  private formatCompanyLabel(companyId: string | null, companyNames: Map<string, string>): string {
+    return companyId ? companyNames.get(companyId) ?? 'Sin empresa' : 'Sin empresa';
   }
 
   private formatInspectionTypeLabel(type: InspectionTypeEntity | null, findingsCount: number): string {
-    const source = `${type?.name ?? ''} ${type?.code ?? ''}`.toLowerCase();
-    if (source.includes('check') || source.includes('normativ') || source.includes('regulator')) return 'Checklist';
-    if (source.includes('hallazgo') || source.includes('ambiental') || source.includes('environmental')) return 'Hallazgo';
-    return type?.name ?? (findingsCount > 0 ? 'Hallazgo' : 'Checklist');
-  }
-
-  private formatSeverityLabel(severity: InspectionFindingSeverity | null): string {
-    if (severity === InspectionFindingSeverity.CRITICAL || severity === InspectionFindingSeverity.HIGH) return 'Grave';
-    if (severity === InspectionFindingSeverity.MEDIUM) return 'Moderado';
-    if (severity === InspectionFindingSeverity.LOW) return 'Menor';
-    return 'Sin obs.';
+    if (!type) return findingsCount > 0 ? 'Hallazgo' : 'Checklist';
+    return type.code.toLowerCase().includes('check') ? 'Checklist' : 'Hallazgo';
   }
 
   private formatUrgencyLabel(inspection: InspectionEntity, severity: InspectionFindingSeverity | null): string {
-    if (!severity) return 'Sin obs.';
-    const state = inspection.status === InspectionStatus.SUBMITTED || inspection.status === InspectionStatus.UNDER_REVIEW || inspection.status === InspectionStatus.CLOSED ? 'Ejecutada' : 'Abierta';
-    return `${state} · ${this.formatSeverityLabel(severity)}`;
+    if (inspection.status === InspectionStatus.CLOSED) return 'Cerrada';
+    if (!severity) return 'Abierta · Menor';
+    const labelBySeverity: Record<InspectionFindingSeverity, string> = {
+      [InspectionFindingSeverity.CRITICAL]: 'Grave',
+      [InspectionFindingSeverity.HIGH]: 'Grave',
+      [InspectionFindingSeverity.MEDIUM]: 'Moderado',
+      [InspectionFindingSeverity.LOW]: 'Menor',
+    };
+    return `${inspection.status === InspectionStatus.UNDER_REVIEW ? 'Ejecutada' : 'Abierta'} · ${labelBySeverity[severity]}`;
+  }
+
+  private resolveMaxSeverity(current: InspectionFindingSeverity | null, next: InspectionFindingSeverity): InspectionFindingSeverity {
+    return this.getUrgencyWeight(next) > this.getUrgencyWeight(current) ? next : current ?? next;
   }
 
   private getUrgencyWeight(severity: InspectionFindingSeverity | null): number {
@@ -528,22 +536,11 @@ export class InspectionDashboardService {
   }
 
   private isOpenFinding(finding: InspectionFindingEntity): boolean {
-    return finding.status !== InspectionFindingStatus.CLOSED && finding.status !== InspectionFindingStatus.CANCELLED;
+    return finding.status === InspectionFindingStatus.OPEN || finding.status === InspectionFindingStatus.IN_PROGRESS;
   }
 
   private isSevereFinding(finding: InspectionFindingEntity): boolean {
     return finding.severity === InspectionFindingSeverity.CRITICAL || finding.severity === InspectionFindingSeverity.HIGH;
-  }
-
-  private resolveMaxSeverity(current: InspectionFindingSeverity | null, next: InspectionFindingSeverity | null): InspectionFindingSeverity | null {
-    return this.getUrgencyWeight(next) > this.getUrgencyWeight(current) ? next : current;
-  }
-
-  private getUrgencyWeightForInspection(inspection: InspectionEntity): number {
-    if (inspection.status === InspectionStatus.SUBMITTED || inspection.status === InspectionStatus.UNDER_REVIEW) return 2;
-    if (inspection.status === InspectionStatus.DRAFT) return 1;
-    if (inspection.status === InspectionStatus.CLOSED) return 0;
-    return 1;
   }
 
   private inspectionBelongsToYear(inspection: InspectionEntity, year: number): boolean {
@@ -551,12 +548,7 @@ export class InspectionDashboardService {
     return date ? date.getFullYear() === year : inspection.createdAt.getFullYear() === year;
   }
 
-  private resolveInspectionNumber(inspection: InspectionEntity, index: number): string {
-    return inspection.code?.trim() || String(index + 1).padStart(2, '0');
-  }
-
   private daysBetween(start: Date, end: Date): number {
-    const dayMs = 24 * 60 * 60 * 1000;
-    return Math.max(0, Math.ceil((end.getTime() - start.getTime()) / dayMs));
+    return Math.max(0, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
   }
 }

@@ -1,11 +1,16 @@
 import { useState, type ReactNode } from 'react';
 import {
   InspectionDetailApproveIcon,
+  InspectionDetailAssignIcon,
+  InspectionDetailCameraIcon,
   InspectionDetailCaretDownIcon,
   InspectionDetailCloseIcon,
   InspectionDetailFollowupIcon,
   InspectionDetailImageIcon,
+  InspectionDetailListIcon,
+  InspectionDetailLocationIcon,
   InspectionDetailPdfIcon,
+  InspectionDetailPersonIcon,
   InspectionDetailRejectIcon,
   InspectionDetailStatusChipIcon,
   InspectionDetailStatusRowIcon,
@@ -61,6 +66,26 @@ type FollowupStep = {
   completed: boolean;
 };
 
+type GeneralInfoRow = {
+  label: string;
+  value: string;
+  mono?: boolean;
+};
+
+type GeneralObservationSummary = {
+  idLabel: string;
+  severityLabel: string;
+  severityClassName: string;
+};
+
+type Responsible = {
+  initials: string;
+  name: string;
+  role: string;
+  avatarClassName: string;
+  current?: boolean;
+};
+
 const statusConfigByKey: Record<StatusKey, StatusConfig> = {
   executed: { key: 'executed', label: 'Ejecutadas', chipLabel: 'Ejecutada', itemLabel: 'Ejecutado', textClass: 'text-[#570b1d]', chipClass: 'bg-[#ffd0db] text-[#570b1d]' },
   open: { key: 'open', label: 'Abiertas', chipLabel: 'Abiertas', itemLabel: 'Abierto', textClass: 'text-[#463100]', chipClass: 'bg-[#ffeab8] text-[#463100]' },
@@ -78,6 +103,26 @@ const followupSteps: FollowupStep[] = [
   { title: 'Seguimiento 1', date: '[dd-mm-aaaa (Fecha de primer seguimiento)]', bullets: ['Observaciones cerradas: 1 obs / 20%', 'Observaciones pendientes: 4 obs / 80%'], completed: true },
   { title: 'Seguimiento 2', date: '—', completed: false },
   { title: 'Seguimiento 3', date: '—', completed: false },
+];
+const findingInspectorRows: GeneralInfoRow[] = [
+  { label: 'Nombre', value: 'Karen Opazo S.' },
+  { label: 'Empresa', value: 'Gold Fields' },
+];
+const findingLocationRows: GeneralInfoRow[] = [
+  { label: 'Área · Sector', value: 'Mina · Sector Norte' },
+  { label: 'Fecha', value: '10-06-2026' },
+  { label: 'Tipo', value: 'Hallazgo' },
+  { label: 'Ubicación UTM', value: '19H 351376E 6295754N', mono: true },
+];
+const findingObservationSummaries: GeneralObservationSummary[] = [
+  { idLabel: 'Obs. 1', severityLabel: 'Crítico', severityClassName: 'bg-[#ffd0db] text-[#570b1d]' },
+  { idLabel: 'Obs. 2', severityLabel: 'Alto', severityClassName: 'bg-[#ffe1cd] text-[#532a0e]' },
+  { idLabel: 'Obs. 3', severityLabel: 'Alto', severityClassName: 'bg-[#ffe1cd] text-[#532a0e]' },
+  { idLabel: 'Obs. 4', severityLabel: 'Alto', severityClassName: 'bg-[#ffe1cd] text-[#532a0e]' },
+];
+const findingResponsibles: Responsible[] = [
+  { initials: 'NA', name: '[Nombre y apellido usuario 1]', role: 'Coordinador', avatarClassName: 'bg-[#c8a064] text-[#001e39]', current: true },
+  { initials: 'NA', name: '[Nombre y apellido usuario 1]', role: 'Inspector', avatarClassName: 'bg-[#24588b] text-white' },
 ];
 
 function getTabs(kind: InspectionDetailModalKind): TabConfig[] {
@@ -273,12 +318,91 @@ function FollowupsPanel() {
   );
 }
 
+function GeneralSection({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
+  return (
+    <section className="w-full overflow-hidden rounded-[12px] border border-[#e3e3e3] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+      <div className="flex h-[29px] items-center gap-[6px] border-b border-[#e3e3e3] bg-[#f7f7f7] px-[12px]"><span className="flex h-[10px] w-[12.5px] items-center justify-center">{icon}</span><p className="text-[10px] font-bold uppercase leading-none tracking-[0.5px] text-[#646464]">{title}</p></div>
+      {children}
+    </section>
+  );
+}
+
+function GeneralInfoRows({ rows }: { rows: GeneralInfoRow[] }) {
+  return <div>{rows.map((row, index) => <div key={row.label} className={`flex items-center justify-between px-[12px] py-[9px] ${index < rows.length - 1 ? 'border-b border-[#e3e3e3]' : ''}`}><p className="text-[12px] font-medium leading-none text-[#646464]">{row.label}</p><p className={`text-right text-[12px] font-bold leading-none text-[#131313] ${row.mono ? "font-['Cousine:Bold',monospace] text-[11px]" : ''}`}>{row.value}</p></div>)}</div>;
+}
+
+function GeneralPhotoSection() {
+  return (
+    <GeneralSection icon={<InspectionDetailCameraIcon />} title="Fotografía general de la inspección">
+      <div className="px-[12px] py-[9px]">
+        <div className="relative h-[80px] overflow-hidden rounded-[8px] bg-[linear-gradient(165deg,#1e3050_0%,#0f1f35_100%)]">
+          <div className="absolute left-[8px] top-[6px] rounded-[4px] bg-[rgba(0,0,0,0.55)] px-[7px] py-[2px]"><p className="text-[9px] font-bold uppercase leading-none tracking-[1.5px] text-white">Foto general</p></div>
+          <div className="absolute bottom-[6px] right-[8px] rounded-[4px] bg-[rgba(0,0,0,0.5)] px-[6px] py-[2px]"><p className="text-[9px] font-normal leading-none text-[rgba(255,255,255,0.8)]">dd-mm-aaaa · 00:00</p></div>
+        </div>
+      </div>
+    </GeneralSection>
+  );
+}
+
+function GeneralObservationSummaryItem({ observation, isLast }: { observation: GeneralObservationSummary; isLast: boolean }) {
+  return (
+    <div className={`flex flex-col gap-[8px] px-[12px] py-[10px] ${isLast ? '' : 'border-b border-[#e3e3e3]'}`}>
+      <div className="flex items-center gap-[8px]"><FindingPill className="bg-[#e6f3ff] text-[#24588b]">{observation.idLabel}</FindingPill><FindingPill className={observation.severityClassName}>{observation.severityLabel}</FindingPill></div>
+      <p className="text-[12px] font-normal leading-[16.8px] text-[#131313]">[Descripción realizada por el usuario que levanta la inspección]</p>
+      <div className="flex items-center justify-between border-t border-[#e3e3e3] pt-[10px]"><p className="text-[12px] font-medium leading-none text-[#646464]">SLA calculado</p><p className="text-right text-[12px] font-bold leading-none text-[#131313]">xx días hábiles</p></div>
+    </div>
+  );
+}
+
+function GeneralObservationsSection() {
+  return (
+    <GeneralSection icon={<InspectionDetailListIcon />} title="Observaciones (4)">
+      <div>{findingObservationSummaries.map((observation, index) => <GeneralObservationSummaryItem key={observation.idLabel} observation={observation} isLast={index === findingObservationSummaries.length - 1} />)}</div>
+    </GeneralSection>
+  );
+}
+
+function ResponsibleRow({ responsible, isLast }: { responsible: Responsible; isLast: boolean }) {
+  return (
+    <div className={`flex items-center gap-[10px] px-[12px] py-[10px] ${isLast ? '' : 'border-b border-[#e3e3e3]'}`}>
+      <div className={`flex size-[32px] shrink-0 items-center justify-center rounded-[16px] text-[12px] font-bold leading-none ${responsible.avatarClassName}`}>{responsible.initials}</div>
+      <div className="min-w-0 flex-1"><p className="truncate text-[12px] font-bold leading-none text-[#131313]">{responsible.name}</p><p className="pt-[4px] text-[11px] font-normal leading-none text-[#646464]">{responsible.role}</p></div>
+      {responsible.current ? <span className="inline-flex h-[16px] items-center rounded-[5px] bg-[#c5fff6] px-[7px] text-[10px] font-bold leading-none text-[#00b398]">Tú</span> : null}
+    </div>
+  );
+}
+
+function GeneralResponsiblesSection() {
+  return (
+    <GeneralSection icon={<InspectionDetailPersonIcon />} title="Responsables">
+      <GeneralInfoRows rows={[{ label: 'EECC', value: 'GARDE CORPS' }]} />
+      <div className="border-t border-[#e3e3e3]">{findingResponsibles.map((responsible, index) => <ResponsibleRow key={`${responsible.name}-${responsible.role}`} responsible={responsible} isLast={index === findingResponsibles.length - 1} />)}</div>
+      <div className="border-t border-[#e3e3e3] px-[12px] py-[9px]"><button type="button" className="flex h-[42px] w-full items-center justify-center gap-[6px] rounded-[8px] border-[1.5px] border-dashed border-[#d1d1d1] bg-[#f7f7f7] px-[2px] text-[12px] font-semibold leading-none text-[#24588b]"><InspectionDetailAssignIcon />Reasignar a otro compañero SOMACOR</button></div>
+    </GeneralSection>
+  );
+}
+
+function FindingGeneralDataPanel() {
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto bg-white px-[14px] pt-[14px] pb-[20px]">
+      <div className="flex flex-col gap-[12px]">
+        <GeneralSection icon={<InspectionDetailPersonIcon />} title="Quién realizó la inspección"><GeneralInfoRows rows={findingInspectorRows} /></GeneralSection>
+        <GeneralSection icon={<InspectionDetailLocationIcon />} title="Donde y cuándo"><GeneralInfoRows rows={findingLocationRows} /></GeneralSection>
+        <GeneralPhotoSection />
+        <GeneralObservationsSection />
+        <GeneralResponsiblesSection />
+      </div>
+    </div>
+  );
+}
+
 function EmptyDetailPanel() {
   return <div className="min-h-0 flex-1 bg-white" />;
 }
 
-function DetailContent({ activeTab, counts }: { activeTab: DetailTab; counts: Record<StatusKey, number> }) {
+function DetailContent({ activeTab, counts, kind }: { activeTab: DetailTab; counts: Record<StatusKey, number>; kind: InspectionDetailModalKind }) {
   if (activeTab === 'followups') return <FollowupsPanel />;
+  if (activeTab === 'general' && kind === 'finding') return <FindingGeneralDataPanel />;
   if (activeTab === 'observations' || activeTab === 'result') return <DetailRows counts={counts} />;
   return <EmptyDetailPanel />;
 }
@@ -315,7 +439,7 @@ export function InspectionDetailModal({ open, record, onClose }: InspectionDetai
             <div className="shrink-0 rounded-t-[16px] bg-white px-[14px] py-[12px]"><div className="flex items-center gap-[12px]"><div className="min-w-0 flex-1 font-['Inter:Bold',sans-serif] font-bold"><p className="whitespace-nowrap text-[13px] leading-none text-[#001e39]">{record.id}</p><h2 id="inspection-detail-title" className="mt-[5px] text-[16px] font-bold leading-[22px] tracking-[0.32px] text-[#2a2a2a]">{record.title}</h2><div className="mt-[4px]">{metadataFor(record)}</div></div><button type="button" className="flex size-[32px] shrink-0 items-center justify-center" onClick={onClose} aria-label="Cerrar detalle"><InspectionDetailCloseIcon /></button></div></div>
             <ProgressSummary counts={counts} progressPercent={progressPercent} />
             <Tabs kind={record.kind} activeTab={activeTab} onChange={setActiveTab} />
-            <DetailContent activeTab={activeTab} counts={counts} />
+            <DetailContent activeTab={activeTab} counts={counts} kind={record.kind} />
           </div>
           <DownloadPdfButton />
         </section>

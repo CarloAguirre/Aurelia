@@ -25,6 +25,7 @@ import { InspectionEntity } from './entities/inspection.entity';
 import { InspectionCriticalityCatalogController } from './inspection-criticality-catalog.controller';
 import { InspectionDashboardController } from './inspection-dashboard.controller';
 import { InspectionDashboardService } from './inspection-dashboard.service';
+import { InspectionDetailService } from './inspection-detail.service';
 import { InspectionFindingCatalogController } from './inspection-finding-catalog.controller';
 import { InspectionFindingCatalogService } from './inspection-finding-catalog.service';
 import { InspectionTransversalController } from './inspection-transversal.controller';
@@ -60,7 +61,7 @@ import { InspectionsService } from './inspections.service';
     ]),
   ],
   controllers: [InspectionsController, InspectionDashboardController, InspectionTransversalController, InspectionFindingCatalogController, InspectionCriticalityCatalogController],
-  providers: [InspectionsService, InspectionDashboardService, InspectionTransversalService, InspectionFindingCatalogService],
-  exports: [InspectionsService, InspectionDashboardService, InspectionFindingCatalogService],
+  providers: [InspectionsService, InspectionDashboardService, InspectionDetailService, InspectionTransversalService, InspectionFindingCatalogService],
+  exports: [InspectionsService, InspectionDashboardService, InspectionDetailService, InspectionFindingCatalogService],
 })
 export class InspectionsModule {}

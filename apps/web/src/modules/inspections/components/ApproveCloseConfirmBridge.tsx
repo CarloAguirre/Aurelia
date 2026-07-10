@@ -48,7 +48,7 @@ export function ApproveCloseConfirmBridge() {
       event.stopPropagation();
       event.stopImmediatePropagation();
       approveButtonRef.current = button;
-      setDialogHost(button.closest('section[role="dialog"]'));
+      setDialogHost(button.closest<HTMLElement>('section[role="dialog"]'));
       setToastVisible(false);
       setDialogOpen(true);
     }

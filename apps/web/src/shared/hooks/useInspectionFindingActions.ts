@@ -71,6 +71,11 @@ export function useInspectionFindingActions() {
       await invalidateInspectionQueries(variables.inspectionId);
     },
   });
+  const buildRejectPayload = (rejectionReason: string | null): UpdateInspectionFindingRequest => ({
+    status: InspectionFindingStatus.REJECTED,
+    rejectedAt: nowIso(),
+    rejectionReason,
+  });
 
   return {
     isPending: mutation.isPending || executionMutation.isPending,
@@ -95,11 +100,12 @@ export function useInspectionFindingActions() {
     rejectFinding: (inspectionId: string, findingId: string, rejectionReason: string | null) => mutation.mutate({
       inspectionId,
       findingId,
-      payload: {
-        status: InspectionFindingStatus.REJECTED,
-        rejectedAt: nowIso(),
-        rejectionReason,
-      },
+      payload: buildRejectPayload(rejectionReason),
+    }),
+    rejectFindingAsync: (inspectionId: string, findingId: string, rejectionReason: string | null) => mutation.mutateAsync({
+      inspectionId,
+      findingId,
+      payload: buildRejectPayload(rejectionReason),
     }),
     rescheduleFinding: (inspectionId: string, findingId: string, dueAt: string) => mutation.mutate({
       inspectionId,

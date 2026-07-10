@@ -117,3 +117,11 @@ aside[aria-label="Navegación lateral"] > div:first-of-type::-webkit-scrollbar-t
   background: rgba(255, 255, 255, 0.14);
   border-radius: 999px;
 }
+
+button[class*="bg-[#c8a064]"][class*="min-w-0"][class*="gap-[8px]"] {
+  color: #ffffff !important;
+}
+
+button[class*="bg-[#c8a064]"][class*="min-w-0"][class*="gap-[8px]"] svg path {
+  stroke: #ffffff !important;
+}

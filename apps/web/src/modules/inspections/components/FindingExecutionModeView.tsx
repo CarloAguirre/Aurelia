@@ -23,9 +23,10 @@ function FeatureRow({ children }: { children: string }) {
 }
 
 export function FindingExecutionModeView({ subtitle, item = null, index = 1, isSubmitting = false, onBack, onStartAssistant, onStartManual, onCancel }: { subtitle: string; item?: InspectionDetailFindingItemResponse | null; index?: number; isSubmitting?: boolean; onBack: () => void; onStartAssistant: () => void; onStartManual: (description: string, file: File) => void | Promise<void>; onCancel: () => void }) {
-  const [manualOpen, setManualOpen] = useState(false);
+  const rejectedFlow = item?.statusGroup === 'rejected';
+  const [manualOpen, setManualOpen] = useState(rejectedFlow);
 
-  if (manualOpen) return <FindingManualExecutionView subtitle={subtitle} item={item} index={index} isSubmitting={isSubmitting} onBack={() => setManualOpen(false)} onCancel={onCancel} onSubmit={onStartManual} />;
+  if (manualOpen) return <FindingManualExecutionView subtitle={subtitle} item={item} index={index} isSubmitting={isSubmitting} onBack={rejectedFlow ? onBack : () => setManualOpen(false)} onCancel={onCancel} onSubmit={onStartManual} />;
 
   return (
     <div className="absolute inset-0 z-30 flex flex-col overflow-hidden bg-[#F4F6F9]">

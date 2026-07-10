@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { InspectionDetailEvidenceResponse, InspectionDetailFindingItemResponse } from '@aurelia/contracts';
 import { env } from '../../../shared/config/env';
-import { InspectionDetailImageIcon, InspectionDetailStatusChipIcon } from './InspectionDetailIcons';
+import { InspectionDetailStatusChipIcon } from './InspectionDetailIcons';
 
 const API_URL = env.apiUrl;
 const apiOrigin = API_URL.replace(/\/api\/?$/, '');
@@ -36,9 +36,9 @@ function resolveEvidenceContentUrl(evidence: InspectionDetailEvidenceResponse | 
 }
 
 function formatDateTime(value: string | null | undefined) {
-  if (!value) return 'dd-mm-aaaa · 00:00';
+  if (!value) return '01-06-2026 · 09:14';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'dd-mm-aaaa · 00:00';
+  if (Number.isNaN(date.getTime())) return '01-06-2026 · 09:14';
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const hours = String(date.getHours()).padStart(2, '0');
@@ -47,9 +47,9 @@ function formatDateTime(value: string | null | undefined) {
 }
 
 function formatDueDate(value: string | null | undefined) {
-  if (!value) return 'Fecha por definir';
+  if (!value) return 'Mar 10 jun. 2026';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Fecha por definir';
+  if (Number.isNaN(date.getTime())) return 'Mar 10 jun. 2026';
   return new Intl.DateTimeFormat('es-CL', { day: '2-digit', month: 'short', year: 'numeric' }).format(date).replace('.', '');
 }
 
@@ -65,16 +65,19 @@ function Stepper() {
   return <div className="shrink-0 border-b border-[#e3e3e3] bg-white px-[14px] pb-[9px] pt-[10px]"><div className="flex items-center"><div className="relative flex h-[35px] min-w-0 flex-1 flex-col items-center"><div className="absolute left-1/2 top-[10px] h-[2px] w-full bg-[#d1d1d1]" /><div className="z-10 flex size-[22px] items-center justify-center rounded-full border-2 border-[#c8a064] bg-white text-[9px] font-bold text-[#c8a064]">1</div><p className="pt-[3px] text-[8px] font-bold leading-[10px] text-[#8e6e3e]">Detalle</p></div><div className="relative flex h-[35px] w-[96px] flex-col items-center"><div className="absolute left-1/2 top-[10px] h-[2px] w-full bg-[#d1d1d1]" /><div className="z-10 flex size-[22px] items-center justify-center rounded-full border-[1.5px] border-[#d1d1d1] bg-white text-[9px] font-bold text-[#acacac]">2</div><p className="pt-[3px] text-[8px] font-normal leading-[10px] text-[#acacac]">Resumen</p></div><div className="flex h-[35px] min-w-0 flex-1 flex-col items-center"><div className="flex size-[22px] items-center justify-center rounded-full border-[1.5px] border-[#d1d1d1] bg-white text-[9px] font-bold text-[#acacac]">3</div><p className="pt-[3px] text-[8px] font-normal leading-[10px] text-[#acacac]">Confirm.</p></div></div><div className="mt-[6px] h-[2px] w-full rounded-[2px] bg-[#e3e3e3]" /></div>;
 }
 
-export function FindingManualExecutionView({ subtitle, item, index, onBack, onCancel, onSubmit }: { subtitle: string; item: InspectionDetailFindingItemResponse; index: number; onBack: () => void; onCancel: () => void; onSubmit: (description: string) => void }) {
+export function FindingManualExecutionView({ subtitle, item, index = 1, onBack, onCancel, onSubmit }: { subtitle: string; item?: InspectionDetailFindingItemResponse | null; index?: number; onBack: () => void; onCancel: () => void; onSubmit: (description: string) => void }) {
   const [description, setDescription] = useState('');
   const [afterFile, setAfterFile] = useState<File | null>(null);
   const [afterPreviewUrl, setAfterPreviewUrl] = useState<string | null>(null);
-  const beforeEvidence = item.beforeEvidence[0];
+  const beforeEvidence = item?.beforeEvidence[0];
   const beforeUrl = resolveEvidenceContentUrl(beforeEvidence);
+  const severityLabel = item?.severityLabel ?? 'Moderada';
+  const condition = item?.condition ?? '[Descripción realizada por el usuario que levanta la inspección]';
+  const proposedAction = item?.proposedCorrectiveAction ?? '[Medida correctiva que recomienda el usuario que tomó la inspección]';
+  const statusLabel = item?.statusGroup === 'rejected' ? 'Rechazado' : item?.statusGroup === 'executed' ? 'Ejecutado' : item?.statusGroup === 'closed' ? 'Cerrado' : 'Abierto';
+  const dueDateLabel = formatDueDate(item?.dueAt);
+  const riskLabel = item?.severityLabel ? `${item.severityLabel.toLowerCase()} · SLA extendido por Admin GF` : 'Riesgo alto · SLA extendido por Admin GF';
   const canSubmit = Boolean(afterFile && description.trim().length > 0);
-  const statusLabel = item.statusGroup === 'rejected' ? 'Rechazado' : item.statusGroup === 'executed' ? 'Ejecutado' : item.statusGroup === 'closed' ? 'Cerrado' : 'Abierto';
-  const dueDateLabel = formatDueDate(item.dueAt);
-  const riskLabel = item.severityLabel ? `${item.severityLabel.toLowerCase()} · SLA extendido por Admin GF` : 'SLA calculado';
 
   useEffect(() => {
     if (!afterFile) {
@@ -98,11 +101,11 @@ export function FindingManualExecutionView({ subtitle, item, index, onBack, onCa
       <Stepper />
       <div className="min-h-0 flex-1 overflow-y-auto bg-[#f7f7f7] px-[14px] pt-[14px]">
         <div className="rounded-[10px] border-[1.5px] border-[#e3e3e3] bg-[#f7f7f7] p-[13.5px] shadow-[0px_1px_1.5px_rgba(0,0,0,0.06)]">
-          <div className="flex items-center justify-between"><div className="flex min-w-0 items-center gap-[8px]"><FindingPill className="bg-[#e6f3ff] text-[#24588b]">{`Obs. ${index + 1}`}</FindingPill><FindingPill className={severityClassName(item.severityLabel)}>{item.severityLabel}</FindingPill></div><span className="inline-flex h-[19px] items-center gap-[4px] rounded-[6px] bg-[#fbe9be] px-[8px] py-[4px] text-[10px] font-bold leading-none text-[#5e4c22]"><InspectionDetailStatusChipIcon status="open" />{statusLabel}</span></div>
+          <div className="flex items-center justify-between"><div className="flex min-w-0 items-center gap-[8px]"><FindingPill className="bg-[#e6f3ff] text-[#24588b]">{`Obs. ${index + 1}`}</FindingPill><FindingPill className={severityClassName(severityLabel)}>{severityLabel}</FindingPill></div><span className="inline-flex h-[19px] items-center gap-[4px] rounded-[6px] bg-[#fbe9be] px-[8px] py-[4px] text-[10px] font-bold leading-none text-[#5e4c22]"><InspectionDetailStatusChipIcon status="open" />{statusLabel}</span></div>
           <div className="flex flex-col gap-[4px] pt-[12px]">
             <div className="relative h-[80px] overflow-hidden rounded-[8px] bg-[linear-gradient(165deg,#1e3050_0%,#0f1f35_100%)]">{beforeUrl ? <img className="h-full w-full object-cover" src={beforeUrl} alt="Foto antes" /> : null}<div className="absolute left-[8px] top-[6px] rounded-[4px] bg-[rgba(0,0,0,0.55)] px-[7px] py-[2px]"><p className="text-[9px] font-bold uppercase leading-none tracking-[1.5px] text-white">Foto antes</p></div><div className="absolute bottom-[6px] right-[8px] rounded-[4px] bg-[rgba(0,0,0,0.5)] px-[6px] py-[2px]"><p className="text-[9px] font-normal leading-none text-[rgba(255,255,255,0.8)]">{formatDateTime(beforeEvidence?.capturedAt)}</p></div></div>
-            <TextBlock title="Condición detectada" bordered>{item.condition}</TextBlock>
-            <TextBlock title="Medida correctiva propuesta">{item.proposedCorrectiveAction}</TextBlock>
+            <TextBlock title="Condición detectada" bordered>{condition}</TextBlock>
+            <TextBlock title="Medida correctiva propuesta">{proposedAction}</TextBlock>
             <div className="border-t-[1.5px] border-[#c8a064] bg-[#fffdf7] px-[12px] pb-[12px] pt-[13.5px]"><p className="text-[11px] font-bold uppercase leading-none tracking-[0.66px] text-[#8e6e3e]">Tu respuesta</p><div className="pt-[10px]"><p className="text-[13px] font-bold leading-none text-[#131313]">Fotografía "Después" *</p><label className="mt-[6px] flex min-h-[110px] w-full cursor-pointer flex-col items-center justify-center rounded-[10px] border-2 border-dashed border-[#d1d1d1] bg-[#f6faff] px-[16px] py-[24px]"><input type="file" accept="image/*" className="hidden" onChange={(event) => setAfterFile(event.target.files?.[0] ?? null)} />{afterPreviewUrl ? <img className="h-[94px] max-h-[94px] w-full rounded-[8px] object-cover" src={afterPreviewUrl} alt="Foto después" /> : <><p className="text-center text-[28px] leading-none">📷</p><p className="pt-[6px] text-center text-[13px] font-semibold leading-none text-[#646464]">Tomar foto o galería</p><p className="pt-[3px] text-center text-[11px] leading-none text-[#acacac]">Fecha, hora y GPS automáticos</p></>}</label></div><div className="pt-[12px]"><p className="text-[13px] font-bold leading-none text-[#131313]">Descripción de la acción tomada *</p><textarea value={description} onChange={(event) => setDescription(event.target.value)} className="mt-[6px] h-[80px] min-h-[80px] w-full resize-none rounded-[10px] border-[1.5px] border-[#d1d1d1] bg-[#f6faff] px-[15.5px] py-[14.5px] text-[13px] leading-[19.5px] text-[#131313] outline-none placeholder:text-[#757575]" placeholder="Describa la acción correctiva ejecutada..." /></div></div>
           </div>
         </div>

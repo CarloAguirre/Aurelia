@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { InspectionDetailFindingItemResponse } from '@aurelia/contracts';
 import { FindingManualExecutionView } from './FindingManualExecutionView';
 
 function BackIcon() {
@@ -21,10 +22,10 @@ function FeatureRow({ children }: { children: string }) {
   return <div className="flex items-center gap-[5px]"><span className="text-[13px] leading-none text-[#2A5C16]">✓</span><span className="text-[11px] leading-[15px] text-[#2A5C16]">{children}</span></div>;
 }
 
-export function FindingExecutionModeView({ subtitle, onBack, onStartAssistant, onStartManual, onCancel }: { subtitle: string; onBack: () => void; onStartAssistant: () => void; onStartManual: () => void; onCancel: () => void }) {
+export function FindingExecutionModeView({ subtitle, item, index, isSubmitting, onBack, onStartAssistant, onStartManual, onCancel }: { subtitle: string; item: InspectionDetailFindingItemResponse; index: number; isSubmitting: boolean; onBack: () => void; onStartAssistant: () => void; onStartManual: (description: string, file: File) => void | Promise<void>; onCancel: () => void }) {
   const [manualOpen, setManualOpen] = useState(false);
 
-  if (manualOpen) return <FindingManualExecutionView subtitle={subtitle} onBack={() => setManualOpen(false)} onCancel={onCancel} onSubmit={onStartManual} />;
+  if (manualOpen) return <FindingManualExecutionView subtitle={subtitle} item={item} index={index} isSubmitting={isSubmitting} onBack={() => setManualOpen(false)} onCancel={onCancel} onSubmit={onStartManual} />;
 
   return (
     <div className="absolute inset-0 z-30 flex flex-col overflow-hidden bg-[#F4F6F9]">
@@ -43,17 +44,17 @@ export function FindingExecutionModeView({ subtitle, onBack, onStartAssistant, o
           <div className="flex items-center gap-[12px]"><div className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-[12px] bg-gradient-to-br from-[#C8A064] to-[#8E6E3E]"><AiChipIcon /></div><div className="min-w-0 flex-1"><p className="text-[15px] font-bold leading-[17px] text-[#8E6E3E]">Asistente AurelIA</p><p className="mt-[2px] text-[11px] leading-[13px] text-[#646464]">Modo conversacional con IA</p></div><div className="rounded-[4px] bg-[#C8A064] px-[8px] py-[3px]"><span className="text-[9px] font-bold leading-none text-[#001E39]">RECOMENDADO</span></div></div>
           <p className="mt-[12px] text-[12px] leading-[19.2px] text-[#333]">El asistente te guía con preguntas simples, propone acción correctiva basada en el historial de la faena y reduce el tiempo de registro.</p>
           <div className="mt-[12px] flex flex-col gap-[5px]"><FeatureRow>Acción correctiva sugerida por IA</FeatureRow><FeatureRow>Funciona online y offline</FeatureRow></div>
-          <button type="button" onClick={onStartAssistant} className="mt-[14px] flex h-[46px] w-full items-center justify-center gap-[8px] rounded-[12px] bg-[#C8A064] text-[14px] font-bold text-[#001E39]"><SparkIcon />Iniciar con asistente</button>
+          <button type="button" onClick={onStartAssistant} className="mt-[14px] flex h-[46px] w-full items-center justify-center gap-[8px] rounded-[12px] bg-[#C8A064] text-[14px] font-bold text-[#001E39]" disabled={isSubmitting}><SparkIcon />Iniciar con asistente</button>
         </div>
 
         <div className="mt-[20px] rounded-[16px] border-[1.5px] border-[#E3E3E3] bg-white p-[21.5px]">
           <div className="flex items-center gap-[12px]"><div className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-[12px] border border-[#E3E3E3] bg-[#F4F6F9]"><ManualIcon /></div><div className="min-w-0 flex-1"><p className="text-[15px] font-bold leading-[17px] text-[#131313]">Formulario manual</p><p className="mt-[2px] text-[11px] leading-[14px] text-[#646464]">Wizard de 5 pasos</p></div></div>
           <p className="mt-[10px] pb-[12px] text-[12px] leading-[18px] text-[#646464]">Completa el formulario paso a paso como siempre. Sin asistencia de IA.</p>
-          <button type="button" onClick={() => setManualOpen(true)} className="h-[42px] w-full rounded-[12px] border-[2px] border-[#D1D1D1] bg-white text-[13px] font-semibold text-[#333]">Usar formulario manual</button>
+          <button type="button" onClick={() => setManualOpen(true)} className="h-[42px] w-full rounded-[12px] border-[2px] border-[#D1D1D1] bg-white text-[13px] font-semibold text-[#333]" disabled={isSubmitting}>Usar formulario manual</button>
         </div>
       </div>
 
-      <div className="shrink-0 border-t border-[#E3E3E3] bg-white pb-[8px] pt-[10px]"><div className="px-[14px]"><button type="button" className="flex h-[50px] w-full items-center justify-center rounded-[14px] border-[2px] border-[#C8A064] bg-white px-[20px] text-center text-[14px] font-bold text-[#C8A064]" onClick={onCancel}>Cancelar inspección</button></div><div className="mx-auto mb-[4px] mt-[12px] h-[4px] w-[120px] rounded-[2px] bg-[#D1D1D1]" /></div>
+      <div className="shrink-0 border-t border-[#E3E3E3] bg-white pb-[8px] pt-[10px]"><div className="px-[14px]"><button type="button" className="flex h-[50px] w-full items-center justify-center rounded-[14px] border-[2px] border-[#C8A064] bg-white px-[20px] text-center text-[14px] font-bold text-[#C8A064]" onClick={onCancel} disabled={isSubmitting}>Cancelar inspección</button></div><div className="mx-auto mb-[4px] mt-[12px] h-[4px] w-[120px] rounded-[2px] bg-[#D1D1D1]" /></div>
     </div>
   );
 }

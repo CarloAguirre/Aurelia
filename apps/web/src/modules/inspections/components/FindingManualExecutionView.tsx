@@ -65,7 +65,7 @@ function Stepper() {
   return <div className="shrink-0 border-b border-[#e3e3e3] bg-white px-[14px] pb-[9px] pt-[10px]"><div className="flex items-center"><div className="relative flex h-[35px] min-w-0 flex-1 flex-col items-center"><div className="absolute left-1/2 top-[10px] h-[2px] w-full bg-[#d1d1d1]" /><div className="z-10 flex size-[22px] items-center justify-center rounded-full border-2 border-[#c8a064] bg-white text-[9px] font-bold text-[#c8a064]">1</div><p className="pt-[3px] text-[8px] font-bold leading-[10px] text-[#8e6e3e]">Detalle</p></div><div className="relative flex h-[35px] w-[96px] flex-col items-center"><div className="absolute left-1/2 top-[10px] h-[2px] w-full bg-[#d1d1d1]" /><div className="z-10 flex size-[22px] items-center justify-center rounded-full border-[1.5px] border-[#d1d1d1] bg-white text-[9px] font-bold text-[#acacac]">2</div><p className="pt-[3px] text-[8px] font-normal leading-[10px] text-[#acacac]">Resumen</p></div><div className="flex h-[35px] min-w-0 flex-1 flex-col items-center"><div className="flex size-[22px] items-center justify-center rounded-full border-[1.5px] border-[#d1d1d1] bg-white text-[9px] font-bold text-[#acacac]">3</div><p className="pt-[3px] text-[8px] font-normal leading-[10px] text-[#acacac]">Confirm.</p></div></div><div className="mt-[6px] h-[2px] w-full rounded-[2px] bg-[#e3e3e3]" /></div>;
 }
 
-export function FindingManualExecutionView({ subtitle, item, index = 1, onBack, onCancel, onSubmit }: { subtitle: string; item?: InspectionDetailFindingItemResponse | null; index?: number; onBack: () => void; onCancel: () => void; onSubmit: (description: string) => void }) {
+export function FindingManualExecutionView({ subtitle, item, index = 1, isSubmitting = false, onBack, onCancel, onSubmit }: { subtitle: string; item?: InspectionDetailFindingItemResponse | null; index?: number; isSubmitting?: boolean; onBack: () => void; onCancel: () => void; onSubmit: (description: string, file: File) => void | Promise<void> }) {
   const [description, setDescription] = useState('');
   const [afterFile, setAfterFile] = useState<File | null>(null);
   const [afterPreviewUrl, setAfterPreviewUrl] = useState<string | null>(null);
@@ -77,7 +77,7 @@ export function FindingManualExecutionView({ subtitle, item, index = 1, onBack, 
   const statusLabel = item?.statusGroup === 'rejected' ? 'Rechazado' : item?.statusGroup === 'executed' ? 'Ejecutado' : item?.statusGroup === 'closed' ? 'Cerrado' : 'Abierto';
   const dueDateLabel = formatDueDate(item?.dueAt);
   const riskLabel = item?.severityLabel ? `${item.severityLabel.toLowerCase()} · SLA extendido por Admin GF` : 'Riesgo alto · SLA extendido por Admin GF';
-  const canSubmit = Boolean(afterFile && description.trim().length > 0);
+  const canSubmit = Boolean(afterFile && description.trim().length > 0 && !isSubmitting);
 
   useEffect(() => {
     if (!afterFile) {
@@ -90,8 +90,8 @@ export function FindingManualExecutionView({ subtitle, item, index = 1, onBack, 
   }, [afterFile]);
 
   function submit() {
-    if (!canSubmit) return;
-    onSubmit(description.trim());
+    if (!canSubmit || !afterFile) return;
+    onSubmit(description.trim(), afterFile);
   }
 
   return (
@@ -112,7 +112,7 @@ export function FindingManualExecutionView({ subtitle, item, index = 1, onBack, 
         <div className="pt-[16px]"><div className="rounded-[10px] bg-[#001e39] px-[14px] py-[10px]"><p className="text-[9px] font-bold uppercase leading-none tracking-[2px] text-[rgba(255,255,255,0.45)]">Fecha límite SLA</p><p className="pt-[3px] text-[14px] font-bold leading-[18px] tracking-[1.5px] text-[#c8a064]">{dueDateLabel} <span className="text-[11px] font-normal tracking-normal text-[rgba(255,255,255,0.55)]">{riskLabel}</span></p></div></div>
         <div className="mt-[12px] rounded-[10px] border border-[#ffcd56] bg-[#ffeab8] px-[12px] py-[10px]"><p className="text-[12px] leading-[18px] text-[#463100]"><span className="font-bold">BLOQUEANTE:</span> Debes adjuntar fotografía "Después" en la observación. Sin foto no es posible marcar como Ejecutado.</p></div>
       </div>
-      <div className="shrink-0 border-t border-[#e3e3e3] bg-white pb-[8px] pt-[10px]"><div className="flex gap-[10px] px-[14px]"><button type="button" className="flex h-[50px] items-center justify-center rounded-[14px] border-2 border-[#c8a064] bg-white px-[20px] text-[14px] font-bold text-[#c8a064]" onClick={onCancel}>Cancelar</button><button type="button" className={`flex h-[50px] min-w-0 flex-1 items-center justify-center gap-[8px] rounded-[14px] px-[12px] text-[14px] font-bold ${canSubmit ? 'bg-[#c8a064] text-[#001e39]' : 'bg-[#d1d1d1] text-[#acacac]'}`} disabled={!canSubmit} onClick={submit}>Marcar como ejecutado <ArrowRightIcon /></button></div><div className="mx-auto mb-[4px] mt-[12px] h-[4px] w-[120px] rounded-[2px] bg-[#d1d1d1]" /></div>
+      <div className="shrink-0 border-t border-[#e3e3e3] bg-white pb-[8px] pt-[10px]"><div className="flex gap-[10px] px-[14px]"><button type="button" className="flex h-[50px] items-center justify-center rounded-[14px] border-2 border-[#c8a064] bg-white px-[20px] text-[14px] font-bold text-[#c8a064]" onClick={onCancel} disabled={isSubmitting}>Cancelar</button><button type="button" className={`flex h-[50px] min-w-0 flex-1 items-center justify-center gap-[8px] rounded-[14px] px-[12px] text-[14px] font-bold ${canSubmit ? 'bg-[#c8a064] text-[#001e39]' : 'bg-[#d1d1d1] text-[#acacac]'}`} disabled={!canSubmit} onClick={submit}>{isSubmitting ? 'Guardando...' : 'Marcar como ejecutado'} <ArrowRightIcon /></button></div><div className="mx-auto mb-[4px] mt-[12px] h-[4px] w-[120px] rounded-[2px] bg-[#d1d1d1]" /></div>
     </div>
   );
 }

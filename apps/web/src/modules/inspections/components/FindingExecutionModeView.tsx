@@ -1,3 +1,6 @@
+import { useState } from 'react';
+import { FindingManualExecutionView } from './FindingManualExecutionView';
+
 function BackIcon() {
   return <svg width="23" height="19" viewBox="0 0 23 19" fill="none" aria-hidden="true"><path d="M9.5 1.75 1.75 9.5l7.75 7.75M2.5 9.5h18.75" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
@@ -19,6 +22,10 @@ function FeatureRow({ children }: { children: string }) {
 }
 
 export function FindingExecutionModeView({ subtitle, onBack, onStartAssistant, onStartManual, onCancel }: { subtitle: string; onBack: () => void; onStartAssistant: () => void; onStartManual: () => void; onCancel: () => void }) {
+  const [manualOpen, setManualOpen] = useState(false);
+
+  if (manualOpen) return <FindingManualExecutionView subtitle={subtitle} onBack={() => setManualOpen(false)} onCancel={onCancel} onSubmit={onStartManual} />;
+
   return (
     <div className="absolute inset-0 z-30 flex flex-col overflow-hidden bg-[#F4F6F9]">
       <div className="h-[56px] shrink-0 bg-[#002659] text-white shadow-[0_2px_4px_rgba(0,0,0,0.3)]">
@@ -42,7 +49,7 @@ export function FindingExecutionModeView({ subtitle, onBack, onStartAssistant, o
         <div className="mt-[20px] rounded-[16px] border-[1.5px] border-[#E3E3E3] bg-white p-[21.5px]">
           <div className="flex items-center gap-[12px]"><div className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-[12px] border border-[#E3E3E3] bg-[#F4F6F9]"><ManualIcon /></div><div className="min-w-0 flex-1"><p className="text-[15px] font-bold leading-[17px] text-[#131313]">Formulario manual</p><p className="mt-[2px] text-[11px] leading-[14px] text-[#646464]">Wizard de 5 pasos</p></div></div>
           <p className="mt-[10px] pb-[12px] text-[12px] leading-[18px] text-[#646464]">Completa el formulario paso a paso como siempre. Sin asistencia de IA.</p>
-          <button type="button" onClick={onStartManual} className="h-[42px] w-full rounded-[12px] border-[2px] border-[#D1D1D1] bg-white text-[13px] font-semibold text-[#333]">Usar formulario manual</button>
+          <button type="button" onClick={() => setManualOpen(true)} className="h-[42px] w-full rounded-[12px] border-[2px] border-[#D1D1D1] bg-white text-[13px] font-semibold text-[#333]">Usar formulario manual</button>
         </div>
       </div>
 

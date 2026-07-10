@@ -40,7 +40,15 @@ const mainItems: SidebarItem[] = [
     ],
   },
   { label: 'Incidentes', icon: 'incidents', disabled: true, badge: 'Próximo' },
-  { label: 'SPR', icon: 'spr', disabled: true, badge: 'Próximo' },
+  {
+    label: 'SPR',
+    icon: 'spr',
+    to: '/spr',
+    children: [
+      { label: 'Mi formulario', to: '/spr', end: true, lineMode: 'single' },
+      { label: 'Administración', disabled: true, icon: 'admin', lineMode: 'single', tone: 'gold' },
+    ],
+  },
   { label: 'Impuesto verde', icon: 'greenTax', disabled: true, badge: 'Próximo' },
   { label: 'Residuos', icon: 'waste', disabled: true, badge: 'Próximo' },
   { label: 'Controles críticos', icon: 'criticalControls', disabled: true, badge: 'Próximo' },

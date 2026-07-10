@@ -45,7 +45,8 @@ export function useInspectionFindingActions() {
     },
   });
   const executionMutation = useMutation({
-    mutationFn: async ({ findingId, executedActionDescription, file, latitude, longitude }: ExecuteFindingWithAfterEvidenceInput) => {
+    mutationFn: async (variables: ExecuteFindingWithAfterEvidenceInput) => {
+      const { findingId, executedActionDescription, file, latitude, longitude } = variables;
       const fileResponse = await uploadFile(file, null);
       const evidence = await createEvidence({
         fileId: fileResponse.id,

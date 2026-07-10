@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { InspectionDetailEvidenceResponse, InspectionDetailFindingItemResponse } from '@aurelia/contracts';
 import { env } from '../../../shared/config/env';
 import { InspectionDetailStatusChipIcon } from './InspectionDetailIcons';
@@ -16,6 +16,10 @@ function ArrowRightIcon() {
 
 function OfflineIcon() {
   return <svg width="13" height="11" viewBox="0 0 13 11" fill="none" aria-hidden="true"><path d="m1 1 11 9M3.2 4.1A5.4 5.4 0 0 1 6.5 3c1.25 0 2.4.4 3.32 1.08M5.1 6.04A2.6 2.6 0 0 1 6.5 5.63c.5 0 .96.13 1.36.37M6.5 8.35h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+function CameraIcon() {
+  return <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M5.25 5.25 6.5 3.5h5l1.25 1.75H15A1.5 1.5 0 0 1 16.5 6.75v6A1.5 1.5 0 0 1 15 14.25H3a1.5 1.5 0 0 1-1.5-1.5v-6A1.5 1.5 0 0 1 3 5.25h2.25Z" fill="currentColor" /><circle cx="9" cy="9.75" r="2.75" fill="white" /></svg>;
 }
 
 function severityClassName(value: string) {
@@ -68,7 +72,6 @@ function Stepper() {
 export function FindingManualExecutionView({ subtitle, item, index = 1, isSubmitting = false, onBack, onCancel, onSubmit }: { subtitle: string; item?: InspectionDetailFindingItemResponse | null; index?: number; isSubmitting?: boolean; onBack: () => void; onCancel: () => void; onSubmit: (description: string, file: File) => void | Promise<void> }) {
   const [description, setDescription] = useState('');
   const [afterFile, setAfterFile] = useState<File | null>(null);
-  const [afterPreviewUrl, setAfterPreviewUrl] = useState<string | null>(null);
   const beforeEvidence = item?.beforeEvidence[0];
   const beforeUrl = resolveEvidenceContentUrl(beforeEvidence);
   const severityLabel = item?.severityLabel ?? 'Moderada';
@@ -78,16 +81,6 @@ export function FindingManualExecutionView({ subtitle, item, index = 1, isSubmit
   const dueDateLabel = formatDueDate(item?.dueAt);
   const riskLabel = item?.severityLabel ? `${item.severityLabel.toLowerCase()} · SLA extendido por Admin GF` : 'Riesgo alto · SLA extendido por Admin GF';
   const canSubmit = Boolean(afterFile && description.trim().length > 0 && !isSubmitting);
-
-  useEffect(() => {
-    if (!afterFile) {
-      setAfterPreviewUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(afterFile);
-    setAfterPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [afterFile]);
 
   function submit() {
     if (!canSubmit || !afterFile) return;
@@ -106,7 +99,7 @@ export function FindingManualExecutionView({ subtitle, item, index = 1, isSubmit
             <div className="relative h-[80px] overflow-hidden rounded-[8px] bg-[linear-gradient(165deg,#1e3050_0%,#0f1f35_100%)]">{beforeUrl ? <img className="h-full w-full object-cover" src={beforeUrl} alt="Foto antes" /> : null}<div className="absolute left-[8px] top-[6px] rounded-[4px] bg-[rgba(0,0,0,0.55)] px-[7px] py-[2px]"><p className="text-[9px] font-bold uppercase leading-none tracking-[1.5px] text-white">Foto antes</p></div><div className="absolute bottom-[6px] right-[8px] rounded-[4px] bg-[rgba(0,0,0,0.5)] px-[6px] py-[2px]"><p className="text-[9px] font-normal leading-none text-[rgba(255,255,255,0.8)]">{formatDateTime(beforeEvidence?.capturedAt)}</p></div></div>
             <TextBlock title="Condición detectada" bordered>{condition}</TextBlock>
             <TextBlock title="Medida correctiva propuesta">{proposedAction}</TextBlock>
-            <div className="border-t-[1.5px] border-[#c8a064] bg-[#fffdf7] px-[12px] pb-[12px] pt-[13.5px]"><p className="text-[11px] font-bold uppercase leading-none tracking-[0.66px] text-[#8e6e3e]">Tu respuesta</p><div className="pt-[10px]"><p className="text-[13px] font-bold leading-none text-[#131313]">Fotografía "Después" *</p><label className="mt-[6px] flex min-h-[110px] w-full cursor-pointer flex-col items-center justify-center rounded-[10px] border-2 border-dashed border-[#d1d1d1] bg-[#f6faff] px-[16px] py-[24px]"><input type="file" accept="image/*" className="hidden" onChange={(event) => setAfterFile(event.target.files?.[0] ?? null)} />{afterPreviewUrl ? <img className="h-[94px] max-h-[94px] w-full rounded-[8px] object-cover" src={afterPreviewUrl} alt="Foto después" /> : <><p className="text-center text-[28px] leading-none">📷</p><p className="pt-[6px] text-center text-[13px] font-semibold leading-none text-[#646464]">Tomar foto o galería</p><p className="pt-[3px] text-center text-[11px] leading-none text-[#acacac]">Fecha, hora y GPS automáticos</p></>}</label></div><div className="pt-[12px]"><p className="text-[13px] font-bold leading-none text-[#131313]">Descripción de la acción tomada *</p><textarea value={description} onChange={(event) => setDescription(event.target.value)} className="mt-[6px] h-[80px] min-h-[80px] w-full resize-none rounded-[10px] border-[1.5px] border-[#d1d1d1] bg-[#f6faff] px-[15.5px] py-[14.5px] text-[13px] leading-[19.5px] text-[#131313] outline-none placeholder:text-[#757575]" placeholder="Describa la acción correctiva ejecutada..." /></div></div>
+            <div className="border-t-[1.5px] border-[#c8a064] bg-[#fffdf7] px-[12px] pb-[12px] pt-[13.5px]"><p className="text-[11px] font-bold uppercase leading-none tracking-[0.66px] text-[#8e6e3e]">Tu respuesta</p><div className="pt-[10px]">{afterFile ? <label className="flex h-[60px] w-full cursor-pointer items-center gap-[8px] rounded-[8px] bg-[#3a9b3a] px-[12px] py-[10px]"><input type="file" accept="image/*" className="hidden" onChange={(event) => setAfterFile(event.target.files?.[0] ?? afterFile)} /><span className="flex size-[40px] shrink-0 items-center justify-center rounded-[8px] bg-[rgba(255,255,255,0.25)] text-white"><CameraIcon /></span><span className="min-w-0 truncate text-[12px] font-bold leading-none text-white">{afterFile.name}</span></label> : <><p className="text-[13px] font-bold leading-none text-[#131313]">Fotografía "Después" *</p><label className="mt-[6px] flex min-h-[110px] w-full cursor-pointer flex-col items-center justify-center rounded-[10px] border-2 border-dashed border-[#d1d1d1] bg-[#f6faff] px-[16px] py-[24px]"><input type="file" accept="image/*" className="hidden" onChange={(event) => setAfterFile(event.target.files?.[0] ?? null)} /><p className="text-center text-[28px] leading-none">📷</p><p className="pt-[6px] text-center text-[13px] font-semibold leading-none text-[#646464]">Tomar foto o galería</p><p className="pt-[3px] text-center text-[11px] leading-none text-[#acacac]">Fecha, hora y GPS automáticos</p></label></>}</div><div className="pt-[12px]"><p className="text-[13px] font-bold leading-none text-[#131313]">Descripción de la acción tomada *</p><textarea value={description} onChange={(event) => setDescription(event.target.value)} className="mt-[6px] h-[80px] min-h-[80px] w-full resize-none rounded-[10px] border-[1.5px] border-[#d1d1d1] bg-[#f6faff] px-[15.5px] py-[14.5px] text-[13px] leading-[19.5px] text-[#131313] outline-none placeholder:text-[#757575]" placeholder="Describa la acción correctiva ejecutada..." /></div></div>
           </div>
         </div>
         <div className="pt-[16px]"><div className="rounded-[10px] bg-[#001e39] px-[14px] py-[10px]"><p className="text-[9px] font-bold uppercase leading-none tracking-[2px] text-[rgba(255,255,255,0.45)]">Fecha límite SLA</p><p className="pt-[3px] text-[14px] font-bold leading-[18px] tracking-[1.5px] text-[#c8a064]">{dueDateLabel} <span className="text-[11px] font-normal tracking-normal text-[rgba(255,255,255,0.55)]">{riskLabel}</span></p></div></div>

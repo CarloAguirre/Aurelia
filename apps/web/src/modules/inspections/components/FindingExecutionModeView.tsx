@@ -22,7 +22,7 @@ function FeatureRow({ children }: { children: string }) {
   return <div className="flex items-center gap-[5px]"><span className="text-[13px] leading-none text-[#2A5C16]">✓</span><span className="text-[11px] leading-[15px] text-[#2A5C16]">{children}</span></div>;
 }
 
-export function FindingExecutionModeView({ subtitle, item = null, index = 1, isSubmitting = false, onBack, onStartAssistant, onStartManual, onCancel }: { subtitle: string; item?: InspectionDetailFindingItemResponse | null; index?: number; isSubmitting?: boolean; onBack: () => void; onStartAssistant: () => void; onStartManual: (description?: string, file?: File) => void | Promise<void>; onCancel: () => void }) {
+export function FindingExecutionModeView({ subtitle, item = null, index = 1, isSubmitting = false, onBack, onStartAssistant, onStartManual, onCancel }: { subtitle: string; item?: InspectionDetailFindingItemResponse | null; index?: number; isSubmitting?: boolean; onBack: () => void; onStartAssistant: () => void; onStartManual: (description: string, file: File) => void | Promise<void>; onCancel: () => void }) {
   const [manualOpen, setManualOpen] = useState(false);
 
   if (manualOpen) return <FindingManualExecutionView subtitle={subtitle} item={item} index={index} isSubmitting={isSubmitting} onBack={() => setManualOpen(false)} onCancel={onCancel} onSubmit={onStartManual} />;

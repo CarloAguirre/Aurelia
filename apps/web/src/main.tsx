@@ -6,6 +6,7 @@ import { ApproveCloseConfirmBridge } from './modules/inspections/components/Appr
 import { DraftProgressBridge } from './modules/inspections/components/DraftProgressBridge';
 import { IncompleteInspectionDraftBridge } from './modules/inspections/components/IncompleteInspectionDraftBridge';
 import { InspectionAreaSectorFilterBridge } from './modules/inspections/components/InspectionAreaSectorFilterBridge';
+import { InspectionFollowupProgressBridge } from './modules/inspections/components/InspectionFollowupProgressBridge';
 import { router } from './routes/router';
 import './modules/dashboard/dashboard-figma-alignment.css';
 
@@ -20,6 +21,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       <IncompleteInspectionDraftBridge />
       <DraftProgressBridge />
       <ApproveCloseConfirmBridge />
+      <InspectionFollowupProgressBridge />
     </QueryClientProvider>
   </React.StrictMode>,
 );

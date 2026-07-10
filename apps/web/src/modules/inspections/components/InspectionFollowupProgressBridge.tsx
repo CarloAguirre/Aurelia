@@ -55,22 +55,50 @@ function progressBody(closed: number, pending: number, total: number) {
   return `<div class="pt-[2px]"><ul class="list-disc text-[11px] font-normal leading-normal text-[#646464]"><li class="ms-[16.5px]">Observaciones cerradas: ${closed} obs / ${percent(closed, total)}%</li><li class="ms-[16.5px]">Observaciones pendientes: ${pending} obs / ${percent(pending, total)}%</li></ul></div>`;
 }
 
+function sourceTextFor(panel: HTMLElement) {
+  const currentText = panel.innerText;
+  const previousText = panel.dataset.aureliaFollowupSource;
+  if (!previousText || currentText.includes('Obs. ') || currentText.includes('Seguimiento 1')) {
+    panel.dataset.aureliaFollowupSource = currentText;
+    return currentText;
+  }
+  return previousText;
+}
+
+function datesAfterEvent(text: string, pattern: RegExp) {
+  const lines = text.split('\n').map((line) => line.trim()).filter(Boolean);
+  const dates: string[] = [];
+  lines.forEach((line, index) => {
+    if (!pattern.test(line)) return;
+    const date = lines.slice(index + 1).find((candidate) => datePattern.test(candidate));
+    if (date && !dates.includes(date)) dates.push(date);
+  });
+  return dates;
+}
+
+function firstDateFrom(text: string) {
+  return text.split('\n').map((line) => line.trim()).find((line) => datePattern.test(line)) ?? '—';
+}
+
 function renderFollowups(panel: HTMLElement, counts: FindingCounts) {
   const total = counts.executed + counts.open + counts.closed + counts.rejected;
   const pending = Math.max(0, total - counts.closed);
-  const lines = panel.innerText.split('\n').map((line) => line.trim()).filter(Boolean);
-  const dates = lines.filter((line) => datePattern.test(line));
-  const initialDate = panel.dataset.aureliaInitialDate || dates[0] || '—';
-  const followupDate = panel.dataset.aureliaFollowupDate || dates[1] || dates[0] || '—';
-  const closureDate = panel.dataset.aureliaClosureDate || dates[dates.length - 1] || followupDate;
-  const signature = `${counts.executed}|${counts.open}|${counts.closed}|${counts.rejected}|${initialDate}|${followupDate}|${closureDate}`;
+  const sourceText = sourceTextFor(panel);
+  const initialDate = panel.dataset.aureliaInitialDate || firstDateFrom(sourceText);
+  const executionDates = datesAfterEvent(sourceText, /^Obs\.\s+\d+\s+ejecutada$/i);
+  const closureDates = datesAfterEvent(sourceText, /^Obs\.\s+\d+\s+cerrada$/i);
+  const hasExecutionProgress = counts.executed > 0 || counts.rejected > 0 || counts.closed > 0;
+  const fallbackExecutionDate = executionDates[0] || closureDates[0] || initialDate;
+  const closureDate = closureDates[closureDates.length - 1] || fallbackExecutionDate;
+  const signature = `${counts.executed}|${counts.open}|${counts.closed}|${counts.rejected}|${initialDate}|${executionDates.join(',')}|${closureDate}`;
   if (panel.dataset.aureliaFollowupProgress === signature) return;
   panel.dataset.aureliaInitialDate = initialDate;
-  panel.dataset.aureliaFollowupDate = followupDate;
-  panel.dataset.aureliaClosureDate = closureDate;
   panel.dataset.aureliaFollowupProgress = signature;
   const steps: TimelineStep[] = [{ title: 'Inspección inicial', date: initialDate, body: `<p class="pt-[5px] text-[11px] font-normal leading-none text-[#646464]">${total} ${obsWord(total)} detectadas</p>`, completed: true }];
-  if (counts.closed > 0 && counts.closed < total) steps.push({ title: 'Seguimiento 1', date: followupDate, body: progressBody(counts.closed, pending, total), completed: true });
+  const followupDates = executionDates.length > 0 ? executionDates : hasExecutionProgress ? [fallbackExecutionDate] : [];
+  followupDates.forEach((date, index) => {
+    steps.push({ title: `Seguimiento ${index + 1}`, date, body: progressBody(counts.closed, pending, total), completed: true });
+  });
   if (total > 0 && counts.closed === total) steps.push({ title: 'Cierre', date: closureDate, body: `<p class="pt-[5px] text-[11px] font-normal leading-[15px] text-[#646464]">Cierre aprobado por Admin GF HSE</p>`, completed: true });
   panel.innerHTML = `<div class="flex items-center gap-[6px]"><svg class="h-[11px] w-[13.75px]" width="14" height="11" viewBox="0 0 14 11" fill="none" aria-hidden="true"><circle cx="3" cy="2.25" r="2" fill="#24588B"/><circle cx="11" cy="2.25" r="2" fill="#24588B"/><circle cx="7" cy="8.5" r="2" fill="#24588B"/><path d="M3 4.25V5.5C3 6.05 3.45 6.5 4 6.5H6.05M11 4.25V5.5C11 6.05 10.55 6.5 10 6.5H7.95M5 2.25H9" stroke="#24588B" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/></svg><p class="text-[11px] font-bold uppercase leading-none tracking-[0.55px] text-[#646464]">Historial de seguimientos</p></div><div class="pt-[10px]">${steps.map((step, index) => timelineItem(step, index === steps.length - 1)).join('')}</div>`;
 }

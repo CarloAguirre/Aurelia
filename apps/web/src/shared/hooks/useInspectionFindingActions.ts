@@ -14,12 +14,19 @@ type ExecuteFindingWithAfterEvidenceInput = {
   findingId: string;
   executedActionDescription: string;
   file: File;
-  latitude?: number | null;
-  longitude?: number | null;
+  latitude?: number | string | null;
+  longitude?: number | string | null;
 };
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function normalizeCoordinate(value: number | string | null | undefined) {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+  if (typeof value !== 'string') return undefined;
+  const coordinate = Number(value);
+  return Number.isFinite(coordinate) ? coordinate : undefined;
 }
 
 export function useInspectionFindingActions() {
@@ -46,8 +53,8 @@ export function useInspectionFindingActions() {
         description: executedActionDescription,
         evidenceType: 'photo',
         capturedAt: nowIso(),
-        latitude: latitude ?? undefined,
-        longitude: longitude ?? undefined,
+        latitude: normalizeCoordinate(latitude),
+        longitude: normalizeCoordinate(longitude),
       });
       await linkEvidence(evidence.id, {
         entityType: 'inspection_finding',

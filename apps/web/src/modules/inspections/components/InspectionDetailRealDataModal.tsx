@@ -56,6 +56,7 @@ type FollowupStep = {
   date: string;
   summary?: string;
   completed: boolean;
+  occurredAt?: string | null;
 };
 
 type GeneralInfoRow = {
@@ -95,6 +96,13 @@ const statusConfigByKey: Record<StatusKey, StatusConfig> = {
   open: { key: 'open', label: 'Abiertas', chipLabel: 'Abiertas', itemLabel: 'Abierto', textClass: 'text-[#463100]', chipClass: 'bg-[#ffeab8] text-[#463100]' },
   closed: { key: 'closed', label: 'Cerradas', chipLabel: 'Cerrada', itemLabel: 'Cerrado', textClass: 'text-[#2a5c16]', chipClass: 'bg-[#e0ffd3] text-[#2a5c16]' },
   rejected: { key: 'rejected', label: 'Rechazadas', chipLabel: 'Rechazada', itemLabel: 'Rechazado', textClass: 'text-[#646464]', chipClass: 'bg-[#f7f7f7] text-[#646464]' },
+};
+
+const emptyStatusMessage: Record<StatusKey, string> = {
+  executed: 'No hay observaciones ejecutadas.',
+  open: 'No hay observaciones abiertas.',
+  closed: 'No hay observaciones cerradas.',
+  rejected: 'No hay observaciones rechazadas.',
 };
 
 const statusConfigs = Object.values(statusConfigByKey);
@@ -139,6 +147,13 @@ function dueDateFromDays(days: number) {
   return date.toISOString();
 }
 
+function toTimestamp(value: string | null | undefined) {
+  if (!value) return Number.MAX_SAFE_INTEGER;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return Number.MAX_SAFE_INTEGER;
+  return date.getTime();
+}
+
 function severityClassName(value: string) {
   const normalized = value.toLowerCase();
   if (normalized.includes('crítico') || normalized.includes('critico')) return 'bg-[#ffd0db] text-[#570b1d]';
@@ -167,7 +182,7 @@ function initials(value: string) {
 }
 
 function allFindings(detail: InspectionDetailResponse) {
-  return Object.values(detail.findings).flat();
+  return statusConfigs.flatMap((config) => detail.findings[config.key]);
 }
 
 function primaryResponsibleCompany(detail: InspectionDetailResponse) {
@@ -218,6 +233,10 @@ function StatusRow({ config, count, expanded, onToggle }: { config: StatusConfig
   return <button type="button" className="flex h-[56px] w-full shrink-0 items-center justify-between border-b border-[#e3e3e3] bg-white px-[14px] py-[16px]" onClick={onToggle} aria-expanded={expanded}><div className="flex items-center gap-[10px]"><InspectionDetailStatusRowIcon status={config.key} /><p className={`font-['Inter:Bold',sans-serif] text-[11px] font-bold uppercase leading-[13px] tracking-[0.66px] ${config.textClass}`}>{config.label}</p><span className={`flex h-[14px] min-w-[19px] items-center justify-center rounded-[8px] px-[7px] font-['Inter:Bold',sans-serif] text-[10px] font-bold leading-[12px] tracking-[0.6px] ${config.chipClass}`}>{count}</span></div><InspectionDetailCaretDownIcon className={expanded ? 'size-[16px] rotate-180' : 'size-[16px]'} /></button>;
 }
 
+function EmptyStatusPanel({ status }: { status: StatusKey }) {
+  return <div className="flex min-h-[92px] items-center justify-center border-b border-[#e3e3e3] bg-white px-[24px] py-[24px]"><p className="text-center text-[12px] font-semibold leading-[18px] text-[#646464]">{emptyStatusMessage[status]}</p></div>;
+}
+
 function FindingPill({ children, className }: { children: string; className: string }) {
   return <span className={`inline-flex h-[19px] items-center rounded-[6px] px-[8px] text-[11px] font-bold leading-none ${className}`}>{children}</span>;
 }
@@ -255,8 +274,11 @@ function FindingObservationsPanel({ inspectionId, items, actions, onRequestExecu
 }
 
 function DetailRows({ inspectionId, counts, findings, actions, onRequestExecutionMode, onRequestReject }: DetailRowsProps) {
-  const [expandedStatus, setExpandedStatus] = useState<StatusKey | null>('open');
-  return <div className="min-h-0 flex-1 overflow-y-auto bg-white">{statusConfigs.map((config) => { const expanded = expandedStatus === config.key; const panel = expanded ? <FindingObservationsPanel inspectionId={inspectionId} items={findings[config.key]} actions={actions} onRequestExecutionMode={onRequestExecutionMode} onRequestReject={onRequestReject} /> : null; return <div key={config.key}><StatusRow config={config} count={counts[config.key]} expanded={expanded} onToggle={() => setExpandedStatus((current) => current === config.key ? null : config.key)} />{panel}</div>; })}</div>;
+  const [expandedStatus, setExpandedStatus] = useState<StatusKey | null>(null);
+  useEffect(() => {
+    setExpandedStatus(null);
+  }, [inspectionId]);
+  return <div className="min-h-0 flex-1 overflow-y-auto bg-white">{statusConfigs.map((config) => { const expanded = expandedStatus === config.key; const items = findings[config.key] ?? []; const panel = expanded ? items.length > 0 ? <FindingObservationsPanel inspectionId={inspectionId} items={items} actions={actions} onRequestExecutionMode={onRequestExecutionMode} onRequestReject={onRequestReject} /> : <EmptyStatusPanel status={config.key} /> : null; return <div key={config.key}><StatusRow config={config} count={counts[config.key]} expanded={expanded} onToggle={() => setExpandedStatus((current) => current === config.key ? null : config.key)} />{panel}</div>; })}</div>;
 }
 
 function ChecklistResultPanel() {
@@ -269,14 +291,22 @@ function FollowupTimelineMarker({ completed }: { completed: boolean }) {
 
 function buildFollowupSteps(detail: InspectionDetailResponse): FollowupStep[] {
   const observedCount = allFindings(detail).length;
-  const actualSteps: FollowupStep[] = detail.followups.slice(0, 3).map((step, index) => ({ id: step.followupId, title: `Seguimiento ${index + 1}`, date: formatDate(step.performedAt), summary: step.description, completed: step.completed }));
-  const paddedSteps: FollowupStep[] = [...actualSteps];
-  while (paddedSteps.length < 3) paddedSteps.push({ id: `pending-${paddedSteps.length + 1}`, title: `Seguimiento ${paddedSteps.length + 1}`, date: '—', completed: false });
-  return [{ id: 'initial', title: 'Inspección inicial', date: formatDate(detail.general.scheduledAt), summary: `${observedCount} observaciones detectadas`, completed: true }, ...paddedSteps];
+  const events: FollowupStep[] = [];
+  detail.followups.forEach((step) => {
+    events.push({ id: `followup-${step.followupId}`, title: step.title || `Seguimiento ${step.sequenceNumber}`, date: formatDate(step.performedAt), summary: step.description, completed: step.completed, occurredAt: step.performedAt });
+  });
+  allFindings(detail).forEach((item, index) => {
+    const observationLabel = `Obs. ${index + 1}`;
+    if (item.executedAt) events.push({ id: `executed-${item.findingId}`, title: `${observationLabel} ejecutada`, date: formatDate(item.executedAt), summary: item.executedActionDescription ?? 'Observación marcada como ejecutada', completed: true, occurredAt: item.executedAt });
+    if (item.rejectedAt) events.push({ id: `rejected-${item.findingId}`, title: `${observationLabel} rechazada`, date: formatDate(item.rejectedAt), summary: item.rejectionReason ?? 'Observación rechazada y devuelta a corrección', completed: true, occurredAt: item.rejectedAt });
+    if (item.closedAt) events.push({ id: `closed-${item.findingId}`, title: `${observationLabel} cerrada`, date: formatDate(item.closedAt), summary: 'Cierre aprobado por Admin GF HSE', completed: true, occurredAt: item.closedAt });
+  });
+  const sortedEvents = events.sort((left, right) => toTimestamp(left.occurredAt) - toTimestamp(right.occurredAt));
+  return [{ id: 'initial', title: 'Inspección inicial', date: formatDate(detail.general.scheduledAt), summary: `${observedCount} observaciones detectadas`, completed: true, occurredAt: detail.general.scheduledAt }, ...sortedEvents];
 }
 
 function FollowupTimelineItem({ step, isLast }: { step: FollowupStep; isLast: boolean }) {
-  return <div className={`relative flex w-full gap-[12px] ${isLast ? '' : 'pb-[16px]'}`}><FollowupTimelineMarker completed={step.completed} />{!isLast ? <div className="absolute left-[11px] top-[24px] h-[23px] w-[2px] bg-[#e3e3e3]" /> : null}<div className="min-w-0 flex-1 pt-[2px]"><p className="text-[12px] font-bold leading-none text-[#131313]">{step.title}</p><p className="pt-[4px] text-[11px] font-normal leading-none text-[#646464]">{step.date}</p>{step.summary ? <p className="pt-[5px] text-[11px] font-normal leading-none text-[#646464]">{step.summary}</p> : null}</div></div>;
+  return <div className={`relative flex w-full gap-[12px] ${isLast ? '' : 'pb-[16px]'}`}><FollowupTimelineMarker completed={step.completed} />{!isLast ? <div className="absolute left-[11px] top-[24px] h-[23px] w-[2px] bg-[#e3e3e3]" /> : null}<div className="min-w-0 flex-1 pt-[2px]"><p className="text-[12px] font-bold leading-none text-[#131313]">{step.title}</p><p className="pt-[4px] text-[11px] font-normal leading-none text-[#646464]">{step.date}</p>{step.summary ? <p className="pt-[5px] text-[11px] font-normal leading-[15px] text-[#646464]">{step.summary}</p> : null}</div></div>;
 }
 
 function FollowupsPanel({ detail }: { detail: InspectionDetailResponse }) {

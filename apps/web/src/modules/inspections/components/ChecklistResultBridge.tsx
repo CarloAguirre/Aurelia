@@ -42,7 +42,7 @@ function isResultTabActive(dialog: HTMLElement) {
 }
 
 function findResultPanel(dialog: HTMLElement) {
-  const candidates = Array.from(dialog.querySelectorAll('div')).filter((element): element is HTMLElement => element instanceof HTMLElement && classNameIncludes(element, 'min-h-0') && classNameIncludes(element, 'flex-1') && classNameIncludes(element, 'overflow-y-auto') && classNameIncludes(element, 'bg-white'));
+  const candidates = Array.from(dialog.querySelectorAll('div')).filter((element) => classNameIncludes(element, 'min-h-0') && classNameIncludes(element, 'flex-1') && classNameIncludes(element, 'overflow-y-auto') && classNameIncludes(element, 'bg-white'));
   return candidates.find((element) => element.dataset.aureliaChecklistResult === 'true') ?? candidates.find((element) => element.childElementCount === 0) ?? candidates[candidates.length - 1] ?? null;
 }
 

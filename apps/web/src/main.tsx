@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from 'react-router-dom';
 import { ApproveCloseConfirmBridge } from './modules/inspections/components/ApproveCloseConfirmBridge';
+import { ChecklistResultBridge } from './modules/inspections/components/ChecklistResultBridge';
 import { DraftProgressBridge } from './modules/inspections/components/DraftProgressBridge';
 import { IncompleteInspectionDraftBridge } from './modules/inspections/components/IncompleteInspectionDraftBridge';
 import { InspectionAreaSectorFilterBridge } from './modules/inspections/components/InspectionAreaSectorFilterBridge';
@@ -24,6 +25,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       <ApproveCloseConfirmBridge />
       <InspectionFollowupProgressBridge />
       <InspectionClosedReassignLockBridge />
+      <ChecklistResultBridge />
     </QueryClientProvider>
   </React.StrictMode>,
 );

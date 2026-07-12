@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactElement } from 'react';
 import { createPortal } from 'react-dom';
 
 function InfoIcon() {
@@ -13,7 +13,7 @@ function CheckIcon() {
   return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" /><path d="m8 12 2.4 2.4L16.5 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
-export function FindingRejectDialog({ open, isSubmitting, onClose, onConfirm }: { open: boolean; isSubmitting: boolean; onClose: () => void; onConfirm: (reason: string) => void | Promise<void> }) {
+export function FindingRejectDialog({ open, isSubmitting, onClose, onConfirm }: { open: boolean; isSubmitting: boolean; onClose: () => void; onConfirm: (reason: string) => void | Promise<void> }): ReactElement | null {
   const [reason, setReason] = useState('');
   const canSubmit = reason.trim().length > 0 && !isSubmitting;
 

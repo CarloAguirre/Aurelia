@@ -44,8 +44,8 @@ function normalize(value: string | null | undefined) {
 export function buildFindingAssistantExecutionSuggestionPayload(input: SuggestFindingExecutionActionInput): FindingAssistantExecutionSuggestionPayload {
   const item = input.item;
   return {
-    inspectionId: item?.inspectionId ?? null,
-    findingId: item?.id ?? null,
+    inspectionId: null,
+    findingId: item?.findingId ?? null,
     areaLabel: input.areaLabel || 'el área inspeccionada',
     condition: item?.condition ?? 'la condición detectada',
     proposedCorrectiveAction: item?.proposedCorrectiveAction ?? 'la medida correctiva solicitada',

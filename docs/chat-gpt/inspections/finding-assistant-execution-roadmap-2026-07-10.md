@@ -25,6 +25,7 @@ La referencia funcional y visual inicial viene del prototipo HTML `Ejecución de
   - Consume datos reales del `InspectionDetailFindingItemResponse`.
   - Reutiliza iconografía del chatbot existente de creación de inspección.
   - Usa el mismo contrato de submit del formulario manual.
+  - Renderiza la evidencia inicial real cuando el detalle entrega `beforeEvidence`.
 
 - `apps/web/src/shared/services/findingAssistantExecution.service.ts`
   - Expone `suggestFindingExecutionAction`.
@@ -33,6 +34,7 @@ La referencia funcional y visual inicial viene del prototipo HTML `Ejecución de
 
 - `apps/web/public/mock/finding-assistant-execution-suggestions.json`
   - Define reglas de respuesta por criticidad.
+  - Usa placeholders del contexto real de ejecución.
   - Será reemplazable por el servicio real de IA.
 
 ## Integración actual
@@ -50,6 +52,7 @@ El flujo manual queda intacto:
 
 - Saludo inicial de AurelIA.
 - Card del hallazgo con observación, criticidad, condición detectada y medida solicitada.
+- Foto inicial real cuando existe evidencia `Antes` en el detalle.
 - Card SLA con fecha límite y días vigentes.
 - Opciones rápidas:
   - `Sí, iniciar respuesta`.
@@ -60,7 +63,7 @@ El flujo manual queda intacto:
 - Solicita foto posterior.
 - Permite tomar foto o cargar desde galería.
 - Al adjuntar evidencia, llama al servicio mock de sugerencia IA.
-- Muestra card `Acción sugerida por AurelIA`.
+- Muestra card `Acción sugerida por AurelIA` con badge `Mock` para dejar explícito que aún no es IA productiva.
 - Permite aceptar o editar la descripción.
 - Habilita `Continuar al resumen` cuando existe foto y descripción.
 
@@ -75,6 +78,13 @@ El flujo manual queda intacto:
 - Muestra confirmación visual de observación ejecutada.
 - Informa que Admin GF HSE recibirá la alerta de revisión.
 - Permite volver a Mis hallazgos.
+
+## Avance reciente
+
+- Se fidelizó la card de detalle para usar evidencia real del hallazgo en el paso inicial.
+- Se ajustaron los chips de criticidad para que respeten el color semántico usado en el resto del módulo.
+- Se contextualizó el JSON mock para que las sugerencias mencionen la medida correctiva real.
+- Se dejó visible el badge `Mock` en la sugerencia para facilitar el reemplazo futuro por el servicio IA real.
 
 ## Próximos pasos sugeridos
 

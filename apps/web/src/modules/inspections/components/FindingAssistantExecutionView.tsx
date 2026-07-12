@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { InspectionEvidenceRelationType, InspectionFindingStatus, type InspectionDetailEvidenceResponse, type InspectionDetailFindingItemResponse } from '@aurelia/contracts';
 import { env } from '../../../shared/config/env';
@@ -87,6 +87,30 @@ function evidenceLabel(evidence: InspectionDetailEvidenceResponse | undefined, f
   return evidence?.title ?? evidence?.description ?? fallback;
 }
 
+function firstName(value: string | null | undefined, fallback: string) {
+  return value?.trim().split(/\s+/)[0] ?? fallback;
+}
+
+function CameraRetroIcon({ className = 'size-[18px]' }: { className?: string }) {
+  return <svg viewBox="0 0 512 512" fill="none" aria-hidden="true" className={className}><path fill="currentColor" d="M220.6 121.2 271.1 96H448c35.3 0 64 28.7 64 64v256c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V160c0-35.3 28.7-64 64-64h94.1c24.2 0 46.4 13.7 57.2 35.4l5.3 10.6ZM256 416a112 112 0 1 0 0-224 112 112 0 1 0 0 224Zm0-176a64 64 0 1 1 0 128 64 64 0 1 1 0-128Zm176-32a24 24 0 1 0 0-48 24 24 0 1 0 0 48Z" /></svg>;
+}
+
+function ImageIcon({ className = 'size-[18px]' }: { className?: string }) {
+  return <svg viewBox="0 0 512 512" fill="none" aria-hidden="true" className={className}><path fill="currentColor" d="M448 80c8.8 0 16 7.2 16 16v319.8l-5-6.5-136-176c-4.5-5.9-11.6-9.3-19-9.3s-14.4 3.4-19 9.3L202 340.7l-30.5-42.7c-4.5-6.3-11.7-10-19.5-10s-15 3.7-19.5 10.1l-80 112L48 416.3V96c0-8.8 7.2-16 16-16h384ZM64 32C28.7 32 0 60.7 0 96v320c0 35.3 28.7 64 64 64h384c35.3 0 64-28.7 64-64V96c0-35.3-28.7-64-64-64H64Zm80 192a48 48 0 1 0 0-96 48 48 0 1 0 0 96Z" /></svg>;
+}
+
+function BellIcon({ className = 'size-[14px]' }: { className?: string }) {
+  return <svg viewBox="0 0 448 512" fill="none" aria-hidden="true" className={className}><path fill="currentColor" d="M224 0c-17.7 0-32 14.3-32 32v19.2C119 66 64 130.6 64 208v25.4c0 45.4-15.5 89.5-43.8 124.9L5.3 377c-5.8 7.2-6.9 17.1-2.9 25.4S14.8 416 24 416h400c9.2 0 17.6-5.3 21.6-13.6s2.9-18.2-2.9-25.4l-14.9-18.6C399.5 322.9 384 278.8 384 233.4V208c0-77.4-55-142-128-156.8V32c0-17.7-14.3-32-32-32Zm45.3 493.3c12-12 18.7-28.3 18.7-45.3H160c0 17 6.7 33.3 18.7 45.3S207 512 224 512s33.3-6.7 45.3-18.7Z" /></svg>;
+}
+
+function ShieldIcon({ className = 'size-[12px]' }: { className?: string }) {
+  return <svg viewBox="0 0 512 512" fill="none" aria-hidden="true" className={className}><path fill="currentColor" d="M256 0c4.6 0 9.2 1 13.4 2.9l188.3 79.9c22 9.3 38.3 31 38.3 57.2 0 99.6-41.3 280.7-213.6 363.2-16.7 8-36.1 8-52.8 0C57.3 420.7 16 239.6 16 140c0-26.2 16.3-47.9 38.3-57.2L242.6 2.9C246.8 1 251.4 0 256 0Zm0 66.8v378.1C394 378 432 230.1 432 141.4L256 66.8Z" /></svg>;
+}
+
+function WorkerIcon({ className = 'size-[12px]' }: { className?: string }) {
+  return <svg viewBox="0 0 448 512" fill="none" aria-hidden="true" className={className}><path fill="currentColor" d="M224 256A128 128 0 1 0 224 0a128 128 0 1 0 0 256Zm-45.7 48C79.8 304 0 383.8 0 482.3C0 498.7 13.3 512 29.7 512h388.6c16.4 0 29.7-13.3 29.7-29.7C448 383.8 368.2 304 269.7 304h-91.4Z" /></svg>;
+}
+
 function Header({ subtitle, phase, onBack }: { subtitle: string; phase: AssistantPhase; onBack: () => void }) {
   const stepIndex = phase === 'details' ? 0 : phase === 'response' ? 1 : 2;
   const labels = ['Paso 1 · Detalles del hallazgo', 'Paso 2 · Tu respuesta', 'Paso 3 · Resumen'];
@@ -101,7 +125,7 @@ function Header({ subtitle, phase, onBack }: { subtitle: string; phase: Assistan
             <p className="mt-[1px] flex items-center gap-[4px] truncate text-[11px] leading-[14px] text-[rgba(255,255,255,0.55)]"><span className="h-[6px] w-[6px] rounded-full bg-[#00B398]" />AurelIA · Asistente EECC · {subtitle}</p>
           </div>
           <div className="mr-[4px] flex h-[22px] shrink-0 items-center rounded-[16px] bg-[#00B398] px-[10px] text-[10px] font-bold text-white">EECC</div>
-          <button type="button" className="flex h-[48px] w-[36px] shrink-0 items-center justify-center rounded-full"><ChatMoreIcon /></button>
+          <button type="button" className="flex h-[48px] w-[36px] shrink-0 items-center justify-center rounded-full" aria-label="Más opciones"><ChatMoreIcon /></button>
         </div>
       </div>
       <div className="shrink-0 bg-[#002659] px-[16px] pb-[7px] pt-[7px]">
@@ -115,18 +139,6 @@ function Header({ subtitle, phase, onBack }: { subtitle: string; phase: Assistan
       </div>
     </>
   );
-}
-
-function BellIcon() {
-  return <svg width="14" height="14" viewBox="0 0 448 512" fill="none" aria-hidden="true"><path fill="currentColor" d="M224 0c-17.7 0-32 14.3-32 32v19.2C119 66 64 130.6 64 208v25.4c0 45.4-15.5 89.5-43.8 124.9L5.3 377c-5.8 7.2-6.9 17.1-2.9 25.4S14.8 416 24 416h400c9.2 0 17.6-5.3 21.6-13.6s2.9-18.2-2.9-25.4l-14.9-18.6C399.5 322.9 384 278.8 384 233.4V208c0-77.4-55-142-128-156.8V32c0-17.7-14.3-32-32-32Zm45.3 493.3c12-12 18.7-28.3 18.7-45.3H160c0 17 6.7 33.3 18.7 45.3S207 512 224 512s33.3-6.7 45.3-18.7Z" /></svg>;
-}
-
-function ShieldIcon() {
-  return <svg width="12" height="12" viewBox="0 0 512 512" fill="none" aria-hidden="true"><path fill="currentColor" d="M256 0c4.6 0 9.2 1 13.4 2.9L457.7 82.8c22 9.3 38.3 31 38.3 57.2c0 99.6-41.3 280.7-213.6 363.2c-16.7 8-36.1 8-52.8 0C57.3 420.7 16 239.6 16 140c0-26.2 16.3-47.9 38.3-57.2L242.6 2.9C246.8 1 251.4 0 256 0Zm0 66.8v378.1C394 378 432 230.1 432 141.4L256 66.8Z" /></svg>;
-}
-
-function WorkerIcon() {
-  return <svg width="12" height="12" viewBox="0 0 448 512" fill="none" aria-hidden="true"><path fill="currentColor" d="M224 256A128 128 0 1 0 224 0a128 128 0 1 0 0 256Zm-45.7 48C79.8 304 0 383.8 0 482.3C0 498.7 13.3 512 29.7 512h388.6c16.4 0 29.7-13.3 29.7-29.7C448 383.8 368.2 304 269.7 304h-91.4Z" /></svg>;
 }
 
 function BotAvatar() {
@@ -160,7 +172,7 @@ function FindingCard({ item, index }: { item: InspectionDetailFindingItemRespons
     <div className="ml-[33px] overflow-hidden rounded-[12px] border border-[#E3E3E3] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
       <div className="flex items-center justify-between bg-[#001E39] px-[14px] py-[9px]"><span className="min-w-0 truncate text-[11px] font-bold text-white">Obs. {index + 1}</span><FindingBadge className={severityClassName(item?.severityLabel)}>{item?.severityLabel ?? 'Moderado'}</FindingBadge></div>
       <div className="relative flex h-[110px] flex-col items-center justify-center gap-[6px] overflow-hidden border-b border-[#E3E3E3] bg-gradient-to-br from-[#E8F4FD] to-[#C8E6F0]">
-        {beforeUrl ? <img src={beforeUrl} alt={evidenceLabel(beforeEvidence, `Foto Antes · Obs. ${index + 1}`)} className="h-full w-full object-cover" /> : <><span className="text-[28px] text-[#24588B]">▧</span><span className="text-[10px] text-[#646464]">Foto Antes · Obs. {index + 1}</span></>}
+        {beforeUrl ? <img src={beforeUrl} alt={evidenceLabel(beforeEvidence, `Foto Antes · Obs. ${index + 1}`)} className="h-full w-full object-cover" /> : <><ImageIcon className="size-[28px] text-[#24588B]" /><span className="text-[10px] text-[#646464]">Foto Antes · Obs. {index + 1}</span></>}
         <div className="absolute left-[10px] top-[8px] rounded-[4px] bg-[rgba(0,0,0,0.55)] px-[8px] py-[3px]"><p className="text-[9px] font-bold uppercase tracking-[1.5px] text-white">Foto antes</p></div>
         {beforeEvidence?.capturedAt ? <div className="absolute bottom-[8px] right-[10px] rounded-[4px] bg-[rgba(0,0,0,0.5)] px-[7px] py-[3px]"><p className="text-[9px] leading-none text-[rgba(255,255,255,0.85)]">{formatDateTime(beforeEvidence.capturedAt)}</p></div> : null}
       </div>
@@ -183,15 +195,27 @@ function PhotoInput({ file, onChange }: { file: File | null; onChange: (file: Fi
     event.target.value = '';
   }
   if (file) {
-    return <label className="flex h-[58px] cursor-pointer items-center gap-[8px] rounded-[10px] bg-[#3A9B3A] px-[12px] py-[10px]"><input type="file" accept="image/*" className="hidden" onChange={handleChange} /><span className="flex size-[40px] items-center justify-center rounded-[8px] bg-[rgba(255,255,255,0.25)] text-white">▣</span><span className="min-w-0 truncate text-[12px] font-bold text-white">{file.name}</span></label>;
+    return <label className="flex h-[58px] cursor-pointer items-center gap-[8px] rounded-[10px] bg-[#3A9B3A] px-[12px] py-[10px]"><input type="file" accept="image/*" className="hidden" onChange={handleChange} /><span className="flex size-[40px] items-center justify-center rounded-[8px] bg-[rgba(255,255,255,0.25)] text-white"><CameraRetroIcon className="size-[18px]" /></span><span className="min-w-0 truncate text-[12px] font-bold text-white">{file.name}</span></label>;
   }
-  return <div className="rounded-[10px] border-[1.5px] border-dashed border-[#D1D1D1] px-[14px] py-[14px]"><div className="flex flex-col items-center gap-[8px]"><div className="flex size-[40px] items-center justify-center rounded-[10px] bg-[#F4F6F9] text-[18px] text-[#646464]">▣</div><p className="text-[12px] font-bold text-[#333]">Adjuntar foto de evidencia</p><p className="text-center text-[10px] text-[#ACACAC]">Fecha, hora y GPS se registran automáticamente</p><div className="flex w-full gap-[8px]"><label className="flex h-[34px] flex-1 cursor-pointer items-center justify-center gap-[5px] rounded-[8px] border-[1.5px] border-[#D1D1D1] bg-[#F4F6F9] text-[11px] font-semibold text-[#333]"><input type="file" accept="image/*" className="hidden" onChange={handleChange} />▣ Tomar foto</label><label className="flex h-[34px] flex-1 cursor-pointer items-center justify-center gap-[5px] rounded-[8px] border-[1.5px] border-[#D1D1D1] bg-[#F4F6F9] text-[11px] font-semibold text-[#333]"><input type="file" accept="image/*" className="hidden" onChange={handleChange} />▧ Galería</label></div></div></div>;
+  return (
+    <div className="rounded-[10px] border-[1.5px] border-dashed border-[#D1D1D1] px-[14px] py-[14px]">
+      <div className="flex flex-col items-center gap-[8px]">
+        <div className="flex size-[40px] items-center justify-center rounded-[10px] bg-[#F4F6F9] text-[#646464]"><CameraRetroIcon className="size-[18px]" /></div>
+        <p className="text-[12px] font-bold text-[#333]">Adjuntar foto de evidencia</p>
+        <p className="text-center text-[10px] text-[#ACACAC]">Fecha, hora y GPS se registran automáticamente</p>
+        <div className="flex w-full gap-[8px]">
+          <label className="flex h-[34px] flex-1 cursor-pointer items-center justify-center gap-[5px] rounded-[8px] border-[1.5px] border-[#D1D1D1] bg-[#F4F6F9] text-[11px] font-semibold text-[#333]"><input type="file" accept="image/*" className="hidden" onChange={handleChange} /><CameraRetroIcon className="size-[11px]" />Tomar foto</label>
+          <label className="flex h-[34px] flex-1 cursor-pointer items-center justify-center gap-[5px] rounded-[8px] border-[1.5px] border-[#D1D1D1] bg-[#F4F6F9] text-[11px] font-semibold text-[#333]"><input type="file" accept="image/*" className="hidden" onChange={handleChange} /><ImageIcon className="size-[11px]" />Desde galería</label>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function ResponseCard({ item, file, suggestion, editing, accepted, description, onFile, onAccept, onEdit, onDescriptionChange, onSaveDescription }: { item: InspectionDetailFindingItemResponse | null | undefined; file: File | null; suggestion: string | null; editing: boolean; accepted: boolean; description: string; onFile: (file: File) => void; onAccept: () => void; onEdit: () => void; onDescriptionChange: (value: string) => void; onSaveDescription: () => void }) {
   return (
     <div className="ml-[33px] overflow-hidden rounded-[12px] border border-[#E3E3E3] bg-white">
-      <div className="flex items-center gap-[6px] border-b border-[#E3E3E3] bg-[#F4F6F9] px-[12px] py-[8px]"><span className="text-[11px] text-[#00B398]">▣</span><p className="text-[10px] font-bold uppercase tracking-[0.05em] text-[#646464]">Foto Después — evidencia de corrección</p></div>
+      <div className="flex items-center gap-[6px] border-b border-[#E3E3E3] bg-[#F4F6F9] px-[12px] py-[8px]"><CameraRetroIcon className="size-[11px] text-[#00B398]" /><p className="text-[10px] font-bold uppercase tracking-[0.05em] text-[#646464]">Foto Después — evidencia de corrección</p></div>
       <div className="p-[12px]"><PhotoInput file={file} onChange={onFile} /></div>
       <div className="border-t border-[#E3E3E3] px-[12px] py-[10px]">
         <p className="mb-[6px] text-[10px] font-bold uppercase tracking-[0.05em] text-[#646464]">Descripción de la acción tomada</p>
@@ -217,19 +241,18 @@ function Footer({ phase, inputValue, onInputChange, onSend, onDone }: FooterProp
 function DoneScreen({ item, index, submittedAt }: { item: InspectionDetailFindingItemResponse | null | undefined; index: number; submittedAt: string | null }) {
   const responsible = item?.responsibleUsers[0];
   const executedAt = submittedAt ?? new Date().toISOString();
-  const responsibleFirstName = responsible?.fullName?.split(' ')[0] ?? 'EECC';
   return (
-    <div className="flex min-h-full flex-col items-center justify-center px-[24px] py-[24px] text-center">
+    <div className="flex min-h-full flex-col items-center justify-center px-[24px] py-[28px] text-center">
       <div className="flex size-[76px] items-center justify-center rounded-full bg-[#00B398] text-[34px] text-white shadow-[0_10px_24px_rgba(0,179,152,0.32)]">✓</div>
       <h2 className="mt-[18px] text-[20px] font-bold leading-[24px] text-[#00B398]">¡Observación ejecutada!</h2>
       <p className="mt-[14px] max-w-[280px] text-[13px] leading-[20.8px] text-[#646464]">La observación <strong className="text-[#131313]">Obs. {index + 1}</strong> fue marcada como <strong className="text-[#00B398]">Ejecutada</strong> y quedará pendiente de revisión.</p>
       <div className="mt-[18px] w-full max-w-[300px] rounded-[12px] border-[1.5px] border-[#00B398] bg-[#C5FFF6] px-[16px] py-[14px] text-left">
-        <div className="mb-[10px] flex items-center gap-[8px]"><div className="flex size-[32px] shrink-0 items-center justify-center rounded-[8px] bg-[#00B398] text-white"><BellIcon /></div><p className="text-[12px] font-bold text-[#006153]">Notificaciones enviadas</p></div>
-        <div className="flex items-start gap-[7px] text-[12px] leading-[18px] text-[#006153]"><span className="mt-[2px] shrink-0"><ShieldIcon /></span><span><strong>Admin GF HSE</strong><br /><span className="text-[10px]">Revisará la evidencia para aprobar o rechazar</span></span></div>
+        <div className="mb-[10px] flex items-center gap-[8px]"><div className="flex size-[32px] items-center justify-center rounded-[8px] bg-[#00B398] text-white"><BellIcon /></div><p className="text-[12px] font-bold text-[#006153]">Notificaciones enviadas</p></div>
+        <div className="flex items-start gap-[7px] text-[12px] leading-[18px] text-[#006153]"><span className="mt-[3px] shrink-0"><ShieldIcon /></span><span><strong>Admin GF HSE</strong><br /><span className="text-[10px]">Revisará la evidencia para aprobar o rechazar</span></span></div>
         <div className="my-[10px] h-px bg-[rgba(0,179,152,0.35)]" />
-        <div className="flex items-start gap-[7px] text-[12px] leading-[18px] text-[#006153]"><span className="mt-[2px] shrink-0"><WorkerIcon /></span><span><strong>{responsible?.fullName ?? 'Responsable EECC'}</strong><br /><span className="text-[10px]">Fue notificada de la ejecución</span></span></div>
+        <div className="flex items-start gap-[7px] text-[12px] leading-[18px] text-[#006153]"><span className="mt-[3px] shrink-0"><WorkerIcon /></span><span><strong>{responsible?.fullName ?? 'Responsable EECC'}</strong><br /><span className="text-[10px]">Fue notificada de la ejecución</span></span></div>
       </div>
-      <div className="mt-[14px] grid w-full max-w-[300px] grid-cols-2 gap-[8px]"><div className="rounded-[8px] border border-[#E3E3E3] bg-white p-[10px]"><p className="text-[14px] font-bold text-[#131313]">{responsibleFirstName}</p><p className="mt-[2px] text-[9px] text-[#646464]">Ejecutado por</p></div><div className="rounded-[8px] border border-[#E3E3E3] bg-white p-[10px]"><p className="text-[14px] font-bold text-[#00B398]">{currentTime()}</p><p className="mt-[2px] text-[9px] text-[#646464]">Hora de ejecución</p></div></div>
+      <div className="mt-[14px] grid w-full max-w-[300px] grid-cols-2 gap-[8px]"><div className="rounded-[8px] border border-[#E3E3E3] bg-white p-[10px]"><p className="text-[14px] font-bold text-[#131313]">{firstName(responsible?.fullName, 'EECC')}</p><p className="mt-[2px] text-[9px] text-[#646464]">Ejecutado por</p></div><div className="rounded-[8px] border border-[#E3E3E3] bg-white p-[10px]"><p className="text-[14px] font-bold text-[#00B398]">{currentTime()}</p><p className="mt-[2px] text-[9px] text-[#646464]">Hora de ejecución</p></div></div>
       <p className="mt-[14px] text-[11px] leading-[16.5px] text-[#ACACAC]">AurelIA · Gold Fields Salares Norte<br />{formatDate(executedAt)}</p>
     </div>
   );
@@ -253,7 +276,9 @@ export function FindingAssistantExecutionView({ subtitle, item, index = 0, isSub
 
   useEffect(() => {
     const node = scrollRef.current;
-    if (node) node.scrollTop = node.scrollHeight;
+    if (!node) return;
+    if (phase === 'done') node.scrollTop = 0;
+    else node.scrollTop = node.scrollHeight;
   }, [phase, file, suggestion, description, editing, loadingSuggestion, responseAccepted, extraBubbles.length]);
 
   async function handleFile(nextFile: File) {
@@ -346,16 +371,27 @@ export function FindingAssistantExecutionView({ subtitle, item, index = 0, isSub
     onBack();
   }
 
+  if (phase === 'done') {
+    return (
+      <div className="absolute inset-0 z-40 flex flex-col overflow-hidden bg-[#F4F6F9]">
+        <Header subtitle={subtitle} phase={phase} onBack={onCancel} />
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-[#F4F6F9]">
+          <DoneScreen item={item} index={index} submittedAt={submittedAt} />
+        </div>
+        <Footer phase={phase} inputValue={inputValue} onInputChange={setInputValue} onSend={sendFreeText} onDone={onCancel} />
+      </div>
+    );
+  }
+
   return (
     <div className="absolute inset-0 z-40 flex flex-col overflow-hidden bg-[#F4F6F9]">
-      <Header subtitle={subtitle} phase={phase} onBack={phase === 'done' ? onCancel : handleBack} />
+      <Header subtitle={subtitle} phase={phase} onBack={handleBack} />
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-[#F4F6F9] px-[12px] py-[12px]">
-        <div className="flex min-h-full flex-col gap-[10px]">
-          {phase === 'done' ? <DoneScreen item={item} index={index} submittedAt={submittedAt} /> : null}
-          {phase !== 'done' ? <AgentBubble>¡Hola! 👋 Iniciaste el flujo asistido para ejecutar la <strong>Obs. {index + 1}</strong>. Revisa los detalles antes de continuar:</AgentBubble> : null}
-          {phase !== 'done' ? <FindingCard item={item} index={index} /> : null}
-          {phase !== 'done' ? <SlaCard item={item} /> : null}
-          {phase !== 'done' ? extraBubbles.map((bubble) => bubble.from === 'agent' ? <AgentBubble key={bubble.id}>{bubble.text}</AgentBubble> : <UserBubble key={bubble.id}>{bubble.text}</UserBubble>) : null}
+        <div className="flex flex-col gap-[10px]">
+          <AgentBubble>¡Hola! 👋 Iniciaste el flujo asistido para ejecutar la <strong>Obs. {index + 1}</strong>. Revisa los detalles antes de continuar:</AgentBubble>
+          <FindingCard item={item} index={index} />
+          <SlaCard item={item} />
+          {extraBubbles.map((bubble) => bubble.from === 'agent' ? <AgentBubble key={bubble.id}>{bubble.text}</AgentBubble> : <UserBubble key={bubble.id}>{bubble.text}</UserBubble>)}
           {phase === 'details' ? <><AgentBubble>¿Estás listo para registrar tu respuesta?</AgentBubble><QuickOption tone="teal" onClick={startResponse}>→ Sí, iniciar respuesta</QuickOption><QuickOption onClick={askQuestion}>? Tengo una consulta</QuickOption></> : null}
           {phase === 'response' ? <><AgentBubble>Perfecto. Completa tu respuesta: sube la foto <strong>Después</strong> y describe la acción que tomaste.</AgentBubble><ResponseCard item={item} file={file} suggestion={suggestion} editing={editing} accepted={responseAccepted} description={description} onFile={handleFile} onAccept={acceptSuggestion} onEdit={editSuggestion} onDescriptionChange={(value) => { setDescription(value); setResponseAccepted(false); setResponseAckText(null); }} onSaveDescription={saveDescription} />{loadingSuggestion ? <TypingDots /> : null}{file && suggestion && !loadingSuggestion ? <AgentBubble>{photoReceivedText}</AgentBubble> : null}{responseAccepted && responseAckText ? <UserBubble>{responseAckText}</UserBubble> : null}{responseAccepted ? <QuickOption tone="teal" disabled={isSubmitting || submitting} onClick={confirmExecution}>{submitting ? 'Guardando…' : '→ Continuar al resumen'}</QuickOption> : null}</> : null}
         </div>

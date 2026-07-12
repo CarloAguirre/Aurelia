@@ -15,6 +15,23 @@ type SuggestFindingExecutionActionInput = {
   areaLabel: string;
 };
 
+export type FindingAssistantExecutionSuggestionPayload = {
+  inspectionId: string | null;
+  findingId: string | null;
+  areaLabel: string;
+  condition: string;
+  proposedCorrectiveAction: string;
+  severityLabel: string;
+  dueAt: string | null;
+  responsibleCompanyName: string | null;
+  beforeEvidence: Array<{
+    fileId: string | null;
+    title: string | null;
+    description: string | null;
+    capturedAt: string | null;
+  }>;
+};
+
 const fallbackMock: AssistantExecutionMock = {
   defaultText: 'Se ejecutó la medida correctiva solicitada para subsanar la condición detectada. Se verificó el estado posterior y se adjunta evidencia fotográfica de cierre para revisión del Admin GF HSE.',
   rules: [],
@@ -24,13 +41,33 @@ function normalize(value: string | null | undefined) {
   return (value ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
-function interpolate(template: string, input: SuggestFindingExecutionActionInput) {
+export function buildFindingAssistantExecutionSuggestionPayload(input: SuggestFindingExecutionActionInput): FindingAssistantExecutionSuggestionPayload {
   const item = input.item;
+  return {
+    inspectionId: item?.inspectionId ?? null,
+    findingId: item?.id ?? null,
+    areaLabel: input.areaLabel || 'el área inspeccionada',
+    condition: item?.condition ?? 'la condición detectada',
+    proposedCorrectiveAction: item?.proposedCorrectiveAction ?? 'la medida correctiva solicitada',
+    severityLabel: item?.severityLabel ?? 'criticidad registrada',
+    dueAt: item?.dueAt ?? null,
+    responsibleCompanyName: item?.responsibleCompanyName ?? item?.responsibleUsers[0]?.companyName ?? null,
+    beforeEvidence: (item?.beforeEvidence ?? []).map((evidence) => ({
+      fileId: evidence.fileId ?? null,
+      title: evidence.title ?? null,
+      description: evidence.description ?? null,
+      capturedAt: evidence.capturedAt ?? null,
+    })),
+  };
+}
+
+function interpolate(template: string, payload: FindingAssistantExecutionSuggestionPayload) {
   return template
-    .replaceAll('{{areaLabel}}', input.areaLabel || 'el área inspeccionada')
-    .replaceAll('{{condition}}', item?.condition ?? 'la condición detectada')
-    .replaceAll('{{proposedCorrectiveAction}}', item?.proposedCorrectiveAction ?? 'la medida correctiva solicitada')
-    .replaceAll('{{severityLabel}}', item?.severityLabel ?? 'criticidad registrada');
+    .replaceAll('{{areaLabel}}', payload.areaLabel)
+    .replaceAll('{{condition}}', payload.condition)
+    .replaceAll('{{proposedCorrectiveAction}}', payload.proposedCorrectiveAction)
+    .replaceAll('{{severityLabel}}', payload.severityLabel)
+    .replaceAll('{{responsibleCompanyName}}', payload.responsibleCompanyName ?? 'la empresa responsable');
 }
 
 async function loadMock(): Promise<AssistantExecutionMock> {
@@ -46,8 +83,9 @@ async function loadMock(): Promise<AssistantExecutionMock> {
 }
 
 export async function suggestFindingExecutionAction(input: SuggestFindingExecutionActionInput): Promise<string> {
+  const payload = buildFindingAssistantExecutionSuggestionPayload(input);
   const mock = await loadMock();
-  const severity = normalize(input.item?.severityLabel);
+  const severity = normalize(payload.severityLabel);
   const rule = mock.rules.find((candidate) => candidate.matchSeverity?.some((value) => severity.includes(normalize(value))));
-  return interpolate(rule?.text ?? mock.defaultText, input);
+  return interpolate(rule?.text ?? mock.defaultText, payload);
 }

@@ -11,6 +11,7 @@ import { InspectionClosedReassignLockBridge } from './modules/inspections/compon
 import { InspectionEvidenceImageSourceBridge } from './modules/inspections/components/InspectionEvidenceImageSourceBridge';
 import { InspectionEvidenceViewerBridge } from './modules/inspections/components/InspectionEvidenceViewerBridge';
 import { InspectionFollowupProgressBridge } from './modules/inspections/components/InspectionFollowupProgressBridge';
+import { ManualExecutionCancelConfirmBridge } from './modules/inspections/components/ManualExecutionCancelConfirmBridge';
 import { router } from './routes/router';
 import './modules/dashboard/dashboard-figma-alignment.css';
 
@@ -30,6 +31,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       <ChecklistResultBridge />
       <InspectionEvidenceImageSourceBridge />
       <InspectionEvidenceViewerBridge />
+      <ManualExecutionCancelConfirmBridge />
     </QueryClientProvider>
   </React.StrictMode>,
 );

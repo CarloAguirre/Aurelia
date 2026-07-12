@@ -117,7 +117,9 @@ export function InspectionTableActionMenuBridge(): ReactElement | null {
   }, [menu]);
 
   function activateSourceButton(index: number) {
-    const button = getDirectButtons(menu?.source as HTMLElement).at(index);
+    if (!menu) return;
+    const buttons = getDirectButtons(menu.source);
+    const button = buttons[index];
     if (button instanceof HTMLButtonElement) button.click();
   }
 

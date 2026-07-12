@@ -21,10 +21,9 @@ function isEvidenceImage(image: HTMLImageElement) {
   return /\/api\/files\/[0-9a-f-]{36}\/content/i.test(normalized) || src.startsWith('blob:');
 }
 
-function normalizeEvidenceImages(scope: ParentNode = document) {
-  const images = Array.from(scope.querySelectorAll('section[role="dialog"] img'));
+function normalizeEvidenceImages(scope: Document | Element = document) {
+  const images = Array.from(scope.querySelectorAll<HTMLImageElement>('section[role="dialog"] img'));
   images.forEach((image) => {
-    if (!(image instanceof HTMLImageElement)) return;
     const current = image.getAttribute('src') ?? '';
     const normalized = normalizeFileContentUrl(current);
     if (normalized !== current) image.setAttribute('src', normalized);
@@ -85,6 +84,7 @@ export function InspectionEvidenceViewerBridge() {
     function handleClick(event: MouseEvent) {
       const target = event.target;
       if (!(target instanceof HTMLImageElement)) return;
+      if (target.closest('[data-evidence-viewer-dialog="true"]')) return;
       if (!target.closest('section[role="dialog"]')) return;
       normalizeEvidenceImages();
       if (!isEvidenceImage(target)) return;
@@ -136,7 +136,7 @@ export function InspectionEvidenceViewerBridge() {
 
   return (
     <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-[rgba(19,19,19,0.75)] px-[32px] py-[16px]" role="presentation" onClick={close}>
-      <div className="flex h-[min(704px,calc(100vh-32px))] w-[min(1132px,calc(100vw-64px))] flex-col overflow-hidden rounded-[24px] border border-[#d1d1d1] bg-white" role="dialog" aria-modal="true" aria-label="Visor de evidencia" onClick={(event) => event.stopPropagation()}>
+      <div className="flex h-[min(704px,calc(100vh-32px))] w-[min(1132px,calc(100vw-64px))] flex-col overflow-hidden rounded-[24px] border border-[#d1d1d1] bg-white" role="dialog" aria-modal="true" aria-label="Visor de evidencia" data-evidence-viewer-dialog="true" onClick={(event) => event.stopPropagation()}>
         <div className="flex h-[54px] shrink-0 items-center justify-between border-b border-[#e3e3e3] px-[15px]">
           <p className="truncate pr-[24px] text-[18px] font-bold leading-[22px] tracking-[0.36px] text-[#2a2a2a]">{displayTitle}</p>
           <button type="button" className="flex size-[32px] shrink-0 items-center justify-center" onClick={close} aria-label="Cerrar visor"><CloseIcon /></button>

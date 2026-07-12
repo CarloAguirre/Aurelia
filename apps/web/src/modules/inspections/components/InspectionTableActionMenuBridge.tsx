@@ -9,11 +9,22 @@ type MenuState = {
   trigger: HTMLButtonElement | null;
 };
 
+function getDirectButtons(element: HTMLElement) {
+  return Array.from(element.children).filter((child): child is HTMLButtonElement => child instanceof HTMLButtonElement);
+}
+
+function normalizeText(value: string) {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
 function isSourceMenu(element: Element) {
   if (!(element instanceof HTMLElement)) return false;
   if (element.closest('[data-inspection-actions-portal="true"]')) return false;
-  const text = element.textContent ?? '';
-  return text.includes('Ver detalles') && text.includes('PDF (.pdf)') && element.querySelectorAll('button').length >= 2;
+  const buttons = getDirectButtons(element);
+  if (buttons.length !== 2 || element.children.length !== 2) return false;
+  const firstLabel = normalizeText(buttons[0]?.textContent ?? '');
+  const secondLabel = normalizeText(buttons[1]?.textContent ?? '');
+  return firstLabel === 'Ver detalles' && secondLabel === 'PDF (.pdf)';
 }
 
 function findMenu() {
@@ -106,7 +117,7 @@ export function InspectionTableActionMenuBridge(): ReactElement | null {
   }, [menu]);
 
   function activateSourceButton(index: number) {
-    const button = menu?.source.querySelectorAll('button').item(index);
+    const button = getDirectButtons(menu?.source as HTMLElement).at(index);
     if (button instanceof HTMLButtonElement) button.click();
   }
 

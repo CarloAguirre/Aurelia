@@ -31,11 +31,15 @@ La referencia funcional y visual inicial viene del prototipo HTML `Ejecución de
   - Expone `suggestFindingExecutionAction`.
   - Carga sugerencias desde JSON mockeado.
   - Interpola contexto real del hallazgo.
+  - Expone `buildFindingAssistantExecutionSuggestionPayload` como base del contrato futuro de IA.
 
 - `apps/web/public/mock/finding-assistant-execution-suggestions.json`
   - Define reglas de respuesta por criticidad.
   - Usa placeholders del contexto real de ejecución.
   - Será reemplazable por el servicio real de IA.
+
+- `docs/chat-gpt/inspections/finding-assistant-execution-ai-handoff-2026-07-10.md`
+  - Documenta payload sugerido, respuesta esperada y reglas de producto para el equipo IA.
 
 ## Integración actual
 
@@ -85,11 +89,14 @@ El flujo manual queda intacto:
 - Se ajustaron los chips de criticidad para que respeten el color semántico usado en el resto del módulo.
 - Se contextualizó el JSON mock para que las sugerencias mencionen la medida correctiva real.
 - Se dejó visible el badge `Mock` en la sugerencia para facilitar el reemplazo futuro por el servicio IA real.
+- Se corrigió el JSX final del asistente para que compile correctamente en Vite/Babel.
+- Se dejó documentado el handoff para el equipo IA.
+- Se preparó un builder de payload desde el contrato real `InspectionDetailFindingItemResponse`.
 
-## Próximos pasos sugeridos
+## Pendientes reales
 
-1. Validar fidelidad visual contra el HTML en desktop modal.
-2. Conectar el servicio mock al endpoint real de IA cuando el otro equipo entregue contrato.
+1. Validar fidelidad visual fina contra el HTML en desktop modal.
+2. Conectar endpoint real de IA cuando el otro equipo entregue contrato.
 3. Agregar soporte de historial real de sugerencias IA si el backend expone auditoría.
 4. Ajustar textos finales según criterio de producto.
-5. Validar comportamiento offline/local si se decide persistir borradores de ejecución asistida.
+5. Definir si se persistirán borradores offline de ejecución asistida; hoy el flujo opera en memoria del modal y persiste solo al confirmar.

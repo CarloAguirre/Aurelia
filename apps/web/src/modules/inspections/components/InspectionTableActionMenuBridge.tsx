@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { createPortal } from 'react-dom';
 
 type MenuState = {
@@ -39,7 +39,7 @@ function buildMenuState(menu: HTMLElement): MenuState | null {
   return { top, left, width, source: menu, trigger };
 }
 
-export function InspectionTableActionMenuBridge() {
+export function InspectionTableActionMenuBridge(): ReactElement | null {
   const portalRef = useRef<HTMLDivElement | null>(null);
   const hiddenSourceRef = useRef<HTMLElement | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);

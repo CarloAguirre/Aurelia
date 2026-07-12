@@ -143,7 +143,8 @@ function UserBubble({ children }: { children: ReactNode }) {
 
 function TypingDots() {
   return <div className="flex items-end gap-[7px]"><BotAvatar /><div className="flex gap-[4px] rounded-[16px_16px_16px_4px] border border-[#E3E3E3] bg-white px-[14px] py-[10px]">{[0, 1, 2].map((item) => <span key={item} className="h-[6px] w-[6px] rounded-full bg-[#ACACAC]" />)}</div></div>;
-}\n
+}
+
 function QuickOption({ children, onClick, tone = 'default', disabled = false }: { children: ReactNode; onClick: () => void; tone?: 'default' | 'teal'; disabled?: boolean }) {
   return <button type="button" onClick={onClick} disabled={disabled} className={`ml-[33px] flex min-h-[34px] w-fit items-center gap-[6px] rounded-[20px] border-[1.5px] px-[14px] py-[7px] text-[12px] font-semibold transition disabled:opacity-55 ${tone === 'teal' ? 'border-[#00B398] bg-[#00B398] text-white' : 'border-[#D1D1D1] bg-white text-[#24588B]'}`}>{children}</button>;
 }

@@ -43,9 +43,27 @@ function titleFromImage(image: HTMLImageElement, index: number) {
   return `imagen-${index + 1}.jpg`;
 }
 
-function buildGallery(clickedImage: HTMLImageElement) {
+function hasObservationContext(element: HTMLElement) {
+  const text = element.textContent ?? '';
+  const hasObservationLabel = /Obs\.\s*\d+/i.test(text);
+  const hasObservationAction = text.includes('SLA calculado') || text.includes('SLA cerrado') || text.includes('Fecha de cierre') || text.includes('Ejecutar observación') || text.includes('Aprobar cierre') || text.includes('Rechazar');
+  return hasObservationLabel && hasObservationAction;
+}
+
+function findEvidenceGalleryScope(clickedImage: HTMLImageElement): Document | Element {
   const dialog = clickedImage.closest('section[role="dialog"]') ?? document;
-  const rawImages = Array.from(dialog.querySelectorAll('img')).filter((image): image is HTMLImageElement => image instanceof HTMLImageElement && isEvidenceImage(image));
+  let current: HTMLElement | null = clickedImage.parentElement;
+  while (current && current !== dialog) {
+    const evidenceImages = Array.from(current.querySelectorAll('img')).filter((image): image is HTMLImageElement => image instanceof HTMLImageElement && isEvidenceImage(image));
+    if (evidenceImages.length > 0 && hasObservationContext(current)) return current;
+    current = current.parentElement;
+  }
+  return dialog;
+}
+
+function buildGallery(clickedImage: HTMLImageElement) {
+  const scope = findEvidenceGalleryScope(clickedImage);
+  const rawImages = Array.from(scope.querySelectorAll('img')).filter((image): image is HTMLImageElement => image instanceof HTMLImageElement && isEvidenceImage(image));
   const unique = new Map<string, EvidenceViewerItem>();
   rawImages.forEach((image, index) => {
     const src = normalizeFileContentUrl(image.currentSrc || image.src || image.getAttribute('src') || '');

@@ -8,7 +8,8 @@ type EvidenceViewerItem = {
 function normalizeFileContentUrl(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return trimmed;
-  const clean = trimmed.split('#')[0].split('?')[0];
+  const [withoutHash = ''] = trimmed.split('#');
+  const [clean = ''] = withoutHash.split('?');
   if (/\/api\/files\/[0-9a-f-]{36}\/content$/i.test(clean)) return trimmed;
   const match = clean.match(/^(.*\/api\/files\/[0-9a-f-]{36})\/?$/i);
   if (!match) return trimmed;

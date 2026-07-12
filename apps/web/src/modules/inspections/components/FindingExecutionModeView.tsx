@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { InspectionDetailFindingItemResponse } from '@aurelia/contracts';
+import { FindingAssistantExecutionView } from './FindingAssistantExecutionView';
 import { FindingManualExecutionView } from './FindingManualExecutionView';
 
 function BackIcon() {
@@ -22,11 +23,25 @@ function FeatureRow({ children }: { children: string }) {
   return <div className="flex items-center gap-[5px]"><span className="text-[13px] leading-none text-[#2A5C16]">✓</span><span className="text-[11px] leading-[15px] text-[#2A5C16]">{children}</span></div>;
 }
 
-export function FindingExecutionModeView({ subtitle, item = null, index = 1, isSubmitting = false, onBack, onStartAssistant, onStartManual, onCancel }: { subtitle: string; item?: InspectionDetailFindingItemResponse | null; index?: number; isSubmitting?: boolean; onBack: () => void; onStartAssistant: () => void; onStartManual: (description: string, file: File) => void | Promise<void>; onCancel: () => void }) {
+type FindingExecutionModeViewProps = {
+  subtitle: string;
+  item?: InspectionDetailFindingItemResponse | null;
+  index?: number;
+  isSubmitting?: boolean;
+  onBack: () => void;
+  onStartAssistant: () => void;
+  onStartManual: (description: string, file: File) => void | Promise<void>;
+  onCancel: () => void;
+};
+
+export function FindingExecutionModeView(props: FindingExecutionModeViewProps) {
+  const { subtitle, item = null, index = 1, isSubmitting = false, onBack, onStartManual, onCancel } = props;
   const rejectedFlow = item?.statusGroup === 'rejected';
   const [manualOpen, setManualOpen] = useState(rejectedFlow);
+  const [assistantOpen, setAssistantOpen] = useState(false);
 
   if (manualOpen) return <FindingManualExecutionView subtitle={subtitle} item={item} index={index} isSubmitting={isSubmitting} onBack={rejectedFlow ? onBack : () => setManualOpen(false)} onCancel={onCancel} onSubmit={onStartManual} />;
+  if (assistantOpen) return <FindingAssistantExecutionView subtitle={subtitle} item={item} index={index} isSubmitting={isSubmitting} onBack={() => setAssistantOpen(false)} onCancel={onCancel} onSubmit={onStartManual} />;
 
   return (
     <div className="absolute inset-0 z-30 flex flex-col overflow-hidden bg-[#F4F6F9]">
@@ -45,7 +60,7 @@ export function FindingExecutionModeView({ subtitle, item = null, index = 1, isS
           <div className="flex items-center gap-[12px]"><div className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-[12px] bg-gradient-to-br from-[#C8A064] to-[#8E6E3E]"><AiChipIcon /></div><div className="min-w-0 flex-1"><p className="text-[15px] font-bold leading-[17px] text-[#8E6E3E]">Asistente AurelIA</p><p className="mt-[2px] text-[11px] leading-[13px] text-[#646464]">Modo conversacional con IA</p></div><div className="rounded-[4px] bg-[#C8A064] px-[8px] py-[3px]"><span className="text-[9px] font-bold leading-none text-[#001E39]">RECOMENDADO</span></div></div>
           <p className="mt-[12px] text-[12px] leading-[19.2px] text-[#333]">El asistente te guía con preguntas simples, propone acción correctiva basada en el historial de la faena y reduce el tiempo de registro.</p>
           <div className="mt-[12px] flex flex-col gap-[5px]"><FeatureRow>Acción correctiva sugerida por IA</FeatureRow><FeatureRow>Funciona online y offline</FeatureRow></div>
-          <button type="button" onClick={onStartAssistant} className="mt-[14px] flex h-[46px] w-full items-center justify-center gap-[8px] rounded-[12px] bg-[#C8A064] text-[14px] font-bold text-[#001E39]" disabled={isSubmitting}><SparkIcon />Iniciar con asistente</button>
+          <button type="button" onClick={() => setAssistantOpen(true)} className="mt-[14px] flex h-[46px] w-full items-center justify-center gap-[8px] rounded-[12px] bg-[#C8A064] text-[14px] font-bold text-[#001E39]" disabled={isSubmitting}><SparkIcon />Iniciar con asistente</button>
         </div>
 
         <div className="mt-[20px] rounded-[16px] border-[1.5px] border-[#E3E3E3] bg-white p-[21.5px]">

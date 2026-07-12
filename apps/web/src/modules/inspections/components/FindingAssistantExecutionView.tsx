@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
-import type { InspectionDetailEvidenceResponse, InspectionDetailFindingItemResponse } from '@aurelia/contracts';
+import { useQueryClient } from '@tanstack/react-query';
+import { InspectionEvidenceRelationType, InspectionFindingStatus, type InspectionDetailEvidenceResponse, type InspectionDetailFindingItemResponse } from '@aurelia/contracts';
 import { env } from '../../../shared/config/env';
+import { updateInspectionFinding } from '../../../shared/services/inspection-detail.service';
+import { createEvidence, linkEvidence, uploadFile } from '../../../shared/services/inspections.service';
 import { suggestFindingExecutionAction } from '../../../shared/services/findingAssistantExecution.service';
 import { ChatAureliaIcon, ChatBackIcon, ChatMoreIcon, ChatSendIcon } from '../new-inspection/icons/AssistantChatIcons';
 
@@ -22,7 +25,6 @@ type AssistantViewProps = {
   isSubmitting?: boolean;
   onBack: () => void;
   onCancel: () => void;
-  onSubmit: (description: string, file: File) => void | Promise<void>;
 };
 
 type FooterProps = {
@@ -90,7 +92,6 @@ function Header({ subtitle, phase, onBack }: { subtitle: string; phase: Assistan
   const stepIndex = phase === 'details' ? 0 : phase === 'response' ? 1 : 2;
   const labels = ['Paso 1 · Detalles del hallazgo', 'Paso 2 · Tu respuesta', 'Paso 3 · Resumen'];
   const percents = ['33%', '66%', '100%'];
-
   return (
     <>
       <div className="h-[56px] shrink-0 bg-[#002659] text-white shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
@@ -117,8 +118,12 @@ function Header({ subtitle, phase, onBack }: { subtitle: string; phase: Assistan
   );
 }
 
+function BotAvatar() {
+  return <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-[#00B398] text-[#001E39]"><ChatAureliaIcon className="h-[15px] w-[17px]" /></div>;
+}
+
 function AgentBubble({ children }: { children: ReactNode }) {
-  return <div className="flex items-end gap-[7px]"><div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#00B398] to-[#006153] text-white"><ChatAureliaIcon className="h-[15px] w-[17px]" /></div><div className="max-w-[85%] rounded-[16px_16px_16px_4px] border border-[#E3E3E3] bg-white px-[12px] py-[10px] shadow-[0_1px_3px_rgba(0,0,0,0.06)]"><div className="text-[13px] leading-[19.5px] text-[#131313] [&_strong]:font-bold">{children}</div><p className="mt-[4px] text-[10px] leading-none text-[#ACACAC]">{currentTime()}</p></div></div>;
+  return <div className="flex items-end gap-[7px]"><BotAvatar /><div className="max-w-[85%] rounded-[16px_16px_16px_4px] border border-[#E3E3E3] bg-white px-[12px] py-[10px] shadow-[0_1px_3px_rgba(0,0,0,0.06)]"><div className="text-[13px] leading-[19.5px] text-[#131313] [&_strong]:font-bold">{children}</div><p className="mt-[4px] text-[10px] leading-none text-[#ACACAC]">{currentTime()}</p></div></div>;
 }
 
 function UserBubble({ children }: { children: ReactNode }) {
@@ -126,7 +131,7 @@ function UserBubble({ children }: { children: ReactNode }) {
 }
 
 function TypingDots() {
-  return <div className="flex items-end gap-[7px]"><div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#00B398] to-[#006153] text-white"><ChatAureliaIcon className="h-[15px] w-[17px]" /></div><div className="flex gap-[4px] rounded-[16px_16px_16px_4px] border border-[#E3E3E3] bg-white px-[14px] py-[10px]">{[0, 1, 2].map((item) => <span key={item} className="h-[6px] w-[6px] rounded-full bg-[#ACACAC]" />)}</div></div>;
+  return <div className="flex items-end gap-[7px]"><BotAvatar /><div className="flex gap-[4px] rounded-[16px_16px_16px_4px] border border-[#E3E3E3] bg-white px-[14px] py-[10px]">{[0, 1, 2].map((item) => <span key={item} className="h-[6px] w-[6px] rounded-full bg-[#ACACAC]" />)}</div></div>;
 }
 
 function QuickOption({ children, onClick, tone = 'default' }: { children: ReactNode; onClick: () => void; tone?: 'default' | 'teal' }) {
@@ -140,18 +145,13 @@ function FindingBadge({ children, className }: { children: string; className: st
 function EvidenceBox({ title, evidence, afterFile }: { title: string; evidence?: InspectionDetailEvidenceResponse; afterFile?: File | null }) {
   const objectUrl = useMemo(() => afterFile ? URL.createObjectURL(afterFile) : null, [afterFile]);
   const url = objectUrl ?? resolveEvidenceContentUrl(evidence);
-
-  useEffect(() => () => {
-    if (objectUrl) URL.revokeObjectURL(objectUrl);
-  }, [objectUrl]);
-
+  useEffect(() => () => { if (objectUrl) URL.revokeObjectURL(objectUrl); }, [objectUrl]);
   return <div className="overflow-hidden rounded-[8px] border border-[#E3E3E3]"><div className="bg-[#001E39] px-[8px] py-[4px]"><p className="text-[9px] font-bold uppercase tracking-[1.5px] text-[rgba(255,255,255,0.7)]">{title}</p></div><div className={`flex h-[80px] items-center justify-center overflow-hidden ${afterFile ? 'bg-[#E0FFD3]' : 'bg-gradient-to-br from-[#E8F4FD] to-[#C8E6F0]'}`}>{url ? <img src={url} alt={title} className="h-full w-full object-cover" /> : <div className="text-center text-[22px] text-[#24588B]">▧</div>}</div></div>;
 }
 
 function FindingCard({ item, index }: { item: InspectionDetailFindingItemResponse | null | undefined; index: number }) {
   const beforeEvidence = item?.beforeEvidence[0];
   const beforeUrl = resolveEvidenceContentUrl(beforeEvidence);
-
   return (
     <div className="ml-[33px] overflow-hidden rounded-[12px] border border-[#E3E3E3] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
       <div className="flex items-center justify-between bg-[#001E39] px-[14px] py-[9px]"><span className="min-w-0 truncate text-[11px] font-bold text-white">Obs. {index + 1}</span><FindingBadge className={severityClassName(item?.severityLabel)}>{item?.severityLabel ?? 'Moderado'}</FindingBadge></div>
@@ -178,7 +178,6 @@ function PhotoInput({ file, onChange }: { file: File | null; onChange: (file: Fi
     if (nextFile) onChange(nextFile);
     event.target.value = '';
   }
-
   if (file) return <label className="flex h-[58px] cursor-pointer items-center gap-[8px] rounded-[10px] bg-[#3A9B3A] px-[12px] py-[10px]"><input type="file" accept="image/*" className="hidden" onChange={handleChange} /><span className="flex size-[40px] items-center justify-center rounded-[8px] bg-[rgba(255,255,255,0.25)] text-white">▣</span><span className="min-w-0 truncate text-[12px] font-bold text-white">{file.name}</span></label>;
   return <div className="rounded-[10px] border-[1.5px] border-dashed border-[#D1D1D1] px-[14px] py-[14px]"><div className="flex flex-col items-center gap-[8px]"><div className="flex size-[40px] items-center justify-center rounded-[10px] bg-[#F4F6F9] text-[18px] text-[#646464]">▣</div><p className="text-[12px] font-bold text-[#333]">Adjuntar foto de evidencia</p><p className="text-center text-[10px] text-[#ACACAC]">Fecha, hora y GPS se registran automáticamente</p><div className="flex w-full gap-[8px]"><label className="flex h-[34px] flex-1 cursor-pointer items-center justify-center gap-[5px] rounded-[8px] border-[1.5px] border-[#D1D1D1] bg-[#F4F6F9] text-[11px] font-semibold text-[#333]"><input type="file" accept="image/*" className="hidden" onChange={handleChange} />▣ Tomar foto</label><label className="flex h-[34px] flex-1 cursor-pointer items-center justify-center gap-[5px] rounded-[8px] border-[1.5px] border-[#D1D1D1] bg-[#F4F6F9] text-[11px] font-semibold text-[#333]"><input type="file" accept="image/*" className="hidden" onChange={handleChange} />▧ Galería</label></div></div></div>;
 }
@@ -200,29 +199,31 @@ function ResponseCard({ item, file, suggestion, editing, description, onFile, on
 
 function SummaryCard({ item, index, file, description }: { item: InspectionDetailFindingItemResponse | null | undefined; index: number; file: File | null; description: string }) {
   const responsible = item?.responsibleUsers[0];
-
   return <div className="overflow-hidden rounded-[12px] border border-[#E3E3E3] bg-white"><div className="flex items-center justify-between bg-[#001E39] px-[12px] py-[8px]"><span className="text-[11px] font-bold text-white">Observación · Obs. {index + 1}</span><FindingBadge className="bg-[#C5FFF6] text-[#006153]">Ejecutado</FindingBadge></div><div className="grid grid-cols-2 gap-[8px] px-[12px] py-[10px]"><EvidenceBox title="Antes · Inspector" evidence={item?.beforeEvidence[0]} /><EvidenceBox title="Después · EECC" afterFile={file} /></div><div className="border-t border-[#E3E3E3]"><div className="flex border-b border-[#E3E3E3] px-[12px] py-[8px]"><span className="min-w-[86px] text-[10px] font-medium text-[#646464]">Ejecutado por</span><span className="flex-1 text-[11px] font-semibold text-[#131313]">{responsible?.fullName ?? 'Usuario EECC'}</span></div><div className="flex border-b border-[#E3E3E3] px-[12px] py-[8px]"><span className="min-w-[86px] text-[10px] font-medium text-[#646464]">Empresa</span><span className="flex-1 text-[11px] font-semibold text-[#131313]">{item?.responsibleCompanyName ?? responsible?.companyName ?? 'EECC'}</span></div><div className="flex border-b border-[#E3E3E3] px-[12px] py-[8px]"><span className="min-w-[86px] text-[10px] font-medium text-[#646464]">Fecha y hora</span><span className="flex-1 text-[11px] font-semibold text-[#131313]">{formatDateTime(new Date().toISOString())}</span></div><div className="flex border-b border-[#E3E3E3] px-[12px] py-[8px]"><span className="min-w-[86px] text-[10px] font-medium text-[#646464]">Criticidad</span><span className="flex-1 text-[11px] font-semibold text-[#131313]"><FindingBadge className={severityClassName(item?.severityLabel)}>{item?.severityLabel ?? 'Moderado'}</FindingBadge></span></div><div className="px-[12px] py-[8px]"><p className="text-[10px] font-medium text-[#646464]">Acción tomada</p><p className="pt-[4px] text-[11px] font-semibold leading-[16.5px] text-[#131313]">{description}</p></div></div></div>;
 }
 
 function Footer({ phase, inputValue, onInputChange, onSend, disabled, onConfirm, onDone }: FooterProps) {
   if (phase === 'summary') return <div className="shrink-0 border-t border-[#E3E3E3] bg-white px-[12px] pb-[6px] pt-[8px]"><button type="button" onClick={onConfirm} disabled={disabled} className="flex h-[48px] w-full items-center justify-center gap-[8px] rounded-[14px] bg-[#00B398] text-[14px] font-bold text-white disabled:bg-[#D1D1D1]">✓ Confirmar ejecución</button><div className="mx-auto mt-[10px] h-[4px] w-[120px] rounded-[2px] bg-[#D1D1D1]" /></div>;
-  if (phase === 'done') return <div className="shrink-0 border-t border-[#E3E3E3] bg-white px-[12px] pb-[6px] pt-[8px]"><button type="button" onClick={onDone} className="flex h-[48px] w-full items-center justify-center gap-[8px] rounded-[14px] bg-[#C8A064] text-[14px] font-bold text-white">← Volver a mis hallazgos</button><div className="mx-auto mt-[10px] h-[4px] w-[120px] rounded-[2px] bg-[#D1D1D1]" /></div>;
-  return <div className="shrink-0 border-t border-[#E3E3E3] bg-white px-[12px] pb-[6px] pt-[8px]"><div className="flex items-center gap-[8px]"><button type="button" className="flex size-[38px] shrink-0 items-center justify-center rounded-full bg-[#F4F6F9] text-[#646464]">◉</button><textarea value={inputValue} onChange={(event) => onInputChange(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); onSend(); } }} placeholder="Escribe aquí o usa los controles…" rows={1} className="min-h-[40px] max-h-[80px] flex-1 resize-none rounded-[20px] border-[1.5px] border-[#D1D1D1] bg-[#F4F6F9] px-[14px] py-[10px] text-[13px] leading-[18px] text-[#131313] outline-none placeholder:text-[#ACACAC]" /><button type="button" onClick={onSend} className="flex size-[38px] shrink-0 items-center justify-center rounded-full bg-[#00B398] text-white"><ChatSendIcon /></button></div><div className="mx-auto mt-[10px] h-[4px] w-[120px] rounded-[2px] bg-[#D1D1D1]" /></div>;
+  if (phase === 'done') return <div className="shrink-0 border-t border-[#E3E3E3] bg-white px-[12px] pb-[6px] pt-[8px]"><button type="button" onClick={onDone} className="flex h-[48px] w-full items-center justify-center gap-[8px] rounded-[14px] bg-[#C8A064] text-[14px] font-bold text-[#001E39]">← Volver a observaciones</button><div className="mx-auto mt-[10px] h-[4px] w-[120px] rounded-[2px] bg-[#D1D1D1]" /></div>;
+  return <div className="shrink-0 border-t border-[#E3E3E3] bg-white px-[12px] pb-[6px] pt-[8px]"><div className="flex items-center gap-[8px]"><textarea value={inputValue} onChange={(event) => onInputChange(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); onSend(); } }} placeholder="Escribe aquí o usa los controles…" rows={1} className="min-h-[40px] max-h-[80px] flex-1 resize-none rounded-[20px] border-[1.5px] border-[#D1D1D1] bg-[#F4F6F9] px-[14px] py-[10px] text-[13px] leading-[18px] text-[#131313] outline-none placeholder:text-[#ACACAC]" /><button type="button" onClick={onSend} className="flex size-[38px] shrink-0 items-center justify-center rounded-full bg-[#00B398] text-white"><ChatSendIcon /></button></div><div className="mx-auto mt-[10px] h-[4px] w-[120px] rounded-[2px] bg-[#D1D1D1]" /></div>;
 }
 
-function DoneScreen({ item, index }: { item: InspectionDetailFindingItemResponse | null | undefined; index: number }) {
+function DoneScreen({ item, index, submittedAt }: { item: InspectionDetailFindingItemResponse | null | undefined; index: number; submittedAt: string | null }) {
   const responsible = item?.responsibleUsers[0];
-
-  return <div className="flex min-h-full flex-col items-center justify-center gap-[16px] px-[24px] py-[24px] text-center"><div className="flex size-[76px] items-center justify-center rounded-full bg-[#00B398] text-[32px] text-white shadow-[0_4px_16px_rgba(0,179,152,0.3)]">✓</div><h2 className="text-[20px] font-bold leading-[24px] text-[#00B398]">¡Observación ejecutada!</h2><p className="max-w-[280px] text-[13px] leading-[20.8px] text-[#646464]">La observación <strong className="text-[#131313]">Obs. {index + 1}</strong> fue marcada como <strong className="text-[#00B398]">Ejecutada</strong> y quedará pendiente de revisión.</p><div className="w-full max-w-[300px] rounded-[12px] border-[1.5px] border-[#00B398] bg-[#C5FFF6] px-[16px] py-[14px] text-left"><div className="mb-[10px] flex items-center gap-[8px]"><div className="flex size-[32px] items-center justify-center rounded-[8px] bg-[#00B398] text-white">🔔</div><p className="text-[12px] font-bold text-[#006153]">Notificaciones enviadas</p></div><p className="text-[12px] leading-[18px] text-[#006153]"><strong>Admin GF HSE</strong><br />Revisará la evidencia para aprobar o rechazar.</p></div><div className="grid w-full max-w-[300px] grid-cols-2 gap-[8px]"><div className="rounded-[8px] border border-[#E3E3E3] bg-white p-[10px]"><p className="text-[14px] font-bold text-[#131313]">{responsible?.fullName?.split(' ')[0] ?? 'EECC'}</p><p className="mt-[2px] text-[9px] text-[#646464]">Ejecutado por</p></div><div className="rounded-[8px] border border-[#E3E3E3] bg-white p-[10px]"><p className="text-[14px] font-bold text-[#00B398]">{currentTime()}</p><p className="mt-[2px] text-[9px] text-[#646464]">Hora de ejecución</p></div></div><p className="text-[11px] leading-[16.5px] text-[#ACACAC]">AurelIA · Gold Fields Salares Norte<br />{formatDate(new Date().toISOString())}</p></div>;
+  const executedAt = submittedAt ?? new Date().toISOString();
+  return <div className="flex min-h-full flex-col items-center justify-center gap-[16px] px-[24px] py-[24px] text-center"><div className="flex size-[76px] items-center justify-center rounded-full bg-[#00B398] text-[32px] text-white">✓</div><h2 className="text-[20px] font-bold leading-[24px] text-[#00B398]">¡Observación ejecutada!</h2><p className="max-w-[280px] text-[13px] leading-[20.8px] text-[#646464]">La observación <strong className="text-[#131313]">Obs. {index + 1}</strong> fue marcada como <strong className="text-[#00B398]">Ejecutada</strong> y quedará pendiente de revisión.</p><div className="w-full max-w-[300px] rounded-[12px] border-[1.5px] border-[#00B398] bg-[#C5FFF6] px-[16px] py-[14px] text-left"><div className="mb-[10px] flex items-center gap-[8px]"><div className="flex size-[32px] items-center justify-center rounded-[8px] bg-[#00B398] text-white">🔔</div><p className="text-[12px] font-bold text-[#006153]">Notificaciones enviadas</p></div><p className="text-[12px] leading-[18px] text-[#006153]"><strong>Admin GF HSE</strong><br />Revisará la evidencia para aprobar o rechazar</p><div className="my-[10px] h-px bg-[rgba(0,179,152,0.35)]" /><p className="text-[12px] leading-[18px] text-[#006153]"><strong>{responsible?.fullName ?? 'Responsable EECC'}</strong><br />Fue notificada de la ejecución</p></div><div className="grid w-full max-w-[300px] grid-cols-2 gap-[8px]"><div className="rounded-[8px] border border-[#E3E3E3] bg-white p-[10px]"><p className="text-[14px] font-bold text-[#131313]">{responsible?.fullName?.split(' ')[0] ?? 'EECC'}</p><p className="mt-[2px] text-[9px] text-[#646464]">Ejecutado por</p></div><div className="rounded-[8px] border border-[#E3E3E3] bg-white p-[10px]"><p className="text-[14px] font-bold text-[#00B398]">{currentTime()}</p><p className="mt-[2px] text-[9px] text-[#646464]">Hora de ejecución</p></div></div><p className="text-[11px] leading-[16.5px] text-[#ACACAC]">AurelIA · Gold Fields Salares Norte<br />{formatDate(executedAt)}</p></div>;
 }
 
-export function FindingAssistantExecutionView({ subtitle, item, index = 1, isSubmitting = false, onBack, onCancel, onSubmit }: AssistantViewProps) {
+export function FindingAssistantExecutionView({ subtitle, item, index = 1, isSubmitting = false, onBack, onCancel }: AssistantViewProps) {
+  const queryClient = useQueryClient();
   const [phase, setPhase] = useState<AssistantPhase>('details');
   const [file, setFile] = useState<File | null>(null);
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [editing, setEditing] = useState(false);
   const [loadingSuggestion, setLoadingSuggestion] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submittedAt, setSubmittedAt] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [extraBubbles, setExtraBubbles] = useState<ExtraBubble[]>([]);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -276,8 +277,30 @@ export function FindingAssistantExecutionView({ subtitle, item, index = 1, isSub
   }
 
   async function confirmExecution() {
-    if (!file || !description.trim()) return;
-    await onSubmit(description.trim(), file);
+    if (!item?.findingId || !file || !description.trim() || submitting) return;
+    setSubmitting(true);
+    const executedAt = new Date().toISOString();
+    const fileResponse = await uploadFile(file, null);
+    const evidence = await createEvidence({
+      fileId: fileResponse.id,
+      title: 'Evidencia posterior del hallazgo',
+      description: description.trim(),
+      evidenceType: 'photo',
+      capturedAt: executedAt,
+    });
+    await linkEvidence(evidence.id, {
+      entityType: 'inspection_finding',
+      entityId: item.findingId,
+      relationType: InspectionEvidenceRelationType.AFTER_PHOTO,
+    });
+    await updateInspectionFinding(item.findingId, {
+      status: InspectionFindingStatus.IN_PROGRESS,
+      executedAt,
+      executedActionDescription: description.trim(),
+    });
+    await queryClient.invalidateQueries({ queryKey: ['inspections'] });
+    setSubmittedAt(executedAt);
+    setSubmitting(false);
     setPhase('done');
   }
 
@@ -298,7 +321,7 @@ export function FindingAssistantExecutionView({ subtitle, item, index = 1, isSub
       <Header subtitle={subtitle} phase={phase} onBack={phase === 'done' ? onCancel : handleBack} />
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-[#F4F6F9] px-[12px] py-[12px]">
         <div className="flex flex-col gap-[10px]">
-          {phase === 'done' ? <DoneScreen item={item} index={index} /> : null}
+          {phase === 'done' ? <DoneScreen item={item} index={index} submittedAt={submittedAt} /> : null}
           {phase !== 'done' ? <AgentBubble>¡Hola! 👋 Iniciaste el flujo asistido para ejecutar la <strong>Obs. {index + 1}</strong>. Revisa los detalles antes de continuar:</AgentBubble> : null}
           {phase !== 'done' ? <FindingCard item={item} index={index} /> : null}
           {phase !== 'done' ? <SlaCard item={item} /> : null}
@@ -308,7 +331,7 @@ export function FindingAssistantExecutionView({ subtitle, item, index = 1, isSub
           {phase === 'summary' ? <><AgentBubble>Revisa el resumen completo antes de confirmar:</AgentBubble><SummaryCard item={item} index={index} file={file} description={description} /><AgentBubble>¿Todo correcto? Al confirmar, el hallazgo quedará como <strong>Ejecutado</strong> y el Admin GF HSE será notificado para aprobar.</AgentBubble><QuickOption onClick={() => setPhase('response')}>✎ Editar algo</QuickOption></> : null}
         </div>
       </div>
-      <Footer phase={phase} inputValue={inputValue} onInputChange={setInputValue} onSend={sendFreeText} disabled={isSubmitting || !file || description.trim().length === 0} onConfirm={confirmExecution} onDone={onCancel} />
+      <Footer phase={phase} inputValue={inputValue} onInputChange={setInputValue} onSend={sendFreeText} disabled={isSubmitting || submitting || !file || description.trim().length === 0} onConfirm={confirmExecution} onDone={onCancel} />
     </div>
   );
 }

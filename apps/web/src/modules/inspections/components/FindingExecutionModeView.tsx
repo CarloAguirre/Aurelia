@@ -41,7 +41,7 @@ export function FindingExecutionModeView(props: FindingExecutionModeViewProps) {
   const [assistantOpen, setAssistantOpen] = useState(false);
 
   if (manualOpen) return <FindingManualExecutionView subtitle={subtitle} item={item} index={index} isSubmitting={isSubmitting} onBack={rejectedFlow ? onBack : () => setManualOpen(false)} onCancel={onCancel} onSubmit={onStartManual} />;
-  if (assistantOpen) return <FindingAssistantExecutionView subtitle={subtitle} item={item} index={index} isSubmitting={isSubmitting} onBack={() => setAssistantOpen(false)} onCancel={onCancel} onSubmit={onStartManual} />;
+  if (assistantOpen) return <FindingAssistantExecutionView subtitle={subtitle} item={item} index={index} isSubmitting={isSubmitting} onBack={() => setAssistantOpen(false)} onCancel={onCancel} />;
 
   return (
     <div className="absolute inset-0 z-30 flex flex-col overflow-hidden bg-[#F4F6F9]">

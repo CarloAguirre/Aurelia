@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { InspectionEvidenceRelationType, InspectionFindingStatus, type InspectionDetailEvidenceResponse, type InspectionDetailFindingItemResponse } from '@aurelia/contracts';
 import { env } from '../../../shared/config/env';
@@ -98,7 +98,7 @@ function Header({ subtitle, phase, onBack }: { subtitle: string; phase: Assistan
           <button type="button" onClick={onBack} className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-full" aria-label="Volver"><ChatBackIcon /></button>
           <div className="min-w-0 flex-1 px-[4px]">
             <p className="truncate text-[14px] font-semibold leading-[17px] text-white">Ejecutar observación</p>
-            <p className="mt-[1px] flex items-center gap-[4px] truncate text-[11px] leading-[14px] text-[rgba(255,255,255,0.55)]"><span className="h-[6px] w-[6px] rounded-full bg-[#00B398]" />AurelIA · Asistente EECC · {subtitle}</p>
+            <p className="mt-[1px] flex items-center gap-[4px] truncate text-[11px] leading-[14px] text-[rgba(255,255,255,0.55)]"><span className="h-[6px] w-[6px] rounded-full bg-[#00B398] />AurelIA · Asistente EECC · {subtitle}</p>
           </div>
           <div className="mr-[4px] flex h-[22px] shrink-0 items-center rounded-[16px] bg-[#00B398] px-[10px] text-[10px] font-bold text-white">EECC</div>
           <button type="button" className="flex h-[48px] w-[36px] shrink-0 items-center justify-center rounded-full"><ChatMoreIcon /></button>
@@ -115,6 +115,18 @@ function Header({ subtitle, phase, onBack }: { subtitle: string; phase: Assistan
       </div>
     </>
   );
+}
+
+function BellIcon() {
+  return <svg width="14" height="14" viewBox="0 0 448 512" fill="none" aria-hidden="true"><path fill="currentColor" d="M224 0c-17.7 0-32 14.3-32 32v19.2C119 66 64 130.6 64 208v25.4c0 45.4-15.5 89.5-43.8 124.9L5.3 377c-5.8 7.2-6.9 17.1-2.9 25.4S14.8 416 24 416h400c9.2 0 17.6-5.3 21.6-13.6s2.9-18.2-2.9-25.4l-14.9-18.6C399.5 322.9 384 278.8 384 233.4V208c0-77.4-55-142-128-156.8V32c0-17.7-14.3-32-32-32Zm45.3 493.3c12-12 18.7-28.3 18.7-45.3H160c0 17 6.7 33.3 18.7 45.3S207 512 224 512s33.3-6.7 45.3-18.7Z" /></svg>;
+}
+
+function ShieldIcon() {
+  return <svg width="12" height="12" viewBox="0 0 512 512" fill="none" aria-hidden="true"><path fill="currentColor" d="M256 0c4.6 0 9.2 1 13.4 2.9L457.7 82.8c22 9.3 38.3 31 38.3 57.2c0 99.6-41.3 280.7-213.6 363.2c-16.7 8-36.1 8-52.8 0C57.3 420.7 16 239.6 16 140c0-26.2 16.3-47.9 38.3-57.2L242.6 2.9C246.8 1 251.4 0 256 0Zm0 66.8v378.1C394 378 432 230.1 432 141.4L256 66.8Z" /></svg>;
+}
+
+function WorkerIcon() {
+  return <svg width="12" height="12" viewBox="0 0 448 512" fill="none" aria-hidden="true"><path fill="currentColor" d="M224 256A128 128 0 1 0 224 0a128 128 0 1 0 0 256Zm-45.7 48C79.8 304 0 383.8 0 482.3C0 498.7 13.3 512 29.7 512h388.6c16.4 0 29.7-13.3 29.7-29.7C448 383.8 368.2 304 269.7 304h-91.4Z" /></svg>;
 }
 
 function BotAvatar() {
@@ -205,18 +217,19 @@ function Footer({ phase, inputValue, onInputChange, onSend, onDone }: FooterProp
 function DoneScreen({ item, index, submittedAt }: { item: InspectionDetailFindingItemResponse | null | undefined; index: number; submittedAt: string | null }) {
   const responsible = item?.responsibleUsers[0];
   const executedAt = submittedAt ?? new Date().toISOString();
+  const responsibleFirstName = responsible?.fullName?.split(' ')[0] ?? 'EECC';
   return (
-    <div className="flex min-h-full flex-col items-center justify-center px-[24px] py-[28px] text-center">
+    <div className="flex min-h-full flex-col items-center justify-center px-[24px] py-[24px] text-center">
       <div className="flex size-[76px] items-center justify-center rounded-full bg-[#00B398] text-[34px] text-white shadow-[0_10px_24px_rgba(0,179,152,0.32)]">✓</div>
       <h2 className="mt-[18px] text-[20px] font-bold leading-[24px] text-[#00B398]">¡Observación ejecutada!</h2>
       <p className="mt-[14px] max-w-[280px] text-[13px] leading-[20.8px] text-[#646464]">La observación <strong className="text-[#131313]">Obs. {index + 1}</strong> fue marcada como <strong className="text-[#00B398]">Ejecutada</strong> y quedará pendiente de revisión.</p>
       <div className="mt-[18px] w-full max-w-[300px] rounded-[12px] border-[1.5px] border-[#00B398] bg-[#C5FFF6] px-[16px] py-[14px] text-left">
-        <div className="mb-[10px] flex items-center gap-[8px]"><div className="flex size-[32px] items-center justify-center rounded-[8px] bg-[#00B398] text-white">🔔</div><p className="text-[12px] font-bold text-[#006153]">Notificaciones enviadas</p></div>
-        <p className="text-[12px] leading-[18px] text-[#006153]"><strong>Admin GF HSE</strong><br />Revisará la evidencia para aprobar o rechazar</p>
+        <div className="mb-[10px] flex items-center gap-[8px]"><div className="flex size-[32px] shrink-0 items-center justify-center rounded-[8px] bg-[#00B398] text-white"><BellIcon /></div><p className="text-[12px] font-bold text-[#006153]">Notificaciones enviadas</p></div>
+        <div className="flex items-start gap-[7px] text-[12px] leading-[18px] text-[#006153]"><span className="mt-[2px] shrink-0"><ShieldIcon /></span><span><strong>Admin GF HSE</strong><br /><span className="text-[10px]">Revisará la evidencia para aprobar o rechazar</span></span></div>
         <div className="my-[10px] h-px bg-[rgba(0,179,152,0.35)]" />
-        <p className="text-[12px] leading-[18px] text-[#006153]"><strong>{responsible?.fullName ?? 'Responsable EECC'}</strong><br />Fue notificada de la ejecución</p>
+        <div className="flex items-start gap-[7px] text-[12px] leading-[18px] text-[#006153]"><span className="mt-[2px] shrink-0"><WorkerIcon /></span><span><strong>{responsible?.fullName ?? 'Responsable EECC'}</strong><br /><span className="text-[10px]">Fue notificada de la ejecución</span></span></div>
       </div>
-      <div className="mt-[14px] grid w-full max-w-[300px] grid-cols-2 gap-[8px]"><div className="rounded-[8px] border border-[#E3E3E3] bg-white p-[10px]"><p className="text-[14px] font-bold text-[#131313]">{responsible?.fullName?.split(' ')[0] ?? 'EECC'}</p><p className="mt-[2px] text-[9px] text-[#646464]">Ejecutado por</p></div><div className="rounded-[8px] border border-[#E3E3E3] bg-white p-[10px]"><p className="text-[14px] font-bold text-[#00B398]">{currentTime()}</p><p className="mt-[2px] text-[9px] text-[#646464]">Hora de ejecución</p></div></div>
+      <div className="mt-[14px] grid w-full max-w-[300px] grid-cols-2 gap-[8px]"><div className="rounded-[8px] border border-[#E3E3E3] bg-white p-[10px]"><p className="text-[14px] font-bold text-[#131313]">{responsibleFirstName}</p><p className="mt-[2px] text-[9px] text-[#646464]">Ejecutado por</p></div><div className="rounded-[8px] border border-[#E3E3E3] bg-white p-[10px]"><p className="text-[14px] font-bold text-[#00B398]">{currentTime()}</p><p className="mt-[2px] text-[9px] text-[#646464]">Hora de ejecución</p></div></div>
       <p className="mt-[14px] text-[11px] leading-[16.5px] text-[#ACACAC]">AurelIA · Gold Fields Salares Norte<br />{formatDate(executedAt)}</p>
     </div>
   );
@@ -337,12 +350,12 @@ export function FindingAssistantExecutionView({ subtitle, item, index = 0, isSub
     <div className="absolute inset-0 z-40 flex flex-col overflow-hidden bg-[#F4F6F9]">
       <Header subtitle={subtitle} phase={phase} onBack={phase === 'done' ? onCancel : handleBack} />
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-[#F4F6F9] px-[12px] py-[12px]">
-        <div className="flex flex-col gap-[10px]">
+        <div className="flex min-h-full flex-col gap-[10px]">
           {phase === 'done' ? <DoneScreen item={item} index={index} submittedAt={submittedAt} /> : null}
           {phase !== 'done' ? <AgentBubble>¡Hola! 👋 Iniciaste el flujo asistido para ejecutar la <strong>Obs. {index + 1}</strong>. Revisa los detalles antes de continuar:</AgentBubble> : null}
           {phase !== 'done' ? <FindingCard item={item} index={index} /> : null}
           {phase !== 'done' ? <SlaCard item={item} /> : null}
-          {extraBubbles.map((bubble) => bubble.from === 'agent' ? <AgentBubble key={bubble.id}>{bubble.text}</AgentBubble> : <UserBubble key={bubble.id}>{bubble.text}</UserBubble>)}
+          {phase !== 'done' ? extraBubbles.map((bubble) => bubble.from === 'agent' ? <AgentBubble key={bubble.id}>{bubble.text}</AgentBubble> : <UserBubble key={bubble.id}>{bubble.text}</UserBubble>) : null}
           {phase === 'details' ? <><AgentBubble>¿Estás listo para registrar tu respuesta?</AgentBubble><QuickOption tone="teal" onClick={startResponse}>→ Sí, iniciar respuesta</QuickOption><QuickOption onClick={askQuestion}>? Tengo una consulta</QuickOption></> : null}
           {phase === 'response' ? <><AgentBubble>Perfecto. Completa tu respuesta: sube la foto <strong>Después</strong> y describe la acción que tomaste.</AgentBubble><ResponseCard item={item} file={file} suggestion={suggestion} editing={editing} accepted={responseAccepted} description={description} onFile={handleFile} onAccept={acceptSuggestion} onEdit={editSuggestion} onDescriptionChange={(value) => { setDescription(value); setResponseAccepted(false); setResponseAckText(null); }} onSaveDescription={saveDescription} />{loadingSuggestion ? <TypingDots /> : null}{file && suggestion && !loadingSuggestion ? <AgentBubble>{photoReceivedText}</AgentBubble> : null}{responseAccepted && responseAckText ? <UserBubble>{responseAckText}</UserBubble> : null}{responseAccepted ? <QuickOption tone="teal" disabled={isSubmitting || submitting} onClick={confirmExecution}>{submitting ? 'Guardando…' : '→ Continuar al resumen'}</QuickOption> : null}</> : null}
         </div>

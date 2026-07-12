@@ -289,7 +289,7 @@ export class InspectionDetailService {
       description: evidence.description,
       relationType: link?.relationType ?? null,
       capturedAt: evidence.capturedAt,
-      url: evidence.fileId ? `/api/files/${evidence.fileId}` : null,
+      url: evidence.fileId ? `/api/files/${evidence.fileId}/content` : null,
     };
   }
 

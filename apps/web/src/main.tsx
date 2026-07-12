@@ -8,6 +8,7 @@ import { DraftProgressBridge } from './modules/inspections/components/DraftProgr
 import { IncompleteInspectionDraftBridge } from './modules/inspections/components/IncompleteInspectionDraftBridge';
 import { InspectionAreaSectorFilterBridge } from './modules/inspections/components/InspectionAreaSectorFilterBridge';
 import { InspectionClosedReassignLockBridge } from './modules/inspections/components/InspectionClosedReassignLockBridge';
+import { InspectionEvidenceImageSourceBridge } from './modules/inspections/components/InspectionEvidenceImageSourceBridge';
 import { InspectionEvidenceViewerBridge } from './modules/inspections/components/InspectionEvidenceViewerBridge';
 import { InspectionFollowupProgressBridge } from './modules/inspections/components/InspectionFollowupProgressBridge';
 import { router } from './routes/router';
@@ -27,6 +28,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       <InspectionFollowupProgressBridge />
       <InspectionClosedReassignLockBridge />
       <ChecklistResultBridge />
+      <InspectionEvidenceImageSourceBridge />
       <InspectionEvidenceViewerBridge />
     </QueryClientProvider>
   </React.StrictMode>,

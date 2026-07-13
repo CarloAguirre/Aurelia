@@ -2,6 +2,7 @@ import type { InspectionDetailResponse } from '@aurelia/contracts';
 import { useInspectionDetail } from '../../../shared/hooks/useInspectionDetail';
 import { InspectionDetailModal, type InspectionDetailModalRecord } from './InspectionDetailModal';
 import { InspectionDetailRealDataModal } from './InspectionDetailRealDataModal';
+import { InspectionHistoryDetailModal } from './InspectionHistoryDetailModal';
 
 type InspectionDetailModalDataBridgeProps = {
   open: boolean;
@@ -51,8 +52,13 @@ function StatusShell({ record, title, message, onClose }: { record: InspectionDe
 
 export function InspectionDetailModalDataBridge({ open, inspectionId, record, onClose }: InspectionDetailModalDataBridgeProps) {
   const detailQuery = useInspectionDetail(inspectionId, open && Boolean(record));
+  const isHistoryRoute = typeof window !== 'undefined' && window.location.pathname.includes('/inspections/history');
   if (!open) return null;
-  if (detailQuery.data && record) return <InspectionDetailRealDataModal open={open} record={buildRecordFromDetail(detailQuery.data, record)} detail={detailQuery.data} onClose={onClose} />;
+  if (detailQuery.data && record) {
+    const detailRecord = buildRecordFromDetail(detailQuery.data, record);
+    if (isHistoryRoute) return <InspectionHistoryDetailModal open={open} record={detailRecord} detail={detailQuery.data} onClose={onClose} />;
+    return <InspectionDetailRealDataModal open={open} record={detailRecord} detail={detailQuery.data} onClose={onClose} />;
+  }
   if (detailQuery.isError) return <StatusShell record={record} title="No fue posible cargar el detalle real" message="Revisa Network para la llamada /api/inspections/:id/detail. Ya no se muestra el mock como fallback cuando esa llamada falla." onClose={onClose} />;
   if (record) return <StatusShell record={record} title="Cargando detalle real" message="Obteniendo observaciones, evidencias, seguimientos y datos generales desde API." onClose={onClose} />;
   return <InspectionDetailModal open={open} record={null} onClose={onClose} />;

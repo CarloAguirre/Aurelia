@@ -1,8 +1,9 @@
-import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import type { InspectionNotificationEvent, InspectionNotificationMetadata, InspectionNotificationTone, NotificationResponse } from '@aurelia/contracts';
 import { useNotifications } from '../hooks/useNotifications';
-import { dismissInspectionNotificationThread } from '../services/notifications.service';
+import { dismissInspectionNotificationThread, markNotificationRead } from '../services/notifications.service';
 import {
   NotificationApprovedIcon,
   NotificationAssignedIcon,
@@ -93,6 +94,33 @@ function defaultTag(event: InspectionNotificationEvent) {
   return 'Inspección asignada';
 }
 
+function groupForEvent(event: InspectionNotificationEvent) {
+  if (event === 'inspection.finding.executed' || event === 'inspection.finding.resubmitted') return 'executed';
+  if (event === 'inspection.finding.closed' || event === 'inspection.closed') return 'closed';
+  if (event === 'inspection.finding.rejected') return 'rejected';
+  return 'open';
+}
+
+function notificationTimestamp(notification: NotificationResponse) {
+  const metadata = metadataOf(notification);
+  const value = readString(metadata.occurredAt, notification.createdAt);
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function buildNotificationTarget(notification: NotificationResponse) {
+  const metadata = metadataOf(notification);
+  const inspectionId = readString(metadata.inspectionId);
+  if (!inspectionId) return null;
+  const event = resolveEvent(notification);
+  const params = new URLSearchParams({ notification: '1', inspectionId, group: groupForEvent(event), notificationId: notification.id });
+  const findingId = readString(metadata.findingId);
+  const inspectionNumber = readString(metadata.inspectionNumber);
+  if (findingId) params.set('findingId', findingId);
+  if (inspectionNumber) params.set('inspectionNumber', inspectionNumber);
+  return `${event === 'inspection.closed' ? '/inspections/history' : '/inspections'}?${params.toString()}`;
+}
+
 function formatDateTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
@@ -165,7 +193,7 @@ function severityColor(value: string) {
   return { bg: '#ffe1cd', color: '#532a0e' };
 }
 
-function NotificationCard({ notification, dismissing, onInspectionClosedClick }: { notification: NotificationResponse; dismissing: boolean; onInspectionClosedClick: (notificationId: string) => void }) {
+function NotificationCard({ notification, pending, onNotificationClick }: { notification: NotificationResponse; pending: boolean; onNotificationClick: (notification: NotificationResponse) => void }) {
   const metadata = metadataOf(notification);
   const event = resolveEvent(notification);
   const tone = toneConfig[resolveTone(notification)];
@@ -175,28 +203,27 @@ function NotificationCard({ notification, dismissing, onInspectionClosedClick }:
   const reason = readString(metadata.reason);
   const occurredAt = readString(metadata.occurredAt, notification.createdAt);
   const unread = !notification.readAt;
-  const canDismissThread = event === 'inspection.closed';
 
   function handleClick() {
-    if (canDismissThread && !dismissing) onInspectionClosedClick(notification.id);
+    if (!pending) onNotificationClick(notification);
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
-    if (!canDismissThread || dismissing) return;
+    if (pending) return;
     if (event.key !== 'Enter' && event.key !== ' ') return;
     event.preventDefault();
-    onInspectionClosedClick(notification.id);
+    onNotificationClick(notification);
   }
 
   return (
     <article
-      aria-label={canDismissThread ? 'Cerrar flujo de notificaciones de esta inspección' : undefined}
-      className={`relative w-full rounded-[10px] border border-l-[3px] ${canDismissThread ? 'cursor-pointer' : ''}`}
+      aria-label="Abrir detalle de inspección de esta notificación"
+      className="relative w-full cursor-pointer rounded-[10px] border border-l-[3px]"
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      role={canDismissThread ? 'button' : undefined}
+      role="button"
       style={{ borderColor: tone.border, backgroundColor: tone.cardBg }}
-      tabIndex={canDismissThread ? 0 : undefined}
+      tabIndex={0}
     >
       <div className="flex w-full items-start gap-[10px] py-[13px] pl-[15px] pr-[13px]">
         <div className="flex size-[38px] shrink-0 items-center justify-center rounded-[10px]" style={{ backgroundColor: tone.iconBg }}>{eventIcon(event)}</div>
@@ -222,18 +249,40 @@ export function AppNotificationsPanel({ open, onClose }: { open: boolean; onClos
   const [activeTab, setActiveTab] = useState<NotificationTab>('unread');
   const notificationsQuery = useNotifications();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const dismissThreadMutation = useMutation({
     mutationFn: dismissInspectionNotificationThread,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
+  const markReadMutation = useMutation({
+    mutationFn: markNotificationRead,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
   const notifications = notificationsQuery.data ?? [];
-  const unreadNotifications = useMemo(() => notifications.filter((notification) => !notification.readAt), [notifications]);
-  const visibleNotifications = activeTab === 'unread' ? unreadNotifications : notifications;
+  const sortedNotifications = useMemo(() => [...notifications].sort((left, right) => notificationTimestamp(right) - notificationTimestamp(left)), [notifications]);
+  const unreadNotifications = useMemo(() => sortedNotifications.filter((notification) => !notification.readAt), [sortedNotifications]);
+  const visibleNotifications = activeTab === 'unread' ? unreadNotifications : sortedNotifications;
+  const notificationActionPending = dismissThreadMutation.isPending || markReadMutation.isPending;
 
-  function handleInspectionClosedClick(notificationId: string) {
-    dismissThreadMutation.mutate(notificationId);
+  useEffect(() => {
+    if (open) setActiveTab('unread');
+  }, [open]);
+
+  async function handleNotificationClick(notification: NotificationResponse) {
+    const target = buildNotificationTarget(notification);
+    if (!target) return;
+    const event = resolveEvent(notification);
+    try {
+      if (event === 'inspection.closed') await dismissThreadMutation.mutateAsync(notification.id);
+      else if (!notification.readAt) await markReadMutation.mutateAsync(notification.id);
+    } finally {
+      onClose();
+      navigate(target);
+    }
   }
 
   if (!open) return null;
@@ -258,7 +307,7 @@ export function AppNotificationsPanel({ open, onClose }: { open: boolean; onClos
             {notificationsQuery.isLoading ? <EmptyPanel>Cargando notificaciones...</EmptyPanel> : null}
             {notificationsQuery.isError ? <EmptyPanel>No fue posible cargar las notificaciones.</EmptyPanel> : null}
             {!notificationsQuery.isLoading && !notificationsQuery.isError && visibleNotifications.length === 0 ? <EmptyPanel>{activeTab === 'unread' ? 'No tienes notificaciones sin leer.' : 'No tienes notificaciones.'}</EmptyPanel> : null}
-            {!notificationsQuery.isLoading && !notificationsQuery.isError ? visibleNotifications.map((notification) => <NotificationCard key={notification.id} notification={notification} dismissing={dismissThreadMutation.isPending} onInspectionClosedClick={handleInspectionClosedClick} />) : null}
+            {!notificationsQuery.isLoading && !notificationsQuery.isError ? visibleNotifications.map((notification) => <NotificationCard key={notification.id} notification={notification} pending={notificationActionPending} onNotificationClick={handleNotificationClick} />) : null}
           </div>
         </div>
       </aside>

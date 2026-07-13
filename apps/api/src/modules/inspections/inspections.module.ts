@@ -28,6 +28,8 @@ import { InspectionDashboardService } from './inspection-dashboard.service';
 import { InspectionDetailService } from './inspection-detail.service';
 import { InspectionFindingCatalogController } from './inspection-finding-catalog.controller';
 import { InspectionFindingCatalogService } from './inspection-finding-catalog.service';
+import { InspectionHistoryController } from './inspection-history.controller';
+import { InspectionHistoryService } from './inspection-history.service';
 import { InspectionTransversalController } from './inspection-transversal.controller';
 import { InspectionTransversalService } from './inspection-transversal.service';
 import { InspectionsController } from './inspections.controller';
@@ -60,8 +62,8 @@ import { InspectionsService } from './inspections.service';
       UserEntity,
     ]),
   ],
-  controllers: [InspectionsController, InspectionDashboardController, InspectionTransversalController, InspectionFindingCatalogController, InspectionCriticalityCatalogController],
-  providers: [InspectionsService, InspectionDashboardService, InspectionDetailService, InspectionTransversalService, InspectionFindingCatalogService],
-  exports: [InspectionsService, InspectionDashboardService, InspectionDetailService, InspectionFindingCatalogService],
+  controllers: [InspectionsController, InspectionDashboardController, InspectionHistoryController, InspectionTransversalController, InspectionFindingCatalogController, InspectionCriticalityCatalogController],
+  providers: [InspectionsService, InspectionDashboardService, InspectionHistoryService, InspectionDetailService, InspectionTransversalService, InspectionFindingCatalogService],
+  exports: [InspectionsService, InspectionDashboardService, InspectionHistoryService, InspectionDetailService, InspectionFindingCatalogService],
 })
 export class InspectionsModule {}

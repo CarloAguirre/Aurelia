@@ -35,7 +35,7 @@ const mainItems: SidebarItem[] = [
     children: [
       { label: 'Dashboard', to: '/inspections/dashboard', end: true, lineMode: 'single' },
       { label: 'Gestión de inspecciones', to: '/inspections', end: true, lineMode: 'double' },
-      { label: 'Historial', disabled: true, lineMode: 'single' },
+      { label: 'Historial', to: '/inspections/history', end: true, lineMode: 'single' },
       { label: 'Administración', to: '/inspections/admin', icon: 'admin', disabled: true, lineMode: 'single', tone: 'gold' },
     ],
   },

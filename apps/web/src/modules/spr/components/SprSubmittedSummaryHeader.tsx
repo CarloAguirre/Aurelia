@@ -1,10 +1,18 @@
-import { SPR_ACTIVE_CYCLE, SPR_APPROVED_STATUS, SPR_MANAGER_WAITING_STATUS, SPR_REJECTED_STATUS, SPR_SUBMITTED_STATUS } from '../spr.constants';
+import {
+  SPR_ACTIVE_CYCLE,
+  SPR_APPROVED_STATUS,
+  SPR_MANAGER_REJECTED_WAITING_STATUS,
+  SPR_MANAGER_WAITING_STATUS,
+  SPR_REJECTED_STATUS,
+  SPR_SUBMITTED_STATUS,
+} from '../spr.constants';
 
 export type SprSubmittedSummaryVariant =
   | 'pending_approval'
   | 'rejected'
   | 'completed'
-  | 'waiting_for_responsible';
+  | 'waiting_for_responsible'
+  | 'manager_corrections_pending';
 
 interface SprSubmittedSummaryHeaderProps {
   signDateLabel: string;
@@ -42,9 +50,11 @@ export function SprSubmittedSummaryHeader({ signDateLabel, variant = 'pending_ap
         ? SPR_APPROVED_STATUS
         : variant === 'waiting_for_responsible'
           ? SPR_MANAGER_WAITING_STATUS
-          : SPR_SUBMITTED_STATUS;
+          : variant === 'manager_corrections_pending'
+            ? SPR_MANAGER_REJECTED_WAITING_STATUS
+            : SPR_SUBMITTED_STATUS;
   const formStatusColor =
-    variant === 'rejected'
+    variant === 'rejected' || variant === 'manager_corrections_pending'
       ? 'text-[#570b1d]'
       : variant === 'completed'
         ? 'text-[#3a9b3a]'
@@ -78,4 +88,3 @@ export function SprSubmittedSummaryHeader({ signDateLabel, variant = 'pending_ap
     </div>
   );
 }
-

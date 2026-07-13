@@ -114,6 +114,7 @@ export function SprAreaReviewView() {
   const totalCount = rows.length;
   const completedCount = rows.filter((row) => row.completion !== 'pending').length;
   const historicalAlertCount = rows.filter((row) => row.needsHistoricalReview).length;
+  const soxParameterCount = rows.filter((row) => row.parameter.isSox).length;
   const defaultParameterId =
     rows.find((row) => row.needsHistoricalReview)?.parameter.id ?? rows[0]?.parameter.id ?? null;
   const activeParameterId = selectedParameterId ?? defaultParameterId;
@@ -131,25 +132,15 @@ export function SprAreaReviewView() {
         ? rejectMutation.error.message
         : null);
 
-  async function handleApprove() {
+  async function handleConfirmApprove() {
     if (!canAct || approveMutation.isPending || rejectMutation.isPending) return;
     setActionErrorMessage(null);
 
-    // TODO: reemplazar por modal de firma del gerente cuando llegue el diseño de Figma.
-    const confirmed = window.confirm(
-      '¿Confirmas aprobar y firmar el formulario SPR de este ciclo? (confirmación temporal de desarrollo)',
-    );
-    if (!confirmed) return;
-
-    try {
-      for (const recordId of actionableRecordIds) {
-        await approveMutation.mutateAsync({
-          recordId,
-          payload: { approverUserId: currentUserId },
-        });
-      }
-    } catch {
-      // El error se muestra en el footer via approveMutation.error.
+    for (const recordId of actionableRecordIds) {
+      await approveMutation.mutateAsync({
+        recordId,
+        payload: { approverUserId: currentUserId },
+      });
     }
   }
 
@@ -248,8 +239,14 @@ export function SprAreaReviewView() {
         actionErrorMessage={actionError}
         responsibleLabel={reviewContext.responsibleLabel}
         rejectErrorMessage={rejectErrorMessage}
+        approveSummary={{
+          completedCount,
+          totalCount,
+          attachmentCount: selectedEvidencesQuery.data?.length ?? 0,
+          soxParameterCount,
+        }}
         onRejectConfirm={handleConfirmReject}
-        onApprove={handleApprove}
+        onApproveConfirm={handleConfirmApprove}
       />
     </div>
   );

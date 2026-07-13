@@ -125,8 +125,7 @@ function updateNotificationsCache(queryClient: QueryClient, key: readonly unknow
   queryClient.setQueryData<NotificationResponse[]>(key, (current) => current ? update(current) : current);
 }
 
-function markNotificationAsReadInCache(queryClient: QueryClient, notificationId: string) {
-  const readAt = new Date().toISOString();
+function markNotificationAsReadInCache(queryClient: QueryClient, notificationId: string, readAt = new Date().toISOString()) {
   updateNotificationsCache(queryClient, ['notifications', false], (notifications) => notifications.map((notification) => notification.id === notificationId ? { ...notification, readAt: notification.readAt ?? readAt } : notification));
   updateNotificationsCache(queryClient, ['notifications', true], (notifications) => notifications.filter((notification) => notification.id !== notificationId));
 }
@@ -282,8 +281,8 @@ export function AppNotificationsPanel({ open, onClose }: { open: boolean; onClos
   });
   const markReadMutation = useMutation({
     mutationFn: markNotificationRead,
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    onSuccess: (notification) => {
+      markNotificationAsReadInCache(queryClient, notification.id, notification.readAt ?? undefined);
     },
   });
   const notifications = notificationsQuery.data ?? [];

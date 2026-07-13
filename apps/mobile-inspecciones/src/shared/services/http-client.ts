@@ -1,6 +1,7 @@
 import { useMobileSession } from '../../modules/auth/mobileSession.store';
+import { env } from '../config/env';
 
-export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000/api';
+export const API_URL = env.apiUrl;
 
 function authHeaders(): Record<string, string> {
   const token = useMobileSession.getState().accessToken;

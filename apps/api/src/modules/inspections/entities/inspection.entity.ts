@@ -4,9 +4,18 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { AreaEntity } from '../../organization/entities/area.entity';
+import { CompanyEntity } from '../../organization/entities/company.entity';
+import { LocationEntity } from '../../organization/entities/location.entity';
+import { SectorEntity } from '../../organization/entities/sector.entity';
+import { UserEntity } from '../../users/entities/user.entity';
+import { InspectionFormTemplateEntity } from './inspection-form-template.entity';
+import { InspectionTypeEntity } from './inspection-type.entity';
 
 @Entity('inspections')
 export class InspectionEntity {
@@ -17,27 +26,55 @@ export class InspectionEntity {
   @Column({ name: 'inspection_type_id', type: 'uuid' })
   inspectionTypeId: string;
 
+  @ManyToOne(() => InspectionTypeEntity, { nullable: false, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'inspection_type_id', foreignKeyConstraintName: 'fk_inspections_type' })
+  inspectionType: InspectionTypeEntity;
+
   @Index('idx_inspections_template')
   @Column({ name: 'template_id', type: 'uuid', nullable: true })
   templateId: string | null;
+
+  @ManyToOne(() => InspectionFormTemplateEntity, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'template_id', foreignKeyConstraintName: 'fk_inspections_template' })
+  template: InspectionFormTemplateEntity | null;
 
   @Index('idx_inspections_company')
   @Column({ name: 'company_id', type: 'uuid', nullable: true })
   companyId: string | null;
 
+  @ManyToOne(() => CompanyEntity, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'company_id', foreignKeyConstraintName: 'fk_inspections_company' })
+  company: CompanyEntity | null;
+
   @Index('idx_inspections_area')
   @Column({ name: 'area_id', type: 'uuid', nullable: true })
   areaId: string | null;
 
+  @ManyToOne(() => AreaEntity, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'area_id', foreignKeyConstraintName: 'fk_inspections_area' })
+  area: AreaEntity | null;
+
   @Column({ name: 'sector_id', type: 'uuid', nullable: true })
   sectorId: string | null;
+
+  @ManyToOne(() => SectorEntity, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'sector_id', foreignKeyConstraintName: 'fk_inspections_sector' })
+  sector: SectorEntity | null;
 
   @Column({ name: 'location_id', type: 'uuid', nullable: true })
   locationId: string | null;
 
+  @ManyToOne(() => LocationEntity, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'location_id', foreignKeyConstraintName: 'fk_inspections_location' })
+  location: LocationEntity | null;
+
   @Index('idx_inspections_inspector')
   @Column({ name: 'inspector_user_id', type: 'uuid', nullable: true })
   inspectorId: string | null;
+
+  @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'inspector_user_id', foreignKeyConstraintName: 'fk_inspections_inspector' })
+  inspector: UserEntity | null;
 
   @Column({ type: 'varchar', length: 180 })
   title: string;

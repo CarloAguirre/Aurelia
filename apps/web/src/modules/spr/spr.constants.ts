@@ -53,6 +53,91 @@ export const SPR_APPROVED_STATUS = {
   approvedStepHelper: (dateLabel: string) => `Tu Gerente de Área aprobó y firmó el formulario el ${dateLabel}`,
 } as const;
 
+// PLACEHOLDER: estado pendiente de revision del gerente (Figma 1672:4994).
+export const SPR_MANAGER_PENDING_REVIEW_STATUS = {
+  pendingStepTitle: (cycleLabel: string) => `Formulario SPR ${cycleLabel} pendiente de aprobación`,
+  pendingStepHelper: 'A la espera de tu firma y aprobación',
+  pendingBadgeLabel: 'Pendiente',
+  deliveredStepTitle: (cycleLabel: string) => `Formulario SPR ${cycleLabel} entregado por el responsable del área`,
+  deliveredStepHelper: 'El responsable de área ha emitido el formulario',
+} as const;
+
+// PLACEHOLDER: pantalla de revision del gerente (Figma 1395:12112 / 1399:13951).
+export const SPR_AREA_REVIEW = {
+  responsibleNameFallback: 'Responsable de área',
+  dataSourcePlaceholder: 'Sin fuente declarada',
+  submittedDateFallback: '08-06-2026',
+  signedDateFallback: '05-06-2026',
+  signedTimeFallback: '14:23',
+  entryDateFallback: '05-06-2026 · 14:08',
+  footerInfo:
+    'Al aprobar, AurelIA generará automáticamente las evidencias SOX y notificará al Gerente MA.',
+  rejectLabel: 'Rechazar',
+  approveLabel: 'Aprobar y firmar',
+  pendingReviewBadge: 'Pendiente tu revisión',
+  areaStatusLabel: 'Esperando tu firma',
+  processStatusLabel: 'Pendiente tu firma',
+  formSentTitle: (responsibleLabel: string) => `Formulario enviado por ${responsibleLabel}`,
+  readOnlyHint: 'Solo lectura · Selecciona un parámetro para revisar',
+  pageSubtitle: (cycleLabel: string) =>
+    `Ciclo ${cycleLabel} · Formulario recibido · Pendiente de tu revisión y firma`,
+  parametersCompletedLabel: (completed: number, total: number) => `${completed} de ${total}`,
+  attachmentsCountLabel: (count: number) => `${count} ${count === 1 ? 'archivo' : 'archivos'}`,
+  historicalAlertTitle: 'Valor fuera del rango histórico — detectado por AurelIA',
+  historicalAlertDescription:
+    'Este parámetro presenta una desviación superior al 10% respecto al promedio de los últimos 6 meses. Revisa el valor y la nota explicativa del Responsable antes de aprobar o rechazar.',
+  responsibleNoteSectionTitle: 'Nota del Responsable de Área',
+  justificationHeader: 'Justificación del Responsable · En respuesta a la alerta detectada',
+  soxApprovalNotice: (controlCode: string) =>
+    `Al aprobar este formulario, AurelIA generará automáticamente la evidencia SOX ${controlCode} para firma del Gerente MA. Esta evidencia incluirá el valor reportado y la alerta de desviación como antecedente.`,
+} as const;
+
+// Modal de rechazo del gerente (Figma 1399:14360).
+export const SPR_AREA_REJECT_MODAL = {
+  title: 'Rechazar formulario',
+  description:
+    'El Responsable de Área recibirá una notificación con tu motivo y podrá corregir el formulario desde AurelIA antes del plazo de cierre.',
+  reasonLabel: 'Motivo del rechazo',
+  reasonPlaceholder: (responsibleLabel: string) =>
+    `Describe qué debe corregir ${responsibleLabel}. Sé específico para facilitar la corrección...`,
+  cancelLabel: 'Cancelar',
+  submitLabel: 'Enviar rechazo',
+} as const;
+
+// PLACEHOLDER: estado pre-envio del gerente de area (Figma 1672:4446).
+export const SPR_MANAGER_WAITING_STATUS = {
+  formStatusLabel: 'A la espera',
+  formStatusHelper: 'Pendiente por responsable del área',
+  reportStatusLabel: 'Aún no disponible',
+  unavailableStepTitle: (cycleLabel: string) => `Formulario SPR ${cycleLabel} de tu área todavía no está disponible`,
+  unavailableStepHelper: 'A la espera de emisión por el responsable de área',
+  pendingBadgeLabel: 'Pendiente',
+} as const;
+
+// PLACEHOLDER: gerente esperando correccion del responsable (Figma 1672:5531).
+export const SPR_MANAGER_REJECTED_WAITING_STATUS = {
+  formStatusLabel: 'Correcciones pendientes',
+  formStatusHelper: 'Pendiente por gerente del área',
+  reportStatusLabel: 'Aún no disponible',
+  rejectedStepTitle: (cycleLabel: string) => `Formulario SPR ${cycleLabel} ha sido rechazado por tí`,
+  rejectedStepHelper: 'A la espera de correcciones del responsable del área',
+  rejectedBadgeLabel: 'Pendiente',
+  deliveredStepTitle: (cycleLabel: string) => `Formulario SPR ${cycleLabel} entregado por el responsable del área`,
+  deliveredStepHelper: 'El responsable de área ha emitido el formulario',
+} as const;
+
+// PLACEHOLDER: gerente re-revision tras reenvio corregido (Figma 1672:8268).
+// PROVISIONAL: implementado sin confirmar con Alexis si esta vista debe navegar a review UI (pregunta G2 pendiente).
+export const SPR_MANAGER_PENDING_RE_REVIEW_STATUS = {
+  pendingStepTitle: (cycleLabel: string) => `Formulario SPR ${cycleLabel} con correcciones pendiente de aprobación`,
+  pendingStepHelper: 'A la espera de tu firma y aprobación',
+  pendingBadgeLabel: 'Pendiente',
+  rejectedStepTitle: (cycleLabel: string) => `Formulario SPR ${cycleLabel} ha sido rechazado por tí`,
+  rejectedStepHelper: 'A la espera de correcciones del responsable del área',
+  deliveredStepTitle: (cycleLabel: string) => `Formulario SPR ${cycleLabel} entregado por el responsable del área`,
+  deliveredStepHelper: 'El responsable de área ha emitido el formulario',
+} as const;
+
 // PLACEHOLDER: estado post-rechazo del formulario (Figma 1672:5810).
 export const SPR_REJECTED_STATUS = {
   formStatusLabel: 'Correcciones pendientes',
@@ -77,6 +162,7 @@ export const SPR_CORRECTION_MODE = {
     `Formulario rechazado por ${approverLabel} · ${dateLabel} · ${timeLabel}`,
   statusHelper: (dateLabel: string, timeLabel: string) => `Rechazado el ${dateLabel} · ${timeLabel}`,
   footerReadyMessage: 'Todos los parámetros completados. Puedes firmar y enviar.',
+  nonEditableRecordMessage: 'Este parámetro ya fue aprobado y no se puede editar.',
 } as const;
 
 // Copy del modal de envio (Figma 1666:3035 / 1672:7702).

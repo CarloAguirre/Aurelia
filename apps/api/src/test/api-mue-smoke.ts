@@ -6,6 +6,7 @@ import type { AddressInfo } from 'net';
 import { promisify } from 'util';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../app.module';
+import { ensureApiSmokeEnv } from './test-env';
 import { requestIdMiddleware } from '../shared/security/request-id.middleware';
 import { SanitizedExceptionFilter } from '../shared/security/sanitized-exception.filter';
 
@@ -41,11 +42,7 @@ const KEY_LENGTH = 32;
 const smokeUserEmail = 'carlos.aguirre@goldfields.com';
 
 function configureMueSmokeAuthEnv(): string {
-  process.env.API_TOKEN_KEY ??= `api-mue-smoke-token-key-${Date.now()}`;
-  process.env.AURELIA_DEMO_USER_PASSWORD ??= 'AureliaDemo123!';
-  const password = process.env.AURELIA_DEMO_USER_PASSWORD;
-  if (!password) throw new Error('AURELIA_DEMO_USER_PASSWORD is not configured for MUE smoke tests');
-  return password;
+  return ensureApiSmokeEnv();
 }
 
 async function createPasswordHash(secret: string): Promise<string> {

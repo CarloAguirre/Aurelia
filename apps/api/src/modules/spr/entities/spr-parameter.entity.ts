@@ -1,16 +1,28 @@
 import { RecordStatus } from '@aurelia/contracts';
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { SprMeasureGroupEntity } from './spr-measure-group.entity';
+import { SprUnitEntity } from './spr-unit.entity';
 
 @Entity('spr_parameters')
 export class SprParameterEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Index('idx_spr_parameters_group')
   @Column({ name: 'measure_group_id', type: 'uuid' })
   measureGroupId: string;
 
+  @ManyToOne(() => SprMeasureGroupEntity, { nullable: false, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'measure_group_id', foreignKeyConstraintName: 'fk_spr_parameters_group' })
+  measureGroup: SprMeasureGroupEntity;
+
+  @Index('idx_spr_parameters_unit')
   @Column({ name: 'unit_id', type: 'uuid', nullable: true })
   unitId: string | null;
+
+  @ManyToOne(() => SprUnitEntity, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'unit_id', foreignKeyConstraintName: 'fk_spr_parameters_unit' })
+  unit: SprUnitEntity | null;
 
   @Column({ type: 'varchar', length: 100, unique: true })
   code: string;

@@ -3,8 +3,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { FileResponse, FileStorageProvider } from '@aurelia/contracts';
 import { Repository } from 'typeorm';
 import { createHash } from 'crypto';
-import { readFile } from 'fs/promises';
+import { access, readFile } from 'fs/promises';
 import { FileEntity } from './entities/file.entity';
+
+export interface FileContentResponse {
+  path: string;
+  filename: string;
+  mimeType: string | null;
+}
 
 @Injectable()
 export class FilesService {
@@ -33,11 +39,31 @@ export class FilesService {
   }
 
   async findOne(id: string): Promise<FileResponse> {
+    const entity = await this.findEntityOrThrow(id);
+    return this.toResponse(entity);
+  }
+
+  async getContent(id: string): Promise<FileContentResponse> {
+    const entity = await this.findEntityOrThrow(id);
+    if (entity.storageProvider !== FileStorageProvider.LOCAL || !entity.blobPath) {
+      throw new NotFoundException(`File content ${id} not found`);
+    }
+    await access(entity.blobPath).catch(() => {
+      throw new NotFoundException(`File content ${id} not found`);
+    });
+    return {
+      path: entity.blobPath,
+      filename: entity.originalFilename,
+      mimeType: entity.mimeType,
+    };
+  }
+
+  private async findEntityOrThrow(id: string): Promise<FileEntity> {
     const entity = await this.files.findOneBy({ id });
     if (!entity) {
       throw new NotFoundException(`File ${id} not found`);
     }
-    return this.toResponse(entity);
+    return entity;
   }
 
   private async calculateChecksum(file: Express.Multer.File): Promise<string> {

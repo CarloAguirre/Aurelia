@@ -26,7 +26,7 @@ export class SectorEntity {
     nullable: true,
     onDelete: 'SET NULL',
   })
-  @JoinColumn({ name: 'area_id' })
+  @JoinColumn({ name: 'area_id', foreignKeyConstraintName: 'fk_sectors_area' })
   area: AreaEntity | null;
 
   @Column({ length: 50, unique: true })

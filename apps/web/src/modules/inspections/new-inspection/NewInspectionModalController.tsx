@@ -48,6 +48,54 @@ function normalizeDraftForResume(draft: NewInspectionDraft): NewInspectionDraft 
   return draft;
 }
 
+function CancelInspectionInfoIcon() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <circle cx="16" cy="16" r="13" stroke="#245D91" strokeWidth="3" />
+      <path d="M16 14.75v7" stroke="#245D91" strokeWidth="3" strokeLinecap="round" />
+      <circle cx="16" cy="9.7" r="1.75" fill="#245D91" />
+    </svg>
+  );
+}
+
+function CancelInspectionCloseIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M1.5 1.5 14.5 14.5M14.5 1.5 1.5 14.5" stroke="#131313" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function CancelInspectionConfirmationDialog({ onConfirm, onReturn }: { onConfirm: () => void; onReturn: () => void }) {
+  return (
+    <div className="absolute inset-0 z-[20] flex items-center justify-center bg-[rgba(0,0,0,0.28)] p-[16px]" role="dialog" aria-modal="true" aria-labelledby="cancel-inspection-title">
+      <div className="flex w-full flex-col items-start justify-center gap-[32px] rounded-[16px] bg-white p-[16px] shadow-[0_18px_50px_rgba(0,0,0,0.28)]">
+        <div className="flex w-full items-center justify-between">
+          <CancelInspectionInfoIcon />
+          <button type="button" onClick={onReturn} className="flex h-[32px] w-[32px] items-center justify-center rounded-full" aria-label="Cerrar confirmación de cancelación">
+            <CancelInspectionCloseIcon />
+          </button>
+        </div>
+        <div className="flex w-full flex-col items-start gap-[8px] break-words">
+          <p id="cancel-inspection-title" className="w-full text-[18px] font-bold leading-[22px] tracking-[0.36px] text-[#2A2A2A]">Cancelar</p>
+          <div className="w-full whitespace-pre-wrap text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313]">
+            <p className="mb-0">Usted está dando por cancelada esta inspección. Al hacer esto se borrarán todos los datos ingresados y la inspección desaparecerá. </p>
+            <p>¿Estás de acuerdo?</p>
+          </div>
+        </div>
+        <div className="flex w-full flex-col items-end justify-center gap-[12px]">
+          <button type="button" onClick={onConfirm} className="flex h-[40px] w-full items-center justify-center rounded-[8px] bg-[#C8A064] px-[16px] py-[8px] text-[14px] font-bold leading-[22.7px] tracking-[0.28px] text-white">
+            Cancelar inspección
+          </button>
+          <button type="button" onClick={onReturn} className="flex h-[40px] w-full items-center justify-center rounded-[8px] border border-[#C8A064] bg-white px-[16px] py-[8px] text-[14px] font-bold leading-[22.7px] tracking-[0.28px] text-[#C8A064]">
+            Volver al formulario
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function NewInspectionModalController({ open, onClose }: NewInspectionModalControllerProps) {
   const user = useSessionStore((state) => state.user);
   const setInspector = useNewInspectionDraftStore((state) => state.setInspector);
@@ -69,6 +117,7 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
   const submitMutation = useSubmitNewInspection();
   const [initialized, setInitialized] = useState(false);
   const [resumeAssistantDraft, setResumeAssistantDraft] = useState(false);
+  const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
   const resumeDraftOnOpenRef = useRef(false);
   const handledOpenRef = useRef(false);
 
@@ -84,6 +133,7 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
     if (!open) {
       handledOpenRef.current = false;
       setInitialized(false);
+      setShowCancelConfirmation(false);
     }
   }, [open]);
 
@@ -167,6 +217,19 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
     submitMutation.reset();
   }
 
+  function handleRequestCancelInspection() {
+    setShowCancelConfirmation(true);
+  }
+
+  function handleReturnToInspection() {
+    setShowCancelConfirmation(false);
+  }
+
+  function handleConfirmCancelInspection() {
+    setShowCancelConfirmation(false);
+    handleClose();
+  }
+
   function handleAssistantBack() {
     if (resumeAssistantDraft) {
       discardActiveDraft();
@@ -236,7 +299,7 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
             <StartStep
               onStartAssistant={handleStartAssistant}
               onStartManual={handleStartManual}
-              onCancelInspection={handleClose}
+              onCancelInspection={handleRequestCancelInspection}
             />
           ) : null}
 
@@ -244,7 +307,7 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
             <AssistantChatStep
               onBack={handleAssistantBack}
               onSave={handleSave}
-              onCancelInspection={handleClose}
+              onCancelInspection={handleRequestCancelInspection}
               saving={submitMutation.isPending}
               errorMessage={submitMutation.error instanceof Error ? submitMutation.error.message : null}
               resumeFromDraft={resumeAssistantDraft}
@@ -252,7 +315,7 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
           ) : null}
 
           {initialized && routeStep === 'identification' ? (
-            <IdentificationStep onCancel={handleClose} onNext={goToType} />
+            <IdentificationStep onCancel={handleRequestCancelInspection} onNext={goToType} />
           ) : null}
 
           {initialized && routeStep === 'type' ? <TypeStep onBack={goToIdentification} onNext={handleTypeNext} /> : null}
@@ -275,6 +338,8 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
           ) : null}
 
           {initialized && routeStep === 'saved' ? <SavedStep onClose={handleClose} onCreateAnother={handleCreateAnother} /> : null}
+
+          {showCancelConfirmation ? <CancelInspectionConfirmationDialog onConfirm={handleConfirmCancelInspection} onReturn={handleReturnToInspection} /> : null}
         </div>
       </div>
     </div>

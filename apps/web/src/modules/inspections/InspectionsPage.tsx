@@ -1,5 +1,6 @@
 import { AppSidebar } from '../../shared/layout/AppSidebar';
 import { DashboardFrameShell } from '../dashboard/components/DashboardSections';
+import { InspectionNotificationDeepLinkModal } from './components/InspectionNotificationDeepLinkModal';
 import { InspectionsManagementView } from './InspectionsManagementView';
 
 function InspectionsManagementHeader() {
@@ -24,6 +25,7 @@ export function InspectionsPage() {
         header={<InspectionsManagementHeader />}
         content={<InspectionsManagementView />}
       />
+      <InspectionNotificationDeepLinkModal />
     </div>
   );
 }

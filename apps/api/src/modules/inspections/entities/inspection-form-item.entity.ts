@@ -1,13 +1,20 @@
 import { InspectionItemResponseType } from '@aurelia/contracts';
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from 'typeorm';
+import { InspectionFormSectionEntity } from './inspection-form-section.entity';
 
 @Entity('inspection_checklist_items')
+@Unique('uq_ici_section_code', ['sectionId', 'code'])
+@Unique('uq_ici_section_order', ['sectionId', 'sortOrder'])
 export class InspectionFormItemEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column({ name: 'section_id', type: 'uuid' })
   sectionId: string;
+
+  @ManyToOne(() => InspectionFormSectionEntity, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'section_id', foreignKeyConstraintName: 'fk_ici_section' })
+  section: InspectionFormSectionEntity;
 
   @Column({ type: 'varchar', length: 100 })
   code: string;

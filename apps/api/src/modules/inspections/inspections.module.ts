@@ -7,6 +7,7 @@ import { AreaEntity } from '../organization/entities/area.entity';
 import { CompanyEntity } from '../organization/entities/company.entity';
 import { SectorEntity } from '../organization/entities/sector.entity';
 import { UserEntity } from '../users/entities/user.entity';
+import { UsersModule } from '../users/users.module';
 import { InspectionFindingSeverityEntity } from './entities/inspection-finding-severity.entity';
 import { InspectionFindingResponsibleEntity } from './entities/inspection-finding-responsible.entity';
 import { InspectionFindingTypeEntity } from './entities/inspection-finding-type.entity';
@@ -24,8 +25,11 @@ import { InspectionEntity } from './entities/inspection.entity';
 import { InspectionCriticalityCatalogController } from './inspection-criticality-catalog.controller';
 import { InspectionDashboardController } from './inspection-dashboard.controller';
 import { InspectionDashboardService } from './inspection-dashboard.service';
+import { InspectionDetailService } from './inspection-detail.service';
 import { InspectionFindingCatalogController } from './inspection-finding-catalog.controller';
 import { InspectionFindingCatalogService } from './inspection-finding-catalog.service';
+import { InspectionHistoryController } from './inspection-history.controller';
+import { InspectionHistoryService } from './inspection-history.service';
 import { InspectionTransversalController } from './inspection-transversal.controller';
 import { InspectionTransversalService } from './inspection-transversal.service';
 import { InspectionsController } from './inspections.controller';
@@ -36,6 +40,7 @@ import { InspectionsService } from './inspections.service';
     AuditModule,
     CommentsModule,
     EvidencesModule,
+    UsersModule,
     TypeOrmModule.forFeature([
       InspectionTypeEntity,
       InspectionFindingTypeEntity,
@@ -57,8 +62,8 @@ import { InspectionsService } from './inspections.service';
       UserEntity,
     ]),
   ],
-  controllers: [InspectionsController, InspectionDashboardController, InspectionTransversalController, InspectionFindingCatalogController, InspectionCriticalityCatalogController],
-  providers: [InspectionsService, InspectionDashboardService, InspectionTransversalService, InspectionFindingCatalogService],
-  exports: [InspectionsService, InspectionDashboardService, InspectionFindingCatalogService],
+  controllers: [InspectionsController, InspectionDashboardController, InspectionHistoryController, InspectionTransversalController, InspectionFindingCatalogController, InspectionCriticalityCatalogController],
+  providers: [InspectionsService, InspectionDashboardService, InspectionHistoryService, InspectionDetailService, InspectionTransversalService, InspectionFindingCatalogService],
+  exports: [InspectionsService, InspectionDashboardService, InspectionHistoryService, InspectionDetailService, InspectionFindingCatalogService],
 })
 export class InspectionsModule {}

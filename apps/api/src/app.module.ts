@@ -5,6 +5,7 @@ import { DatabaseModule } from './database/database.module';
 import { AiModule } from './modules/ai/ai.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { DatabaseMaintenanceModule } from './modules/database-maintenance/database-maintenance.module';
 import { CommentsModule } from './modules/comments/comments.module';
 import { CriticalControlsModule } from './modules/critical-controls/critical-controls.module';
 import { EvidencesModule } from './modules/evidences/evidences.module';
@@ -40,6 +41,7 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
     EvidencesModule,
     CommentsModule,
     AuditModule,
+    DatabaseMaintenanceModule,
     WorkflowsModule,
     InspectionsModule,
     IncidentsModule,

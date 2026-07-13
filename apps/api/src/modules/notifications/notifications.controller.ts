@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req } from '@nestjs/common';
-import { NotificationResponse } from '@aurelia/contracts';
+import { MarkAllNotificationsReadResponse, NotificationResponse } from '@aurelia/contracts';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { RequirePermissions } from '../auth/require-permissions.decorator';
 import { CreateNotificationDto } from './dto/create-notification.dto';
@@ -30,5 +30,13 @@ export class NotificationsController {
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<NotificationResponse> {
     return this.notificationsService.markRead(id, request.user.sub);
+  }
+
+  @Patch(':id/inspection-thread/dismiss')
+  dismissInspectionThread(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<MarkAllNotificationsReadResponse> {
+    return this.notificationsService.dismissInspectionThread(id, request.user.sub);
   }
 }

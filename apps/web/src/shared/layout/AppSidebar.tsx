@@ -1,6 +1,8 @@
-import type { MouseEvent, ReactNode } from 'react';
+import { useState, type MouseEvent, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { DashboardSidebarTopBrandBar } from '../../modules/dashboard/components/DashboardSections';
+import { useNotifications } from '../hooks/useNotifications';
+import { AppNotificationsPanel } from './AppNotificationsPanel';
 import { sidebarIconSvgs, type SidebarIconName } from './AppSidebarIcons';
 
 type SidebarTone = 'green' | 'gold';
@@ -161,20 +163,24 @@ function SidebarChildren({ children }: { children: SidebarChildItem[] }) {
   );
 }
 
-function SidebarFooterRow({ icon, label, right }: { icon: SidebarIconName; label: string; right?: ReactNode }) {
-  return (
-    <div className="flex w-full items-center justify-between px-[8px] pb-[6px] pt-[2px]">
+function SidebarFooterRow({ icon, label, right, onClick, active = false }: { icon: SidebarIconName; label: string; right?: ReactNode; onClick?: () => void; active?: boolean }) {
+  const className = `flex w-full items-center justify-between rounded-[6px] px-[8px] pb-[6px] pt-[2px] ${active ? 'bg-[rgba(255,255,255,0.06)]' : ''}`;
+  const content = (
+    <>
       <div className="relative h-[13px] w-[120px] shrink-0">
         <SidebarIcon name={icon} className="absolute left-0 top-[0.88px] h-[11px] w-[13.75px]" />
         <p className="absolute left-[17.75px] top-0 whitespace-nowrap font-['Inter:Regular',sans-serif] text-[11px] font-normal leading-[normal] text-[rgba(255,255,255,0.28)]">{label}</p>
       </div>
       {right}
-    </div>
+    </>
   );
+  if (onClick) return <button className={`${className} bg-transparent text-left hover:bg-[rgba(255,255,255,0.055)]`} onClick={onClick} type="button">{content}</button>;
+  return <div className={className}>{content}</div>;
 }
 
-function SidebarNotificationsBadge() {
-  return <span className="flex size-[16px] shrink-0 items-center justify-center rounded-[8px] bg-[#c4365a] font-['Inter:Bold',sans-serif] text-[9px] font-bold leading-[normal] text-white">7</span>;
+function SidebarNotificationsBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return <span className="flex size-[16px] shrink-0 items-center justify-center rounded-[8px] bg-[#c4365a] px-[4px] font-['Inter:Bold',sans-serif] text-[9px] font-bold leading-[normal] text-white">{count > 99 ? '99+' : count}</span>;
 }
 
 function SidebarLanguageSwitch() {
@@ -188,10 +194,10 @@ function SidebarLanguageSwitch() {
   );
 }
 
-function SidebarFooterOptions() {
+function SidebarFooterOptions({ onNotificationsClick, unreadCount, notificationsOpen }: { onNotificationsClick: () => void; unreadCount: number; notificationsOpen: boolean }) {
   return (
     <div className="flex w-full flex-col gap-[8px]">
-      <SidebarFooterRow icon="notifications" label="Notificaciones" right={<SidebarNotificationsBadge />} />
+      <SidebarFooterRow icon="notifications" label="Notificaciones" right={<SidebarNotificationsBadge count={unreadCount} />} onClick={onNotificationsClick} active={notificationsOpen} />
       <SidebarFooterRow icon="language" label="Idioma" right={<SidebarLanguageSwitch />} />
     </div>
   );
@@ -224,6 +230,10 @@ function SidebarUser() {
 }
 
 export function AppSidebar() {
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const notificationsQuery = useNotifications();
+  const unreadCount = notificationsQuery.data?.filter((notification) => !notification.readAt).length ?? 0;
+
   return (
     <>
       <DashboardSidebarTopBrandBar />
@@ -237,10 +247,11 @@ export function AppSidebar() {
           </div>
         </div>
         <div className="flex w-[220px] shrink-0 flex-col items-start border-t border-[rgba(255,255,255,0.08)] bg-[rgba(0,38,89,0.6)] px-[10px] pb-[10px] pt-[9px]">
-          <SidebarFooterOptions />
+          <SidebarFooterOptions onNotificationsClick={() => setNotificationsOpen((current) => !current)} unreadCount={unreadCount} notificationsOpen={notificationsOpen} />
           <SidebarUser />
         </div>
       </aside>
+      <AppNotificationsPanel open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
     </>
   );
 }

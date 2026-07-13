@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import type { InspectionNotificationEvent, InspectionNotificationMetadata, InspectionNotificationTone, NotificationResponse } from '@aurelia/contracts';
 import { useNotifications } from '../hooks/useNotifications';
@@ -119,6 +119,30 @@ function buildNotificationTarget(notification: NotificationResponse) {
   if (findingId) params.set('findingId', findingId);
   if (inspectionNumber) params.set('inspectionNumber', inspectionNumber);
   return `${event === 'inspection.closed' ? '/inspections/history' : '/inspections'}?${params.toString()}`;
+}
+
+function updateNotificationsCache(queryClient: QueryClient, key: readonly unknown[], update: (notifications: NotificationResponse[]) => NotificationResponse[]) {
+  queryClient.setQueryData<NotificationResponse[]>(key, (current) => current ? update(current) : current);
+}
+
+function markNotificationAsReadInCache(queryClient: QueryClient, notificationId: string) {
+  const readAt = new Date().toISOString();
+  updateNotificationsCache(queryClient, ['notifications', false], (notifications) => notifications.map((notification) => notification.id === notificationId ? { ...notification, readAt: notification.readAt ?? readAt } : notification));
+  updateNotificationsCache(queryClient, ['notifications', true], (notifications) => notifications.filter((notification) => notification.id !== notificationId));
+}
+
+function dismissInspectionThreadInCache(queryClient: QueryClient, notification: NotificationResponse) {
+  const metadata = metadataOf(notification);
+  const inspectionId = readString(metadata.inspectionId);
+  const cutoff = notificationTimestamp(notification);
+  if (!inspectionId) return;
+  const filterThread = (notifications: NotificationResponse[]) => notifications.filter((item) => {
+    const itemMetadata = metadataOf(item);
+    if (readString(itemMetadata.inspectionId) !== inspectionId) return true;
+    return notificationTimestamp(item) > cutoff;
+  });
+  updateNotificationsCache(queryClient, ['notifications', false], filterThread);
+  updateNotificationsCache(queryClient, ['notifications', true], filterThread);
 }
 
 function formatDateTime(value: string) {
@@ -252,13 +276,13 @@ export function AppNotificationsPanel({ open, onClose }: { open: boolean; onClos
   const navigate = useNavigate();
   const dismissThreadMutation = useMutation({
     mutationFn: dismissInspectionNotificationThread,
-    onSuccess: () => {
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
   const markReadMutation = useMutation({
     mutationFn: markNotificationRead,
-    onSuccess: () => {
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
@@ -276,6 +300,8 @@ export function AppNotificationsPanel({ open, onClose }: { open: boolean; onClos
     const target = buildNotificationTarget(notification);
     if (!target) return;
     const event = resolveEvent(notification);
+    if (event === 'inspection.closed') dismissInspectionThreadInCache(queryClient, notification);
+    else if (!notification.readAt) markNotificationAsReadInCache(queryClient, notification.id);
     try {
       if (event === 'inspection.closed') await dismissThreadMutation.mutateAsync(notification.id);
       else if (!notification.readAt) await markReadMutation.mutateAsync(notification.id);

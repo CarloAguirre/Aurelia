@@ -15,6 +15,18 @@ import { InspectionFormTemplateEntity } from './entities/inspection-form-templat
 import { InspectionItemResponseEntity } from './entities/inspection-item-response.entity';
 import { InspectionEntity } from './entities/inspection.entity';
 
+interface RelatedEvidenceGroup {
+  entityId: string;
+  evidences: EvidenceResponse[];
+}
+
+interface RelatedInspectionEvidences {
+  inspection: EvidenceResponse[];
+  findings: RelatedEvidenceGroup[];
+  followups: RelatedEvidenceGroup[];
+  all: EvidenceResponse[];
+}
+
 @Injectable()
 export class InspectionTransversalService {
   constructor(
@@ -39,7 +51,17 @@ export class InspectionTransversalService {
 
   async findEvidences(inspectionId: string): Promise<EvidenceResponse[]> {
     await this.getInspectionOrThrow(inspectionId);
-    return this.evidencesService.findAll('inspection', inspectionId);
+    const findings = await this.findings.find({ where: { inspectionId }, select: { id: true } });
+    const findingIds = findings.map((finding) => finding.id);
+    const followups = findingIds.length
+      ? await this.followups.find({ where: { findingId: In(findingIds) }, select: { id: true } })
+      : [];
+    const relatedEvidences = await this.collectRelatedEvidences(
+      inspectionId,
+      findingIds,
+      followups.map((followup) => followup.id),
+    );
+    return relatedEvidences.all;
   }
 
   async linkEvidence(inspectionId: string, evidenceId: string, dto: LinkInspectionEvidenceDto, actorId: string | null): Promise<EvidenceLinkResponse> {
@@ -87,7 +109,13 @@ export class InspectionTransversalService {
     const followups = findingIds.length
       ? await this.followups.find({ where: { findingId: In(findingIds) }, order: { sequenceNumber: 'ASC' } })
       : [];
-    const evidences = await this.evidencesService.findAll('inspection', inspectionId);
+    const relatedEvidences = await this.collectRelatedEvidences(
+      inspectionId,
+      findingIds,
+      followups.map((followup) => followup.id),
+    );
+    const evidencesByFinding = new Map(relatedEvidences.findings.map((group) => [group.entityId, group.evidences]));
+    const evidencesByFollowup = new Map(relatedEvidences.followups.map((group) => [group.entityId, group.evidences]));
     const comments = await this.commentsService.findAll('inspection', inspectionId);
 
     return {
@@ -103,15 +131,26 @@ export class InspectionTransversalService {
       answers,
       findings: findings.map((finding) => ({
         ...finding,
-        followups: followups.filter((followup) => followup.findingId === finding.id),
+        evidences: evidencesByFinding.get(finding.id) ?? [],
+        followups: followups
+          .filter((followup) => followup.findingId === finding.id)
+          .map((followup) => ({
+            ...followup,
+            evidences: evidencesByFollowup.get(followup.id) ?? [],
+          })),
       })),
-      evidences,
+      evidences: relatedEvidences.all,
+      evidenceGroups: {
+        inspection: relatedEvidences.inspection,
+        findings: relatedEvidences.findings,
+        followups: relatedEvidences.followups,
+      },
       comments,
       summary: {
         answersCount: answers.length,
         findingsCount: findings.length,
         openFindingsCount: findings.filter((finding) => [InspectionFindingStatus.OPEN, InspectionFindingStatus.IN_PROGRESS].includes(finding.status)).length,
-        evidencesCount: evidences.length,
+        evidencesCount: relatedEvidences.all.length,
         commentsCount: comments.length,
       },
     };
@@ -139,6 +178,37 @@ export class InspectionTransversalService {
     ];
 
     return this.createSimplePdf(lines);
+  }
+
+  private async collectRelatedEvidences(
+    inspectionId: string,
+    findingIds: string[],
+    followupIds: string[],
+  ): Promise<RelatedInspectionEvidences> {
+    const inspectionEvidences = await this.evidencesService.findAll('inspection', inspectionId);
+    const findingGroups = await Promise.all(
+      findingIds.map(async (findingId) => ({
+        entityId: findingId,
+        evidences: await this.evidencesService.findAll('inspection_finding', findingId),
+      })),
+    );
+    const followupGroups = await Promise.all(
+      followupIds.map(async (followupId) => ({
+        entityId: followupId,
+        evidences: await this.evidencesService.findAll('inspection_followup', followupId),
+      })),
+    );
+
+    return {
+      inspection: inspectionEvidences,
+      findings: findingGroups,
+      followups: followupGroups,
+      all: [
+        ...inspectionEvidences,
+        ...findingGroups.flatMap((group) => group.evidences),
+        ...followupGroups.flatMap((group) => group.evidences),
+      ],
+    };
   }
 
   private async getInspectionOrThrow(id: string): Promise<InspectionEntity> {

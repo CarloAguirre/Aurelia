@@ -16,15 +16,19 @@ const SYSTEM_BASE =
 
 @Injectable()
 export class AiService {
-  private readonly client: Anthropic;
+  private readonly client: Anthropic | null;
 
   constructor(private readonly configService: ConfigService) {
+    const apiKey = this.configService.get<string | null>('ai.anthropicApiKey');
     this.client = new Anthropic({
-      apiKey: this.configService.get<string>('ANTHROPIC_API_KEY') ?? '',
+      apiKey: apiKey ?? undefined,
     });
+    if (!apiKey) this.client = null;
   }
 
   async suggest(dto: AiSuggestDto): Promise<AiSuggestResponse> {
+    if (!this.client) return { suggestion: FALLBACKS[dto.type], type: dto.type, fallback: true };
+
     const { systemPrompt, userPrompt } = this.buildPrompts(dto);
 
     try {

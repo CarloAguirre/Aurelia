@@ -15,12 +15,12 @@ export class UserAreaEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => UserEntity, (user) => user.userAreas, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user_id' })
+  @ManyToOne(() => UserEntity, (user) => user.userAreas, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id', foreignKeyConstraintName: 'fk_user_areas_user' })
   user: UserEntity;
 
-  @ManyToOne(() => AreaEntity, (area) => area.userAreas, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'area_id' })
+  @ManyToOne(() => AreaEntity, (area) => area.userAreas, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'area_id', foreignKeyConstraintName: 'fk_user_areas_area' })
   area: AreaEntity;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })

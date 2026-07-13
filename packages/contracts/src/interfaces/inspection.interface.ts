@@ -91,13 +91,21 @@ export interface InspectionFinding extends BaseEntity {
   responsibleUserIds: ID[];
   title: string;
   description: string | null;
+  detectedCondition: string | null;
+  proposedCorrectiveAction: string | null;
+  executedActionDescription: string | null;
+  rejectionReason: string | null;
   severity: InspectionFindingSeverity;
   status: InspectionFindingStatus;
   ownerUserId: ID | null;
   createdByUserId: ID | null;
   dueAt: ISODateString | null;
+  executedAt: ISODateString | null;
+  executedByUserId: ID | null;
   closedAt: ISODateString | null;
   closedByUserId: ID | null;
+  rejectedAt: ISODateString | null;
+  rejectedByUserId: ID | null;
 }
 
 export interface InspectionFollowup extends BaseEntity {

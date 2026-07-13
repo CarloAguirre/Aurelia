@@ -51,7 +51,7 @@ export class FileEntity {
   uploadedByUserId: string | null;
 
   @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'uploaded_by_user_id' })
+  @JoinColumn({ name: 'uploaded_by_user_id', foreignKeyConstraintName: 'fk_files_uploaded_by' })
   uploadedByUser: UserEntity | null;
 
   @Column({ name: 'uploaded_at', type: 'timestamptz', default: () => 'now()' })

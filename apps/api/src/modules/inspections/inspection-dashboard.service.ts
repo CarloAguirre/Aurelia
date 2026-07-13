@@ -74,6 +74,7 @@ export class InspectionDashboardService {
     const year = new Date().getFullYear();
     const previousYear = year - 1;
     const inspectionById = new Map(inspections.map((inspection) => [inspection.id, inspection]));
+    const findingsByInspection = this.groupFindingsByInspection(findings);
     const activeInspections = inspections.filter((inspection) => inspection.status !== InspectionStatus.CANCELLED);
     const currentYearInspections = activeInspections.filter((inspection) => this.inspectionBelongsToYear(inspection, year));
     const previousYearInspections = activeInspections.filter((inspection) => this.inspectionBelongsToYear(inspection, previousYear));
@@ -93,9 +94,9 @@ export class InspectionDashboardService {
       totalInspections: currentYearInspections.length,
       previousYearInspections: previousTotal,
       inspectionsDeltaPercent,
-      openInspections: currentYearInspections.filter((inspection) => inspection.status !== InspectionStatus.CLOSED).length,
+      openInspections: currentYearInspections.filter((inspection) => !this.isInspectionEffectivelyClosed(inspection, findingsByInspection.get(inspection.id) ?? [])).length,
       openFindings,
-      pendingApprovalInspections: currentYearInspections.filter((inspection) => inspection.status === InspectionStatus.SUBMITTED || inspection.status === InspectionStatus.UNDER_REVIEW).length,
+      pendingApprovalInspections: currentYearInspections.filter((inspection) => !this.isInspectionEffectivelyClosed(inspection, findingsByInspection.get(inspection.id) ?? []) && (inspection.status === InspectionStatus.SUBMITTED || inspection.status === InspectionStatus.UNDER_REVIEW)).length,
       closedFindingsRate: currentYearFindings.length > 0 ? Number(((closedFindings / currentYearFindings.length) * 100).toFixed(2)) : 0,
     };
   }
@@ -116,16 +117,9 @@ export class InspectionDashboardService {
     const sectorNameById = new Map(sectors.map((sector) => [sector.id, sector.name]));
     const userById = new Map(users.map((user) => [user.id, user]));
     const typeById = new Map(inspectionTypes.map((type) => [type.id, type]));
-    const findingsByInspection = new Map<string, InspectionFindingEntity[]>();
+    const findingsByInspection = this.groupFindingsByInspection(findings);
 
-    findings.forEach((finding) => {
-      if (finding.status === InspectionFindingStatus.CANCELLED) return;
-      const group = findingsByInspection.get(finding.inspectionId) ?? [];
-      group.push(finding);
-      findingsByInspection.set(finding.inspectionId, group);
-    });
-
-    const activeInspections = inspections.filter((inspection) => inspection.status !== InspectionStatus.CANCELLED);
+    const activeInspections = inspections.filter((inspection) => inspection.status !== InspectionStatus.CANCELLED && !this.isInspectionEffectivelyClosed(inspection, findingsByInspection.get(inspection.id) ?? []));
     const rows = activeInspections.map((inspection, index) => {
       const inspectionFindings = findingsByInspection.get(inspection.id) ?? [];
       const observations = this.createObservationSummary(inspectionFindings);
@@ -141,7 +135,7 @@ export class InspectionDashboardService {
         inspector: this.formatInspectorLabel(userById.get(inspection.inspectorId ?? '') ?? null),
         areaSector: this.formatAreaSectorLabel(inspection.areaId, inspection.sectorId, areaNameById, sectorNameById),
         company: this.formatCompanyLabel(inspection.companyId, companyNameById),
-        type: this.formatInspectionTypeLabel(typeById.get(inspection.inspectionTypeId) ?? null, inspectionFindings.length),
+        type: this.formatInspectionTypeLabel(inspection, typeById.get(inspection.inspectionTypeId) ?? null, inspectionFindings.length),
         urgencyLabel: this.formatUrgencyLabel(inspection, maxSeverity),
         urgencySeverity: maxSeverity,
         observationsCount: inspectionFindings.length,
@@ -172,6 +166,7 @@ export class InspectionDashboardService {
     const inspectionById = new Map(inspections.map((inspection) => [inspection.id, inspection]));
     const selectedInspections = inspections.filter((inspection) => dashboardInspectionMatches(inspection, filter));
     const selectedFindings = findings.filter((finding) => dashboardFindingMatches(finding, inspectionById.get(finding.inspectionId) ?? null, filter));
+    const findingsByInspection = this.groupFindingsByInspection(selectedFindings);
     const byStatus = this.createInspectionStatusCounter();
     const findingsByStatus = this.createFindingStatusCounter();
     const findingsBySeverity = this.createFindingSeverityCounter();
@@ -184,7 +179,8 @@ export class InspectionDashboardService {
     });
     const openFindings = selectedFindings.filter((finding) => this.isOpenFinding(finding));
     const withOpenFindings = new Set(openFindings.map((finding) => finding.inspectionId)).size;
-    const closedRate = selectedInspections.length === 0 ? 0 : Number(((byStatus[InspectionStatus.CLOSED] / selectedInspections.length) * 100).toFixed(2));
+    const closedInspections = selectedInspections.filter((inspection) => this.isInspectionEffectivelyClosed(inspection, findingsByInspection.get(inspection.id) ?? [])).length;
+    const closedRate = selectedInspections.length === 0 ? 0 : Number(((closedInspections / selectedInspections.length) * 100).toFixed(2));
 
     return {
       inspections: { total: selectedInspections.length, byStatus, withOpenFindings, closedRate },
@@ -208,6 +204,7 @@ export class InspectionDashboardService {
     const filter = buildDashboardDateFilter(query);
     const currentYear = new Date().getFullYear();
     const inspectionById = new Map(inspections.map((inspection) => [inspection.id, inspection]));
+    const findingsByInspection = this.groupFindingsByInspection(findings);
     const areaNameById = new Map(areas.map((area) => [area.id, area.name]));
     const yearRange = Array.from({ length: 4 }, (_, index) => currentYear - 3 + index);
     const annualInspections = yearRange.map((year) => ({ year, closed: 0, open: 0 }));
@@ -228,16 +225,17 @@ export class InspectionDashboardService {
     inspections.forEach((inspection) => {
       if (inspection.status === InspectionStatus.CANCELLED) return;
       const date = getDashboardInspectionDate(inspection);
+      const closed = this.isInspectionEffectivelyClosed(inspection, findingsByInspection.get(inspection.id) ?? []);
       totalForClosure += 1;
-      if (inspection.status === InspectionStatus.CLOSED) closedForClosure += 1;
+      if (closed) closedForClosure += 1;
       if (date && date >= filter.start && date < filter.end) {
         periodTotal += 1;
-        if (inspection.status === InspectionStatus.CLOSED) periodClosed += 1;
+        if (closed) periodClosed += 1;
       }
       if (!date) return;
       const annualRow = annualByYear.get(date.getFullYear());
       if (!annualRow) return;
-      if (inspection.status === InspectionStatus.CLOSED) annualRow.closed += 1;
+      if (closed) annualRow.closed += 1;
       else annualRow.open += 1;
     });
 
@@ -383,13 +381,31 @@ export class InspectionDashboardService {
     return Object.values(InspectionFindingSeverity).reduce((acc, severity) => ({ ...acc, [severity]: 0 }), {} as Record<InspectionFindingSeverity, number>);
   }
 
+  private groupFindingsByInspection(findings: InspectionFindingEntity[]): Map<string, InspectionFindingEntity[]> {
+    const grouped = new Map<string, InspectionFindingEntity[]>();
+    findings.forEach((finding) => {
+      if (finding.status === InspectionFindingStatus.CANCELLED) return;
+      const current = grouped.get(finding.inspectionId) ?? [];
+      current.push(finding);
+      grouped.set(finding.inspectionId, current);
+    });
+    return grouped;
+  }
+
+  private isInspectionEffectivelyClosed(inspection: InspectionEntity, findings: InspectionFindingEntity[]): boolean {
+    if (inspection.status === InspectionStatus.CANCELLED) return false;
+    if (inspection.status === InspectionStatus.CLOSED) return true;
+    return findings.length > 0 && findings.every((finding) => finding.status === InspectionFindingStatus.CLOSED);
+  }
+
   private createObservationSummary(findings: InspectionFindingEntity[]): InspectionManagementTableObservationSummaryResponse {
     return findings.reduce((summary, finding) => {
       if (finding.status === InspectionFindingStatus.CLOSED) summary.closed += 1;
       else if (finding.status === InspectionFindingStatus.IN_PROGRESS) summary.executed += 1;
+      else if (finding.status === InspectionFindingStatus.REJECTED) summary.rejected += 1;
       else summary.open += 1;
       return summary;
-    }, { executed: 0, open: 0, closed: 0 });
+    }, { executed: 0, open: 0, closed: 0, rejected: 0 });
   }
 
   private buildManagementTableFilterOptions(rows: InspectionManagementTableRowResponse[]): InspectionManagementTableFilterOptionsResponse {
@@ -439,6 +455,7 @@ export class InspectionDashboardService {
       if (value === 'executed') return observations.executed > 0;
       if (value === 'open') return observations.open > 0;
       if (value === 'closed') return observations.closed > 0;
+      if (value === 'rejected') return observations.rejected > 0;
       return false;
     });
   }
@@ -468,7 +485,8 @@ export class InspectionDashboardService {
 
   private resolvePageSize(value?: string): number {
     const parsed = Number(value);
-    return parsed === 25 || parsed === 50 ? parsed : 10;
+    if (!Number.isFinite(parsed)) return 10;
+    return [10, 25, 50].includes(parsed) ? parsed : 10;
   }
 
   private resolvePage(value: string | undefined, totalPages: number): number {
@@ -477,46 +495,53 @@ export class InspectionDashboardService {
     return Math.min(Math.floor(parsed), totalPages);
   }
 
-  private formatAreaLabel(areaId: string | null, areaNameById: Map<string, string>): string {
-    if (!areaId) return 'Sin Área';
-    return areaNameById.get(areaId) ?? `Área ${areaId.slice(0, 8).toUpperCase()}`;
-  }
-
-  private formatAreaSectorLabel(areaId: string | null, sectorId: string | null, areaNameById: Map<string, string>, sectorNameById: Map<string, string>): string {
-    const area = this.formatAreaLabel(areaId, areaNameById);
-    const sector = sectorId ? sectorNameById.get(sectorId) : null;
-    return sector ? `${area} · ${sector}` : area;
-  }
-
-  private formatCompanyLabel(companyId: string | null, companyNameById: Map<string, string>): string {
-    if (!companyId) return 'Sin Empresa';
-    return companyNameById.get(companyId) ?? `Empresa ${companyId.slice(0, 8).toUpperCase()}`;
+  private resolveInspectionNumber(inspection: InspectionEntity, index: number): string {
+    const match = inspection.title.match(/#?(\d+)/);
+    return match?.[1] ?? String(index + 1).padStart(3, '0');
   }
 
   private formatInspectorLabel(user: UserEntity | null): string {
     if (!user) return 'Sin inspector';
-    const lastInitials = user.lastName.split(' ').filter(Boolean).map((part) => `${part[0]?.toUpperCase()}.`).join(' ');
-    return `${user.firstName} ${lastInitials}`.trim();
+    const initials = `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.trim();
+    return initials ? `${user.firstName} ${initials.slice(-1)}.` : user.email;
   }
 
-  private formatInspectionTypeLabel(type: InspectionTypeEntity | null, findingsCount: number): string {
-    const source = `${type?.name ?? ''} ${type?.code ?? ''}`.toLowerCase();
-    if (source.includes('check') || source.includes('normativ') || source.includes('regulator')) return 'Checklist';
-    if (source.includes('hallazgo') || source.includes('ambiental') || source.includes('environmental')) return 'Hallazgo';
-    return type?.name ?? (findingsCount > 0 ? 'Hallazgo' : 'Checklist');
+  private formatAreaSectorLabel(areaId: string | null, sectorId: string | null, areaNames: Map<string, string>, sectorNames: Map<string, string>): string {
+    const area = areaId ? areaNames.get(areaId) : null;
+    const sector = sectorId ? sectorNames.get(sectorId) : null;
+    if (area && sector) return `${area} · ${sector}`;
+    return area ?? sector ?? 'Sin área';
   }
 
-  private formatSeverityLabel(severity: InspectionFindingSeverity | null): string {
-    if (severity === InspectionFindingSeverity.CRITICAL || severity === InspectionFindingSeverity.HIGH) return 'Grave';
-    if (severity === InspectionFindingSeverity.MEDIUM) return 'Moderado';
-    if (severity === InspectionFindingSeverity.LOW) return 'Menor';
-    return 'Sin obs.';
+  private formatAreaLabel(areaId: string | null, areaNames: Map<string, string>): string {
+    return areaId ? areaNames.get(areaId) ?? 'Sin área' : 'Sin área';
+  }
+
+  private formatCompanyLabel(companyId: string | null, companyNames: Map<string, string>): string {
+    return companyId ? companyNames.get(companyId) ?? 'Sin empresa' : 'Sin empresa';
+  }
+
+  private formatInspectionTypeLabel(inspection: InspectionEntity, type: InspectionTypeEntity | null, findingsCount: number): string {
+    if (inspection.templateId) return 'Checklist normativo';
+    if (!type) return findingsCount > 0 ? 'Hallazgo' : 'Checklist normativo';
+    const label = `${type.code} ${type.name}`.toLowerCase();
+    return label.includes('check') ? 'Checklist normativo' : 'Hallazgo';
   }
 
   private formatUrgencyLabel(inspection: InspectionEntity, severity: InspectionFindingSeverity | null): string {
-    if (!severity) return 'Sin obs.';
-    const state = inspection.status === InspectionStatus.SUBMITTED || inspection.status === InspectionStatus.UNDER_REVIEW || inspection.status === InspectionStatus.CLOSED ? 'Ejecutada' : 'Abierta';
-    return `${state} · ${this.formatSeverityLabel(severity)}`;
+    if (inspection.status === InspectionStatus.CLOSED) return 'Cerrada';
+    if (!severity) return 'Abierta · Menor';
+    const labelBySeverity: Record<InspectionFindingSeverity, string> = {
+      [InspectionFindingSeverity.CRITICAL]: 'Grave',
+      [InspectionFindingSeverity.HIGH]: 'Grave',
+      [InspectionFindingSeverity.MEDIUM]: 'Moderado',
+      [InspectionFindingSeverity.LOW]: 'Menor',
+    };
+    return `${inspection.status === InspectionStatus.UNDER_REVIEW ? 'Ejecutada' : 'Abierta'} · ${labelBySeverity[severity]}`;
+  }
+
+  private resolveMaxSeverity(current: InspectionFindingSeverity | null, next: InspectionFindingSeverity): InspectionFindingSeverity {
+    return this.getUrgencyWeight(next) > this.getUrgencyWeight(current) ? next : current ?? next;
   }
 
   private getUrgencyWeight(severity: InspectionFindingSeverity | null): number {
@@ -528,22 +553,11 @@ export class InspectionDashboardService {
   }
 
   private isOpenFinding(finding: InspectionFindingEntity): boolean {
-    return finding.status !== InspectionFindingStatus.CLOSED && finding.status !== InspectionFindingStatus.CANCELLED;
+    return finding.status === InspectionFindingStatus.OPEN || finding.status === InspectionFindingStatus.IN_PROGRESS;
   }
 
   private isSevereFinding(finding: InspectionFindingEntity): boolean {
     return finding.severity === InspectionFindingSeverity.CRITICAL || finding.severity === InspectionFindingSeverity.HIGH;
-  }
-
-  private resolveMaxSeverity(current: InspectionFindingSeverity | null, next: InspectionFindingSeverity | null): InspectionFindingSeverity | null {
-    return this.getUrgencyWeight(next) > this.getUrgencyWeight(current) ? next : current;
-  }
-
-  private getUrgencyWeightForInspection(inspection: InspectionEntity): number {
-    if (inspection.status === InspectionStatus.SUBMITTED || inspection.status === InspectionStatus.UNDER_REVIEW) return 2;
-    if (inspection.status === InspectionStatus.DRAFT) return 1;
-    if (inspection.status === InspectionStatus.CLOSED) return 0;
-    return 1;
   }
 
   private inspectionBelongsToYear(inspection: InspectionEntity, year: number): boolean {
@@ -551,12 +565,7 @@ export class InspectionDashboardService {
     return date ? date.getFullYear() === year : inspection.createdAt.getFullYear() === year;
   }
 
-  private resolveInspectionNumber(inspection: InspectionEntity, index: number): string {
-    return inspection.code?.trim() || String(index + 1).padStart(2, '0');
-  }
-
   private daysBetween(start: Date, end: Date): number {
-    const dayMs = 24 * 60 * 60 * 1000;
-    return Math.max(0, Math.ceil((end.getTime() - start.getTime()) / dayMs));
+    return Math.max(0, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
   }
 }

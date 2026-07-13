@@ -41,6 +41,24 @@ export function getToken(): string | null {
   return readStoredSession()?.token ?? null;
 }
 
+// Backend responde 204 No Content — no usar httpPost (intenta parsear JSON).
+export async function logout(): Promise<void> {
+  const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
+  const token = getToken();
+  const headers = new Headers();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  const response = await fetch(`${API_URL}/auth/logout`, {
+    method: 'POST',
+    headers,
+  });
+
+  if (!response.ok) {
+    const details = (await response.text()).trim();
+    throw new Error(`POST /auth/logout failed: ${response.status}${details ? ` - ${details}` : ''}`);
+  }
+}
+
 export function isAuthenticated(): boolean {
   return !!getToken();
 }

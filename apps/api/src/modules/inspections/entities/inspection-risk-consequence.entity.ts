@@ -1,6 +1,7 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('inspection_risk_consequences')
+@Index('idx_inspection_risk_consequences_active_sort', ['isActive', 'sortOrder'])
 export class InspectionRiskConsequenceEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;

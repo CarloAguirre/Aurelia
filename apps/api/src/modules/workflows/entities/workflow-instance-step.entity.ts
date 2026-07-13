@@ -15,6 +15,7 @@ import { WorkflowDefinitionStepEntity } from './workflow-definition-step.entity'
 import { WorkflowInstanceEntity } from './workflow-instance.entity';
 
 @Entity('workflow_instance_steps')
+@Index('idx_wis_instance', ['workflowInstanceId'])
 export class WorkflowInstanceStepEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -22,15 +23,15 @@ export class WorkflowInstanceStepEntity {
   @Column({ name: 'workflow_instance_id', type: 'uuid' })
   workflowInstanceId: string;
 
-  @ManyToOne(() => WorkflowInstanceEntity, (instance) => instance.steps, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'workflow_instance_id' })
+  @ManyToOne(() => WorkflowInstanceEntity, (instance) => instance.steps, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'workflow_instance_id', foreignKeyConstraintName: 'fk_wis_instance' })
   workflowInstance: WorkflowInstanceEntity;
 
   @Column({ name: 'workflow_definition_step_id', type: 'uuid', nullable: true })
   workflowDefinitionStepId: string | null;
 
   @ManyToOne(() => WorkflowDefinitionStepEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'workflow_definition_step_id' })
+  @JoinColumn({ name: 'workflow_definition_step_id', foreignKeyConstraintName: 'fk_wis_definition_step' })
   workflowDefinitionStep: WorkflowDefinitionStepEntity | null;
 
   @Column({ name: 'step_order', type: 'integer' })
@@ -55,14 +56,14 @@ export class WorkflowInstanceStepEntity {
   assignedToUserId: string | null;
 
   @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'assigned_to_user_id' })
+  @JoinColumn({ name: 'assigned_to_user_id', foreignKeyConstraintName: 'fk_wis_assigned_to' })
   assignedToUser: UserEntity | null;
 
   @Column({ name: 'assigned_role_id', type: 'uuid', nullable: true })
   assignedRoleId: string | null;
 
   @ManyToOne(() => RoleEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'assigned_role_id' })
+  @JoinColumn({ name: 'assigned_role_id', foreignKeyConstraintName: 'fk_wis_assigned_role' })
   assignedRole: RoleEntity | null;
 
   @Column({ name: 'due_at', type: 'timestamptz', nullable: true })
@@ -72,7 +73,7 @@ export class WorkflowInstanceStepEntity {
   completedByUserId: string | null;
 
   @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'completed_by_user_id' })
+  @JoinColumn({ name: 'completed_by_user_id', foreignKeyConstraintName: 'fk_wis_completed_by' })
   completedByUser: UserEntity | null;
 
   @Column({ name: 'completed_at', type: 'timestamptz', nullable: true })

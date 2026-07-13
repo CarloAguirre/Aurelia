@@ -28,8 +28,8 @@ export class WorkflowDefinitionEntity {
   @Column({ name: 'entity_type', type: 'varchar', length: 80 })
   entityType: string;
 
-  @ManyToOne(() => EntityReferenceTypeEntity)
-  @JoinColumn({ name: 'entity_type', referencedColumnName: 'code' })
+  @ManyToOne(() => EntityReferenceTypeEntity, { nullable: false })
+  @JoinColumn({ name: 'entity_type', referencedColumnName: 'code', foreignKeyConstraintName: 'fk_workflow_definitions_entity_type' })
   entityReferenceType: EntityReferenceTypeEntity;
 
   @Column({ name: 'is_active', type: 'boolean', default: true })

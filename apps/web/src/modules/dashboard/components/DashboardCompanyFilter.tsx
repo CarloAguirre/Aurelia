@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+
 type CompanyFilterOption = {
   id: string;
   name: string;
@@ -12,8 +13,26 @@ type Props = {
   caretIconPath: string;
 };
 
+type DropdownOptionProps = {
+  selected: boolean;
+  children: string;
+  onClick: () => void;
+};
+
 function Icon({ path, fill }: { path: string; fill: string }) {
   return <path d={path} fill={fill} />;
+}
+
+function DropdownOption({ selected, children, onClick }: DropdownOptionProps) {
+  return (
+    <button
+      className={`flex h-[40px] w-full items-center overflow-hidden rounded-[8px] px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] text-[#131313] ${selected ? 'bg-[#e3e3e3]' : 'bg-white hover:bg-[#f7f7f7]'}`}
+      type="button"
+      onClick={onClick}
+    >
+      <span className="min-w-0 flex-1 truncate">{children}</span>
+    </button>
+  );
 }
 
 export function DashboardCompanyFilter({ companies, selectedCompanyId, onChange, clearIconPath, caretIconPath }: Props) {
@@ -44,27 +63,14 @@ export function DashboardCompanyFilter({ companies, selectedCompanyId, onChange,
           <svg className="h-[10px] w-[12.5px] shrink-0" fill="none" preserveAspectRatio="none" viewBox="0 0 12.5 10"><Icon path={caretIconPath} fill="#131313" /></svg>
         </button>
         {open ? (
-          <div className="absolute right-0 top-[44px] z-50 bg-white border border-[#d1d1d1] border-solid flex max-h-[280px] flex-col items-start overflow-y-auto p-[8px] rounded-[12px] shadow-[0px_4px_8px_rgba(19,19,19,0.24)] w-[220px]">
-            <button
-              className={`h-[40px] w-full rounded-[8px] px-[8px] text-left ${selectedCompanyId ? 'bg-white' : 'bg-[#e3e3e3]'}`}
-              type="button"
-              onClick={() => { onChange(null); setOpen(false); }}
-            >
-              <span style={{ color: '#131313', fontSize: '13px', fontWeight: 500, lineHeight: '18px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                Todas las empresas
-              </span>
-            </button>
+          <div className="absolute right-0 top-[44px] z-50 flex max-h-[280px] w-[220px] flex-col items-start overflow-y-auto rounded-[12px] border border-[#d1d1d1] bg-white p-[8px] shadow-[0px_4px_8px_rgba(19,19,19,0.24)]">
+            <DropdownOption selected={!selectedCompanyId} onClick={() => { onChange(null); setOpen(false); }}>
+              Todas las empresas
+            </DropdownOption>
             {options.map((company) => (
-              <button
-                key={company.id}
-                className={`h-[40px] w-full rounded-[8px] px-[8px] text-left ${company.id === selectedCompanyId ? 'bg-[#e3e3e3]' : 'bg-white'} hover:bg-[#f3f3f3]`}
-                type="button"
-                onClick={() => { onChange(company.id); setOpen(false); }}
-              >
-                <span style={{ color: '#131313', fontSize: '13px', fontWeight: 500, lineHeight: '18px', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {company.name}
-                </span>
-              </button>
+              <DropdownOption key={company.id} selected={company.id === selectedCompanyId} onClick={() => { onChange(company.id); setOpen(false); }}>
+                {company.name}
+              </DropdownOption>
             ))}
           </div>
         ) : null}

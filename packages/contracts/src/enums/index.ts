@@ -9,6 +9,7 @@ export * from './inspection-finding-status.enum';
 export * from './inspection-finding-severity.enum';
 export * from './inspection-followup-status.enum';
 export * from './inspection-item-response-type.enum';
+export * from './inspection-evidence-relation-type.enum';
 export * from './incident-status.enum';
 export * from './incident-type.enum';
 export * from './incident-risk-level.enum';

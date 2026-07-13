@@ -16,6 +16,7 @@ import { WorkflowDefinitionEntity } from './workflow-definition.entity';
 import { WorkflowInstanceStepEntity } from './workflow-instance-step.entity';
 
 @Entity('workflow_instances')
+@Index('idx_wi_entity', ['entityType', 'entityId'])
 export class WorkflowInstanceEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -24,15 +25,14 @@ export class WorkflowInstanceEntity {
   workflowDefinitionId: string | null;
 
   @ManyToOne(() => WorkflowDefinitionEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'workflow_definition_id' })
+  @JoinColumn({ name: 'workflow_definition_id', foreignKeyConstraintName: 'fk_wi_definition' })
   workflowDefinition: WorkflowDefinitionEntity | null;
 
-  @Index('idx_wi_entity')
   @Column({ name: 'entity_type', type: 'varchar', length: 80 })
   entityType: string;
 
-  @ManyToOne(() => EntityReferenceTypeEntity)
-  @JoinColumn({ name: 'entity_type', referencedColumnName: 'code' })
+  @ManyToOne(() => EntityReferenceTypeEntity, { nullable: false })
+  @JoinColumn({ name: 'entity_type', referencedColumnName: 'code', foreignKeyConstraintName: 'fk_wi_entity_type' })
   entityReferenceType: EntityReferenceTypeEntity;
 
   @Column({ name: 'entity_id', type: 'uuid' })
@@ -52,7 +52,7 @@ export class WorkflowInstanceEntity {
   startedByUserId: string | null;
 
   @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'started_by_user_id' })
+  @JoinColumn({ name: 'started_by_user_id', foreignKeyConstraintName: 'fk_wi_started_by' })
   startedByUser: UserEntity | null;
 
   @Column({ name: 'started_at', type: 'timestamptz', default: () => 'now()' })

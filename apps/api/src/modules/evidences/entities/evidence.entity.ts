@@ -24,7 +24,7 @@ export class EvidenceEntity {
   fileId: string | null;
 
   @ManyToOne(() => FileEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'file_id' })
+  @JoinColumn({ name: 'file_id', foreignKeyConstraintName: 'fk_evidences_file' })
   file: FileEntity | null;
 
   @Column({ type: 'varchar', length: 250, nullable: true })
@@ -59,14 +59,14 @@ export class EvidenceEntity {
   createdByUserId: string | null;
 
   @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'created_by_user_id' })
+  @JoinColumn({ name: 'created_by_user_id', foreignKeyConstraintName: 'fk_evidences_created_by' })
   createdByUser: UserEntity | null;
 
   @Column({ name: 'validated_by_user_id', type: 'uuid', nullable: true })
   validatedByUserId: string | null;
 
   @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'validated_by_user_id' })
+  @JoinColumn({ name: 'validated_by_user_id', foreignKeyConstraintName: 'fk_evidences_validated_by' })
   validatedByUser: UserEntity | null;
 
   @Column({ name: 'validated_at', type: 'timestamptz', nullable: true })

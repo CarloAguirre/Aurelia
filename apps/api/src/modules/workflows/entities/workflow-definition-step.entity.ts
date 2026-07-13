@@ -21,8 +21,8 @@ export class WorkflowDefinitionStepEntity {
   @Column({ name: 'workflow_definition_id', type: 'uuid' })
   workflowDefinitionId: string;
 
-  @ManyToOne(() => WorkflowDefinitionEntity, (def) => def.steps, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'workflow_definition_id' })
+  @ManyToOne(() => WorkflowDefinitionEntity, (def) => def.steps, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'workflow_definition_id', foreignKeyConstraintName: 'fk_wds_definition' })
   workflowDefinition: WorkflowDefinitionEntity;
 
   @Column({ name: 'step_order', type: 'integer' })
@@ -38,7 +38,7 @@ export class WorkflowDefinitionStepEntity {
   requiredRoleId: string | null;
 
   @ManyToOne(() => RoleEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'required_role_id' })
+  @JoinColumn({ name: 'required_role_id', foreignKeyConstraintName: 'fk_wds_role' })
   requiredRole: RoleEntity | null;
 
   @Column({ name: 'sla_hours', type: 'integer', nullable: true })

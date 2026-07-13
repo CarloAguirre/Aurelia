@@ -1,8 +1,8 @@
-import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from 'typeorm';
 import { CriticalControlEntity } from './critical-control.entity';
 
 @Entity('control_verification_items')
-@Index('uq_control_verification_items_control_code', ['criticalControlId', 'code'], { unique: true })
+@Unique('uq_control_verification_items_control_code', ['criticalControlId', 'code'])
 export class ControlVerificationItemEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -11,8 +11,8 @@ export class ControlVerificationItemEntity {
   @Column({ name: 'critical_control_id', type: 'uuid' })
   criticalControlId: string;
 
-  @ManyToOne(() => CriticalControlEntity, (control) => control.verificationItems, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'critical_control_id' })
+  @ManyToOne(() => CriticalControlEntity, (control) => control.verificationItems, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'critical_control_id', foreignKeyConstraintName: 'fk_control_verification_items_control' })
   criticalControl: CriticalControlEntity;
 
   @Column({ type: 'varchar', length: 60 })

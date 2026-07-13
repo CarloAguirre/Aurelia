@@ -88,6 +88,7 @@ export class DatabaseMaintenanceService {
 
   async run(dto: RunDatabaseMaintenanceDto): Promise<DatabaseMaintenanceResult> {
     const requestedSeeds = this.normalizeSeeds(dto.seeds ?? []);
+    const allowRisky = dto.allowRisky === true;
     const maintenanceRunner = this.dataSource.createQueryRunner();
     await maintenanceRunner.connect();
     await maintenanceRunner.query(`SELECT pg_advisory_lock(hashtext('aurelia_database_maintenance'))`);
@@ -113,7 +114,7 @@ export class DatabaseMaintenanceService {
 
       const riskyQueries = this.detectRiskyQueries(schemaPlan.upQueries);
 
-      if (riskyQueries.length > 0) {
+      if (riskyQueries.length > 0 && !allowRisky) {
         const migrationArtifact = this.buildMigrationArtifact();
         this.logger.warn(`Schema diff requires review. Generated artifact: ${migrationArtifact.filePath}`);
         return {

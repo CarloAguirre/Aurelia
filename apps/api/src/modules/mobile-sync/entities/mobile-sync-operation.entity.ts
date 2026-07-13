@@ -1,7 +1,7 @@
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from 'typeorm';
 
 @Entity('mobile_sync_operations')
-@Index('uq_mobile_sync_operations_idempotency_key', ['idempotencyKey'], { unique: true })
+@Unique('UQ_mobile_sync_operations_idempotency_key', ['idempotencyKey'])
 @Index('idx_mobile_sync_operations_device_local', ['deviceId', 'localId'])
 @Index('idx_mobile_sync_operations_batch', ['batchId'])
 export class MobileSyncOperationEntity {

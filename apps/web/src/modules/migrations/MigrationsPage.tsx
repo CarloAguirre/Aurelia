@@ -113,11 +113,19 @@ export function MigrationsPage() {
   }
 
   async function handleRunMaintenance() {
+    await executeMaintenance(false);
+  }
+
+  async function handleForceRunMaintenance() {
+    await executeMaintenance(true);
+  }
+
+  async function executeMaintenance(allowRisky: boolean) {
     setLoadingRun(true);
     setError(null);
 
     try {
-      const response = await runDatabaseMaintenance({ seeds: selectedSeeds });
+      const response = await runDatabaseMaintenance({ seeds: selectedSeeds, allowRisky });
       setRunResult(response);
       setPlan({
         migration: {
@@ -260,9 +268,24 @@ export function MigrationsPage() {
             <button type="button" onClick={handleRunMaintenance} disabled={loadingRun} style={{ height: 46, borderRadius: 14, border: 'none', background: 'linear-gradient(135deg, #00b398 0%, #24588b 100%)', color: '#ffffff', fontWeight: 800, cursor: 'pointer', boxShadow: '0 12px 24px rgba(0, 179, 152, 0.2)' }}>
               {loadingRun ? 'Ejecutando...' : 'Ejecutar mantenimiento'}
             </button>
+            {activePlan?.migration.status === 'review_required' ? (
+              <button
+                type="button"
+                onClick={handleForceRunMaintenance}
+                disabled={loadingRun}
+                style={{ height: 44, borderRadius: 14, border: '1px solid rgba(196, 54, 90, 0.25)', background: '#fff6f8', color: '#c4365a', fontWeight: 800, cursor: 'pointer' }}
+              >
+                {loadingRun ? 'Ejecutando plan riesgoso...' : 'Forzar ejecución revisada'}
+              </button>
+            ) : null}
             <p style={{ margin: 0, color: '#617183', fontSize: 12, lineHeight: 1.55 }}>
               Si el backend detecta cambios seguros, aplicará la migration y luego correrá los seeds seleccionados.
             </p>
+            {activePlan?.migration.status === 'review_required' ? (
+              <p style={{ margin: 0, color: '#c4365a', fontSize: 12, lineHeight: 1.55 }}>
+                El botón de forzado ejecuta también planes con `DROP`, cambios de constraints o ajustes destructivos una vez revisados manualmente.
+              </p>
+            ) : null}
           </div>
 
           {runResult ? (

@@ -1,4 +1,5 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { IncidentEntity } from './incident.entity';
 
 @Entity('incident_timeline_events')
 export class IncidentTimelineEventEntity {
@@ -7,6 +8,10 @@ export class IncidentTimelineEventEntity {
 
   @Column({ name: 'incident_id', type: 'uuid' })
   incidentId: string;
+
+  @ManyToOne(() => IncidentEntity, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'incident_id', foreignKeyConstraintName: 'fk_ite_incident' })
+  incident: IncidentEntity;
 
   @Column({ name: 'occurred_at', type: 'timestamptz' })
   occurredAt: Date;

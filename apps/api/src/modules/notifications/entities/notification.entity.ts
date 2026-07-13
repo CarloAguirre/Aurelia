@@ -2,6 +2,7 @@ import { Column, CreateDateColumn, Entity, Index, OneToMany, PrimaryGeneratedCol
 import { NotificationRecipientEntity } from './notification-recipient.entity';
 
 @Entity('notifications')
+@Index('idx_notifications_entity', ['entityType', 'entityId'])
 export class NotificationEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -16,7 +17,6 @@ export class NotificationEntity {
   @Column({ type: 'varchar', length: 80, default: 'general' })
   category: string;
 
-  @Index('idx_notifications_entity')
   @Column({ name: 'entity_type', type: 'varchar', length: 80, nullable: true })
   entityType: string | null;
 

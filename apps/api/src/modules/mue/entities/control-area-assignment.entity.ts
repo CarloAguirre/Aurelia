@@ -15,8 +15,8 @@ export class ControlAreaAssignmentEntity {
   @Column({ name: 'mue_id', type: 'uuid' })
   mueId: string;
 
-  @ManyToOne(() => MueEntity, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'mue_id' })
+  @ManyToOne(() => MueEntity, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'mue_id', foreignKeyConstraintName: 'fk_control_area_assignments_mue' })
   mue: MueEntity;
 
   @Index('idx_control_area_assignments_control')
@@ -24,35 +24,35 @@ export class ControlAreaAssignmentEntity {
   criticalControlId: string | null;
 
   @ManyToOne(() => CriticalControlEntity, { nullable: true, onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'critical_control_id' })
+  @JoinColumn({ name: 'critical_control_id', foreignKeyConstraintName: 'fk_control_area_assignments_control' })
   criticalControl: CriticalControlEntity | null;
 
   @Column({ name: 'area_id', type: 'uuid', nullable: true })
   areaId: string | null;
 
   @ManyToOne(() => AreaEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'area_id' })
+  @JoinColumn({ name: 'area_id', foreignKeyConstraintName: 'fk_control_area_assignments_area' })
   area: AreaEntity | null;
 
   @Column({ name: 'gerencia_id', type: 'uuid', nullable: true })
   gerenciaId: string | null;
 
   @ManyToOne(() => GerenciaEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'gerencia_id' })
+  @JoinColumn({ name: 'gerencia_id', foreignKeyConstraintName: 'fk_control_area_assignments_gerencia' })
   gerencia: GerenciaEntity | null;
 
   @Column({ name: 'company_id', type: 'uuid', nullable: true })
   companyId: string | null;
 
   @ManyToOne(() => CompanyEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'company_id' })
+  @JoinColumn({ name: 'company_id', foreignKeyConstraintName: 'fk_control_area_assignments_company' })
   company: CompanyEntity | null;
 
   @Column({ name: 'responsible_user_id', type: 'uuid', nullable: true })
   responsibleUserId: string | null;
 
   @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'responsible_user_id' })
+  @JoinColumn({ name: 'responsible_user_id', foreignKeyConstraintName: 'fk_control_area_assignments_user' })
   responsibleUser: UserEntity | null;
 
   @Column({ name: 'area_name_snapshot', type: 'varchar', length: 240, nullable: true })

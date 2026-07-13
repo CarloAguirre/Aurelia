@@ -31,12 +31,13 @@ export interface DatabaseMaintenanceRunResponse {
 
 export interface RunDatabaseMaintenanceRequest {
   seeds?: string[];
+  allowRisky?: boolean;
 }
 
 export async function getDatabaseMaintenancePlan(): Promise<DatabaseMaintenancePlanResponse> {
-  return httpGet<DatabaseMaintenancePlanResponse>('api/admin/database/maintenance/plan');
+  return httpGet<DatabaseMaintenancePlanResponse>('/admin/database/maintenance/plan');
 }
 
 export async function runDatabaseMaintenance(payload: RunDatabaseMaintenanceRequest): Promise<DatabaseMaintenanceRunResponse> {
-  return httpPost<RunDatabaseMaintenanceRequest, DatabaseMaintenanceRunResponse>('api/admin/database/maintenance', payload);
+  return httpPost<RunDatabaseMaintenanceRequest, DatabaseMaintenanceRunResponse>('/admin/database/maintenance', payload);
 }

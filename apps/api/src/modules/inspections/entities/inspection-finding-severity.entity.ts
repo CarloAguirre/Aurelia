@@ -1,6 +1,7 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('inspection_finding_severities')
+@Index('idx_inspection_finding_severities_active_sort', ['isActive', 'sortOrder'])
 export class InspectionFindingSeverityEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;

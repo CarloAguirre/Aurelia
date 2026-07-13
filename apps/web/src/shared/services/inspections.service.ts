@@ -6,8 +6,10 @@ import type {
   CreateInspectionFindingRequest,
   CompanyResponse,
   CreateInspectionRequest,
+  EvidenceLinkResponse,
   EvidenceResponse,
   FileResponse,
+  InspectionChecklistAnswerResponse,
   InspectionDashboardChartsResponse,
   InspectionDashboardCompanyAnalysisResponse,
   InspectionDashboardOpenFindingsResponse,
@@ -207,6 +209,41 @@ export function getOrganizationSectors(areaId?: string | null): Promise<SectorRe
 
 export function listInspections(): Promise<InspectionResponse[]> {
   return httpGet<InspectionResponse[]>('/inspections');
+}
+
+export function createInspection(payload: CreateInspectionRequest): Promise<InspectionResponse> {
+  return httpPost<CreateInspectionRequest, InspectionResponse>('/inspections', payload);
+}
+
+export function createInspectionFinding(inspectionId: string, payload: CreateInspectionFindingRequest): Promise<InspectionFindingResponse> {
+  return httpPost<CreateInspectionFindingRequest, InspectionFindingResponse>(`/inspections/${encodeURIComponent(inspectionId)}/findings`, payload);
+}
+
+export function upsertInspectionAnswer(inspectionId: string, payload: UpsertInspectionAnswerRequest): Promise<InspectionChecklistAnswerResponse> {
+  return httpPost<UpsertInspectionAnswerRequest, InspectionChecklistAnswerResponse>(`/inspections/${encodeURIComponent(inspectionId)}/answers`, payload);
+}
+
+export function closeInspection(inspectionId: string, reason?: string): Promise<InspectionResponse> {
+  return httpPost<{ reason?: string }, InspectionResponse>(`/inspections/${encodeURIComponent(inspectionId)}/close`, { reason });
+}
+
+export function uploadFile(file: File, uploadedByUserId?: string | null): Promise<FileResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const query = uploadedByUserId ? `?uploadedByUserId=${encodeURIComponent(uploadedByUserId)}` : '';
+  return httpPostForm<FileResponse>(`/files/upload${query}`, formData);
+}
+
+export function createEvidence(payload: CreateEvidenceRequest): Promise<EvidenceResponse> {
+  return httpPost<CreateEvidenceRequest, EvidenceResponse>('/evidences', payload);
+}
+
+export function linkEvidence(evidenceId: string, payload: LinkEvidenceRequest): Promise<EvidenceLinkResponse> {
+  return httpPost<LinkEvidenceRequest, EvidenceLinkResponse>(`/evidences/${encodeURIComponent(evidenceId)}/link`, payload);
+}
+
+export function getInspectionExportPayload(inspectionId: string): Promise<InspectionExportPayload> {
+  return httpGet<InspectionExportPayload>(`/inspections/${encodeURIComponent(inspectionId)}/export`);
 }
 
 export function getInspectionTypes(): Promise<InspectionTypeResponse[]> {

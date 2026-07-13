@@ -5,6 +5,7 @@ import {
   InspectionDashboardSummaryResponse,
   InspectionDetailResponse,
   InspectionFindingResponse,
+  InspectionFindingStatus,
   InspectionFollowupResponse,
   InspectionResponse,
   InspectionStatus,
@@ -100,9 +101,15 @@ export class InspectionsController {
     if (inspection.openFindingsCount > 0) {
       throw new BadRequestException('Inspection has open findings');
     }
-    return this.inspectionsService.updateStatus(
+    const closedAt = new Date().toISOString();
+    return this.inspectionsService.update(
       id,
-      { status: InspectionStatus.CLOSED, comment: dto.reason ?? undefined },
+      {
+        status: InspectionStatus.CLOSED,
+        completedAt: inspection.completedAt ?? closedAt,
+        closedAt: inspection.closedAt ?? closedAt,
+        reason: dto.reason ?? null,
+      },
       request.user.sub,
     );
   }
@@ -124,12 +131,24 @@ export class InspectionsController {
 
   @RequirePermissions('inspections:write')
   @Patch(':id/status')
-  updateStatus(
+  async updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateInspectionStatusDto,
     @Req() request: AuthenticatedRequest,
   ): Promise<InspectionResponse> {
-    return this.inspectionsService.updateStatus(id, dto, request.user.sub);
+    if (dto.status !== InspectionStatus.CLOSED) return this.inspectionsService.updateStatus(id, dto, request.user.sub);
+    const inspection = await this.inspectionsService.findOne(id);
+    const closedAt = new Date().toISOString();
+    return this.inspectionsService.update(
+      id,
+      {
+        status: InspectionStatus.CLOSED,
+        completedAt: inspection.completedAt ?? closedAt,
+        closedAt: inspection.closedAt ?? closedAt,
+        reason: dto.comment ?? null,
+      },
+      request.user.sub,
+    );
   }
 
   @RequirePermissions('inspections:write')
@@ -154,12 +173,14 @@ export class InspectionsController {
 
   @RequirePermissions('inspections:write')
   @Patch('findings/:findingId')
-  updateFinding(
+  async updateFinding(
     @Param('findingId', ParseUUIDPipe) findingId: string,
     @Body() dto: UpdateInspectionFindingDto,
     @Req() request: AuthenticatedRequest,
   ): Promise<InspectionFindingResponse> {
-    return this.inspectionsService.updateFinding(findingId, dto, request.user.sub);
+    const finding = await this.inspectionsService.updateFinding(findingId, dto, request.user.sub);
+    await this.closeInspectionIfAllFindingsClosed(finding.inspectionId, request.user.sub);
+    return finding;
   }
 
   @RequirePermissions('inspections:write')
@@ -169,5 +190,27 @@ export class InspectionsController {
     @Body() dto: UpdateInspectionFollowupDto,
   ): Promise<InspectionFollowupResponse> {
     return this.inspectionsService.updateFollowup(followupId, dto);
+  }
+
+  private async closeInspectionIfAllFindingsClosed(inspectionId: string, actorId: string | null): Promise<void> {
+    const [inspection, findings] = await Promise.all([
+      this.inspectionsService.findOne(inspectionId),
+      this.inspectionsService.findFindings(inspectionId),
+    ]);
+    if (inspection.status === InspectionStatus.CLOSED || inspection.status === InspectionStatus.CANCELLED) return;
+    const activeFindings = findings.filter((finding) => finding.status !== InspectionFindingStatus.CANCELLED);
+    if (activeFindings.length === 0) return;
+    if (activeFindings.some((finding) => finding.status !== InspectionFindingStatus.CLOSED)) return;
+    const closedAt = new Date().toISOString();
+    await this.inspectionsService.update(
+      inspectionId,
+      {
+        status: InspectionStatus.CLOSED,
+        completedAt: inspection.completedAt ?? closedAt,
+        closedAt: inspection.closedAt ?? closedAt,
+        reason: 'all findings closed',
+      },
+      actorId,
+    );
   }
 }

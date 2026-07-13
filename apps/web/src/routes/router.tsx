@@ -5,6 +5,7 @@ import { DashboardPage } from '../modules/dashboard/DashboardPage';
 import { InspectionsPage } from '../modules/inspections/InspectionsPage';
 import { InspectionsHistoryPage } from '../modules/inspections/InspectionsHistoryPage';
 import { SprPage } from '../modules/spr/SprPage';
+import { SprAreaPage } from '../modules/spr/SprAreaPage';
 import { IncidentsPage } from '../modules/incidents/IncidentsPage';
 import { CriticalControlsPage } from '../modules/critical-controls/CriticalControlsPage';
 import { ReportsPage } from '../modules/reports/ReportsPage';
@@ -30,6 +31,7 @@ export const router = createBrowserRouter([
       { path: 'inspections', element: <InspectionsPage /> },
       { path: 'inspections/history', element: <InspectionsHistoryPage /> },
       { path: 'spr', element: <SprPage /> },
+      { path: 'spr/mi-area', element: <SprAreaPage /> },
       { path: 'incidents', element: <IncidentsPage /> },
       { path: 'critical-controls', element: <CriticalControlsPage /> },
       { path: 'reports', element: <ReportsPage /> },

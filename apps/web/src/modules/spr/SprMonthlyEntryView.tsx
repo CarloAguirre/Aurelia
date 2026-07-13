@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type {
   CreateSprMonthlyRecordRequest,
   SprMonthlyRecordResponse,
@@ -26,7 +26,7 @@ import { SprSubmitModal } from './components/SprSubmitModal';
 import { SprHistoricalRangeBadge } from './components/SprHistoricalRangeBadge';
 import { SprRejectionAlertBanner } from './components/SprRejectionAlertBanner';
 import { SprTraceabilityIcon } from './icons/SprIcons';
-import { SPR_ACTIVE_CYCLE } from './spr.constants';
+import { SPR_ACTIVE_CYCLE, SPR_CORRECTION_MODE } from './spr.constants';
 import { parameterRequiresEvidence } from './sprEvidence';
 import { evaluateHistoricalRange, parseSprNumericValue } from './sprHistoricalRange';
 import type { SprRejectionContext } from './sprRejectedContext';
@@ -140,6 +140,7 @@ export function SprMonthlyEntryView({ correctionMode = false, rejectionContext =
   const uploadEvidenceMutation = useUploadSprRecordEvidence();
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
   const [submitEvidenceError, setSubmitEvidenceError] = useState<string | null>(null);
+  const [saveDraftErrorMessage, setSaveDraftErrorMessage] = useState<string | null>(null);
   const [rejectionBannerDismissed, setRejectionBannerDismissed] = useState(false);
 
   const selectedParameterId = useSprMonthlyFormStore((state) => state.selectedParameterId);
@@ -180,16 +181,32 @@ export function SprMonthlyEntryView({ correctionMode = false, rejectionContext =
   // Habilitar envio solo cuando todos los parametros tienen registro persistido con valor.
   const canSubmit = totalCount > 0 && rows.every((row) => recordHasValue(row.record) || looksNotApplicable(row.record?.textValue));
 
-  const saveErrorMessage = saveMutation.error instanceof Error
-    ? saveMutation.error.message
-    : submitMutation.error instanceof Error
-      ? submitMutation.error.message
-      : uploadEvidenceMutation.error instanceof Error
-        ? uploadEvidenceMutation.error.message
-        : submitEvidenceError;
+  const saveErrorMessage = saveDraftErrorMessage
+    ?? (saveMutation.error instanceof Error
+      ? saveMutation.error.message
+      : submitMutation.error instanceof Error
+        ? submitMutation.error.message
+        : uploadEvidenceMutation.error instanceof Error
+          ? uploadEvidenceMutation.error.message
+          : submitEvidenceError);
+
+  useEffect(() => {
+    setSaveDraftErrorMessage(null);
+  }, [activeParameterId]);
+
+  function isSprRecordEditable(record: SprMonthlyRecordResponse): boolean {
+    return [SprRecordStatus.DRAFT, SprRecordStatus.REJECTED].includes(record.status);
+  }
 
   function handleSaveDraft() {
     if (!selectedRow || !activeParameterId) return;
+    setSaveDraftErrorMessage(null);
+
+    if (selectedRow.record && !isSprRecordEditable(selectedRow.record)) {
+      setSaveDraftErrorMessage(SPR_CORRECTION_MODE.nonEditableRecordMessage);
+      return;
+    }
+
     const entry = resolveEntry(getSprFormEntry(entries, activeParameterId), selectedRow.record);
     const numericValue = entry.notApplicable ? null : parseNumeric(entry.value);
     const textValue = entry.notApplicable ? 'No aplica' : numericValue === null && entry.value.trim() !== '' ? entry.value.trim() : null;
@@ -197,7 +214,10 @@ export function SprMonthlyEntryView({ correctionMode = false, rejectionContext =
 
     if (selectedRow.record) {
       const payload: UpdateSprMonthlyRecordRequest = { numericValue, textValue, notes };
-      saveMutation.mutate({ mode: 'update', recordId: selectedRow.record.id, payload });
+      saveMutation.mutate(
+        { mode: 'update', recordId: selectedRow.record.id, payload },
+        { onSuccess: () => setSaveDraftErrorMessage(null) },
+      );
       return;
     }
 

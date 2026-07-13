@@ -1,5 +1,6 @@
 import { AppSidebar } from '../../shared/layout/AppSidebar';
 import { DashboardFrameShell } from '../dashboard/components/DashboardSections';
+import { InspectionNotificationDeepLinkModal } from './components/InspectionNotificationDeepLinkModal';
 import { InspectionsHistoryView } from './InspectionsHistoryView';
 
 function InspectionsHistoryHeader() {
@@ -24,6 +25,7 @@ export function InspectionsHistoryPage() {
         header={<InspectionsHistoryHeader />}
         content={<InspectionsHistoryView />}
       />
+      <InspectionNotificationDeepLinkModal />
     </div>
   );
 }

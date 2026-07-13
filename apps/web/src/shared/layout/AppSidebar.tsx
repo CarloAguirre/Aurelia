@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { DashboardSidebarTopBrandBar } from '../../modules/dashboard/components/DashboardSections';
 import { sidebarIconSvgs, type SidebarIconName } from './AppSidebarIcons';
@@ -124,32 +124,31 @@ function SidebarSubItem({ item }: { item: SidebarChildItem }) {
   const activeBg = tone === 'gold' ? 'bg-[rgba(200,160,100,0.07)]' : 'bg-[rgba(0,179,152,0.09)]';
   const activeHeight = hasIcon ? 'h-[25px]' : isDoubleLine ? 'h-[41px]' : 'h-[26.5px]';
   const inactiveHeight = hasIcon ? 'h-[25px]' : 'h-[26.5px]';
-  const className = `relative w-full rounded-[6px] text-left transition-colors duration-150 ${isActive ? `${activeHeight} ${activeBg}` : `${inactiveHeight} hover:bg-[rgba(255,255,255,0.04)]`}`;
+  const className = `relative block w-full rounded-[6px] text-left transition-colors duration-150 ${isActive ? `${activeHeight} ${activeBg}` : `${inactiveHeight} hover:bg-[rgba(255,255,255,0.04)]`}`;
 
-  function handleClick() {
-    if (item.to && !item.disabled) navigate(item.to);
+  function handleLinkClick(event: MouseEvent<HTMLAnchorElement>) {
+    if (!item.to) return;
+    event.preventDefault();
+    navigate(item.to);
   }
 
-  if (hasIcon) {
-    return (
-      <button aria-current={isActive ? 'page' : undefined} className={className} disabled={item.disabled} onClick={handleClick} type="button">
-        {isActive ? <span className="absolute left-[23px] top-[6px] h-[13px] w-[2.5px] rounded-[2px]" style={{ backgroundColor: activeColor }} /> : null}
-        <SidebarIcon name={item.icon as SidebarIconName} className="absolute left-[40.5px] top-[7.5px] h-[10px] w-[12px]" />
-        <span className="absolute left-[60.5px] top-[10.5px] size-[4px] rounded-[2px] bg-[rgba(255,255,255,0.12)]" />
-        <span className={`absolute left-[72.5px] top-[6px] truncate font-['Inter:Semi_Bold',sans-serif] text-[11px] font-semibold leading-[normal] ${isActive ? 'text-[#c8a064]' : 'text-[rgba(255,255,255,0.32)]'}`}>{item.label}</span>
-      </button>
-    );
-  }
-
-  const barTop = isDoubleLine ? 'top-[14px]' : 'top-[6.75px]';
-  const dotTop = isDoubleLine ? 'top-[18.5px]' : 'top-[11.25px]';
-  return (
-    <button aria-current={isActive ? 'page' : undefined} className={className} disabled={item.disabled} onClick={handleClick} type="button">
-      {isActive ? <span className={`absolute left-[23px] ${barTop} h-[13px] w-[2.5px] rounded-[2px] bg-[#00b398]`} /> : null}
-      <span className={`absolute left-[39.5px] ${isActive ? dotTop : 'top-[11.25px]'} size-[4px] rounded-[2px] ${isActive ? 'bg-[#00b398]' : 'bg-[rgba(255,255,255,0.2)]'}`} />
+  const content = hasIcon ? (
+    <>
+      {isActive ? <span className="absolute left-[23px] top-[6px] h-[13px] w-[2.5px] rounded-[2px]" style={{ backgroundColor: activeColor }} /> : null}
+      <SidebarIcon name={item.icon as SidebarIconName} className="absolute left-[40.5px] top-[7.5px] h-[10px] w-[12px]" />
+      <span className="absolute left-[60.5px] top-[10.5px] size-[4px] rounded-[2px] bg-[rgba(255,255,255,0.12)]" />
+      <span className={`absolute left-[72.5px] top-[6px] truncate font-['Inter:Semi_Bold',sans-serif] text-[11px] font-semibold leading-[normal] ${isActive ? 'text-[#c8a064]' : 'text-[rgba(255,255,255,0.32)]'}`}>{item.label}</span>
+    </>
+  ) : (
+    <>
+      {isActive ? <span className={`absolute left-[23px] ${isDoubleLine ? 'top-[14px]' : 'top-[6.75px]'} h-[13px] w-[2.5px] rounded-[2px] bg-[#00b398]`} /> : null}
+      <span className={`absolute left-[39.5px] ${isActive ? isDoubleLine ? 'top-[18.5px]' : 'top-[11.25px]' : 'top-[11.25px]'} size-[4px] rounded-[2px] ${isActive ? 'bg-[#00b398]' : 'bg-[rgba(255,255,255,0.2)]'}`} />
       <span className={`absolute left-[50.5px] top-[6px] max-w-[140px] font-['Inter:Semi_Bold',sans-serif] text-[12px] leading-[14px] ${isActive ? 'font-semibold text-[#00b398]' : 'font-normal text-[rgba(255,255,255,0.44)]'} ${isDoubleLine ? 'whitespace-normal' : 'whitespace-nowrap'}`}>{item.label}</span>
-    </button>
+    </>
   );
+
+  if (item.to && !item.disabled) return <a aria-current={isActive ? 'page' : undefined} className={className} href={item.to} onClick={handleLinkClick}>{content}</a>;
+  return <button aria-current={isActive ? 'page' : undefined} className={className} disabled={item.disabled} type="button">{content}</button>;
 }
 
 function SidebarChildren({ children }: { children: SidebarChildItem[] }) {

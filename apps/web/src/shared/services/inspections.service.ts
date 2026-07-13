@@ -12,6 +12,7 @@ import type {
   InspectionDashboardCompanyAnalysisResponse,
   InspectionDashboardOpenFindingsResponse,
   InspectionDashboardSummaryResponse,
+  InspectionHistoryKpisResponse,
   InspectionFindingResponse,
   InspectionManagementKpisResponse,
   InspectionManagementTableResponse,
@@ -105,12 +106,7 @@ function normalizeManagementInspectionType(type: string) {
   return type;
 }
 
-export function getInspectionManagementKpis(): Promise<InspectionManagementKpisResponse> {
-  return httpGet<InspectionManagementKpisResponse>('/inspections/dashboard/management-kpis');
-}
-
-export async function getInspectionManagementTable(params: InspectionManagementTableParams): Promise<InspectionManagementTableResponse> {
-  const response = await httpGet<InspectionManagementTableResponse>(`/inspections/dashboard/management-table${buildManagementTableQuery(params)}`);
+function normalizeManagementTableResponse(response: InspectionManagementTableResponse): InspectionManagementTableResponse {
   return {
     ...response,
     rows: response.rows.map((row) => ({
@@ -122,6 +118,24 @@ export async function getInspectionManagementTable(params: InspectionManagementT
       types: response.filterOptions.types.map(normalizeManagementInspectionType),
     },
   };
+}
+
+export function getInspectionManagementKpis(): Promise<InspectionManagementKpisResponse> {
+  return httpGet<InspectionManagementKpisResponse>('/inspections/dashboard/management-kpis');
+}
+
+export async function getInspectionManagementTable(params: InspectionManagementTableParams): Promise<InspectionManagementTableResponse> {
+  const response = await httpGet<InspectionManagementTableResponse>(`/inspections/dashboard/management-table${buildManagementTableQuery(params)}`);
+  return normalizeManagementTableResponse(response);
+}
+
+export function getInspectionHistoryKpis(): Promise<InspectionHistoryKpisResponse> {
+  return httpGet<InspectionHistoryKpisResponse>('/inspections/history/kpis');
+}
+
+export async function getInspectionHistoryTable(params: InspectionManagementTableParams): Promise<InspectionManagementTableResponse> {
+  const response = await httpGet<InspectionManagementTableResponse>(`/inspections/history/table${buildManagementTableQuery(params)}`);
+  return normalizeManagementTableResponse(response);
 }
 
 export function getInspectionDashboardSummary(params?: InspectionDashboardQueryParams): Promise<InspectionDashboardSummaryResponse> {
@@ -236,56 +250,4 @@ export function suggestCompany(params: {
     type: AiSuggestType.COMPANY_SUGGESTION,
     context: params,
   });
-}
-
-export function getInspectionExportPayload(inspectionId: string): Promise<InspectionExportPayload> {
-  return httpGet<InspectionExportPayload>(`/inspections/${encodeURIComponent(inspectionId)}/export`);
-}
-
-export function createInspection(payload: CreateInspectionRequest): Promise<InspectionResponse> {
-  return httpPost<CreateInspectionRequest, InspectionResponse>('/inspections', payload);
-}
-
-export function upsertInspectionAnswer(
-  inspectionId: string,
-  payload: UpsertInspectionAnswerRequest,
-): Promise<unknown> {
-  return httpPost<UpsertInspectionAnswerRequest, unknown>(`/inspections/${inspectionId}/answers`, payload);
-}
-
-export function createInspectionFinding(
-  inspectionId: string,
-  payload: CreateInspectionFindingRequest,
-): Promise<InspectionFindingResponse> {
-  return httpPost<CreateInspectionFindingRequest, InspectionFindingResponse>(`/inspections/${inspectionId}/findings`, payload);
-}
-
-export function closeInspection(inspectionId: string, reason?: string): Promise<InspectionResponse> {
-  return httpPost<{ reason?: string }, InspectionResponse>(`/inspections/${inspectionId}/close`, reason ? { reason } : {});
-}
-
-export function uploadFile(file: File, uploadedByUserId?: string | null): Promise<FileResponse> {
-  const formData = new FormData();
-  formData.append('file', file);
-  const query = uploadedByUserId ? `?uploadedByUserId=${encodeURIComponent(uploadedByUserId)}` : '';
-  return httpPostForm<FileResponse>(`/files/upload${query}`, formData);
-}
-
-export function createEvidence(payload: CreateEvidenceRequest): Promise<EvidenceResponse> {
-  return httpPost<CreateEvidenceRequest, EvidenceResponse>('/evidences', payload);
-}
-
-export function linkEvidence(evidenceId: string, payload: LinkEvidenceRequest): Promise<unknown> {
-  return httpPost<LinkEvidenceRequest, unknown>(`/evidences/${evidenceId}/link`, payload);
-}
-
-export function linkInspectionEvidence(
-  inspectionId: string,
-  evidenceId: string,
-  relationType?: string,
-): Promise<unknown> {
-  return httpPost<{ relationType?: string }, unknown>(
-    `/inspections/${inspectionId}/evidences/${evidenceId}/link`,
-    relationType ? { relationType } : {},
-  );
 }

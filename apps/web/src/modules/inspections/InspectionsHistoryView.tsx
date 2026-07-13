@@ -5,11 +5,10 @@ import { useInspectionHistoryTable } from '../../shared/hooks/useInspectionHisto
 import type { InspectionManagementPageSize, InspectionManagementTableParams } from '../../shared/services/inspections.service';
 import type { InspectionDetailModalRecord } from './components/InspectionDetailModal';
 import { InspectionDetailModalDataBridge } from './components/InspectionDetailModalDataBridge';
-import { ClearFiltersIcon } from './components/InspectionManagementIcons';
+import { ClearFiltersIcon, HistoryAverageClosureIcon, HistoryClosedInspectionsIcon, HistoryClosedObservationsIcon, HistoryContractorCompaniesIcon, InspectionExportChevronIcon, InspectionExportDocumentIcon } from './components/InspectionManagementIcons';
 
 type BadgeTone = 'blue' | 'mint' | 'pink' | 'yellow' | 'green';
 type TableFilterKey = keyof TableFilters;
-type KpiKind = 'closed' | 'average' | 'rate' | 'company';
 type KpiValueTone = 'green' | 'dark';
 
 type TableFilters = {
@@ -177,33 +176,18 @@ function buildActiveFilters(filters: TableFilters) {
   return chips;
 }
 
-function KpiIcon({ kind }: { kind: KpiKind }) {
-  if (kind === 'closed') return <svg className="h-[11px] w-[13.75px] shrink-0" viewBox="0 0 14 11" fill="none" aria-hidden><circle cx="6.875" cy="5.5" r="5" fill="#53BD49" /><path d="M4.58 5.55 6.02 6.98 9.18 3.78" stroke="white" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-  if (kind === 'average') return <svg className="h-[11px] w-[13.75px] shrink-0" viewBox="0 0 14 11" fill="none" aria-hidden><path d="M2.1 3.08h9.55M3.42 1.28v2.02M10.33 1.28v2.02" stroke="#24588B" strokeWidth="1.3" strokeLinecap="round" /><rect x="2.05" y="2.35" width="9.65" height="7.15" rx="1.45" stroke="#24588B" strokeWidth="1.3" /><path d="M4.05 5.48h1.15M6.55 5.48h1.15M9.05 5.48h1.15M4.05 7.45h1.15M6.55 7.45h1.15" stroke="#24588B" strokeWidth="1.15" strokeLinecap="round" /></svg>;
-  if (kind === 'rate') return <svg className="h-[11px] w-[13.75px] shrink-0" viewBox="0 0 14 11" fill="none" aria-hidden><path d="M2.05 8.4 4.72 5.72 6.7 7.48 11.38 2.45" stroke="#53BD49" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" /><path d="M9.65 2.45h1.73v1.73" stroke="#53BD49" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-  return <svg className="h-[11px] w-[13.75px] shrink-0" viewBox="0 0 14 11" fill="none" aria-hidden><rect x="2.18" y="2.25" width="4.05" height="7.1" rx="0.9" stroke="#24588B" strokeWidth="1.25" /><rect x="7.4" y="1.35" width="4.45" height="8" rx="0.9" stroke="#24588B" strokeWidth="1.25" /><path d="M3.55 4.3h1.25M3.55 6.05h1.25M8.78 3.4h1.55M8.78 5.15h1.55M8.78 6.9h1.55" stroke="#24588B" strokeWidth="1" strokeLinecap="round" /></svg>;
-}
-
-function KpiCard({ label, value, helper, kind, valueTone }: { label: string; value: string; helper: string; kind: KpiKind; valueTone: KpiValueTone }) {
+function KpiCard({ label, value, helper, icon, valueTone }: { label: string; value: string; helper: string; icon: ReactNode; valueTone: KpiValueTone }) {
   return (
     <div className="flex h-[92.5px] min-w-0 flex-col items-start rounded-[8px] border border-[#e3e3e3] bg-white px-[17px] py-[15px] drop-shadow-[0px_1px_1.5px_rgba(0,0,0,0.05)]">
-      <div className="flex h-[14px] w-full items-center gap-[6px]"><KpiIcon kind={kind} /><p className="whitespace-nowrap font-['Inter:Semi_Bold',sans-serif] text-[11px] font-semibold uppercase leading-[normal] tracking-[0.44px] text-[#646464]">{label}</p></div>
+      <div className="flex h-[14px] w-full items-center gap-[6px]">{icon}<p className="whitespace-nowrap font-['Inter:Semi_Bold',sans-serif] text-[11px] font-semibold uppercase leading-[normal] tracking-[0.44px] text-[#646464]">{label}</p></div>
       <div className="h-[33px] w-full pt-[4px]"><p className={`whitespace-nowrap font-['Inter:Bold',sans-serif] text-[24px] font-bold leading-[normal] ${valueTone === 'green' ? 'text-[#2a5c16]' : 'text-[#131313]'}`}>{value}</p></div>
       <div className="h-[16px] w-full pt-[3px]"><p className="whitespace-nowrap font-['Inter:Regular',sans-serif] text-[11px] font-normal leading-[normal] text-[#646464]">{helper}</p></div>
     </div>
   );
 }
 
-function ExportDocumentIcon() {
-  return <svg className="h-[12px] w-[15px] shrink-0" viewBox="0 0 15 12" fill="none" aria-hidden><path d="M4.2 1.25h4.18l2.42 2.42v6.08c0 .55-.45 1-1 1H4.2c-.55 0-1-.45-1-1v-7.5c0-.55.45-1 1-1Z" fill="#333" /><path d="M8.33 1.35v2.12c0 .28.22.5.5.5h2.03" fill="#333" /><path d="M5.1 6.1h3.9M5.1 7.9h3.9" stroke="white" strokeWidth="0.7" strokeLinecap="round" opacity="0.45" /></svg>;
-}
-
-function ExportChevronIcon() {
-  return <svg className="h-[10px] w-[12.5px] shrink-0" viewBox="0 0 13 10" fill="none" aria-hidden><path d="M3.2 3.65 6.25 6.7 9.3 3.65" stroke="#333" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-}
-
 function TableActions() {
-  return <button className="flex h-[36px] w-[117.5px] shrink-0 items-center gap-[6px] rounded-[8px] border-[1.5px] border-[#d1d1d1] bg-white px-[13.5px] py-[1.5px] text-[12px] font-semibold text-[#333]" type="button"><ExportDocumentIcon /><span className="font-['Inter:Semi_Bold',sans-serif]">Exportar</span><ExportChevronIcon /></button>;
+  return <button className="flex h-[36px] w-[117.5px] shrink-0 items-center gap-[6px] rounded-[8px] border-[1.5px] border-[#d1d1d1] bg-white px-[13.5px] py-[1.5px] text-[12px] font-semibold text-[#333]" type="button"><InspectionExportDocumentIcon /><span className="font-['Inter:Semi_Bold',sans-serif]">Exportar</span><InspectionExportChevronIcon /></button>;
 }
 
 function ActiveFiltersBar({ filters, onRemove }: { filters: Array<{ key: TableFilterKey; label: string }>; onRemove: (key: TableFilterKey) => void }) {
@@ -336,7 +320,7 @@ export function InspectionsHistoryView() {
   return (
     <>
       <div className="flex h-[calc(100vh-56px)] w-full flex-col items-start overflow-x-hidden overflow-y-auto bg-[#f7f7f7] px-[24px] py-[20px]">
-        <div className="grid w-full grid-cols-[repeat(auto-fit,minmax(244px,1fr))] gap-[12px]"><KpiCard kind="closed" valueTone="green" label="Inspecciones cerradas" value={kpis.closedInspections} helper={`Año ${kpis.year}`} /><KpiCard kind="average" valueTone="dark" label="Promedio de cierre" value={kpis.averageClosureDays} helper="días por inspección" /><KpiCard kind="rate" valueTone="green" label="% Obs. cerradas" value={kpis.closedFindingsRate} helper="sobre inspecciones cerradas" /><KpiCard kind="company" valueTone="dark" label="Empresas EECC" value={kpis.contractorCompanies} helper="empresas con al menos 1 insp." /></div>
+        <div className="grid w-full grid-cols-[repeat(auto-fit,minmax(244px,1fr))] gap-[12px]"><KpiCard icon={<HistoryClosedInspectionsIcon />} valueTone="green" label="Inspecciones cerradas" value={kpis.closedInspections} helper={`Año ${kpis.year}`} /><KpiCard icon={<HistoryAverageClosureIcon />} valueTone="dark" label="Promedio de cierre" value={kpis.averageClosureDays} helper="días por inspección" /><KpiCard icon={<HistoryClosedObservationsIcon />} valueTone="green" label="% Obs. cerradas" value={kpis.closedFindingsRate} helper="sobre inspecciones cerradas" /><KpiCard icon={<HistoryContractorCompaniesIcon />} valueTone="dark" label="Empresas EECC" value={kpis.contractorCompanies} helper="empresas con al menos 1 insp." /></div>
         <ActiveFiltersBar filters={activeFilters} onRemove={removeFilter} />
         <div className="w-full pt-[16px]"><InspectionHistoryTable rows={rows} total={total} page={tableQuery.data?.page ?? page} totalPages={totalPages} pageSize={pageSize} isLoading={tableQuery.isLoading} isError={tableQuery.isError} filters={filters} options={filterOptions} onFilterChange={updateFilter} onClearFilters={clearFilters} onPageChange={setPage} onPageSizeChange={(value) => { setPage(1); setPageSize(value); }} onViewDetails={openInspectionDetail} /></div>
       </div>

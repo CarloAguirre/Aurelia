@@ -74,6 +74,7 @@ export class InspectionDashboardService {
     const year = new Date().getFullYear();
     const previousYear = year - 1;
     const inspectionById = new Map(inspections.map((inspection) => [inspection.id, inspection]));
+    const findingsByInspection = this.groupFindingsByInspection(findings);
     const activeInspections = inspections.filter((inspection) => inspection.status !== InspectionStatus.CANCELLED);
     const currentYearInspections = activeInspections.filter((inspection) => this.inspectionBelongsToYear(inspection, year));
     const previousYearInspections = activeInspections.filter((inspection) => this.inspectionBelongsToYear(inspection, previousYear));
@@ -93,9 +94,9 @@ export class InspectionDashboardService {
       totalInspections: currentYearInspections.length,
       previousYearInspections: previousTotal,
       inspectionsDeltaPercent,
-      openInspections: currentYearInspections.filter((inspection) => inspection.status !== InspectionStatus.CLOSED).length,
+      openInspections: currentYearInspections.filter((inspection) => !this.isInspectionEffectivelyClosed(inspection, findingsByInspection.get(inspection.id) ?? [])).length,
       openFindings,
-      pendingApprovalInspections: currentYearInspections.filter((inspection) => inspection.status === InspectionStatus.SUBMITTED || inspection.status === InspectionStatus.UNDER_REVIEW).length,
+      pendingApprovalInspections: currentYearInspections.filter((inspection) => !this.isInspectionEffectivelyClosed(inspection, findingsByInspection.get(inspection.id) ?? []) && (inspection.status === InspectionStatus.SUBMITTED || inspection.status === InspectionStatus.UNDER_REVIEW)).length,
       closedFindingsRate: currentYearFindings.length > 0 ? Number(((closedFindings / currentYearFindings.length) * 100).toFixed(2)) : 0,
     };
   }
@@ -116,16 +117,9 @@ export class InspectionDashboardService {
     const sectorNameById = new Map(sectors.map((sector) => [sector.id, sector.name]));
     const userById = new Map(users.map((user) => [user.id, user]));
     const typeById = new Map(inspectionTypes.map((type) => [type.id, type]));
-    const findingsByInspection = new Map<string, InspectionFindingEntity[]>();
+    const findingsByInspection = this.groupFindingsByInspection(findings);
 
-    findings.forEach((finding) => {
-      if (finding.status === InspectionFindingStatus.CANCELLED) return;
-      const group = findingsByInspection.get(finding.inspectionId) ?? [];
-      group.push(finding);
-      findingsByInspection.set(finding.inspectionId, group);
-    });
-
-    const activeInspections = inspections.filter((inspection) => inspection.status !== InspectionStatus.CANCELLED);
+    const activeInspections = inspections.filter((inspection) => inspection.status !== InspectionStatus.CANCELLED && !this.isInspectionEffectivelyClosed(inspection, findingsByInspection.get(inspection.id) ?? []));
     const rows = activeInspections.map((inspection, index) => {
       const inspectionFindings = findingsByInspection.get(inspection.id) ?? [];
       const observations = this.createObservationSummary(inspectionFindings);
@@ -172,6 +166,7 @@ export class InspectionDashboardService {
     const inspectionById = new Map(inspections.map((inspection) => [inspection.id, inspection]));
     const selectedInspections = inspections.filter((inspection) => dashboardInspectionMatches(inspection, filter));
     const selectedFindings = findings.filter((finding) => dashboardFindingMatches(finding, inspectionById.get(finding.inspectionId) ?? null, filter));
+    const findingsByInspection = this.groupFindingsByInspection(selectedFindings);
     const byStatus = this.createInspectionStatusCounter();
     const findingsByStatus = this.createFindingStatusCounter();
     const findingsBySeverity = this.createFindingSeverityCounter();
@@ -184,7 +179,8 @@ export class InspectionDashboardService {
     });
     const openFindings = selectedFindings.filter((finding) => this.isOpenFinding(finding));
     const withOpenFindings = new Set(openFindings.map((finding) => finding.inspectionId)).size;
-    const closedRate = selectedInspections.length === 0 ? 0 : Number(((byStatus[InspectionStatus.CLOSED] / selectedInspections.length) * 100).toFixed(2));
+    const closedInspections = selectedInspections.filter((inspection) => this.isInspectionEffectivelyClosed(inspection, findingsByInspection.get(inspection.id) ?? [])).length;
+    const closedRate = selectedInspections.length === 0 ? 0 : Number(((closedInspections / selectedInspections.length) * 100).toFixed(2));
 
     return {
       inspections: { total: selectedInspections.length, byStatus, withOpenFindings, closedRate },
@@ -208,6 +204,7 @@ export class InspectionDashboardService {
     const filter = buildDashboardDateFilter(query);
     const currentYear = new Date().getFullYear();
     const inspectionById = new Map(inspections.map((inspection) => [inspection.id, inspection]));
+    const findingsByInspection = this.groupFindingsByInspection(findings);
     const areaNameById = new Map(areas.map((area) => [area.id, area.name]));
     const yearRange = Array.from({ length: 4 }, (_, index) => currentYear - 3 + index);
     const annualInspections = yearRange.map((year) => ({ year, closed: 0, open: 0 }));
@@ -228,16 +225,17 @@ export class InspectionDashboardService {
     inspections.forEach((inspection) => {
       if (inspection.status === InspectionStatus.CANCELLED) return;
       const date = getDashboardInspectionDate(inspection);
+      const closed = this.isInspectionEffectivelyClosed(inspection, findingsByInspection.get(inspection.id) ?? []);
       totalForClosure += 1;
-      if (inspection.status === InspectionStatus.CLOSED) closedForClosure += 1;
+      if (closed) closedForClosure += 1;
       if (date && date >= filter.start && date < filter.end) {
         periodTotal += 1;
-        if (inspection.status === InspectionStatus.CLOSED) periodClosed += 1;
+        if (closed) periodClosed += 1;
       }
       if (!date) return;
       const annualRow = annualByYear.get(date.getFullYear());
       if (!annualRow) return;
-      if (inspection.status === InspectionStatus.CLOSED) annualRow.closed += 1;
+      if (closed) annualRow.closed += 1;
       else annualRow.open += 1;
     });
 
@@ -381,6 +379,23 @@ export class InspectionDashboardService {
 
   private createFindingSeverityCounter(): Record<InspectionFindingSeverity, number> {
     return Object.values(InspectionFindingSeverity).reduce((acc, severity) => ({ ...acc, [severity]: 0 }), {} as Record<InspectionFindingSeverity, number>);
+  }
+
+  private groupFindingsByInspection(findings: InspectionFindingEntity[]): Map<string, InspectionFindingEntity[]> {
+    const grouped = new Map<string, InspectionFindingEntity[]>();
+    findings.forEach((finding) => {
+      if (finding.status === InspectionFindingStatus.CANCELLED) return;
+      const current = grouped.get(finding.inspectionId) ?? [];
+      current.push(finding);
+      grouped.set(finding.inspectionId, current);
+    });
+    return grouped;
+  }
+
+  private isInspectionEffectivelyClosed(inspection: InspectionEntity, findings: InspectionFindingEntity[]): boolean {
+    if (inspection.status === InspectionStatus.CANCELLED) return false;
+    if (inspection.status === InspectionStatus.CLOSED) return true;
+    return findings.length > 0 && findings.every((finding) => finding.status === InspectionFindingStatus.CLOSED);
   }
 
   private createObservationSummary(findings: InspectionFindingEntity[]): InspectionManagementTableObservationSummaryResponse {

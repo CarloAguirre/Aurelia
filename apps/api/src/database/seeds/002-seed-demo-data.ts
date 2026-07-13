@@ -19,7 +19,7 @@ async function createPasswordHash(secret: string): Promise<string> {
   return `${FORMAT}$${ITERATIONS}$${salt.toString('base64url')}$${key.toString('base64url')}`;
 }
 
-async function seed(ds: DataSource): Promise<void> {
+export async function runDemoSeed(ds: DataSource): Promise<void> {
   const demoPassword = readApiEnv().auth.demoUserPassword;
   const demoPasswordHash = await createPasswordHash(demoPassword);
   const qr = ds.createQueryRunner();
@@ -226,30 +226,11 @@ async function seed(ds: DataSource): Promise<void> {
       );
     }
 
-    // ── Tipos de inspección ───────────────────────────────────────────────────
-    const inspectionTypes = [
-      { code: 'HALLAZGO',        name: 'Hallazgo / Condición Subestándar',   description: 'Registro de hallazgo o condición subestándar detectada en terreno.' },
-      { code: 'CHECKLIST_NORM',  name: 'Checklist Normativo',                description: 'Inspección basada en checklist normativo o regulatorio.' },
-      { code: 'RUTINA',          name: 'Inspección de Rutina',               description: 'Inspección periódica planificada de rutina.' },
-      { code: 'PREVENTIVA',      name: 'Inspección Preventiva',              description: 'Inspección orientada a prevención de accidentes.' },
-      { code: 'REGULATORIA',     name: 'Inspección Regulatoria',             description: 'Inspección exigida por normativa ambiental o de seguridad.' },
-    ];
-
-    for (const t of inspectionTypes) {
-      await qr.query(
-        `INSERT INTO inspection_types (code, name, description, status)
-         VALUES ($1, $2, $3, 'active')
-         ON CONFLICT (code) DO NOTHING`,
-        [t.code, t.name, t.description],
-      );
-    }
-
     await qr.commitTransaction();
     console.log('Demo seed completed successfully.');
     console.log('  → 7 áreas, 18 sectores');
     console.log('  → 8 empresas contratistas (EECC)');
     console.log('  → 15 usuarios demo (12 EECC + 3 GF)');
-    console.log('  → 5 tipos de inspección');
   } catch (err) {
     await qr.rollbackTransaction();
     throw err;
@@ -258,10 +239,18 @@ async function seed(ds: DataSource): Promise<void> {
   }
 }
 
-AppDataSource.initialize()
-  .then((ds) => seed(ds))
-  .then(() => process.exit(0))
-  .catch((err) => {
+async function main(): Promise<void> {
+  const ds = await AppDataSource.initialize();
+  try {
+    await runDemoSeed(ds);
+  } finally {
+    await ds.destroy();
+  }
+}
+
+if (require.main === module) {
+  void main().catch((err) => {
     console.error('Demo seed failed:', err);
     process.exit(1);
   });
+}

@@ -9,6 +9,7 @@ import { IncidentsPage } from '../modules/incidents/IncidentsPage';
 import { CriticalControlsPage } from '../modules/critical-controls/CriticalControlsPage';
 import { ReportsPage } from '../modules/reports/ReportsPage';
 import { AdminPage } from '../modules/admin/AdminPage';
+import { MigrationsPage } from '../modules/migrations/MigrationsPage';
 import { RequireAuth } from '../shared/components/RequireAuth';
 
 export const router = createBrowserRouter([
@@ -33,6 +34,7 @@ export const router = createBrowserRouter([
       { path: 'critical-controls', element: <CriticalControlsPage /> },
       { path: 'reports', element: <ReportsPage /> },
       { path: 'admin', element: <AdminPage /> },
+      { path: 'migrations', element: <MigrationsPage /> },
     ],
   },
 ]);

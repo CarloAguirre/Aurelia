@@ -83,7 +83,7 @@ async function upsertScored(qr: any, table: string, item: { code: string; name: 
   );
 }
 
-async function seed(ds: DataSource): Promise<void> {
+export async function runFindingClassificationsSeed(ds: DataSource): Promise<void> {
   const qr = ds.createQueryRunner();
   await qr.connect();
   await qr.startTransaction();
@@ -118,12 +118,18 @@ async function seed(ds: DataSource): Promise<void> {
   }
 }
 
-AppDataSource.initialize()
-  .then(async (ds) => {
-    await seed(ds);
+async function main(): Promise<void> {
+  const ds = await AppDataSource.initialize();
+  try {
+    await runFindingClassificationsSeed(ds);
+  } finally {
     await ds.destroy();
-  })
-  .catch((err) => {
+  }
+}
+
+if (require.main === module) {
+  void main().catch((err) => {
     console.error(err);
     process.exit(1);
   });
+}

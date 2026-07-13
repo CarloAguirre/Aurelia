@@ -146,6 +146,6 @@ export const AppDataSource = new DataSource({
     SprRecordApprovalEntity,
     SprConsolidationRuleEntity,
   ],
-  migrations: ['src/database/migrations/*.ts'],
+  migrations: ['src/database/migrations/**/*.ts'],
   synchronize: env.database.synchronize,
 });

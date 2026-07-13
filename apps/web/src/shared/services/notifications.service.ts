@@ -7,9 +7,9 @@ export function getNotifications(unreadOnly = false): Promise<NotificationRespon
 }
 
 export function markNotificationRead(notificationId: string): Promise<NotificationResponse> {
-  return httpPatch<null, NotificationResponse>(`/notifications/${encodeURIComponent(notificationId)}/read`, null);
+  return httpPatch<Record<string, never>, NotificationResponse>(`/notifications/${encodeURIComponent(notificationId)}/read`, {});
 }
 
 export function dismissInspectionNotificationThread(notificationId: string): Promise<MarkAllNotificationsReadResponse> {
-  return httpPatch<null, MarkAllNotificationsReadResponse>(`/notifications/${encodeURIComponent(notificationId)}/inspection-thread/dismiss`, null);
+  return httpPatch<Record<string, never>, MarkAllNotificationsReadResponse>(`/notifications/${encodeURIComponent(notificationId)}/inspection-thread/dismiss`, {});
 }

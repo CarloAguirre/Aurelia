@@ -6,6 +6,8 @@ interface SprParametersListProps {
   isLoading: boolean;
   isError: boolean;
   onSelect: (parameterId: string) => void;
+  title?: string;
+  listVariant?: 'entry' | 'review';
 }
 
 function StatusDot({ completion, needsHistoricalReview }: { completion: SprParameterCompletion; needsHistoricalReview: boolean }) {
@@ -35,7 +37,8 @@ function AlertBadge() {
   );
 }
 
-function getRowButtonClass(selected: boolean, needsHistoricalReview: boolean) {
+function getRowButtonClass(selected: boolean, needsHistoricalReview: boolean, listVariant: 'entry' | 'review') {
+  if (listVariant === 'review' && selected) return 'border-[#24588b] bg-[#f6faff]';
   if (selected && needsHistoricalReview) return 'border-[#c8a064] bg-[#f6faff]';
   if (selected) return 'border-[#00b398] bg-[#f0fbf8]';
   return 'border-[#e9e9e9] bg-white hover:bg-[#fafafa]';
@@ -47,11 +50,19 @@ function getValueLabelClass(completion: SprParameterCompletion, needsHistoricalR
   return 'text-[#646464]';
 }
 
-export function SprParametersList({ rows, selectedParameterId, isLoading, isError, onSelect }: SprParametersListProps) {
+export function SprParametersList({
+  rows,
+  selectedParameterId,
+  isLoading,
+  isError,
+  onSelect,
+  title = 'Parámetros a completar',
+  listVariant = 'entry',
+}: SprParametersListProps) {
   return (
     <div className="flex flex-col">
       <p className="px-[12px] pb-[4px] pt-[14px] font-['Inter:Bold',sans-serif] text-[9px] font-bold uppercase tracking-[0.63px] text-[#acacac]">
-        Parámetros a completar
+        {title}
       </p>
 
       {isLoading ? (
@@ -62,21 +73,27 @@ export function SprParametersList({ rows, selectedParameterId, isLoading, isErro
         <p className="px-[12px] py-[16px] font-['Inter:Regular',sans-serif] text-[12px] text-[#646464]">No hay parámetros asignados para este período.</p>
       ) : (
         <ul className="flex flex-col gap-[6px] px-[12px] pb-[8px]">
-          {rows.map((row) => {
+          {rows.map((row, index) => {
             const selected = row.parameter.id === selectedParameterId;
             const { needsHistoricalReview } = row;
             const displayValue = needsHistoricalReview ? `⚠ ${row.valueLabel} · Revisar` : row.valueLabel;
+            const orderPrefix = listVariant === 'review' ? `${String(index + 1).padStart(2, '0')} ` : '';
 
             return (
               <li key={row.parameter.id}>
                 <button
                   type="button"
                   onClick={() => onSelect(row.parameter.id)}
-                  className={`flex w-full items-start gap-[9px] rounded-[8px] border px-[9px] py-[9px] text-left transition-colors ${getRowButtonClass(selected, needsHistoricalReview)}`}
+                  className={`flex w-full items-start gap-[9px] rounded-[8px] border px-[9px] py-[9px] text-left transition-colors ${getRowButtonClass(selected, needsHistoricalReview, listVariant)}`}
                 >
-                  <StatusDot completion={row.completion} needsHistoricalReview={needsHistoricalReview} />
+                  {listVariant === 'entry' || listVariant === 'review' ? (
+                    <StatusDot completion={row.completion} needsHistoricalReview={needsHistoricalReview} />
+                  ) : null}
                   <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate font-['Inter:Semi_Bold',sans-serif] text-[12px] font-semibold text-[#131313]">{row.parameter.name}</span>
+                    <span className="truncate font-['Inter:Semi_Bold',sans-serif] text-[12px] font-semibold text-[#131313]">
+                      {orderPrefix}
+                      {row.parameter.name}
+                    </span>
                     <span className={`truncate font-['Inter:Regular',sans-serif] text-[10px] ${getValueLabelClass(row.completion, needsHistoricalReview)}`}>{displayValue}</span>
                   </span>
                   {needsHistoricalReview ? <AlertBadge /> : null}

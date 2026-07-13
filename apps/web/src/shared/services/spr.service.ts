@@ -13,9 +13,6 @@ import type {
 } from '@aurelia/contracts';
 import { httpGet, httpPatch, httpPost } from './http-client';
 
-// GAP: no existe todavia un contrato de query para GET /spr/monthly-records.
-// Se tipa localmente en el frontend (igual que InspectionManagementTableParams en inspections)
-// hasta que se agregue el request a @aurelia/contracts.
 export interface SprMonthlyRecordsQuery {
   parameterId?: string;
   areaId?: string;
@@ -71,6 +68,20 @@ export function submitSprMonthlyRecord(
   payload: SprRecordActionRequest = {},
 ): Promise<SprMonthlyRecordResponse> {
   return httpPost<SprRecordActionRequest, SprMonthlyRecordResponse>(`/spr/monthly-records/${recordId}/submit`, payload);
+}
+
+export function approveSprMonthlyRecord(
+  recordId: string,
+  payload: SprRecordActionRequest = {},
+): Promise<SprMonthlyRecordResponse> {
+  return httpPost<SprRecordActionRequest, SprMonthlyRecordResponse>(`/spr/monthly-records/${recordId}/approve`, payload);
+}
+
+export function rejectSprMonthlyRecord(
+  recordId: string,
+  payload: SprRecordActionRequest = {},
+): Promise<SprMonthlyRecordResponse> {
+  return httpPost<SprRecordActionRequest, SprMonthlyRecordResponse>(`/spr/monthly-records/${recordId}/reject`, payload);
 }
 
 export function getSprRecordEvidences(recordId: string): Promise<EvidenceResponse[]> {

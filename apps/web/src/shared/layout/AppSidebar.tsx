@@ -1,6 +1,11 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { Role } from '@aurelia/contracts';
 import { DashboardSidebarTopBrandBar } from '../../modules/dashboard/components/DashboardSections';
+import { canAccessSprArea, canAccessSprForm, resolveSessionUserRoles, resolveSprDefaultRoute } from '../../modules/spr/sprAccess';
+import { logout } from '../services/auth.service';
+import { useSessionStore } from '../stores/session.store';
+import { formatPrimaryRoleLabel, formatUserInitials } from '../utils/roles';
 import { sidebarIconSvgs, type SidebarIconName } from './AppSidebarIcons';
 
 type SidebarTone = 'green' | 'gold';
@@ -44,10 +49,7 @@ const mainItems: SidebarItem[] = [
     label: 'SPR',
     icon: 'spr',
     to: '/spr',
-    children: [
-      { label: 'Mi formulario', to: '/spr', end: true, lineMode: 'single' },
-      { label: 'Administración', disabled: true, icon: 'admin', lineMode: 'single', tone: 'gold' },
-    ],
+    children: [],
   },
   { label: 'Impuesto verde', icon: 'greenTax', disabled: true, badge: 'Próximo' },
   { label: 'Residuos', icon: 'waste', disabled: true, badge: 'Próximo' },
@@ -199,32 +201,136 @@ function SidebarFooterOptions() {
 }
 
 function SidebarUser() {
+  const navigate = useNavigate();
+  const user = useSessionStore((state) => state.user);
+  const clearSession = useSessionStore((state) => state.clearSession);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const fullName = user?.fullName?.trim() || 'Usuario';
+  const initials = formatUserInitials(fullName);
+  const roleLabelText = formatPrimaryRoleLabel(resolveSessionUserRoles(user));
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, [menuOpen]);
+
+  async function handleLogout() {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    setMenuOpen(false);
+
+    try {
+      await logout();
+    } catch {
+      // Aunque falle el backend, igual limpiamos sesión local para no dejar al usuario atrapado.
+    } finally {
+      clearSession();
+      navigate('/login', { replace: true });
+    }
+  }
+
   return (
-    <div className="relative w-full shrink-0 rounded-[7px]">
+    <div ref={containerRef} className="relative w-full shrink-0 rounded-[7px]">
       <div className="flex size-full items-center gap-[8px] px-[8px] py-[6px]">
         <div className="flex size-[28px] shrink-0 items-center justify-center rounded-[14px] bg-[#c8a064]">
-          <p className="whitespace-nowrap font-['Inter:Bold',sans-serif] text-[11px] font-bold leading-[normal] text-[#001e39]">KO</p>
+          <p className="whitespace-nowrap font-['Inter:Bold',sans-serif] text-[11px] font-bold leading-[normal] text-[#001e39]">
+            {initials}
+          </p>
         </div>
-        <div className="w-[85.813px] shrink-0">
+        <div className="min-w-0 flex-1">
           <div className="flex w-full flex-col items-start">
-            <p className="w-full whitespace-nowrap font-['Inter:Semi_Bold',sans-serif] text-[11.5px] font-semibold leading-[normal] text-[rgba(255,255,255,0.75)]">Karen Opazo S.</p>
+            <p
+              className="w-full truncate font-['Inter:Semi_Bold',sans-serif] text-[11.5px] font-semibold leading-[normal] text-[rgba(255,255,255,0.75)]"
+              title={fullName}
+            >
+              {fullName}
+            </p>
             <div className="flex w-full items-center gap-[4px]">
               <SidebarIcon name="role" className="h-[8px] w-[10px]" />
-              <p className="whitespace-nowrap font-['Inter:Regular',sans-serif] text-[10px] font-normal leading-[normal] text-[rgba(255,255,255,0.32)]">Admin GF HSE</p>
+              <p className="truncate whitespace-nowrap font-['Inter:Regular',sans-serif] text-[10px] font-normal leading-[normal] text-[rgba(255,255,255,0.32)]">
+                {roleLabelText}
+              </p>
             </div>
           </div>
         </div>
-        <div className="min-w-px flex-[1_0_0]">
-          <div className="flex size-full items-start justify-end">
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            aria-label="Opciones de usuario"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            disabled={isLoggingOut}
+            onClick={() => setMenuOpen((open) => !open)}
+            className="flex size-[22px] items-center justify-center rounded-[5px] transition-colors hover:bg-[rgba(255,255,255,0.08)] disabled:opacity-50"
+          >
             <SidebarIcon name="more" className="h-[11px] w-[13.75px]" />
-          </div>
+          </button>
+          {menuOpen ? (
+            <div
+              role="menu"
+              className="absolute bottom-[calc(100%+6px)] right-0 z-[90] min-w-[140px] overflow-hidden rounded-[8px] border border-[rgba(255,255,255,0.12)] bg-[#001e39] py-[4px] shadow-[0_8px_24px_rgba(0,0,0,0.35)]"
+            >
+              <button
+                type="button"
+                role="menuitem"
+                disabled={isLoggingOut}
+                onClick={() => void handleLogout()}
+                className="flex w-full items-center px-[12px] py-[8px] text-left font-['Inter:Semi_Bold',sans-serif] text-[11.5px] font-semibold text-[rgba(255,255,255,0.85)] transition-colors hover:bg-[rgba(255,255,255,0.08)] disabled:opacity-50"
+              >
+                {isLoggingOut ? 'Cerrando…' : 'Cerrar sesión'}
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
   );
 }
 
+function buildSprSidebarChildren(roles: Role[]): SidebarChildItem[] {
+  const children: SidebarChildItem[] = [];
+
+  if (canAccessSprForm(roles)) {
+    children.push({ label: 'Mi formulario', to: '/spr', end: true, lineMode: 'single' });
+  }
+
+  if (canAccessSprArea(roles)) {
+    children.push({ label: 'Mi área', to: '/spr/mi-area', end: true, lineMode: 'single' });
+  }
+
+  children.push({ label: 'Administración', disabled: true, icon: 'admin', lineMode: 'single', tone: 'gold' });
+  return children;
+}
+
+function resolveSidebarItems(roles: Role[]): SidebarItem[] {
+  return mainItems.map((item) => {
+    if (item.label !== 'SPR') return item;
+
+    const children = buildSprSidebarChildren(roles);
+    return {
+      ...item,
+      to: resolveSprDefaultRoute(roles),
+      children,
+    };
+  });
+}
+
 export function AppSidebar() {
+  const user = useSessionStore((state) => state.user);
+  const userRoles = resolveSessionUserRoles(user);
+  const sidebarItems = resolveSidebarItems(userRoles);
+
   return (
     <>
       <DashboardSidebarTopBrandBar />
@@ -233,7 +339,7 @@ export function AppSidebar() {
           <div className="flex w-full flex-col items-start px-[10px] pb-[6px] pt-[8px]">
             <SidebarSectionTitle>Módulos</SidebarSectionTitle>
             <div className="flex w-full flex-col items-start">
-              {mainItems.map((item) => <div key={item.label} className="w-full"><SidebarModuleItem item={item} />{item.children ? <SidebarChildren>{item.children}</SidebarChildren> : null}</div>)}
+              {sidebarItems.map((item) => <div key={item.label} className="w-full"><SidebarModuleItem item={item} />{item.children ? <SidebarChildren>{item.children}</SidebarChildren> : null}</div>)}
             </div>
           </div>
         </div>

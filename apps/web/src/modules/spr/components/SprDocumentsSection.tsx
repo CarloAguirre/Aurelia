@@ -18,6 +18,7 @@ interface SprDocumentsSectionProps {
   isUploading: boolean;
   uploadErrorMessage: string | null;
   onUpload: (file: File) => void;
+  readOnly?: boolean;
 }
 
 export function SprDocumentsSection({
@@ -28,6 +29,7 @@ export function SprDocumentsSection({
   isUploading,
   uploadErrorMessage,
   onUpload,
+  readOnly = false,
 }: SprDocumentsSectionProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -86,33 +88,37 @@ export function SprDocumentsSection({
         <p className="pt-[7px] font-['Inter:Regular',sans-serif] text-[10px] text-[#acacac]">Sin documentos adjuntos</p>
       )}
 
-      <div className="w-full pt-[4px]">
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".pdf,.xlsx,.xls,.doc,.docx"
-          className="hidden"
-          onChange={handleFileChange}
-        />
-        <button
-          type="button"
-          onClick={handlePickFile}
-          disabled={!recordId || isUploading}
-          className="flex w-full flex-col items-start rounded-[7px] border-[1.5px] border-dashed border-[#d1d1d1] p-[11.5px] text-left transition-colors hover:border-[#acacac] hover:bg-[#fafafa] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <SprAttachDocumentIcon className="h-[16px] w-[20px] shrink-0 text-[#acacac]" />
-          <p className="w-full pt-[4px] text-center font-['Inter:Semi_Bold',sans-serif] text-[10px] font-semibold text-[#646464]">
-            {isUploading ? 'Adjuntando documento…' : 'Adjuntar documento'}
-          </p>
-          <p className="w-full pt-[2px] text-center font-['Inter:Regular',sans-serif] text-[9.5px] text-[#acacac]">
-            PDF, Excel, Word · Máx. {formatSprAttachmentSize(10 * 1024 * 1024)}
-          </p>
-        </button>
-      </div>
+      {!readOnly ? (
+        <>
+          <div className="w-full pt-[4px]">
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".pdf,.xlsx,.xls,.doc,.docx"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+            <button
+              type="button"
+              onClick={handlePickFile}
+              disabled={!recordId || isUploading}
+              className="flex w-full flex-col items-start rounded-[7px] border-[1.5px] border-dashed border-[#d1d1d1] p-[11.5px] text-left transition-colors hover:border-[#acacac] hover:bg-[#fafafa] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <SprAttachDocumentIcon className="h-[16px] w-[20px] shrink-0 text-[#acacac]" />
+              <p className="w-full pt-[4px] text-center font-['Inter:Semi_Bold',sans-serif] text-[10px] font-semibold text-[#646464]">
+                {isUploading ? 'Adjuntando documento…' : 'Adjuntar documento'}
+              </p>
+              <p className="w-full pt-[2px] text-center font-['Inter:Regular',sans-serif] text-[9.5px] text-[#acacac]">
+                PDF, Excel, Word · Máx. {formatSprAttachmentSize(10 * 1024 * 1024)}
+              </p>
+            </button>
+          </div>
 
-      <p className={`pt-[6px] font-['Inter:Regular',sans-serif] text-[9.5px] ${uploadErrorMessage ? 'text-[#bd3b5b]' : 'text-[#646464]'}`}>
-        {uploadErrorMessage ?? helperMessage}
-      </p>
+          <p className={`pt-[6px] font-['Inter:Regular',sans-serif] text-[9.5px] ${uploadErrorMessage ? 'text-[#bd3b5b]' : 'text-[#646464]'}`}>
+            {uploadErrorMessage ?? helperMessage}
+          </p>
+        </>
+      ) : null}
     </div>
   );
 }

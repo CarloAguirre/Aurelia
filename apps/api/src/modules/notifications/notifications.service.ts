@@ -100,11 +100,14 @@ export class NotificationsService {
     const rows = await this.recipientsRepository.find({
       where: { userId },
       relations: { notification: { recipients: true } },
-      order: { createdAt: 'DESC' },
     });
 
-    const filteredRows = unreadOnly ? rows.filter((row) => row.readAt === null) : rows;
-    return filteredRows.map((row) => this.toResponse(row.notification, row));
+    const visibleRows = rows
+      .filter((row) => row.dismissedAt === null)
+      .filter((row) => !unreadOnly || row.readAt === null)
+      .sort((left, right) => this.sortDateOf(right.notification).getTime() - this.sortDateOf(left.notification).getTime());
+
+    return visibleRows.map((row) => this.toResponse(row.notification, row));
   }
 
   async markRead(notificationId: string, userId: string): Promise<NotificationResponse> {
@@ -122,9 +125,40 @@ export class NotificationsService {
     return this.toResponse(recipient.notification, recipient);
   }
 
+  async dismissInspectionThread(notificationId: string, userId: string): Promise<MarkAllNotificationsReadResponse> {
+    const recipient = await this.recipientsRepository.findOne({
+      where: { notificationId, userId },
+      relations: { notification: true },
+    });
+    if (!recipient) throw new NotFoundException('Notification not found for user');
+
+    const metadata = this.inspectionMetadataOf(recipient.notification.metadata);
+    if (metadata.event !== 'inspection.closed' || !metadata.inspectionId) return { updated: 0 };
+
+    const cutoff = this.occurredAtOf(recipient.notification);
+    const rows = await this.recipientsRepository.find({
+      where: { userId },
+      relations: { notification: true },
+    });
+    const now = new Date();
+    const threadRows = rows.filter((row) => {
+      if (row.dismissedAt) return false;
+      const rowMetadata = this.inspectionMetadataOf(row.notification.metadata);
+      if (rowMetadata.inspectionId !== metadata.inspectionId) return false;
+      return this.occurredAtOf(row.notification).getTime() <= cutoff.getTime();
+    });
+
+    threadRows.forEach((row) => {
+      row.readAt = row.readAt ?? now;
+      row.dismissedAt = now;
+    });
+    if (threadRows.length > 0) await this.recipientsRepository.save(threadRows);
+    return { updated: threadRows.length };
+  }
+
   async markAllRead(userId: string): Promise<MarkAllNotificationsReadResponse> {
     const rows = await this.recipientsRepository.find({ where: { userId } });
-    const unread = rows.filter((row) => row.readAt === null);
+    const unread = rows.filter((row) => row.readAt === null && row.dismissedAt === null);
     const now = new Date();
     for (const row of unread) row.readAt = now;
     if (unread.length > 0) await this.recipientsRepository.save(unread);
@@ -447,6 +481,20 @@ export class NotificationsService {
   private eventKeyOf(metadata: Record<string, unknown> | null): string | null {
     const value = metadata?.eventKey;
     return typeof value === 'string' ? value : null;
+  }
+
+  private inspectionMetadataOf(metadata: Record<string, unknown> | null): InspectionNotificationMetadata {
+    return (metadata ?? {}) as InspectionNotificationMetadata;
+  }
+
+  private occurredAtOf(notification: NotificationEntity): Date {
+    const metadata = this.inspectionMetadataOf(notification.metadata);
+    const occurredAt = typeof metadata.occurredAt === 'string' ? new Date(metadata.occurredAt) : null;
+    return occurredAt && !Number.isNaN(occurredAt.getTime()) ? occurredAt : notification.createdAt;
+  }
+
+  private sortDateOf(notification: NotificationEntity): Date {
+    return this.occurredAtOf(notification);
   }
 
   private dateKey(value: Date): string {

@@ -2,12 +2,12 @@ import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type R
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Role } from '@aurelia/contracts';
 import { DashboardSidebarTopBrandBar } from '../../modules/dashboard/components/DashboardSections';
-import { useNotifications } from '../hooks/useNotifications';
-import { AppNotificationsPanel } from './AppNotificationsPanel';
 import { canAccessSprArea, canAccessSprForm, resolveSessionUserRoles, resolveSprDefaultRoute } from '../../modules/spr/sprAccess';
+import { useNotifications } from '../hooks/useNotifications';
 import { logout } from '../services/auth.service';
 import { useSessionStore } from '../stores/session.store';
 import { formatPrimaryRoleLabel, formatUserInitials } from '../utils/roles';
+import { AppNotificationsPanel } from './AppNotificationsPanel';
 import { sidebarIconSvgs, type SidebarIconName } from './AppSidebarIcons';
 
 type SidebarTone = 'green' | 'gold';

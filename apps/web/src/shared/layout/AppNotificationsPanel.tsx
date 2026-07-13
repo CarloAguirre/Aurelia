@@ -207,7 +207,7 @@ export function AppNotificationsPanel({ open, onClose }: { open: boolean; onClos
   return (
     <>
       <button className="fixed bottom-0 left-[220px] right-0 top-0 z-[90] bg-[rgba(19,19,19,0.32)]" type="button" aria-label="Cerrar notificaciones" onClick={onClose} />
-      <aside className="fixed left-[236px] top-[16px] z-[100] flex h-[690px] max-h-[calc(100vh-32px)] w-[360px] flex-col overflow-hidden rounded-[16px] bg-[#f7f7f7] shadow-[0px_8px_24px_rgba(19,19,19,0.32)]" aria-label="Notificaciones">
+      <aside className="fixed bottom-[16px] left-[236px] top-[16px] z-[100] flex w-[360px] flex-col overflow-hidden rounded-[16px] bg-[#f7f7f7] shadow-[0px_8px_24px_rgba(19,19,19,0.32)]" aria-label="Notificaciones">
         <header className="flex h-[76px] shrink-0 items-center justify-between bg-[#002659] px-[18px] py-[12px] shadow-[0px_2px_4px_rgba(0,0,0,0.3)]">
           <div className="min-w-0">
             <h2 className="font-['Inter:Semi_Bold',sans-serif] text-[14px] font-semibold leading-none text-white">Notificaciones</h2>

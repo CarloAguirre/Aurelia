@@ -1,0 +1,92 @@
+import type { SprParameterCompletion, SprParameterRow } from '../spr.types';
+
+interface SprParametersListProps {
+  rows: SprParameterRow[];
+  selectedParameterId: string | null;
+  isLoading: boolean;
+  isError: boolean;
+  onSelect: (parameterId: string) => void;
+}
+
+function StatusDot({ completion, needsHistoricalReview }: { completion: SprParameterCompletion; needsHistoricalReview: boolean }) {
+  if (needsHistoricalReview) {
+    return <span className="mt-[4px] size-[8px] shrink-0 rounded-[4px] bg-[#00b398]" aria-hidden />;
+  }
+  if (completion === 'completed') return <span className="mt-[4px] size-[8px] shrink-0 rounded-full bg-[#00b398]" aria-hidden />;
+  if (completion === 'not-applicable') return <span className="mt-[4px] size-[8px] shrink-0 rounded-full bg-[#e8a820]" aria-hidden />;
+  return <span className="mt-[4px] size-[8px] shrink-0 rounded-full border-[1.5px] border-[#c4c4c4] bg-white" aria-hidden />;
+}
+
+function SoxBadge({ isSox, needsHistoricalReview }: { isSox: boolean; needsHistoricalReview: boolean }) {
+  if (isSox) {
+    if (needsHistoricalReview) {
+      return <span className="shrink-0 rounded-[3px] bg-[#ffeab8] px-[5px] py-px font-['Inter:Bold',sans-serif] text-[8px] font-bold text-[#8e6e3e]">SOX</span>;
+    }
+    return <span className="shrink-0 rounded-[4px] bg-[#eef2f7] px-[6px] py-[2px] font-['Inter:Bold',sans-serif] text-[9px] font-bold text-[#24588b]">SOX</span>;
+  }
+  return <span className="shrink-0 rounded-[4px] bg-[#f2f2f2] px-[6px] py-[2px] font-['Inter:Semi_Bold',sans-serif] text-[9px] font-semibold text-[#8a8a8a]">No SOX</span>;
+}
+
+function AlertBadge() {
+  return (
+    <span className="flex size-[15px] shrink-0 items-center justify-center rounded-[7.5px] bg-[#e8720c] font-['Inter:Bold',sans-serif] text-[8px] font-bold text-white" aria-hidden>
+      !
+    </span>
+  );
+}
+
+function getRowButtonClass(selected: boolean, needsHistoricalReview: boolean) {
+  if (selected && needsHistoricalReview) return 'border-[#c8a064] bg-[#f6faff]';
+  if (selected) return 'border-[#00b398] bg-[#f0fbf8]';
+  return 'border-[#e9e9e9] bg-white hover:bg-[#fafafa]';
+}
+
+function getValueLabelClass(completion: SprParameterCompletion, needsHistoricalReview: boolean) {
+  if (needsHistoricalReview) return 'text-[#e8720c] font-semibold';
+  if (completion === 'pending') return 'text-[#acacac]';
+  return 'text-[#646464]';
+}
+
+export function SprParametersList({ rows, selectedParameterId, isLoading, isError, onSelect }: SprParametersListProps) {
+  return (
+    <div className="flex flex-col">
+      <p className="px-[12px] pb-[4px] pt-[14px] font-['Inter:Bold',sans-serif] text-[9px] font-bold uppercase tracking-[0.63px] text-[#acacac]">
+        Parámetros a completar
+      </p>
+
+      {isLoading ? (
+        <p className="px-[12px] py-[16px] font-['Inter:Regular',sans-serif] text-[12px] text-[#646464]">Cargando parámetros...</p>
+      ) : isError ? (
+        <p className="px-[12px] py-[16px] font-['Inter:Regular',sans-serif] text-[12px] text-[#570b1d]">No fue posible cargar los parámetros.</p>
+      ) : rows.length === 0 ? (
+        <p className="px-[12px] py-[16px] font-['Inter:Regular',sans-serif] text-[12px] text-[#646464]">No hay parámetros asignados para este período.</p>
+      ) : (
+        <ul className="flex flex-col gap-[6px] px-[12px] pb-[8px]">
+          {rows.map((row) => {
+            const selected = row.parameter.id === selectedParameterId;
+            const { needsHistoricalReview } = row;
+            const displayValue = needsHistoricalReview ? `⚠ ${row.valueLabel} · Revisar` : row.valueLabel;
+
+            return (
+              <li key={row.parameter.id}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(row.parameter.id)}
+                  className={`flex w-full items-start gap-[9px] rounded-[8px] border px-[9px] py-[9px] text-left transition-colors ${getRowButtonClass(selected, needsHistoricalReview)}`}
+                >
+                  <StatusDot completion={row.completion} needsHistoricalReview={needsHistoricalReview} />
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate font-['Inter:Semi_Bold',sans-serif] text-[12px] font-semibold text-[#131313]">{row.parameter.name}</span>
+                    <span className={`truncate font-['Inter:Regular',sans-serif] text-[10px] ${getValueLabelClass(row.completion, needsHistoricalReview)}`}>{displayValue}</span>
+                  </span>
+                  {needsHistoricalReview ? <AlertBadge /> : null}
+                  <SoxBadge isSox={row.parameter.isSox} needsHistoricalReview={needsHistoricalReview} />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}

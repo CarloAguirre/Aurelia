@@ -1,6 +1,8 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { InspectionNotificationEvent, InspectionNotificationMetadata, InspectionNotificationTone, NotificationResponse } from '@aurelia/contracts';
 import { useNotifications } from '../hooks/useNotifications';
+import { dismissInspectionNotificationThread } from '../services/notifications.service';
 import {
   NotificationApprovedIcon,
   NotificationAssignedIcon,
@@ -163,7 +165,7 @@ function severityColor(value: string) {
   return { bg: '#ffe1cd', color: '#532a0e' };
 }
 
-function NotificationCard({ notification }: { notification: NotificationResponse }) {
+function NotificationCard({ notification, dismissing, onInspectionClosedClick }: { notification: NotificationResponse; dismissing: boolean; onInspectionClosedClick: (notificationId: string) => void }) {
   const metadata = metadataOf(notification);
   const event = resolveEvent(notification);
   const tone = toneConfig[resolveTone(notification)];
@@ -173,8 +175,29 @@ function NotificationCard({ notification }: { notification: NotificationResponse
   const reason = readString(metadata.reason);
   const occurredAt = readString(metadata.occurredAt, notification.createdAt);
   const unread = !notification.readAt;
+  const canDismissThread = event === 'inspection.closed';
+
+  function handleClick() {
+    if (canDismissThread && !dismissing) onInspectionClosedClick(notification.id);
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (!canDismissThread || dismissing) return;
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    onInspectionClosedClick(notification.id);
+  }
+
   return (
-    <article className="relative w-full rounded-[10px] border border-l-[3px]" style={{ borderColor: tone.border, backgroundColor: tone.cardBg }}>
+    <article
+      aria-label={canDismissThread ? 'Cerrar flujo de notificaciones de esta inspección' : undefined}
+      className={`relative w-full rounded-[10px] border border-l-[3px] ${canDismissThread ? 'cursor-pointer' : ''}`}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      role={canDismissThread ? 'button' : undefined}
+      style={{ borderColor: tone.border, backgroundColor: tone.cardBg }}
+      tabIndex={canDismissThread ? 0 : undefined}
+    >
       <div className="flex w-full items-start gap-[10px] py-[13px] pl-[15px] pr-[13px]">
         <div className="flex size-[38px] shrink-0 items-center justify-center rounded-[10px]" style={{ backgroundColor: tone.iconBg }}>{eventIcon(event)}</div>
         <div className="min-w-0 flex-1">
@@ -196,11 +219,22 @@ function EmptyPanel({ children }: { children: ReactNode }) {
 }
 
 export function AppNotificationsPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [activeTab, setActiveTab] = useState<NotificationTab>('all');
+  const [activeTab, setActiveTab] = useState<NotificationTab>('unread');
   const notificationsQuery = useNotifications();
+  const queryClient = useQueryClient();
+  const dismissThreadMutation = useMutation({
+    mutationFn: dismissInspectionNotificationThread,
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
   const notifications = notificationsQuery.data ?? [];
   const unreadNotifications = useMemo(() => notifications.filter((notification) => !notification.readAt), [notifications]);
   const visibleNotifications = activeTab === 'unread' ? unreadNotifications : notifications;
+
+  function handleInspectionClosedClick(notificationId: string) {
+    dismissThreadMutation.mutate(notificationId);
+  }
 
   if (!open) return null;
 
@@ -224,7 +258,7 @@ export function AppNotificationsPanel({ open, onClose }: { open: boolean; onClos
             {notificationsQuery.isLoading ? <EmptyPanel>Cargando notificaciones...</EmptyPanel> : null}
             {notificationsQuery.isError ? <EmptyPanel>No fue posible cargar las notificaciones.</EmptyPanel> : null}
             {!notificationsQuery.isLoading && !notificationsQuery.isError && visibleNotifications.length === 0 ? <EmptyPanel>{activeTab === 'unread' ? 'No tienes notificaciones sin leer.' : 'No tienes notificaciones.'}</EmptyPanel> : null}
-            {!notificationsQuery.isLoading && !notificationsQuery.isError ? visibleNotifications.map((notification) => <NotificationCard key={notification.id} notification={notification} />) : null}
+            {!notificationsQuery.isLoading && !notificationsQuery.isError ? visibleNotifications.map((notification) => <NotificationCard key={notification.id} notification={notification} dismissing={dismissThreadMutation.isPending} onInspectionClosedClick={handleInspectionClosedClick} />) : null}
           </div>
         </div>
       </aside>

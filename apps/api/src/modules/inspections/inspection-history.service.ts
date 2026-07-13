@@ -40,12 +40,13 @@ export class InspectionHistoryService {
 
   async getHistoryKpis(): Promise<InspectionHistoryKpisResponse> {
     const [inspections, findings] = await Promise.all([this.inspections.find(), this.findings.find()]);
+    const findingsByInspection = this.groupFindingsByInspection(findings);
     const year = new Date().getFullYear();
-    const closedInspections = inspections.filter((inspection) => this.isClosedInspectionInYear(inspection, year));
+    const closedInspections = inspections.filter((inspection) => this.isClosedInspectionInYear(inspection, findingsByInspection.get(inspection.id) ?? [], year));
     const closedInspectionIds = new Set(closedInspections.map((inspection) => inspection.id));
     const currentFindings = findings.filter((finding) => closedInspectionIds.has(finding.inspectionId) && finding.status !== InspectionFindingStatus.CANCELLED);
     const closedFindings = currentFindings.filter((finding) => finding.status === InspectionFindingStatus.CLOSED).length;
-    const closureDays = closedInspections.map((inspection) => this.resolveClosureDays(inspection));
+    const closureDays = closedInspections.map((inspection) => this.resolveClosureDays(inspection, findingsByInspection.get(inspection.id) ?? []));
     const validClosureDays = closureDays.filter((value) => Number.isFinite(value));
     const averageClosureDays = validClosureDays.length > 0 ? Number((validClosureDays.reduce((sum, value) => sum + value, 0) / validClosureDays.length).toFixed(1)) : 0;
     const contractorCompanies = new Set(closedInspections.map((inspection) => inspection.companyId).filter((value): value is string => Boolean(value))).size;
@@ -74,21 +75,14 @@ export class InspectionHistoryService {
     const sectorNameById = new Map(sectors.map((sector) => [sector.id, sector.name]));
     const userById = new Map(users.map((user) => [user.id, user]));
     const typeById = new Map(inspectionTypes.map((type) => [type.id, type]));
-    const findingsByInspection = new Map<string, InspectionFindingEntity[]>();
+    const findingsByInspection = this.groupFindingsByInspection(findings);
 
-    findings.forEach((finding) => {
-      if (finding.status === InspectionFindingStatus.CANCELLED) return;
-      const group = findingsByInspection.get(finding.inspectionId) ?? [];
-      group.push(finding);
-      findingsByInspection.set(finding.inspectionId, group);
-    });
-
-    const closedInspections = inspections.filter((inspection) => inspection.status === InspectionStatus.CLOSED);
+    const closedInspections = inspections.filter((inspection) => this.isInspectionEffectivelyClosed(inspection, findingsByInspection.get(inspection.id) ?? []));
     const rows = closedInspections.map((inspection, index) => {
       const inspectionFindings = findingsByInspection.get(inspection.id) ?? [];
       const observations = this.createObservationSummary(inspectionFindings);
       const maxSeverity = inspectionFindings.reduce<InspectionFindingSeverity | null>((current, finding) => this.resolveMaxSeverity(current, finding.severity), null);
-      const closeDate = inspection.closedAt ?? inspection.completedAt ?? inspection.updatedAt ?? getDashboardInspectionDate(inspection);
+      const closeDate = this.resolveCloseDate(inspection, inspectionFindings);
       const closureRate = inspectionFindings.length > 0 ? Number(((observations.closed / inspectionFindings.length) * 100).toFixed(2)) : 0;
 
       return {
@@ -103,7 +97,7 @@ export class InspectionHistoryService {
         urgencySeverity: maxSeverity,
         observationsCount: inspectionFindings.length,
         observations,
-        daysOpen: this.resolveClosureDays(inspection),
+        daysOpen: this.resolveClosureDays(inspection, inspectionFindings),
         closureRate,
       };
     }).sort((left, right) => this.parseDate(right.date) - this.parseDate(left.date));
@@ -123,16 +117,41 @@ export class InspectionHistoryService {
     };
   }
 
-  private isClosedInspectionInYear(inspection: InspectionEntity, year: number): boolean {
-    if (inspection.status !== InspectionStatus.CLOSED) return false;
-    const closeDate = inspection.closedAt ?? inspection.completedAt ?? inspection.updatedAt ?? null;
+  private isClosedInspectionInYear(inspection: InspectionEntity, findings: InspectionFindingEntity[], year: number): boolean {
+    if (!this.isInspectionEffectivelyClosed(inspection, findings)) return false;
+    const closeDate = this.resolveCloseDate(inspection, findings);
     return Boolean(closeDate && closeDate.getFullYear() === year);
   }
 
-  private resolveClosureDays(inspection: InspectionEntity): number {
+  private isInspectionEffectivelyClosed(inspection: InspectionEntity, findings: InspectionFindingEntity[]): boolean {
+    if (inspection.status === InspectionStatus.CANCELLED) return false;
+    if (inspection.status === InspectionStatus.CLOSED) return true;
+    return findings.length > 0 && findings.every((finding) => finding.status === InspectionFindingStatus.CLOSED);
+  }
+
+  private resolveCloseDate(inspection: InspectionEntity, findings: InspectionFindingEntity[]): Date | null {
+    const latestFindingClose = findings.reduce<Date | null>((current, finding) => {
+      if (!finding.closedAt) return current;
+      return !current || finding.closedAt > current ? finding.closedAt : current;
+    }, null);
+    return inspection.closedAt ?? inspection.completedAt ?? latestFindingClose ?? inspection.updatedAt ?? getDashboardInspectionDate(inspection) ?? null;
+  }
+
+  private resolveClosureDays(inspection: InspectionEntity, findings: InspectionFindingEntity[]): number {
     const startDate = getDashboardInspectionDate(inspection) ?? inspection.createdAt;
-    const closeDate = inspection.closedAt ?? inspection.completedAt ?? inspection.updatedAt ?? startDate;
+    const closeDate = this.resolveCloseDate(inspection, findings) ?? startDate;
     return this.daysBetween(startDate, closeDate);
+  }
+
+  private groupFindingsByInspection(findings: InspectionFindingEntity[]): Map<string, InspectionFindingEntity[]> {
+    const grouped = new Map<string, InspectionFindingEntity[]>();
+    findings.forEach((finding) => {
+      if (finding.status === InspectionFindingStatus.CANCELLED) return;
+      const current = grouped.get(finding.inspectionId) ?? [];
+      current.push(finding);
+      grouped.set(finding.inspectionId, current);
+    });
+    return grouped;
   }
 
   private createObservationSummary(findings: InspectionFindingEntity[]): InspectionManagementTableObservationSummaryResponse {

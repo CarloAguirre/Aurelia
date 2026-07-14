@@ -53,4 +53,5 @@ export class UserSessionEntity {
 
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
+
 }

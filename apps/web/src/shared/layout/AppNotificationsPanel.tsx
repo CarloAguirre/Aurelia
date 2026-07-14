@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useMemo, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import type { InspectionNotificationEvent, InspectionNotificationMetadata, InspectionNotificationTone, NotificationResponse } from '@aurelia/contracts';
 import { useNotifications } from '../hooks/useNotifications';
-import { dismissInspectionNotificationThread, markNotificationRead } from '../services/notifications.service';
+import { dismissInspectionNotificationThread, dismissNotification, markNotificationRead } from '../services/notifications.service';
 import {
   NotificationApprovedIcon,
   NotificationAssignedIcon,
@@ -19,24 +19,21 @@ import {
   NotificationSearchIcon,
 } from './AppNotificationIcons';
 
-type NotificationTab = 'all' | 'unread';
-
 type NotificationToneConfig = {
   border: string;
   iconBg: string;
   tag: string;
   cardBg: string;
-  dot: string;
   severityBg: string;
   severityText: string;
 };
 
 const toneConfig: Record<InspectionNotificationTone, NotificationToneConfig> = {
-  blue: { border: '#4a90c4', iconBg: '#e6f3ff', tag: '#24588b', cardBg: '#fefcf7', dot: '#c8a064', severityBg: '#e0ffd3', severityText: '#2a5c16' },
-  teal: { border: '#00b398', iconBg: '#c5fff6', tag: '#006153', cardBg: '#fefcf7', dot: '#00b398', severityBg: '#ffe1cd', severityText: '#532a0e' },
-  green: { border: '#6cc24a', iconBg: '#e0ffd3', tag: '#2a5c16', cardBg: '#ffffff', dot: '#6cc24a', severityBg: '#ffe1cd', severityText: '#532a0e' },
-  red: { border: '#c4365a', iconBg: '#ffd0db', tag: '#570b1d', cardBg: '#ffffff', dot: '#c4365a', severityBg: '#ffe1cd', severityText: '#532a0e' },
-  yellow: { border: '#e8a820', iconBg: '#ffeab8', tag: '#463100', cardBg: '#ffffff', dot: '#e8a820', severityBg: '#ffe1cd', severityText: '#532a0e' },
+  blue: { border: '#4a90c4', iconBg: '#e6f3ff', tag: '#24588b', cardBg: '#fefcf7', severityBg: '#e0ffd3', severityText: '#2a5c16' },
+  teal: { border: '#00b398', iconBg: '#c5fff6', tag: '#006153', cardBg: '#fefcf7', severityBg: '#ffe1cd', severityText: '#532a0e' },
+  green: { border: '#6cc24a', iconBg: '#e0ffd3', tag: '#2a5c16', cardBg: '#ffffff', severityBg: '#ffe1cd', severityText: '#532a0e' },
+  red: { border: '#c4365a', iconBg: '#ffd0db', tag: '#570b1d', cardBg: '#ffffff', severityBg: '#ffe1cd', severityText: '#532a0e' },
+  yellow: { border: '#e8a820', iconBg: '#ffeab8', tag: '#463100', cardBg: '#ffffff', severityBg: '#ffe1cd', severityText: '#532a0e' },
 };
 
 function metadataOf(notification: NotificationResponse): InspectionNotificationMetadata {
@@ -130,18 +127,26 @@ function markNotificationAsReadInCache(queryClient: QueryClient, notificationId:
   updateNotificationsCache(queryClient, ['notifications', true], (notifications) => notifications.filter((notification) => notification.id !== notificationId));
 }
 
+function dismissNotificationInCache(queryClient: QueryClient, notificationId: string) {
+  const filterNotification = (notifications: NotificationResponse[]) => notifications.filter((notification) => notification.id !== notificationId);
+  updateNotificationsCache(queryClient, ['notifications', false], filterNotification);
+  updateNotificationsCache(queryClient, ['notifications', true], filterNotification);
+}
+
 function dismissInspectionThreadInCache(queryClient: QueryClient, notification: NotificationResponse) {
   const metadata = metadataOf(notification);
   const inspectionId = readString(metadata.inspectionId);
   const cutoff = notificationTimestamp(notification);
+  const readAt = new Date().toISOString();
   if (!inspectionId) return;
-  const filterThread = (notifications: NotificationResponse[]) => notifications.filter((item) => {
+  const updateThread = (notifications: NotificationResponse[]) => notifications.flatMap((item) => {
+    if (item.id === notification.id) return [{ ...item, readAt: item.readAt ?? readAt }];
     const itemMetadata = metadataOf(item);
-    if (readString(itemMetadata.inspectionId) !== inspectionId) return true;
-    return notificationTimestamp(item) > cutoff;
+    if (readString(itemMetadata.inspectionId) !== inspectionId) return [item];
+    return notificationTimestamp(item) > cutoff ? [item] : [];
   });
-  updateNotificationsCache(queryClient, ['notifications', false], filterThread);
-  updateNotificationsCache(queryClient, ['notifications', true], filterThread);
+  updateNotificationsCache(queryClient, ['notifications', false], updateThread);
+  updateNotificationsCache(queryClient, ['notifications', true], (notifications) => updateThread(notifications).filter((item) => !item.readAt));
 }
 
 function formatDateTime(value: string) {
@@ -216,7 +221,7 @@ function severityColor(value: string) {
   return { bg: '#ffe1cd', color: '#532a0e' };
 }
 
-function NotificationCard({ notification, pending, onNotificationClick }: { notification: NotificationResponse; pending: boolean; onNotificationClick: (notification: NotificationResponse) => void }) {
+function NotificationCard({ notification, pending, onNotificationClick, onDismiss }: { notification: NotificationResponse; pending: boolean; onNotificationClick: (notification: NotificationResponse) => void; onDismiss: (notification: NotificationResponse) => void }) {
   const metadata = metadataOf(notification);
   const event = resolveEvent(notification);
   const tone = toneConfig[resolveTone(notification)];
@@ -236,6 +241,11 @@ function NotificationCard({ notification, pending, onNotificationClick }: { noti
     if (event.key !== 'Enter' && event.key !== ' ') return;
     event.preventDefault();
     onNotificationClick(notification);
+  }
+
+  function handleDismiss(event: MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    if (!pending) onDismiss(notification);
   }
 
   return (
@@ -258,7 +268,7 @@ function NotificationCard({ notification, pending, onNotificationClick }: { noti
           {reason ? <div className="mt-[5px] rounded-[5px] bg-[#ffd0db] px-[7px] py-[5px]"><p className="font-['Inter:Italic',sans-serif] text-[11px] italic leading-[15.4px] text-[#570b1d]">{reason}</p></div> : null}
           <NotificationTime value={occurredAt} />
         </div>
-        {unread ? <div className="mt-[4px] size-[8px] shrink-0 rounded-[4px]" style={{ backgroundColor: tone.dot }} /> : null}
+        {unread ? <div className="mt-[4px] size-[8px] shrink-0 rounded-[4px] bg-[#BD3B5B]" /> : <button type="button" className="mt-[-2px] flex size-[20px] shrink-0 items-center justify-center rounded-[4px]" onClick={handleDismiss} aria-label="Eliminar notificación" disabled={pending}><NotificationCloseIcon className="size-[14px]" tone="#646464" /></button>}
       </div>
     </article>
   );
@@ -269,12 +279,17 @@ function EmptyPanel({ children }: { children: ReactNode }) {
 }
 
 export function AppNotificationsPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [activeTab, setActiveTab] = useState<NotificationTab>('unread');
   const notificationsQuery = useNotifications();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const dismissThreadMutation = useMutation({
     mutationFn: dismissInspectionNotificationThread,
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+  const dismissNotificationMutation = useMutation({
+    mutationFn: dismissNotification,
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
@@ -288,12 +303,7 @@ export function AppNotificationsPanel({ open, onClose }: { open: boolean; onClos
   const notifications = notificationsQuery.data ?? [];
   const sortedNotifications = useMemo(() => [...notifications].sort((left, right) => notificationTimestamp(right) - notificationTimestamp(left)), [notifications]);
   const unreadNotifications = useMemo(() => sortedNotifications.filter((notification) => !notification.readAt), [sortedNotifications]);
-  const visibleNotifications = activeTab === 'unread' ? unreadNotifications : sortedNotifications;
-  const notificationActionPending = dismissThreadMutation.isPending || markReadMutation.isPending;
-
-  useEffect(() => {
-    if (open) setActiveTab('unread');
-  }, [open]);
+  const notificationActionPending = dismissThreadMutation.isPending || dismissNotificationMutation.isPending || markReadMutation.isPending;
 
   async function handleNotificationClick(notification: NotificationResponse) {
     const target = buildNotificationTarget(notification);
@@ -310,6 +320,11 @@ export function AppNotificationsPanel({ open, onClose }: { open: boolean; onClos
     }
   }
 
+  async function handleDismissNotification(notification: NotificationResponse) {
+    dismissNotificationInCache(queryClient, notification.id);
+    await dismissNotificationMutation.mutateAsync(notification.id);
+  }
+
   if (!open) return null;
 
   return (
@@ -323,16 +338,22 @@ export function AppNotificationsPanel({ open, onClose }: { open: boolean; onClos
           </div>
           <button type="button" className="flex size-[32px] items-center justify-center" onClick={onClose} aria-label="Cerrar notificaciones"><NotificationCloseIcon /></button>
         </header>
-        <div className="grid h-[35px] shrink-0 grid-cols-2 border-b-2 border-[#e3e3e3] bg-white">
-          <button type="button" className={`flex items-center justify-center border-b-2 font-['Inter:Semi_Bold',sans-serif] text-[12px] font-semibold leading-none ${activeTab === 'all' ? 'border-[#c8a064] text-[#8e6e3e]' : 'border-transparent text-[#646464]'}`} onClick={() => setActiveTab('all')}>Todas</button>
-          <button type="button" className={`flex items-center justify-center gap-[8px] border-b-2 font-['Inter:Semi_Bold',sans-serif] text-[12px] font-semibold leading-none ${activeTab === 'unread' ? 'border-[#c8a064] text-[#8e6e3e]' : 'border-transparent text-[#646464]'}`} onClick={() => setActiveTab('unread')}>Sin leer<span className="flex h-[16px] min-w-[16px] items-center justify-center rounded-[8px] bg-[#c4365a] px-[5px] font-['Inter:Bold',sans-serif] text-[9px] font-bold leading-none text-white">{unreadNotifications.length}</span></button>
+        <div className="flex h-[35px] w-full shrink-0 items-stretch border-b-2 border-[#e3e3e3] bg-white">
+          {unreadNotifications.length > 0 ? (
+            <div className="flex w-full items-center justify-center gap-[8px] border-b-2 border-[#c8a064] font-['Inter:Semi_Bold',sans-serif] text-[12px] font-semibold leading-none text-[#8e6e3e]">
+              <span>Sin leer</span>
+              <span className="flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-[#BD3B5B] px-[5px] font-['Inter:Bold',sans-serif] text-[9px] font-bold leading-none text-white">{unreadNotifications.length}</span>
+            </div>
+          ) : (
+            <div className="flex w-full items-center justify-center border-b-2 border-[#c8a064] font-['Inter:Semi_Bold',sans-serif] text-[12px] font-semibold leading-none text-[#8e6e3e]">Todas</div>
+          )}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto bg-[#f7f7f7] px-[14px] py-[10px]">
           <div className="flex w-full flex-col gap-[8px]">
             {notificationsQuery.isLoading ? <EmptyPanel>Cargando notificaciones...</EmptyPanel> : null}
             {notificationsQuery.isError ? <EmptyPanel>No fue posible cargar las notificaciones.</EmptyPanel> : null}
-            {!notificationsQuery.isLoading && !notificationsQuery.isError && visibleNotifications.length === 0 ? <EmptyPanel>{activeTab === 'unread' ? 'No tienes notificaciones sin leer.' : 'No tienes notificaciones.'}</EmptyPanel> : null}
-            {!notificationsQuery.isLoading && !notificationsQuery.isError ? visibleNotifications.map((notification) => <NotificationCard key={notification.id} notification={notification} pending={notificationActionPending} onNotificationClick={handleNotificationClick} />) : null}
+            {!notificationsQuery.isLoading && !notificationsQuery.isError && sortedNotifications.length === 0 ? <EmptyPanel>No tienes notificaciones.</EmptyPanel> : null}
+            {!notificationsQuery.isLoading && !notificationsQuery.isError ? sortedNotifications.map((notification) => <NotificationCard key={notification.id} notification={notification} pending={notificationActionPending} onNotificationClick={handleNotificationClick} onDismiss={handleDismissNotification} />) : null}
           </div>
         </div>
       </aside>

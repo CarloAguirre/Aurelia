@@ -1,0 +1,136 @@
+# .github/workflows/deploy-dev.yml
+# ⚠️ Este archivo va en el REPO DE LA APP (código Node/Vite), NO en aurelia-terraform (solo infra).
+#    Aquí se guarda como REFERENCIA para copiar. En este repo (docs/) no se ejecuta.
+#
+# Despliega a DEV:
+#   - backend  -> App Service Linux Node  (app-gf-aurelia-back-dev-001)
+#   - frontend -> Static Web App (Vite)   (webs-gf-aurelia-front-dev-001)
+#
+# El build (install + contracts + api/web) corre AQUÍ, una sola vez. El App Service solo ARRANCA
+# (backend_app_command_line = "corepack prepare pnpm@9.12.0 --activate && pnpm start:prod").
+#
+# Secrets/variables necesarios en el Environment "dev" de GitHub:
+#   secrets.AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID   (OIDC; ya existen para la infra)
+#   secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_DEV                          (deployment token del SWA de dev)
+# El SP de OIDC necesita permiso de deploy sobre el App Service (Website Contributor o Contributor).
+
+name: deploy-dev
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/api/**"
+      - "apps/web/**"
+      - "packages/contracts/**" # ajusta a la ruta real del paquete @aurelia/contracts
+      - "pnpm-lock.yaml"
+      - ".github/workflows/deploy-dev.yml"
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write # OIDC hacia Azure
+  contents: read
+
+env:
+  NODE_VERSION: "24"
+  PNPM_VERSION: "9.12.0"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # BACKEND — App Service Linux Node
+  # ---------------------------------------------------------------------------
+  deploy-backend:
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Activar pnpm (pineado)
+        run: corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+
+      - name: Cache de pnpm
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Build contracts + api
+        run: |
+          pnpm --filter @aurelia/contracts build
+          pnpm --filter api build
+
+      # Bundle self-contained y podado a prod-deps (evita subir devDependencies).
+      # Genera ./deploy con la API + su node_modules de producción.
+      - name: Empaquetar API (deploy --prod)
+        run: pnpm --filter api deploy --prod --legacy ./deploy
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy a App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: app-gf-aurelia-back-dev-001
+          package: ./deploy
+
+      # ⚠️ Con "deploy --prod ./deploy", wwwroot pasa a ser la RAÍZ del bundle (ya es apps/api),
+      #    por eso el startup NO hace "cd apps/api". El tfvars de este repo usa (Opción A):
+      #      backend_app_command_line = "corepack prepare pnpm@9.12.0 --activate && pnpm start:prod"
+      #    Si en cambio publicas el monorepo completo (package: .), vuelve a "cd apps/api && ...".
+
+  # ---------------------------------------------------------------------------
+  # FRONTEND — Static Web App (Vite). Variables VITE_* son build-time.
+  # ---------------------------------------------------------------------------
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    environment: dev
+    env:
+      VITE_APP_ENV: dev
+      VITE_APP_NAME: "Aurelia"
+      VITE_API_URL: "https://api-aurelia-dev.kabeli.cl/api"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Activar pnpm (pineado)
+        run: corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+
+      - name: Cache de pnpm
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Build contracts + web
+        run: |
+          pnpm --filter @aurelia/contracts build
+          pnpm --filter web build
+
+      # Subimos el build ya hecho (skip_app_build), Oryx no re-compila el monorepo.
+      - name: Deploy a Static Web App
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_DEV }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: "upload"
+          skip_app_build: true
+          app_location: "apps/web/dist" # carpeta ya construida (ajusta si Vite usa otra salida)
+          output_location: ""
+          skip_api_build: true

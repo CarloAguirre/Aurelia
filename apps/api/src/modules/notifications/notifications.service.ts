@@ -85,12 +85,8 @@ export class NotificationsService {
       }),
     );
 
-    const recipientUserIds = [...new Set(dto.recipientUserIds)];
-    if (recipientUserIds.length > 0) {
-      await this.recipientsRepository.save(
-        recipientUserIds.map((userId) => this.recipientsRepository.create({ notificationId: notification.id, userId })),
-      );
-    }
+    const recipientUserIds = this.uniqueIds(dto.recipientUserIds);
+    await this.insertRecipientsIgnoringDuplicates(notification.id, recipientUserIds);
 
     return this.findByIdForUser(notification.id, recipientUserIds[0] ?? null, true);
   }
@@ -102,8 +98,7 @@ export class NotificationsService {
       relations: { notification: { recipients: true } },
     });
 
-    const visibleRows = rows
-      .filter((row) => row.dismissedAt === null)
+    const visibleRows = this.mergeRecipientRows(rows)
       .filter((row) => !unreadOnly || row.readAt === null)
       .sort((left, right) => this.sortDateOf(right.notification).getTime() - this.sortDateOf(left.notification).getTime());
 
@@ -117,10 +112,12 @@ export class NotificationsService {
     });
     if (!recipient) throw new NotFoundException('Notification not found for user');
 
-    if (!recipient.readAt) {
-      recipient.readAt = new Date();
-      await this.recipientsRepository.save(recipient);
-    }
+    const now = new Date();
+    await this.recipientsRepository.query(
+      'UPDATE notification_recipients SET read_at = COALESCE(read_at, $3), updated_at = now() WHERE notification_id = $1 AND user_id = $2',
+      [notificationId, userId, now],
+    );
+    recipient.readAt = recipient.readAt ?? now;
 
     return this.toResponse(recipient.notification, recipient);
   }
@@ -356,8 +353,9 @@ export class NotificationsService {
       const existingRecipientIds = new Set((existing.recipients ?? []).map((recipient) => recipient.userId));
       const missingIds = recipientUserIds.filter((userId) => !existingRecipientIds.has(userId));
       if (missingIds.length > 0) {
-        const savedRecipients = await this.recipientsRepository.save(missingIds.map((userId) => this.recipientsRepository.create({ notificationId: existing.id, userId })));
-        existing.recipients = [...(existing.recipients ?? []), ...savedRecipients];
+        await this.insertRecipientsIgnoringDuplicates(existing.id, missingIds);
+        const savedRecipients = await this.recipientsRepository.find({ where: { notificationId: existing.id } });
+        existing.recipients = savedRecipients;
       }
       return;
     }
@@ -370,9 +368,42 @@ export class NotificationsService {
       triggeredByUserId: input.triggeredByUserId,
       metadata: input.metadata,
     }));
-    const recipients = await this.recipientsRepository.save(recipientUserIds.map((userId) => this.recipientsRepository.create({ notificationId: notification.id, userId })));
-    notification.recipients = recipients;
+    await this.insertRecipientsIgnoringDuplicates(notification.id, recipientUserIds);
+    notification.recipients = await this.recipientsRepository.find({ where: { notificationId: notification.id } });
     existingByKey.set(eventKey, notification);
+  }
+
+  private async insertRecipientsIgnoringDuplicates(notificationId: string, userIds: string[]): Promise<void> {
+    const values = this.uniqueIds(userIds).map((userId) => ({ notificationId, userId }));
+    if (values.length === 0) return;
+    await this.recipientsRepository
+      .createQueryBuilder()
+      .insert()
+      .into(NotificationRecipientEntity)
+      .values(values)
+      .orIgnore()
+      .execute();
+  }
+
+  private mergeRecipientRows(rows: NotificationRecipientEntity[]): NotificationRecipientEntity[] {
+    const groups = new Map<string, NotificationRecipientEntity[]>();
+    rows.forEach((row) => {
+      const current = groups.get(row.notificationId) ?? [];
+      current.push(row);
+      groups.set(row.notificationId, current);
+    });
+
+    return Array.from(groups.values()).flatMap((group) => {
+      if (group.some((row) => row.dismissedAt)) return [];
+      const representative = group[0];
+      const readDates = group
+        .map((row) => row.readAt)
+        .filter((value): value is Date => value instanceof Date);
+      representative.readAt = readDates.length > 0
+        ? readDates.sort((left, right) => left.getTime() - right.getTime())[0]
+        : null;
+      return [representative];
+    });
   }
 
   private async loadNameMaps(): Promise<NameMaps> {

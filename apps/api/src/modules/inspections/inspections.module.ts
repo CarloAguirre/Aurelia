@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AccessControlModule } from '../access-control/access-control.module';
 import { AuditModule } from '../audit/audit.module';
 import { CommentsModule } from '../comments/comments.module';
 import { EvidencesModule } from '../evidences/evidences.module';
@@ -37,6 +38,7 @@ import { InspectionsService } from './inspections.service';
 
 @Module({
   imports: [
+    AccessControlModule,
     AuditModule,
     CommentsModule,
     EvidencesModule,

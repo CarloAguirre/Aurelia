@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { AccessTokenPayload } from '../auth/jwt-token.service';
+import { CompanyEntity } from '../organization/entities/company.entity';
 import { UserEntity } from '../users/entities/user.entity';
 
 export interface ScopedResource {
@@ -11,8 +12,13 @@ export interface ScopedResource {
 
 interface UserScope {
   isAdmin: boolean;
+  isPrincipalCompanyUser: boolean;
   companyIds: Set<string>;
   areaIds: Set<string>;
+}
+
+interface AccessOptions {
+  ignoreCompanyScope?: boolean;
 }
 
 @Injectable()
@@ -29,20 +35,34 @@ export class ResourceScopeService {
 
   async canAccess(user: AccessTokenPayload, resource: ScopedResource): Promise<boolean> {
     const scope = await this.getUserScope(user);
-    if (scope.isAdmin) return true;
-    if (resource.companyId && scope.companyIds.size > 0 && !scope.companyIds.has(resource.companyId)) return false;
-    if (resource.areaId && scope.areaIds.size > 0 && !scope.areaIds.has(resource.areaId)) return false;
-    return true;
+    return this.isAllowed(scope, resource);
+  }
+
+  async canAccessInspection(user: AccessTokenPayload, resource: ScopedResource): Promise<boolean> {
+    const scope = await this.getUserScope(user);
+    return this.isAllowed(scope, resource, { ignoreCompanyScope: scope.isPrincipalCompanyUser });
+  }
+
+  async canReviewInspectionFindings(user: AccessTokenPayload): Promise<boolean> {
+    const scope = await this.getUserScope(user);
+    return scope.isAdmin || scope.isPrincipalCompanyUser;
   }
 
   async filterAllowed<T extends ScopedResource>(user: AccessTokenPayload, resources: T[]): Promise<T[]> {
     const scope = await this.getUserScope(user);
-    if (scope.isAdmin) return resources;
-    return resources.filter((resource) => {
-      if (resource.companyId && scope.companyIds.size > 0 && !scope.companyIds.has(resource.companyId)) return false;
-      if (resource.areaId && scope.areaIds.size > 0 && !scope.areaIds.has(resource.areaId)) return false;
-      return true;
-    });
+    return resources.filter((resource) => this.isAllowed(scope, resource));
+  }
+
+  async filterAllowedInspections<T extends ScopedResource>(user: AccessTokenPayload, resources: T[]): Promise<T[]> {
+    const scope = await this.getUserScope(user);
+    return resources.filter((resource) => this.isAllowed(scope, resource, { ignoreCompanyScope: scope.isPrincipalCompanyUser }));
+  }
+
+  private isAllowed(scope: UserScope, resource: ScopedResource, options: AccessOptions = {}): boolean {
+    if (scope.isAdmin) return true;
+    if (!options.ignoreCompanyScope && resource.companyId && scope.companyIds.size > 0 && !scope.companyIds.has(resource.companyId)) return false;
+    if (resource.areaId && scope.areaIds.size > 0 && !scope.areaIds.has(resource.areaId)) return false;
+    return true;
   }
 
   private async getUserScope(user: AccessTokenPayload): Promise<UserScope> {
@@ -50,6 +70,7 @@ export class ResourceScopeService {
     const row = await this.users.findOne({
       where: { id: user.sub, isActive: true },
       relations: {
+        company: true,
         userCompanies: {
           company: true,
         },
@@ -61,12 +82,26 @@ export class ResourceScopeService {
 
     const companyIds = new Set<string>();
     const areaIds = new Set<string>();
+    const companies = [row?.company, ...(row?.userCompanies ?? []).map((userCompany) => userCompany.company)].filter(
+      (company): company is CompanyEntity => Boolean(company),
+    );
 
     if (row?.companyId) companyIds.add(row.companyId);
     for (const userCompany of row?.userCompanies ?? []) companyIds.add(userCompany.company.id);
     if (row?.areaId) areaIds.add(row.areaId);
     for (const userArea of row?.userAreas ?? []) areaIds.add(userArea.area.id);
 
-    return { isAdmin, companyIds, areaIds };
+    return {
+      isAdmin,
+      isPrincipalCompanyUser: companies.some((company) => this.isPrincipalCompany(company)) || user.email.toLowerCase().endsWith('@goldfields.com'),
+      companyIds,
+      areaIds,
+    };
+  }
+
+  private isPrincipalCompany(company: CompanyEntity): boolean {
+    const code = company.code?.trim().toUpperCase() ?? '';
+    const name = company.name.trim().toLowerCase();
+    return code === 'CORP' || company.isContractor === false || name.includes('gold field');
   }
 }

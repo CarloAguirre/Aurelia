@@ -243,7 +243,7 @@ export class DatabaseMaintenanceService {
 
   private async ensureDatabasePrerequisites(queryRunner: QueryRunner): Promise<void> {
     this.logger.log('Ensuring required database extensions');
-    await queryRunner.query('CREATE EXTENSION IF NOT EXISTS "citext"');
+    await this.ensureCitextSupport(queryRunner);
 
     // Azure Database for PostgreSQL may block uuid-ossp. Provide a local compatible function instead.
     await queryRunner.query(`
@@ -263,6 +263,31 @@ export class DatabaseMaintenanceService {
           AS $fn$
             SELECT md5(random()::text || clock_timestamp()::text)::uuid;
           $fn$;
+        END IF;
+      END
+      $$;
+    `);
+  }
+
+  private async ensureCitextSupport(queryRunner: QueryRunner): Promise<void> {
+    try {
+      await queryRunner.query('CREATE EXTENSION IF NOT EXISTS "citext"');
+      return;
+    } catch (error) {
+      this.logger.warn('citext extension not available, creating fallback domain in public schema');
+      this.logger.warn(this.describeError(error));
+    }
+
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1
+          FROM pg_type t
+          JOIN pg_namespace n ON n.oid = t.typnamespace
+          WHERE t.typname = 'citext'
+        ) THEN
+          CREATE DOMAIN public.citext AS text;
         END IF;
       END
       $$;

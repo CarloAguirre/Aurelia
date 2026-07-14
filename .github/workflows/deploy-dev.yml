@@ -12,7 +12,6 @@
 # Secrets/variables necesarios en el Environment "dev" de GitHub:
 #   secrets.AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID   (OIDC)
 #   secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_DEV                          (deployment token del SWA de dev)
-#   secrets.DEPLOY_ADMIN_EMAIL / DEPLOY_ADMIN_PASSWORD                   (login técnico para correr maintenance)
 # El SP de OIDC necesita permiso de deploy sobre el App Service (Website Contributor o Contributor).
 #
 # 👉 Todo esto (federated credential + Environment + los 4 secrets) lo deja listo, en el repo de la app,
@@ -46,8 +45,6 @@ jobs:
   deploy-backend:
     runs-on: ubuntu-latest
     environment: dev
-    env:
-      API_BASE_URL: "https://api-aurelia-dev.kabeli.cl/api"
     steps:
       - uses: actions/checkout@v4
 
@@ -92,27 +89,64 @@ jobs:
           app-name: app-gf-aurelia-back-dev-001
           package: ./deploy
 
-      - name: Run DB maintenance (migrations + seed base)
+      - name: Resolve DB settings from App Service
         shell: bash
         run: |
           set -euo pipefail
 
-          LOGIN_RESPONSE=$(curl -sS -X POST "${API_BASE_URL}/auth/login" \
-            -H "Content-Type: application/json" \
-            -d "{\"email\":\"${{ secrets.DEPLOY_ADMIN_EMAIL }}\",\"password\":\"${{ secrets.DEPLOY_ADMIN_PASSWORD }}\"}")
+          APP_NAME="app-gf-aurelia-back-dev-001"
+          RESOURCE_GROUP=$(az webapp list --query "[?name=='${APP_NAME}'].resourceGroup | [0]" -o tsv)
 
-          TOKEN=$(python3 -c "import sys, json; print(json.load(sys.stdin).get('token', ''))" <<< "${LOGIN_RESPONSE}")
-
-          if [ -z "${TOKEN}" ]; then
-            echo "No se pudo obtener token de login para maintenance"
-            echo "Respuesta login: ${LOGIN_RESPONSE}"
+          if [ -z "${RESOURCE_GROUP}" ]; then
+            echo "No se pudo resolver resource group para ${APP_NAME}"
             exit 1
           fi
 
-          curl -sS -f -X POST "${API_BASE_URL}/admin/database/maintenance" \
-            -H "Authorization: Bearer ${TOKEN}" \
-            -H "Content-Type: application/json" \
-            -d '{"allowRisky":false,"seeds":["phase1"]}'
+          DB_HOST=$(az webapp config appsettings list -g "${RESOURCE_GROUP}" -n "${APP_NAME}" --query "[?name=='DB_HOST'].value | [0]" -o tsv)
+          DB_PORT=$(az webapp config appsettings list -g "${RESOURCE_GROUP}" -n "${APP_NAME}" --query "[?name=='DB_PORT'].value | [0]" -o tsv)
+          DB_USERNAME=$(az webapp config appsettings list -g "${RESOURCE_GROUP}" -n "${APP_NAME}" --query "[?name=='DB_USERNAME'].value | [0]" -o tsv)
+          DB_PASSWORD=$(az webapp config appsettings list -g "${RESOURCE_GROUP}" -n "${APP_NAME}" --query "[?name=='DB_PASSWORD'].value | [0]" -o tsv)
+          DB_NAME=$(az webapp config appsettings list -g "${RESOURCE_GROUP}" -n "${APP_NAME}" --query "[?name=='DB_NAME'].value | [0]" -o tsv)
+          DB_SSL=$(az webapp config appsettings list -g "${RESOURCE_GROUP}" -n "${APP_NAME}" --query "[?name=='DB_SSL'].value | [0]" -o tsv)
+
+          if [ -z "${DB_HOST}" ] || [ -z "${DB_PORT}" ] || [ -z "${DB_USERNAME}" ] || [ -z "${DB_PASSWORD}" ] || [ -z "${DB_NAME}" ]; then
+            echo "Faltan DB_* en App Service ${APP_NAME}"
+            exit 1
+          fi
+
+          if [ -z "${DB_SSL}" ]; then
+            DB_SSL="true"
+          fi
+
+          echo "::add-mask::${DB_PASSWORD}"
+
+          echo "DB_HOST=${DB_HOST}" >> "$GITHUB_ENV"
+          echo "DB_PORT=${DB_PORT}" >> "$GITHUB_ENV"
+          echo "DB_USERNAME=${DB_USERNAME}" >> "$GITHUB_ENV"
+          echo "DB_PASSWORD=${DB_PASSWORD}" >> "$GITHUB_ENV"
+          echo "DB_NAME=${DB_NAME}" >> "$GITHUB_ENV"
+          echo "DB_SSL=${DB_SSL}" >> "$GITHUB_ENV"
+
+      - name: Run DB migrations + seed base
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          export DB_SYNCHRONIZE="false"
+          export PORT="3000"
+          export CORS_ORIGINS="http://localhost"
+          export API_TOKEN_KEY="ci-bootstrap-token-key-32chars-min"
+          export API_TOKEN_TTL_SECONDS="3600"
+          export API_SESSION_TTL_SECONDS="2592000"
+          export API_RATE_LIMIT_STORE="memory"
+          export API_RATE_LIMIT_WINDOW_MS="60000"
+          export API_RATE_LIMIT_MAX="180"
+          export API_LOGIN_PASSWORD="ci-bootstrap-login"
+          export AURELIA_DEMO_USER_PASSWORD="ci-bootstrap-demo"
+          export ANTHROPIC_API_KEY=""
+
+          pnpm --filter api migration:run
+          pnpm --filter api seed
 
       # ⚠️ Con "deploy --prod ./deploy", wwwroot pasa a ser la RAÍZ del bundle (ya es apps/api),
       #    por eso el startup NO hace "cd apps/api". El tfvars de este repo usa (Opción A):

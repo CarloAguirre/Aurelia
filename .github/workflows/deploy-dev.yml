@@ -12,6 +12,8 @@
 # Secrets/variables necesarios en el Environment "dev" de GitHub:
 #   secrets.AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID   (OIDC)
 #   secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_DEV                          (deployment token del SWA de dev)
+#   secrets.DB_HOST / DB_PORT / DB_USERNAME / DB_PASSWORD / DB_NAME      (credenciales PostgreSQL)
+#   secrets.DB_SSL                                                        (true para Azure PostgreSQL)
 # El SP de OIDC necesita permiso de deploy sobre el App Service (Website Contributor o Contributor).
 #
 # 👉 Todo esto (federated credential + Environment + los 4 secrets) lo deja listo, en el repo de la app,
@@ -89,63 +91,15 @@ jobs:
           app-name: app-gf-aurelia-back-dev-001
           package: ./deploy
 
-      - name: Resolve DB settings from App Service
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          APP_NAME="app-gf-aurelia-back-dev-001"
-          RESOURCE_GROUP=$(az webapp list --query "[?name=='${APP_NAME}'].resourceGroup | [0]" -o tsv)
-
-          if [ -z "${RESOURCE_GROUP}" ]; then
-            echo "No se pudo resolver resource group para ${APP_NAME}"
-            exit 1
-          fi
-
-          DB_HOST=$(az webapp config appsettings list -g "${RESOURCE_GROUP}" -n "${APP_NAME}" --query "[?name=='DB_HOST'].value | [0]" -o tsv)
-          DB_PORT=$(az webapp config appsettings list -g "${RESOURCE_GROUP}" -n "${APP_NAME}" --query "[?name=='DB_PORT'].value | [0]" -o tsv)
-          DB_USERNAME=$(az webapp config appsettings list -g "${RESOURCE_GROUP}" -n "${APP_NAME}" --query "[?name=='DB_USERNAME'].value | [0]" -o tsv)
-          DB_PASSWORD=$(az webapp config appsettings list -g "${RESOURCE_GROUP}" -n "${APP_NAME}" --query "[?name=='DB_PASSWORD'].value | [0]" -o tsv)
-          DB_NAME=$(az webapp config appsettings list -g "${RESOURCE_GROUP}" -n "${APP_NAME}" --query "[?name=='DB_NAME'].value | [0]" -o tsv)
-          DB_SSL=$(az webapp config appsettings list -g "${RESOURCE_GROUP}" -n "${APP_NAME}" --query "[?name=='DB_SSL'].value | [0]" -o tsv)
-
-          resolve_keyvault_reference() {
-            local value="$1"
-            if [[ "$value" =~ ^@Microsoft.KeyVault\(SecretUri=(.*)\)$ ]]; then
-              local secret_uri="${BASH_REMATCH[1]}"
-              az keyvault secret show --id "$secret_uri" --query value -o tsv
-            else
-              printf '%s' "$value"
-            fi
-          }
-
-          DB_HOST=$(resolve_keyvault_reference "${DB_HOST}")
-          DB_PORT=$(resolve_keyvault_reference "${DB_PORT}")
-          DB_USERNAME=$(resolve_keyvault_reference "${DB_USERNAME}")
-          DB_PASSWORD=$(resolve_keyvault_reference "${DB_PASSWORD}")
-          DB_NAME=$(resolve_keyvault_reference "${DB_NAME}")
-          DB_SSL=$(resolve_keyvault_reference "${DB_SSL}")
-
-          if [ -z "${DB_HOST}" ] || [ -z "${DB_PORT}" ] || [ -z "${DB_USERNAME}" ] || [ -z "${DB_PASSWORD}" ] || [ -z "${DB_NAME}" ]; then
-            echo "Faltan DB_* en App Service ${APP_NAME}"
-            exit 1
-          fi
-
-          if [ -z "${DB_SSL}" ]; then
-            DB_SSL="true"
-          fi
-
-          echo "::add-mask::${DB_PASSWORD}"
-
-          echo "DB_HOST=${DB_HOST}" >> "$GITHUB_ENV"
-          echo "DB_PORT=${DB_PORT}" >> "$GITHUB_ENV"
-          echo "DB_USERNAME=${DB_USERNAME}" >> "$GITHUB_ENV"
-          echo "DB_PASSWORD=${DB_PASSWORD}" >> "$GITHUB_ENV"
-          echo "DB_NAME=${DB_NAME}" >> "$GITHUB_ENV"
-          echo "DB_SSL=${DB_SSL}" >> "$GITHUB_ENV"
-
       - name: Run DB migrations + seed base
         shell: bash
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_SSL: ${{ secrets.DB_SSL }}
         run: |
           set -euo pipefail
 

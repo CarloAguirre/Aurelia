@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { MarkAllNotificationsReadResponse } from '@aurelia/contracts';
+import type { MarkAllNotificationsReadResponse } from '@aurelia/contracts';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { NotificationRecipientEntity } from './entities/notification-recipient.entity';

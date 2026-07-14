@@ -11,18 +11,35 @@ type SqlQuery = {
   parameters?: unknown[];
 };
 
+type MaintenancePhase =
+  | 'connect'
+  | 'lock'
+  | 'plan'
+  | 'review'
+  | 'artifact'
+  | 'migration'
+  | 'seed';
+
 type MigrationStatus = 'applied' | 'noop' | 'review_required';
 type PlanStatus = 'ready' | 'noop' | 'review_required';
 type SeedStatus = 'applied' | 'skipped' | 'failed';
+
+export interface DatabaseMaintenanceErrorInfo {
+  phase: MaintenancePhase;
+  message: string;
+  details?: string;
+  stack?: string;
+}
 
 export interface DatabaseMaintenanceSeedResult {
   seed: string;
   status: SeedStatus;
   error?: string;
+  details?: string;
 }
 
 export interface DatabaseMaintenanceMigrationResult {
-  status: MigrationStatus;
+  status: MigrationStatus | 'failed';
   filePath: string | null;
   migrationName: string | null;
   upQueries: number;
@@ -34,6 +51,7 @@ export interface DatabaseMaintenanceResult {
   migration: DatabaseMaintenanceMigrationResult;
   seeds: DatabaseMaintenanceSeedResult[];
   availableSeeds: string[];
+  error: DatabaseMaintenanceErrorInfo | null;
 }
 
 export interface DatabaseMaintenancePlanResult {
@@ -94,15 +112,24 @@ export class DatabaseMaintenanceService {
     const allowRisky = dto.allowRisky === true;
     this.logger.log(`Running database maintenance with seeds=[${requestedSeeds.join(', ')}], allowRisky=${allowRisky}`);
     const maintenanceRunner = this.dataSource.createQueryRunner();
-    await maintenanceRunner.connect();
-    this.logger.log('Acquiring maintenance advisory lock');
-    await maintenanceRunner.query(`SELECT pg_advisory_lock(hashtext('aurelia_database_maintenance'))`);
+    let lockAcquired = false;
+    let schemaPlan: { upQueries: SqlQuery[]; downQueries: SqlQuery[] } | null = null;
+    let migrationArtifact: { migrationName: string; filePath: string } | null = null;
+    let phase: MaintenancePhase = 'connect';
 
     try {
-      const schemaPlan = await this.createSchemaPlan();
+      await maintenanceRunner.connect();
+      phase = 'lock';
+      this.logger.log('Acquiring maintenance advisory lock');
+      await maintenanceRunner.query(`SELECT pg_advisory_lock(hashtext('aurelia_database_maintenance'))`);
+      lockAcquired = true;
+
+      phase = 'plan';
+      schemaPlan = await this.createSchemaPlan();
       this.logger.log(`Schema plan resolved with ${schemaPlan.upQueries.length} up queries and ${schemaPlan.downQueries.length} down queries`);
 
       if (schemaPlan.upQueries.length === 0) {
+        phase = 'seed';
         this.logger.log('No migration required, running requested seeds only');
         const seeds = await this.runSeeds(requestedSeeds);
         return {
@@ -116,13 +143,15 @@ export class DatabaseMaintenanceService {
           },
           seeds,
           availableSeeds: availableSeedNames,
+          error: null,
         };
       }
 
+      phase = 'review';
       const riskyQueries = this.detectRiskyQueries(schemaPlan.upQueries);
 
       if (riskyQueries.length > 0 && !allowRisky) {
-        const migrationArtifact = this.buildMigrationArtifact();
+        migrationArtifact = this.buildMigrationArtifact();
         this.logger.warn(`Schema diff requires review. Generated artifact: ${migrationArtifact.filePath}`);
         return {
           migration: {
@@ -135,15 +164,19 @@ export class DatabaseMaintenanceService {
           },
           seeds: requestedSeeds.map((seed) => ({ seed, status: 'skipped' })),
           availableSeeds: availableSeedNames,
+          error: null,
         };
       }
 
-      const migrationArtifact = this.writeMigrationArtifact(schemaPlan.upQueries, schemaPlan.downQueries);
+      phase = 'artifact';
+      migrationArtifact = this.writeMigrationArtifact(schemaPlan.upQueries, schemaPlan.downQueries);
       this.logger.log(`Generated maintenance migration artifact at ${migrationArtifact.filePath}`);
+      phase = 'migration';
       this.logger.log(`Executing generated migration ${migrationArtifact.migrationName}`);
       await this.executeGeneratedMigration(maintenanceRunner, migrationArtifact.migrationName, schemaPlan.upQueries, schemaPlan.downQueries);
       this.logger.log(`Migration ${migrationArtifact.migrationName} executed successfully`);
 
+      phase = 'seed';
       this.logger.log(`Running ${requestedSeeds.length} selected seed(s)`);
       const seeds = await this.runSeeds(requestedSeeds);
       this.logger.log(`Selected seeds completed: ${seeds.map((seed) => `${seed.seed}:${seed.status}`).join(', ') || 'none'}`);
@@ -159,14 +192,36 @@ export class DatabaseMaintenanceService {
         },
         seeds,
         availableSeeds: availableSeedNames,
+        error: null,
       };
     } catch (error) {
-      this.logger.error('Database maintenance failed', error instanceof Error ? error.stack : undefined);
-      throw error;
+      const failure = this.buildFailureInfo(phase, error);
+      this.logger.error(`Database maintenance failed at phase ${phase}: ${failure.message}`, failure.stack);
+
+      const seeds = requestedSeeds.map((seed, index) => ({
+        seed,
+        status: index === 0 ? 'skipped' : 'skipped',
+      })) satisfies DatabaseMaintenanceSeedResult[];
+
+      return {
+        migration: {
+          status: 'failed',
+          filePath: migrationArtifact?.filePath ?? null,
+          migrationName: migrationArtifact?.migrationName ?? null,
+          upQueries: schemaPlan?.upQueries.length ?? 0,
+          downQueries: schemaPlan?.downQueries.length ?? 0,
+          riskyQueries: schemaPlan ? this.detectRiskyQueries(schemaPlan.upQueries) : [],
+        },
+        seeds,
+        availableSeeds: availableSeedNames,
+        error: failure,
+      };
     } finally {
       try {
-        this.logger.log('Releasing maintenance advisory lock');
-        await maintenanceRunner.query(`SELECT pg_advisory_unlock(hashtext('aurelia_database_maintenance'))`);
+        if (lockAcquired) {
+          this.logger.log('Releasing maintenance advisory lock');
+          await maintenanceRunner.query(`SELECT pg_advisory_unlock(hashtext('aurelia_database_maintenance'))`);
+        }
       } finally {
         await maintenanceRunner.release();
       }
@@ -291,6 +346,7 @@ export class DatabaseMaintenanceService {
           seed: seedName,
           status: 'failed',
           error: this.describeError(error),
+          details: error instanceof Error ? error.stack : undefined,
         });
 
         const remainingSeeds = seedNames.slice(results.length);
@@ -332,5 +388,20 @@ export class DatabaseMaintenanceService {
     }
 
     return 'Unknown seed error';
+  }
+
+  private buildFailureInfo(phase: MaintenancePhase, error: unknown): DatabaseMaintenanceErrorInfo {
+    if (error instanceof Error) {
+      return {
+        phase,
+        message: error.message,
+        stack: error.stack,
+      };
+    }
+
+    return {
+      phase,
+      message: 'Unknown maintenance error',
+    };
   }
 }

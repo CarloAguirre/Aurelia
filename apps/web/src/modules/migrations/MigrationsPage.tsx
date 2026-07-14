@@ -12,6 +12,8 @@ function statusLabel(status: string): string {
       return 'Listo para ejecutar';
     case 'applied':
       return 'Aplicado';
+    case 'failed':
+      return 'Falló';
     case 'review_required':
       return 'Requiere revisión';
     case 'noop':
@@ -26,6 +28,8 @@ function statusTone(status: string): string {
     case 'ready':
     case 'applied':
       return '#00b398';
+    case 'failed':
+      return '#c4365a';
     case 'review_required':
       return '#c8a064';
     case 'noop':
@@ -119,17 +123,20 @@ export function MigrationsPage() {
     try {
       const response = await runDatabaseMaintenance({ seeds: selectedSeeds, allowRisky });
       setRunResult(response);
-      setPlan({
-        migration: {
-          status: response.migration.status === 'applied' ? 'noop' : response.migration.status,
-          filePath: response.migration.filePath,
-          migrationName: response.migration.migrationName,
-          upQueries: response.migration.upQueries,
-          downQueries: response.migration.downQueries,
-          riskyQueries: response.migration.riskyQueries,
-        },
-        availableSeeds: response.availableSeeds,
-      });
+
+      if (response.migration.status !== 'failed') {
+        setPlan({
+          migration: {
+            status: response.migration.status === 'applied' ? 'noop' : response.migration.status,
+            filePath: response.migration.filePath,
+            migrationName: response.migration.migrationName,
+            upQueries: response.migration.upQueries,
+            downQueries: response.migration.downQueries,
+            riskyQueries: response.migration.riskyQueries,
+          },
+          availableSeeds: response.availableSeeds,
+        });
+      }
     } catch (runError) {
       setError(runError instanceof Error ? runError.message : 'No se pudo ejecutar la mantenimiento');
     } finally {
@@ -285,6 +292,27 @@ export function MigrationsPage() {
               <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#001e39' }}>Última ejecución</p>
               <p style={{ margin: 0, fontSize: 13, color: '#617183', lineHeight: 1.6 }}>{statusLabel(runResult.migration.status)}</p>
               <p style={{ margin: '6px 0 0', fontSize: 12, color: '#617183' }}>{runResult.seeds.filter((seed) => seed.status === 'applied').length} seeds aplicados</p>
+              {runResult.error ? (
+                <div style={{ marginTop: 12, borderRadius: 12, border: '1px solid rgba(196, 54, 90, 0.18)', background: '#fff5f7', padding: 12, color: '#a42f4e' }}>
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.8 }}>Error detectado</p>
+                  <p style={{ margin: '6px 0 0', fontSize: 13, fontWeight: 700 }}>{runResult.error.phase}</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 13, lineHeight: 1.5 }}>{runResult.error.message}</p>
+                  {runResult.error.details ? <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', fontSize: 12, lineHeight: 1.5, overflowX: 'auto' }}>{runResult.error.details}</pre> : null}
+                  {runResult.error.stack ? <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', fontSize: 11, lineHeight: 1.45, overflowX: 'auto', opacity: 0.9 }}>{runResult.error.stack}</pre> : null}
+                </div>
+              ) : null}
+              {runResult.seeds.some((seed) => seed.status === 'failed') ? (
+                <div style={{ marginTop: 12, borderRadius: 12, border: '1px solid rgba(196, 54, 90, 0.18)', background: '#fff5f7', padding: 12, color: '#a42f4e' }}>
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.8 }}>Seed fallido</p>
+                  {runResult.seeds.filter((seed) => seed.status === 'failed').map((seed) => (
+                    <div key={seed.seed} style={{ marginTop: 8 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>{seed.seed}</p>
+                      {seed.error ? <p style={{ margin: '4px 0 0', fontSize: 13, lineHeight: 1.5 }}>{seed.error}</p> : null}
+                      {seed.details ? <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', fontSize: 11, lineHeight: 1.45, overflowX: 'auto' }}>{seed.details}</pre> : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ) : null}
         </aside>

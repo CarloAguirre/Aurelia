@@ -9,6 +9,7 @@ type ApiEnv = {
     password: string;
     name: string;
     synchronize: boolean;
+    ssl: boolean;
   };
   cors: {
     origins: string[];
@@ -61,6 +62,14 @@ function readBoolean(source: EnvSource, name: string): boolean {
   throw new Error(`Environment variable ${name} must be either true or false`);
 }
 
+function readOptionalBoolean(source: EnvSource, name: string, defaultValue: boolean): boolean {
+  const raw = source[name]?.trim();
+  if (!raw) return defaultValue;
+  if (raw === 'true') return true;
+  if (raw === 'false') return false;
+  throw new Error(`Environment variable ${name} must be either true or false`);
+}
+
 function readCsv(source: EnvSource, name: string): string[] {
   const values = readRequiredString(source, name)
     .split(',')
@@ -89,6 +98,7 @@ export function readApiEnv(source: EnvSource = process.env): ApiEnv {
       password: readRequiredString(source, 'DB_PASSWORD'),
       name: readRequiredString(source, 'DB_NAME'),
       synchronize: readBoolean(source, 'DB_SYNCHRONIZE'),
+      ssl: readOptionalBoolean(source, 'DB_SSL', false),
     },
     cors: {
       origins: readCsv(source, 'CORS_ORIGINS'),

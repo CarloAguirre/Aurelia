@@ -116,12 +116,28 @@ export function MigrationsPage() {
     await executeMaintenance(true);
   }
 
-  async function executeMaintenance(allowRisky: boolean) {
+  async function handleResetAndRunMaintenance() {
+    const confirmation = window.prompt('Esto borrara TODO el esquema public de DEV. Escribe RESET_DEV_SCHEMA para confirmar.');
+    if (confirmation !== 'RESET_DEV_SCHEMA') {
+      setError('Confirmacion invalida. No se ejecuto el reset.');
+      return;
+    }
+
+    await executeMaintenance(false, {
+      resetSchema: true,
+      resetConfirmation: confirmation,
+    });
+  }
+
+  async function executeMaintenance(
+    allowRisky: boolean,
+    extraPayload?: { resetSchema?: boolean; resetConfirmation?: string },
+  ) {
     setLoadingRun(true);
     setError(null);
 
     try {
-      const response = await runDatabaseMaintenance({ seeds: selectedSeeds, allowRisky });
+      const response = await runDatabaseMaintenance({ seeds: selectedSeeds, allowRisky, ...extraPayload });
       setRunResult(response);
 
       if (response.migration.status !== 'failed') {
@@ -267,6 +283,14 @@ export function MigrationsPage() {
             <button type="button" onClick={handleRunMaintenance} disabled={loadingRun} style={{ height: 46, borderRadius: 14, border: 'none', background: 'linear-gradient(135deg, #00b398 0%, #24588b 100%)', color: '#ffffff', fontWeight: 800, cursor: 'pointer', boxShadow: '0 12px 24px rgba(0, 179, 152, 0.2)' }}>
               {loadingRun ? 'Ejecutando...' : 'Ejecutar mantenimiento'}
             </button>
+            <button
+              type="button"
+              onClick={handleResetAndRunMaintenance}
+              disabled={loadingRun}
+              style={{ height: 44, borderRadius: 14, border: '1px solid rgba(196, 54, 90, 0.25)', background: '#fff6f8', color: '#c4365a', fontWeight: 800, cursor: 'pointer' }}
+            >
+              {loadingRun ? 'Reseteando schema...' : 'Reset DEV + migrar + seeds'}
+            </button>
             {activePlan?.migration.status === 'review_required' ? (
               <button
                 type="button"
@@ -279,6 +303,9 @@ export function MigrationsPage() {
             ) : null}
             <p style={{ margin: 0, color: '#617183', fontSize: 12, lineHeight: 1.55 }}>
               Si el backend detecta cambios seguros, aplicará la migration y luego correrá los seeds seleccionados.
+            </p>
+            <p style={{ margin: 0, color: '#c4365a', fontSize: 12, lineHeight: 1.55 }}>
+              El boton de reset esta pensado solo para DEV cuando el esquema quedo en estado parcial. Borra todo el schema public y vuelve a reconstruirlo.
             </p>
             {activePlan?.migration.status === 'review_required' ? (
               <p style={{ margin: 0, color: '#c4365a', fontSize: 12, lineHeight: 1.55 }}>

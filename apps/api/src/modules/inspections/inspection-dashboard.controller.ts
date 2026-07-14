@@ -11,6 +11,7 @@ import type {
 import { Repository } from 'typeorm';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { RequirePermissions } from '../auth/require-permissions.decorator';
+import { CompanyEntity } from '../organization/entities/company.entity';
 import { UserEntity } from '../users/entities/user.entity';
 import { InspectionDashboardService, type ManagementTableQuery } from './inspection-dashboard.service';
 import type { DashboardQuery } from './inspection-dashboard-period';
@@ -65,7 +66,7 @@ export class InspectionDashboardController {
         },
       },
     });
-    const companies = [row?.company, ...(row?.userCompanies ?? []).map((userCompany) => userCompany.company)].filter((company): company is NonNullable<typeof company> => Boolean(company));
+    const companies = [row?.company, ...(row?.userCompanies ?? []).map((userCompany) => userCompany.company)].filter((company): company is CompanyEntity => Boolean(company));
     if (companies.some((company) => this.isPrincipalCompany(company))) return query;
     const companyNames = Array.from(new Set(companies.map((company) => company.name.trim()).filter(Boolean)));
     if (companyNames.length === 0) return { ...query, company: '__sin_scope_eecc__' };
@@ -73,8 +74,7 @@ export class InspectionDashboardController {
     return { ...query, company: companyNames[0] };
   }
 
-  private isPrincipalCompany(company: UserEntity['company']): boolean {
-    if (!company) return false;
+  private isPrincipalCompany(company: CompanyEntity): boolean {
     const code = company.code?.trim().toUpperCase() ?? '';
     const name = company.name.trim().toLowerCase();
     return code === 'CORP' || company.isContractor === false || name.includes('gold field');

@@ -12,8 +12,7 @@
 # Secrets/variables necesarios en el Environment "dev" de GitHub:
 #   secrets.AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID   (OIDC)
 #   secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_DEV                          (deployment token del SWA de dev)
-#   secrets.DB_HOST / DB_PORT / DB_USERNAME / DB_PASSWORD / DB_NAME      (credenciales de PostgreSQL)
-#   secrets.DB_SSL                                                        (usar true en Azure PostgreSQL)
+#   secrets.DEPLOY_ADMIN_EMAIL / DEPLOY_ADMIN_PASSWORD                   (login técnico para correr maintenance)
 # El SP de OIDC necesita permiso de deploy sobre el App Service (Website Contributor o Contributor).
 #
 # 👉 Todo esto (federated credential + Environment + los 4 secrets) lo deja listo, en el repo de la app,
@@ -47,6 +46,8 @@ jobs:
   deploy-backend:
     runs-on: ubuntu-latest
     environment: dev
+    env:
+      API_BASE_URL: "https://api-aurelia-dev.kabeli.cl/api"
     steps:
       - uses: actions/checkout@v4
 
@@ -91,29 +92,27 @@ jobs:
           app-name: app-gf-aurelia-back-dev-001
           package: ./deploy
 
-      - name: Run DB migrations + seed base
-        env:
-          DB_HOST: ${{ secrets.DB_HOST }}
-          DB_PORT: ${{ secrets.DB_PORT }}
-          DB_USERNAME: ${{ secrets.DB_USERNAME }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          DB_NAME: ${{ secrets.DB_NAME }}
-          DB_SSL: ${{ secrets.DB_SSL }}
-          DB_SYNCHRONIZE: "false"
-          PORT: "3000"
-          CORS_ORIGINS: "http://localhost"
-          API_TOKEN_KEY: "ci-bootstrap-token-key-32chars-min"
-          API_TOKEN_TTL_SECONDS: "3600"
-          API_SESSION_TTL_SECONDS: "2592000"
-          API_RATE_LIMIT_STORE: "memory"
-          API_RATE_LIMIT_WINDOW_MS: "60000"
-          API_RATE_LIMIT_MAX: "180"
-          API_LOGIN_PASSWORD: "ci-bootstrap-login"
-          AURELIA_DEMO_USER_PASSWORD: "ci-bootstrap-demo"
-          ANTHROPIC_API_KEY: ""
+      - name: Run DB maintenance (migrations + seed base)
+        shell: bash
         run: |
-          pnpm --filter api migration:run
-          pnpm --filter api seed
+          set -euo pipefail
+
+          LOGIN_RESPONSE=$(curl -sS -X POST "${API_BASE_URL}/auth/login" \
+            -H "Content-Type: application/json" \
+            -d "{\"email\":\"${{ secrets.DEPLOY_ADMIN_EMAIL }}\",\"password\":\"${{ secrets.DEPLOY_ADMIN_PASSWORD }}\"}")
+
+          TOKEN=$(python3 -c "import sys, json; print(json.load(sys.stdin).get('token', ''))" <<< "${LOGIN_RESPONSE}")
+
+          if [ -z "${TOKEN}" ]; then
+            echo "No se pudo obtener token de login para maintenance"
+            echo "Respuesta login: ${LOGIN_RESPONSE}"
+            exit 1
+          fi
+
+          curl -sS -f -X POST "${API_BASE_URL}/admin/database/maintenance" \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{"allowRisky":false,"seeds":["phase1"]}'
 
       # ⚠️ Con "deploy --prod ./deploy", wwwroot pasa a ser la RAÍZ del bundle (ya es apps/api),
       #    por eso el startup NO hace "cd apps/api". El tfvars de este repo usa (Opción A):

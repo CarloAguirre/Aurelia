@@ -109,6 +109,23 @@ jobs:
           DB_NAME=$(az webapp config appsettings list -g "${RESOURCE_GROUP}" -n "${APP_NAME}" --query "[?name=='DB_NAME'].value | [0]" -o tsv)
           DB_SSL=$(az webapp config appsettings list -g "${RESOURCE_GROUP}" -n "${APP_NAME}" --query "[?name=='DB_SSL'].value | [0]" -o tsv)
 
+          resolve_keyvault_reference() {
+            local value="$1"
+            if [[ "$value" =~ ^@Microsoft.KeyVault\(SecretUri=(.*)\)$ ]]; then
+              local secret_uri="${BASH_REMATCH[1]}"
+              az keyvault secret show --id "$secret_uri" --query value -o tsv
+            else
+              printf '%s' "$value"
+            fi
+          }
+
+          DB_HOST=$(resolve_keyvault_reference "${DB_HOST}")
+          DB_PORT=$(resolve_keyvault_reference "${DB_PORT}")
+          DB_USERNAME=$(resolve_keyvault_reference "${DB_USERNAME}")
+          DB_PASSWORD=$(resolve_keyvault_reference "${DB_PASSWORD}")
+          DB_NAME=$(resolve_keyvault_reference "${DB_NAME}")
+          DB_SSL=$(resolve_keyvault_reference "${DB_SSL}")
+
           if [ -z "${DB_HOST}" ] || [ -z "${DB_PORT}" ] || [ -z "${DB_USERNAME}" ] || [ -z "${DB_PASSWORD}" ] || [ -z "${DB_NAME}" ]; then
             echo "Faltan DB_* en App Service ${APP_NAME}"
             exit 1

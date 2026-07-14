@@ -14,6 +14,7 @@ type SqlQuery = {
 type MaintenancePhase =
   | 'connect'
   | 'lock'
+  | 'prerequisites'
   | 'plan'
   | 'review'
   | 'artifact'
@@ -123,6 +124,9 @@ export class DatabaseMaintenanceService {
       this.logger.log('Acquiring maintenance advisory lock');
       await maintenanceRunner.query(`SELECT pg_advisory_lock(hashtext('aurelia_database_maintenance'))`);
       lockAcquired = true;
+
+      phase = 'prerequisites';
+      await this.ensureDatabasePrerequisites(maintenanceRunner);
 
       phase = 'plan';
       schemaPlan = await this.createSchemaPlan();
@@ -235,6 +239,12 @@ export class DatabaseMaintenanceService {
       upQueries: sql.upQueries,
       downQueries: sql.downQueries,
     };
+  }
+
+  private async ensureDatabasePrerequisites(queryRunner: QueryRunner): Promise<void> {
+    this.logger.log('Ensuring required database extensions');
+    await queryRunner.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+    await queryRunner.query('CREATE EXTENSION IF NOT EXISTS "citext"');
   }
 
   private buildMigrationArtifact(): { migrationName: string; filePath: string } {

@@ -243,8 +243,30 @@ export class DatabaseMaintenanceService {
 
   private async ensureDatabasePrerequisites(queryRunner: QueryRunner): Promise<void> {
     this.logger.log('Ensuring required database extensions');
-    await queryRunner.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
     await queryRunner.query('CREATE EXTENSION IF NOT EXISTS "citext"');
+
+    // Azure Database for PostgreSQL may block uuid-ossp. Provide a local compatible function instead.
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1
+          FROM pg_proc p
+          JOIN pg_namespace n ON n.oid = p.pronamespace
+          WHERE p.proname = 'uuid_generate_v4'
+            AND n.nspname = 'public'
+        ) THEN
+          CREATE FUNCTION public.uuid_generate_v4()
+          RETURNS uuid
+          LANGUAGE sql
+          VOLATILE
+          AS $fn$
+            SELECT md5(random()::text || clock_timestamp()::text)::uuid;
+          $fn$;
+        END IF;
+      END
+      $$;
+    `);
   }
 
   private buildMigrationArtifact(): { migrationName: string; filePath: string } {

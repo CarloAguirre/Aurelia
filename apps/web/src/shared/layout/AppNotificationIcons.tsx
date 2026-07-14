@@ -3,8 +3,8 @@ type IconProps = {
   tone?: string;
 };
 
-export function NotificationCloseIcon({ className = 'size-[32px]' }: IconProps) {
-  return <svg className={className} viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M8 8L24 24M24 8L8 24" stroke="white" strokeWidth="2" strokeLinecap="round" /></svg>;
+export function NotificationCloseIcon({ className = 'size-[32px]', tone = 'white' }: IconProps) {
+  return <svg className={className} viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M8 8L24 24M24 8L8 24" stroke={tone} strokeWidth="2" strokeLinecap="round" /></svg>;
 }
 
 export function NotificationAssignedIcon({ className = 'h-[16px] w-[20px]' }: IconProps) {

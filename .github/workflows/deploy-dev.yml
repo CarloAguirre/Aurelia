@@ -74,7 +74,7 @@ jobs:
       # Bundle self-contained y podado a prod-deps (evita subir devDependencies).
       # Genera ./deploy con la API + su node_modules de producción.
       - name: Empaquetar API (deploy --prod)
-        run: pnpm --filter api deploy --prod --legacy ./deploy
+        run: pnpm --filter api deploy --prod ./deploy
 
       - name: Azure login (OIDC)
         uses: azure/login@v2

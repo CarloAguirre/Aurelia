@@ -89,7 +89,7 @@ jobs:
           app-name: app-gf-aurelia-back-dev-001
           package: ./deploy
 
-      - name: Configure startup command (seed + start)
+      - name: Configure startup command (start only)
         shell: bash
         run: |
           set -euo pipefail
@@ -105,7 +105,7 @@ jobs:
           az webapp config set \
             --resource-group "${RESOURCE_GROUP}" \
             --name "${APP_NAME}" \
-            --startup-file "npm run seed && npm run start:prod"
+            --startup-file "npm run start:prod"
 
       # ⚠️ Con "deploy --prod ./deploy", wwwroot pasa a ser la RAÍZ del bundle (ya es apps/api),
       #    por eso el startup NO hace "cd apps/api". El tfvars de este repo usa (Opción A):

@@ -16,6 +16,7 @@ import { InspectionTableActionMenuBridge } from './modules/inspections/component
 import { ManualExecutionCancelConfirmBridge } from './modules/inspections/components/ManualExecutionCancelConfirmBridge';
 import { router } from './routes/router';
 import './modules/dashboard/dashboard-figma-alignment.css';
+import './shared/layout/app-notifications-state.css';
 
 const queryClient = new QueryClient();
 const bridgeKey = 'aurelia';

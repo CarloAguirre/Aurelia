@@ -89,7 +89,7 @@ jobs:
           app-name: app-gf-aurelia-back-dev-001
           package: ./deploy
 
-      - name: Configure startup command (migration + start)
+      - name: Configure startup command (seed + start)
         shell: bash
         run: |
           set -euo pipefail
@@ -105,7 +105,25 @@ jobs:
           az webapp config set \
             --resource-group "${RESOURCE_GROUP}" \
             --name "${APP_NAME}" \
-            --startup-file "npm run migration:run && npm run start:prod"
+            --startup-file "npm run seed && npm run start:prod"
+
+      - name: Verify backend health endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for i in {1..24}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://api-aurelia-dev.kabeli.cl/api/health" || true)
+            if [ "${STATUS}" = "200" ]; then
+              echo "Backend healthy"
+              exit 0
+            fi
+            echo "Intento ${i}/24 - /api/health devolvio ${STATUS:-N/A}"
+            sleep 10
+          done
+
+          echo "Backend no responde healthy despues del deploy"
+          exit 1
 
       # ⚠️ Con "deploy --prod ./deploy", wwwroot pasa a ser la RAÍZ del bundle (ya es apps/api),
       #    por eso el startup NO hace "cd apps/api". El tfvars de este repo usa (Opción A):

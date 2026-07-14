@@ -11,6 +11,7 @@ import { SectorEntity } from '../organization/entities/sector.entity';
 import { UserEntity } from '../users/entities/user.entity';
 import { NotificationRecipientEntity } from './entities/notification-recipient.entity';
 import { NotificationEntity } from './entities/notification.entity';
+import { NotificationRecipientStateService } from './notification-recipient-state.service';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
 
@@ -31,7 +32,7 @@ import { NotificationsService } from './notifications.service';
     ]),
   ],
   controllers: [NotificationsController],
-  providers: [NotificationsService],
+  providers: [NotificationsService, NotificationRecipientStateService],
   exports: [NotificationsService],
 })
 export class NotificationsModule {}

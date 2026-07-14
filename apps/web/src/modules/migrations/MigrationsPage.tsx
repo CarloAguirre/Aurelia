@@ -8,6 +8,11 @@ import {
   type DatabaseMaintenanceRunResponse,
 } from '../../shared/services/database-maintenance.service';
 
+type RuntimeAuthUser = {
+  role?: string;
+  roles?: string[];
+};
+
 function statusLabel(status: string): string {
   switch (status) {
     case 'ready':
@@ -37,9 +42,13 @@ function statusTone(status: string): string {
   }
 }
 
+function userRolesOf(user: RuntimeAuthUser | null | undefined): string[] {
+  return [...new Set([...(user?.roles ?? []), user?.role].filter((role): role is string => Boolean(role)))];
+}
+
 export function MigrationsPage() {
-  const user = useSessionStore((state) => state.user);
-  const isAdmin = user?.roles?.includes('ADMIN') ?? false;
+  const user = useSessionStore((state) => state.user) as RuntimeAuthUser | null;
+  const isAdmin = userRolesOf(user).includes('ADMIN');
   const [plan, setPlan] = useState<DatabaseMaintenancePlanResponse | null>(null);
   const [runResult, setRunResult] = useState<DatabaseMaintenanceRunResponse | null>(null);
   const [selectedSeeds, setSelectedSeeds] = useState<string[]>([]);

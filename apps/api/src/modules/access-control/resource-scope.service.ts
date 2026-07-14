@@ -45,7 +45,7 @@ export class ResourceScopeService {
 
   async canReviewInspectionFindings(user: AccessTokenPayload): Promise<boolean> {
     const scope = await this.getUserScope(user);
-    return scope.isAdmin || scope.isPrincipalCompanyUser || user.roles.includes('SUPERVISOR') || user.roles.includes('APPROVER');
+    return scope.isAdmin || scope.isPrincipalCompanyUser;
   }
 
   async filterAllowed<T extends ScopedResource>(user: AccessTokenPayload, resources: T[]): Promise<T[]> {

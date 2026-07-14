@@ -2,17 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { AccessTokenPayload } from '../auth/jwt-token.service';
+import { CompanyEntity } from '../organization/entities/company.entity';
 import { UserEntity } from '../users/entities/user.entity';
 
 export interface ScopedResource {
   companyId?: string | null;
   areaId?: string | null;
-}
-
-interface ScopedCompany {
-  code: string | null;
-  name: string;
-  isContractor: boolean;
 }
 
 interface UserScope {
@@ -46,6 +41,11 @@ export class ResourceScopeService {
   async canAccessInspection(user: AccessTokenPayload, resource: ScopedResource): Promise<boolean> {
     const scope = await this.getUserScope(user);
     return this.isAllowed(scope, resource, { ignoreCompanyScope: scope.isPrincipalCompanyUser });
+  }
+
+  async canReviewInspectionFindings(user: AccessTokenPayload): Promise<boolean> {
+    const scope = await this.getUserScope(user);
+    return scope.isAdmin || scope.isPrincipalCompanyUser || user.roles.includes('SUPERVISOR') || user.roles.includes('APPROVER');
   }
 
   async filterAllowed<T extends ScopedResource>(user: AccessTokenPayload, resources: T[]): Promise<T[]> {
@@ -83,7 +83,7 @@ export class ResourceScopeService {
     const companyIds = new Set<string>();
     const areaIds = new Set<string>();
     const companies = [row?.company, ...(row?.userCompanies ?? []).map((userCompany) => userCompany.company)].filter(
-      (company): company is ScopedCompany => Boolean(company),
+      (company): company is CompanyEntity => Boolean(company),
     );
 
     if (row?.companyId) companyIds.add(row.companyId);
@@ -99,7 +99,7 @@ export class ResourceScopeService {
     };
   }
 
-  private isPrincipalCompany(company: ScopedCompany): boolean {
+  private isPrincipalCompany(company: CompanyEntity): boolean {
     const code = company.code?.trim().toUpperCase() ?? '';
     const name = company.name.trim().toLowerCase();
     return code === 'CORP' || company.isContractor === false || name.includes('gold field');

@@ -84,6 +84,7 @@ export const AppDataSource = new DataSource({
   username: env.database.username,
   password: env.database.password,
   database: env.database.name,
+  ssl: env.database.ssl ? { rejectUnauthorized: false } : false,
   entities: [
     BusinessUnitEntity,
     GerenciaEntity,

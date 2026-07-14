@@ -12,8 +12,6 @@
 # Secrets/variables necesarios en el Environment "dev" de GitHub:
 #   secrets.AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID   (OIDC)
 #   secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_DEV                          (deployment token del SWA de dev)
-#   secrets.DB_HOST / DB_PORT / DB_USERNAME / DB_PASSWORD / DB_NAME      (credenciales PostgreSQL)
-#   secrets.DB_SSL                                                        (true para Azure PostgreSQL)
 # El SP de OIDC necesita permiso de deploy sobre el App Service (Website Contributor o Contributor).
 #
 # 👉 Todo esto (federated credential + Environment + los 4 secrets) lo deja listo, en el repo de la app,
@@ -91,33 +89,23 @@ jobs:
           app-name: app-gf-aurelia-back-dev-001
           package: ./deploy
 
-      - name: Run DB migrations + seed base
+      - name: Configure startup command (migration + start)
         shell: bash
-        env:
-          DB_HOST: ${{ secrets.DB_HOST }}
-          DB_PORT: ${{ secrets.DB_PORT }}
-          DB_USERNAME: ${{ secrets.DB_USERNAME }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          DB_NAME: ${{ secrets.DB_NAME }}
-          DB_SSL: ${{ secrets.DB_SSL }}
         run: |
           set -euo pipefail
 
-          export DB_SYNCHRONIZE="false"
-          export PORT="3000"
-          export CORS_ORIGINS="http://localhost"
-          export API_TOKEN_KEY="ci-bootstrap-token-key-32chars-min"
-          export API_TOKEN_TTL_SECONDS="3600"
-          export API_SESSION_TTL_SECONDS="2592000"
-          export API_RATE_LIMIT_STORE="memory"
-          export API_RATE_LIMIT_WINDOW_MS="60000"
-          export API_RATE_LIMIT_MAX="180"
-          export API_LOGIN_PASSWORD="ci-bootstrap-login"
-          export AURELIA_DEMO_USER_PASSWORD="ci-bootstrap-demo"
-          export ANTHROPIC_API_KEY=""
+          APP_NAME="app-gf-aurelia-back-dev-001"
+          RESOURCE_GROUP=$(az webapp list --query "[?name=='${APP_NAME}'].resourceGroup | [0]" -o tsv)
 
-          pnpm --filter api migration:run
-          pnpm --filter api seed
+          if [ -z "${RESOURCE_GROUP}" ]; then
+            echo "No se pudo resolver resource group para ${APP_NAME}"
+            exit 1
+          fi
+
+          az webapp config set \
+            --resource-group "${RESOURCE_GROUP}" \
+            --name "${APP_NAME}" \
+            --startup-file "npm run migration:run && npm run start:prod"
 
       # ⚠️ Con "deploy --prod ./deploy", wwwroot pasa a ser la RAÍZ del bundle (ya es apps/api),
       #    por eso el startup NO hace "cd apps/api". El tfvars de este repo usa (Opción A):

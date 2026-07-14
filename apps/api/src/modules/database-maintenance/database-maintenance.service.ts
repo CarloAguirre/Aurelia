@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { DataSource, Migration, MigrationExecutor, QueryRunner } from 'typeorm';
 import { mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { tmpdir } from 'os';
 import { availableSeedNames, isSeedName, runSeedByName } from '../../database/seeds/seed-registry';
 import { RunDatabaseMaintenanceDto } from './dto/run-database-maintenance.dto';
 
@@ -168,7 +169,7 @@ export class DatabaseMaintenanceService {
   private buildMigrationArtifact(): { migrationName: string; filePath: string } {
     const timestamp = Date.now();
     const migrationName = `AutoSchemaSync${timestamp}`;
-    const migrationFolder = join(process.cwd(), 'src', 'database', 'migrations', 'generated');
+    const migrationFolder = join(tmpdir(), 'aurelia-database-maintenance', 'generated');
     const filePath = join(migrationFolder, `${timestamp}-auto-schema-sync.ts`);
 
     return { migrationName, filePath };
@@ -177,7 +178,7 @@ export class DatabaseMaintenanceService {
   private writeMigrationArtifact(upQueries: SqlQuery[], downQueries: SqlQuery[]): { migrationName: string; filePath: string } {
     const artifact = this.buildMigrationArtifact();
 
-    const migrationFolder = join(process.cwd(), 'src', 'database', 'migrations', 'generated');
+    const migrationFolder = join(tmpdir(), 'aurelia-database-maintenance', 'generated');
     mkdirSync(migrationFolder, { recursive: true });
     writeFileSync(artifact.filePath, this.renderMigrationFile(artifact.migrationName, upQueries, downQueries), 'utf8');
 

@@ -338,8 +338,15 @@ export function AppNotificationsPanel({ open, onClose }: { open: boolean; onClos
           </div>
           <button type="button" className="flex size-[32px] items-center justify-center" onClick={onClose} aria-label="Cerrar notificaciones"><NotificationCloseIcon /></button>
         </header>
-        <div className="flex h-[35px] shrink-0 items-stretch justify-center border-b-2 border-[#e3e3e3] bg-white">
-          <div className="flex min-w-[180px] items-center justify-center border-b-2 border-[#c8a064] font-['Inter:Semi_Bold',sans-serif] text-[12px] font-semibold leading-none text-[#8e6e3e]">{unreadNotifications.length > 0 ? `Sin leer (${unreadNotifications.length})` : 'Todas'}</div>
+        <div className="flex h-[35px] w-full shrink-0 items-stretch border-b-2 border-[#e3e3e3] bg-white">
+          {unreadNotifications.length > 0 ? (
+            <div className="flex w-full items-center justify-center gap-[8px] border-b-2 border-[#c8a064] font-['Inter:Semi_Bold',sans-serif] text-[12px] font-semibold leading-none text-[#8e6e3e]">
+              <span>Sin leer</span>
+              <span className="flex h-[16px] min-w-[16px] items-center justify-center rounded-full bg-[#BD3B5B] px-[5px] font-['Inter:Bold',sans-serif] text-[9px] font-bold leading-none text-white">{unreadNotifications.length}</span>
+            </div>
+          ) : (
+            <div className="flex w-full items-center justify-center border-b-2 border-[#c8a064] font-['Inter:Semi_Bold',sans-serif] text-[12px] font-semibold leading-none text-[#8e6e3e]">Todas</div>
+          )}
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto bg-[#f7f7f7] px-[14px] py-[10px]">
           <div className="flex w-full flex-col gap-[8px]">

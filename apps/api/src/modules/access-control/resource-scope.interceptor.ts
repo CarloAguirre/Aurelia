@@ -14,7 +14,7 @@ import { IncidentEntity } from '../incidents/entities/incident.entity';
 import { InspectionEntity } from '../inspections/entities/inspection.entity';
 import { ResourceScopeService, ScopedResource } from './resource-scope.service';
 
-const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i;
 
 @Injectable()
 export class ResourceScopeInterceptor implements NestInterceptor {
@@ -40,7 +40,7 @@ export class ResourceScopeInterceptor implements NestInterceptor {
     const path = request.originalUrl.split('?')[0];
 
     if (request.method === 'GET' && path === '/api/inspections' && Array.isArray(body)) {
-      return this.resourceScope.filterAllowed(request.user, body.filter(this.isScopedResource));
+      return this.resourceScope.filterAllowedInspections(request.user, body.filter(this.isScopedResource));
     }
 
     if (request.method === 'GET' && path === '/api/incidents' && Array.isArray(body)) {
@@ -48,7 +48,7 @@ export class ResourceScopeInterceptor implements NestInterceptor {
     }
 
     if (this.isScopedResource(body)) {
-      const allowed = await this.resourceScope.canAccess(request.user, body);
+      const allowed = await this.canAccessResponse(request, body);
       if (!allowed) throw new ForbiddenException('Resource is outside user scope');
     }
 
@@ -62,20 +62,36 @@ export class ResourceScopeInterceptor implements NestInterceptor {
     const resource = segments[1];
     const resourceId = segments[2];
 
-    if (request.method === 'POST' && (path === '/api/inspections' || path === '/api/incidents') && this.isScopedResource(request.body)) {
+    if (request.method === 'POST' && path === '/api/inspections' && this.isScopedResource(request.body)) {
+      const allowed = await this.resourceScope.canAccessInspection(request.user, request.body);
+      if (!allowed) throw new ForbiddenException('Resource is outside user scope');
+    }
+
+    if (request.method === 'POST' && path === '/api/incidents' && this.isScopedResource(request.body)) {
       const allowed = await this.resourceScope.canAccess(request.user, request.body);
       if (!allowed) throw new ForbiddenException('Resource is outside user scope');
     }
 
     if (resource === 'inspections' && resourceId && uuidPattern.test(resourceId)) {
       const inspection = await this.inspections.findOneBy({ id: resourceId });
-      if (inspection) await this.assertAllowed(request, inspection);
+      if (inspection) await this.assertAllowedInspection(request, inspection);
     }
 
     if (resource === 'incidents' && resourceId && uuidPattern.test(resourceId)) {
       const incident = await this.incidents.findOneBy({ id: resourceId });
       if (incident) await this.assertAllowed(request, incident);
     }
+  }
+
+  private async canAccessResponse(request: AuthenticatedRequest & Request, resource: ScopedResource): Promise<boolean> {
+    const path = request.originalUrl.split('?')[0];
+    if (path.startsWith('/api/inspections')) return this.resourceScope.canAccessInspection(request.user, resource);
+    return this.resourceScope.canAccess(request.user, resource);
+  }
+
+  private async assertAllowedInspection(request: AuthenticatedRequest & Request, resource: ScopedResource): Promise<void> {
+    const allowed = await this.resourceScope.canAccessInspection(request.user, resource);
+    if (!allowed) throw new ForbiddenException('Resource is outside user scope');
   }
 
   private async assertAllowed(request: AuthenticatedRequest & Request, resource: ScopedResource): Promise<void> {

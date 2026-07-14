@@ -1,9 +1,9 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-import { DatabaseMaintenanceGuard } from './database-maintenance.guard';
+import { Body, Controller, Get, Post } from '@nestjs/common';
 import { DatabaseMaintenanceService } from './database-maintenance.service';
 import { RunDatabaseMaintenanceDto } from './dto/run-database-maintenance.dto';
+import { Public } from '../auth/public.decorator';
 
-@UseGuards(DatabaseMaintenanceGuard)
+@Public()
 @Controller('admin/database')
 export class DatabaseMaintenanceController {
   constructor(private readonly databaseMaintenanceService: DatabaseMaintenanceService) {}

@@ -19,6 +19,10 @@ export const router = createBrowserRouter([
     element: <LoginPage />,
   },
   {
+    path: '/migrations',
+    element: <MigrationsPage />,
+  },
+  {
     path: '/',
     element: (
       <RequireAuth>
@@ -36,7 +40,6 @@ export const router = createBrowserRouter([
       { path: 'critical-controls', element: <CriticalControlsPage /> },
       { path: 'reports', element: <ReportsPage /> },
       { path: 'admin', element: <AdminPage /> },
-      { path: 'migrations', element: <MigrationsPage /> },
     ],
   },
 ]);

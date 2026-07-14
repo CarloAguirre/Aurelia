@@ -10,6 +10,7 @@ import { InspectionAreaSectorFilterBridge } from './modules/inspections/componen
 import { InspectionClosedReassignLockBridge } from './modules/inspections/components/InspectionClosedReassignLockBridge';
 import { InspectionEvidenceImageSourceBridge } from './modules/inspections/components/InspectionEvidenceImageSourceBridge';
 import { InspectionEvidenceViewerBridge } from './modules/inspections/components/InspectionEvidenceViewerBridge';
+import { InspectionExecutedReviewRoleBridge } from './modules/inspections/components/InspectionExecutedReviewRoleBridge';
 import { InspectionFollowupProgressBridge } from './modules/inspections/components/InspectionFollowupProgressBridge';
 import { InspectionTableActionMenuBridge } from './modules/inspections/components/InspectionTableActionMenuBridge';
 import { ManualExecutionCancelConfirmBridge } from './modules/inspections/components/ManualExecutionCancelConfirmBridge';
@@ -34,6 +35,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       <InspectionEvidenceViewerBridge />
       <ManualExecutionCancelConfirmBridge />
       <InspectionTableActionMenuBridge />
+      <InspectionExecutedReviewRoleBridge />
     </QueryClientProvider>
   </React.StrictMode>,
 );

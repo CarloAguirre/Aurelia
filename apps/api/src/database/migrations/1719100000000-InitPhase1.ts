@@ -4,8 +4,54 @@ export class InitPhase11719100000000 implements MigrationInterface {
   name = 'InitPhase11719100000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
-    await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "citext"`);
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        BEGIN
+          CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+        EXCEPTION WHEN OTHERS THEN
+          NULL;
+        END;
+
+        IF NOT EXISTS (
+          SELECT 1
+          FROM pg_proc p
+          JOIN pg_namespace n ON n.oid = p.pronamespace
+          WHERE p.proname = 'uuid_generate_v4'
+            AND n.nspname = 'public'
+        ) THEN
+          CREATE FUNCTION public.uuid_generate_v4()
+          RETURNS uuid
+          LANGUAGE sql
+          VOLATILE
+          AS $fn$
+            SELECT md5(random()::text || clock_timestamp()::text)::uuid;
+          $fn$;
+        END IF;
+      END
+      $$;
+    `);
+
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        BEGIN
+          CREATE EXTENSION IF NOT EXISTS "citext";
+        EXCEPTION WHEN OTHERS THEN
+          NULL;
+        END;
+
+        IF NOT EXISTS (
+          SELECT 1
+          FROM pg_type t
+          JOIN pg_namespace n ON n.oid = t.typnamespace
+          WHERE t.typname = 'citext'
+        ) THEN
+          CREATE DOMAIN public.citext AS text;
+        END IF;
+      END
+      $$;
+    `);
 
     await queryRunner.query(`
       CREATE TYPE "record_status" AS ENUM ('active', 'inactive', 'archived')

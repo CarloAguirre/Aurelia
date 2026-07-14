@@ -1,7 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { useSessionStore } from '../../../shared/stores/session.store';
-import { InspectionDetailStatusRowIcon } from './InspectionDetailIcons';
 
 type RuntimeAuthUser = {
   email?: string;
@@ -18,14 +17,25 @@ function canReviewExecutedFindings(user: RuntimeAuthUser | null): boolean {
   const roles = userRolesOf(user);
   const email = user?.email?.trim().toLowerCase() ?? '';
   const companyName = user?.companyName?.trim().toLowerCase() ?? '';
-  return roles.some((role) => ['ADMIN', 'SUPERVISOR', 'APPROVER'].includes(role)) || email.endsWith('@goldfields.com') || companyName.includes('gold field');
+  return roles.includes('ADMIN') || email.endsWith('@goldfields.com') || companyName.includes('gold field');
+}
+
+function WaitingApprovalIcon() {
+  return (
+    <svg className="h-[11px] w-[13.75px] shrink-0" width="14" height="11" viewBox="0 0 14 11" fill="none" aria-hidden="true">
+      <circle cx="5.5" cy="5.5" r="5.5" fill="#E8A820" />
+      <path d="M5.5 2.55V5.5L7.55 6.65" stroke="white" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 function WaitingReviewRow() {
   return (
-    <div className="flex w-full items-center gap-[6px] rounded-[8px] bg-white px-[12px] py-[9px]">
-      <InspectionDetailStatusRowIcon status="open" className="h-[11px] w-[13.75px] shrink-0" />
-      <p className="whitespace-nowrap text-[11px] font-normal leading-none text-[#646464]">Esperando Aprobación o rechazo de observación</p>
+    <div className="relative shrink-0">
+      <div className="flex items-center gap-[6px] relative size-full">
+        <WaitingApprovalIcon />
+        <p className="whitespace-nowrap font-['Inter:Regular',sans-serif] text-[11px] font-normal leading-normal text-[#646464]">Esperando Aprobación o rechazo de observación</p>
+      </div>
     </div>
   );
 }
@@ -51,10 +61,10 @@ export function InspectionExecutedReviewRoleBridge() {
         if (row.dataset.executedReviewRoleBridge === 'waiting') return;
 
         row.dataset.executedReviewRoleBridge = 'waiting';
-        row.className = 'flex items-center gap-[8px] rounded-[8px] bg-white px-[12px] py-[9px]';
+        row.className = 'flex w-full items-center justify-between rounded-[8px] bg-white px-[12px] py-[9px]';
         row.replaceChildren();
         const mount = document.createElement('div');
-        mount.className = 'w-full';
+        mount.className = 'relative shrink-0';
         row.appendChild(mount);
         const root = createRoot(mount);
         roots.set(row, root);

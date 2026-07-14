@@ -9,4 +9,12 @@ export class RunDatabaseMaintenanceDto {
   @IsOptional()
   @IsBoolean()
   allowRisky?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  resetSchema?: boolean;
+
+  @IsOptional()
+  @IsString()
+  resetConfirmation?: string;
 }

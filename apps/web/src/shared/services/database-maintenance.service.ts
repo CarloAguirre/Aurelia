@@ -39,6 +39,8 @@ export interface DatabaseMaintenanceRunResponse {
 export interface RunDatabaseMaintenanceRequest {
   seeds?: string[];
   allowRisky?: boolean;
+  resetSchema?: boolean;
+  resetConfirmation?: string;
 }
 
 export async function getDatabaseMaintenancePlan(): Promise<DatabaseMaintenancePlanResponse> {

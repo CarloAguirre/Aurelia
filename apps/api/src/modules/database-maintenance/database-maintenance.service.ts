@@ -14,6 +14,7 @@ type SqlQuery = {
 type MaintenancePhase =
   | 'connect'
   | 'lock'
+  | 'reset'
   | 'prerequisites'
   | 'plan'
   | 'review'
@@ -70,6 +71,7 @@ export interface DatabaseMaintenancePlanResult {
 @Injectable()
 export class DatabaseMaintenanceService {
   private readonly logger = new Logger(DatabaseMaintenanceService.name);
+  private static readonly RESET_CONFIRMATION = 'RESET_DEV_SCHEMA';
 
   constructor(private readonly dataSource: DataSource) {}
 
@@ -111,11 +113,34 @@ export class DatabaseMaintenanceService {
   async run(dto: RunDatabaseMaintenanceDto): Promise<DatabaseMaintenanceResult> {
     const requestedSeeds = this.normalizeSeeds(dto.seeds ?? []);
     const allowRisky = dto.allowRisky === true;
-    this.logger.log(`Running database maintenance with seeds=[${requestedSeeds.join(', ')}], allowRisky=${allowRisky}`);
+    const resetSchema = dto.resetSchema === true;
+    this.logger.log(`Running database maintenance with seeds=[${requestedSeeds.join(', ')}], allowRisky=${allowRisky}, resetSchema=${resetSchema}`);
+
+    if (resetSchema && dto.resetConfirmation !== DatabaseMaintenanceService.RESET_CONFIRMATION) {
+      return {
+        migration: {
+          status: 'failed',
+          filePath: null,
+          migrationName: null,
+          upQueries: 0,
+          downQueries: 0,
+          riskyQueries: [],
+        },
+        seeds: requestedSeeds.map((seed) => ({ seed, status: 'skipped' })),
+        availableSeeds: availableSeedNames,
+        error: {
+          phase: 'reset',
+          message: `Reset confirmation mismatch. Send resetConfirmation="${DatabaseMaintenanceService.RESET_CONFIRMATION}" to continue.`,
+        },
+      };
+    }
+
     const maintenanceRunner = this.dataSource.createQueryRunner();
     let lockAcquired = false;
     let schemaPlan: { upQueries: SqlQuery[]; downQueries: SqlQuery[] } | null = null;
     let migrationArtifact: { migrationName: string; filePath: string } | null = null;
+    let appliedMigrationsCount = 0;
+    let lastAppliedMigration: string | null = null;
     let phase: MaintenancePhase = 'connect';
 
     try {
@@ -127,6 +152,38 @@ export class DatabaseMaintenanceService {
 
       phase = 'prerequisites';
       await this.ensureDatabasePrerequisites(maintenanceRunner);
+
+      if (resetSchema) {
+        phase = 'reset';
+        this.logger.warn('Reset schema requested. Dropping and recreating public schema.');
+        await this.resetPublicSchema(maintenanceRunner);
+
+        phase = 'prerequisites';
+        await this.ensureDatabasePrerequisites(maintenanceRunner);
+
+        phase = 'migration';
+        const appliedMigrations = await this.dataSource.runMigrations({ transaction: 'all' });
+        appliedMigrationsCount = appliedMigrations.length;
+        lastAppliedMigration = appliedMigrations.length > 0 ? appliedMigrations[appliedMigrations.length - 1].name : null;
+        this.logger.log(`Versioned migrations applied after reset: ${appliedMigrationsCount}`);
+
+        phase = 'seed';
+        const seeds = await this.runSeeds(requestedSeeds);
+
+        return {
+          migration: {
+            status: 'applied',
+            filePath: null,
+            migrationName: lastAppliedMigration,
+            upQueries: appliedMigrationsCount,
+            downQueries: 0,
+            riskyQueries: [],
+          },
+          seeds,
+          availableSeeds: availableSeedNames,
+          error: null,
+        };
+      }
 
       phase = 'plan';
       schemaPlan = await this.createSchemaPlan();
@@ -211,8 +268,8 @@ export class DatabaseMaintenanceService {
         migration: {
           status: 'failed',
           filePath: migrationArtifact?.filePath ?? null,
-          migrationName: migrationArtifact?.migrationName ?? null,
-          upQueries: schemaPlan?.upQueries.length ?? 0,
+          migrationName: migrationArtifact?.migrationName ?? lastAppliedMigration,
+          upQueries: schemaPlan?.upQueries.length ?? appliedMigrationsCount,
           downQueries: schemaPlan?.downQueries.length ?? 0,
           riskyQueries: schemaPlan ? this.detectRiskyQueries(schemaPlan.upQueries) : [],
         },
@@ -292,6 +349,13 @@ export class DatabaseMaintenanceService {
       END
       $$;
     `);
+  }
+
+  private async resetPublicSchema(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query('DROP SCHEMA IF EXISTS public CASCADE');
+    await queryRunner.query('CREATE SCHEMA public');
+    await queryRunner.query('GRANT ALL ON SCHEMA public TO CURRENT_USER');
+    await queryRunner.query('GRANT ALL ON SCHEMA public TO public');
   }
 
   private buildMigrationArtifact(): { migrationName: string; filePath: string } {

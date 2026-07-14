@@ -10,9 +10,12 @@
 # (backend_app_command_line = "corepack prepare pnpm@9.12.0 --activate && pnpm start:prod").
 #
 # Secrets/variables necesarios en el Environment "dev" de GitHub:
-#   secrets.AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID   (OIDC; ya existen para la infra)
+#   secrets.AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_SUBSCRIPTION_ID   (OIDC)
 #   secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_DEV                          (deployment token del SWA de dev)
 # El SP de OIDC necesita permiso de deploy sobre el App Service (Website Contributor o Contributor).
+#
+# 👉 Todo esto (federated credential + Environment + los 4 secrets) lo deja listo, en el repo de la app,
+#    el script del repo de infra:  scripts/paso-13-app-deploy.sh dev 001 <owner/repo>  (o su .ps1).
 
 name: deploy-dev
 
@@ -50,7 +53,9 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Activar pnpm (pineado)
-        run: corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+        run: |
+          corepack enable
+          corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
 
       - name: Cache de pnpm
         uses: actions/cache@v4
@@ -107,7 +112,9 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Activar pnpm (pineado)
-        run: corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
+        run: |
+          corepack enable
+          corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
 
       - name: Cache de pnpm
         uses: actions/cache@v4

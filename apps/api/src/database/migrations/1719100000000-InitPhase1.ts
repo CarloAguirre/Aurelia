@@ -13,21 +13,20 @@ export class InitPhase11719100000000 implements MigrationInterface {
           NULL;
         END;
 
-        IF NOT EXISTS (
-          SELECT 1
-          FROM pg_proc p
-          JOIN pg_namespace n ON n.oid = p.pronamespace
-          WHERE p.proname = 'uuid_generate_v4'
-            AND n.nspname = 'public'
-        ) THEN
-          CREATE FUNCTION public.uuid_generate_v4()
-          RETURNS uuid
-          LANGUAGE sql
-          VOLATILE
-          AS $fn$
-            SELECT md5(random()::text || clock_timestamp()::text)::uuid;
-          $fn$;
-        END IF;
+        CREATE OR REPLACE FUNCTION public.uuid_generate_v4()
+        RETURNS uuid
+        LANGUAGE sql
+        VOLATILE
+        AS $fn$
+          SELECT (
+            lpad(to_hex((random() * 4294967295)::bigint), 8, '0') || '-' ||
+            lpad(to_hex((random() * 65535)::bigint), 4, '0') || '-' ||
+            '4' || substr(lpad(to_hex((random() * 4095)::bigint), 3, '0'), 1, 3) || '-' ||
+            substr('89ab', floor(random() * 4)::int + 1, 1) ||
+            substr(lpad(to_hex((random() * 4095)::bigint), 3, '0'), 1, 3) || '-' ||
+            lpad(to_hex((random() * 281474976710655)::bigint), 12, '0')
+          )::uuid;
+        $fn$;
       END
       $$;
     `);

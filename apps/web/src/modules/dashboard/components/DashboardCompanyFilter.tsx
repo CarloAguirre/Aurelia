@@ -26,7 +26,7 @@ function Icon({ path, fill }: { path: string; fill: string }) {
 function DropdownOption({ selected, children, onClick }: DropdownOptionProps) {
   return (
     <button
-      className={`flex h-[40px] w-full items-center overflow-hidden rounded-[8px] px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[normal] text-[#131313] ${selected ? 'bg-[#e3e3e3]' : 'bg-white hover:bg-[#f7f7f7]'}`}
+      className={`flex h-[40px] min-h-[40px] w-full shrink-0 items-center overflow-hidden rounded-[8px] px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[13px] font-normal leading-[22.7px] text-[#131313] ${selected ? 'bg-[#e3e3e3]' : 'bg-white hover:bg-[#e3e3e3]'}`}
       type="button"
       onClick={onClick}
     >

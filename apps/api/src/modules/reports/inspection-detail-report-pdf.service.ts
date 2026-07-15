@@ -608,7 +608,7 @@ export class InspectionDetailReportPdfService {
   }
 
   private addFirstPage(document: ReportPdfDocument, context: ReportContext) {
-    document.addPage({ size: 'A4', margins: { top: 36, bottom: 42, left: MARGIN_X, right: MARGIN_X } });
+    document.addPage({ size: 'A4', margins: { top: 36, bottom: 8, left: MARGIN_X, right: MARGIN_X } });
     document.image(GOLD_FIELDS_LOGO, MARGIN_X, 35, { fit: [104, 34], valign: 'center' });
     document.moveTo(MARGIN_X + 119, 35).lineTo(MARGIN_X + 119, 68).strokeColor(BORDER).lineWidth(0.7).stroke();
     document.font('Helvetica-Bold').fontSize(11).fillColor(NAVY).text('AUREL', MARGIN_X + 136, 47, { continued: true });
@@ -621,7 +621,7 @@ export class InspectionDetailReportPdfService {
   }
 
   private addCompactPage(document: ReportPdfDocument, context: ReportContext) {
-    document.addPage({ size: 'A4', margins: { top: 36, bottom: 42, left: MARGIN_X, right: MARGIN_X } });
+    document.addPage({ size: 'A4', margins: { top: 36, bottom: 8, left: MARGIN_X, right: MARGIN_X } });
     document.font('Helvetica-Bold').fontSize(9).fillColor(NAVY).text('AUREL', MARGIN_X, 36, { continued: true });
     document.fillColor(GOLD).text('IA');
     document.moveTo(MARGIN_X + 43, 34).lineTo(MARGIN_X + 43, 50).strokeColor(BORDER).lineWidth(0.6).stroke();
@@ -737,7 +737,7 @@ export class InspectionDetailReportPdfService {
   private inferInspectorCompany(inspection: UnknownRecord): string {
     const email = this.asString(inspection.inspectorEmail).toLowerCase();
     if (email.endsWith('@goldfields.com')) return 'Gold Fields';
-    return this.asString(inspection.companyName) || '—';
+    return 'Gold Fields';
   }
 
   private locationLabel(inspection: UnknownRecord): string {

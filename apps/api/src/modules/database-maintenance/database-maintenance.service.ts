@@ -77,10 +77,10 @@ export class DatabaseMaintenanceService {
 
   async plan(): Promise<DatabaseMaintenancePlanResult> {
     this.logger.log('Planning database maintenance');
-    const schemaPlan = await this.createSchemaPlan();
-    this.logger.log(`Plan generated with ${schemaPlan.upQueries.length} up queries and ${schemaPlan.downQueries.length} down queries`);
+    const pendingMigrations = await this.resolvePendingMigrations();
+    this.logger.log(`Plan generated with ${pendingMigrations.length} pending versioned migration(s)`);
 
-    if (schemaPlan.upQueries.length === 0) {
+    if (pendingMigrations.length === 0) {
       return {
         migration: {
           status: 'noop',
@@ -94,17 +94,16 @@ export class DatabaseMaintenanceService {
       };
     }
 
-    const migrationArtifact = this.buildMigrationArtifact();
-    const riskyQueries = this.detectRiskyQueries(schemaPlan.upQueries);
+    const lastPendingMigration = pendingMigrations[pendingMigrations.length - 1]?.name ?? null;
 
     return {
       migration: {
-        status: riskyQueries.length > 0 ? 'review_required' : 'ready',
-        filePath: migrationArtifact.filePath,
-        migrationName: migrationArtifact.migrationName,
-        upQueries: schemaPlan.upQueries.length,
-        downQueries: schemaPlan.downQueries.length,
-        riskyQueries,
+        status: 'ready',
+        filePath: null,
+        migrationName: lastPendingMigration,
+        upQueries: pendingMigrations.length,
+        downQueries: 0,
+        riskyQueries: [],
       },
       availableSeeds: availableSeedNames,
     };
@@ -205,13 +204,16 @@ export class DatabaseMaintenanceService {
         };
       }
 
-      phase = 'plan';
-      schemaPlan = await this.createSchemaPlan();
-      this.logger.log(`Schema plan resolved with ${schemaPlan.upQueries.length} up queries and ${schemaPlan.downQueries.length} down queries`);
+      phase = 'migration';
+      this.logger.log('Running pending versioned migrations');
+      const appliedMigrations = await this.dataSource.runMigrations({ transaction: 'all' });
+      appliedMigrationsCount = appliedMigrations.length;
+      lastAppliedMigration = appliedMigrations.length > 0 ? appliedMigrations[appliedMigrations.length - 1].name : null;
+      this.logger.log(`Versioned migrations applied: ${appliedMigrationsCount}`);
 
-      if (schemaPlan.upQueries.length === 0) {
+      if (appliedMigrationsCount === 0) {
         phase = 'seed';
-        this.logger.log('No migration required, running requested seeds only');
+        this.logger.log('No pending migrations, running requested seeds only');
         const seeds = await this.runSeeds(requestedSeeds);
         return {
           migration: {
@@ -228,35 +230,6 @@ export class DatabaseMaintenanceService {
         };
       }
 
-      phase = 'review';
-      const riskyQueries = this.detectRiskyQueries(schemaPlan.upQueries);
-
-      if (riskyQueries.length > 0 && !allowRisky) {
-        migrationArtifact = this.buildMigrationArtifact();
-        this.logger.warn(`Schema diff requires review. Generated artifact: ${migrationArtifact.filePath}`);
-        return {
-          migration: {
-            status: 'review_required',
-            filePath: migrationArtifact.filePath,
-            migrationName: migrationArtifact.migrationName,
-            upQueries: schemaPlan.upQueries.length,
-            downQueries: schemaPlan.downQueries.length,
-            riskyQueries,
-          },
-          seeds: requestedSeeds.map((seed) => ({ seed, status: 'skipped' })),
-          availableSeeds: availableSeedNames,
-          error: null,
-        };
-      }
-
-      phase = 'artifact';
-      migrationArtifact = this.writeMigrationArtifact(schemaPlan.upQueries, schemaPlan.downQueries);
-      this.logger.log(`Generated maintenance migration artifact at ${migrationArtifact.filePath}`);
-      phase = 'migration';
-      this.logger.log(`Executing generated migration ${migrationArtifact.migrationName}`);
-      await this.executeGeneratedMigration(maintenanceRunner, migrationArtifact.migrationName, schemaPlan.upQueries, schemaPlan.downQueries);
-      this.logger.log(`Migration ${migrationArtifact.migrationName} executed successfully`);
-
       phase = 'seed';
       this.logger.log(`Running ${requestedSeeds.length} selected seed(s)`);
       const seeds = await this.runSeeds(requestedSeeds);
@@ -265,10 +238,10 @@ export class DatabaseMaintenanceService {
       return {
         migration: {
           status: 'applied',
-          filePath: migrationArtifact.filePath,
-          migrationName: migrationArtifact.migrationName,
-          upQueries: schemaPlan.upQueries.length,
-          downQueries: schemaPlan.downQueries.length,
+          filePath: null,
+          migrationName: lastAppliedMigration,
+          upQueries: appliedMigrationsCount,
+          downQueries: 0,
           riskyQueries: [],
         },
         seeds,
@@ -287,11 +260,11 @@ export class DatabaseMaintenanceService {
       return {
         migration: {
           status: 'failed',
-          filePath: migrationArtifact?.filePath ?? null,
-          migrationName: migrationArtifact?.migrationName ?? lastAppliedMigration,
-          upQueries: schemaPlan?.upQueries.length ?? appliedMigrationsCount,
-          downQueries: schemaPlan?.downQueries.length ?? 0,
-          riskyQueries: schemaPlan ? this.detectRiskyQueries(schemaPlan.upQueries) : [],
+          filePath: null,
+          migrationName: lastAppliedMigration,
+          upQueries: appliedMigrationsCount,
+          downQueries: 0,
+          riskyQueries: [],
         },
         seeds,
         availableSeeds: availableSeedNames,
@@ -307,6 +280,11 @@ export class DatabaseMaintenanceService {
         await maintenanceRunner.release();
       }
     }
+  }
+
+  private async resolvePendingMigrations(): Promise<Migration[]> {
+    const executor = new MigrationExecutor(this.dataSource);
+    return executor.getPendingMigrations();
   }
 
   private async createSchemaPlan(): Promise<{ upQueries: SqlQuery[]; downQueries: SqlQuery[] }> {

@@ -16,25 +16,25 @@ export class InspectionDetailReportPdfFinalService extends InspectionDetailRepor
   }
 
   override async render(payload: Record<string, unknown>): Promise<Buffer> {
-    const generatedAt = this.stringValue(payload.generatedAt) || new Date().toISOString();
+    const generatedAt = this.reportString(payload.generatedAt) || new Date().toISOString();
     const runtime = this as unknown as Runtime;
     runtime.slaLabel = (finding) => this.detailedSlaLabel(finding);
 
     return super.render({
       ...payload,
       generatedAt,
-      findings: this.arrayValue(payload.findings).map((value) => this.prepareFinding(this.recordValue(value), generatedAt)),
+      findings: this.reportArray(payload.findings).map((value) => this.prepareFinding(this.reportRecord(value), generatedAt)),
     });
   }
 
   private prepareFinding(finding: UnknownRecord, generatedAt: string): UnknownRecord {
-    const detectedCondition = this.stringValue(finding.detectedCondition);
-    const description = this.stringValue(finding.description);
-    const originalTitle = this.stringValue(finding.title);
+    const detectedCondition = this.reportString(finding.detectedCondition);
+    const description = this.reportString(finding.description);
+    const originalTitle = this.reportString(finding.title);
     const primaryTitle = detectedCondition || originalTitle || description || 'Observación';
-    const translatedTitle = this.stringValue(finding.detectedConditionEn)
-      || this.stringValue(finding.descriptionEn)
-      || this.stringValue(finding.titleEn)
+    const translatedTitle = this.reportString(finding.detectedConditionEn)
+      || this.reportString(finding.descriptionEn)
+      || this.reportString(finding.titleEn)
       || (description && description !== primaryTitle ? description : '');
 
     return {
@@ -48,14 +48,14 @@ export class InspectionDetailReportPdfFinalService extends InspectionDetailRepor
   }
 
   private detailedSlaLabel(finding: UnknownRecord): string {
-    const dueAt = this.dateValue(finding.dueAt);
+    const dueAt = this.reportDate(finding.dueAt);
     if (!dueAt) return 'Sin SLA registrado / No SLA registered';
 
-    const reference = this.dateValue(finding.closedAt)
-      || this.dateValue(finding.reportGeneratedAt)
+    const reference = this.reportDate(finding.closedAt)
+      || this.reportDate(finding.reportGeneratedAt)
       || new Date();
     const overdue = reference.getTime() > dueAt.getTime();
-    const elapsedDays = this.businessDaysBetween(overdue ? dueAt : reference, overdue ? reference : dueAt);
+    const elapsedDays = this.reportBusinessDays(overdue ? dueAt : reference, overdue ? reference : dueAt);
     const totalDays = this.resolveAllocatedBusinessDays(finding, dueAt);
     const currentEs = overdue
       ? `Vencido hace ${elapsedDays} ${elapsedDays === 1 ? 'día' : 'días'}`
@@ -72,23 +72,23 @@ export class InspectionDetailReportPdfFinalService extends InspectionDetailRepor
 
   private resolveAllocatedBusinessDays(finding: UnknownRecord, dueAt: Date): number {
     const explicit = [finding.slaBusinessDays, finding.slaDays, finding.severitySlaDays]
-      .map((value) => this.numberValue(value))
+      .map((value) => this.reportNumber(value))
       .find((value) => value > 0);
     if (explicit) return explicit;
 
-    const severityCatalog = this.recordValue(finding.severityCatalog);
-    const label = this.stringValue(severityCatalog.closureTimeLabel)
-      || this.stringValue(finding.severityClosureTimeLabel);
+    const severityCatalog = this.reportRecord(finding.severityCatalog);
+    const label = this.reportString(severityCatalog.closureTimeLabel)
+      || this.reportString(finding.severityClosureTimeLabel);
     const labelDays = Number(label.match(/\d+/)?.[0] ?? 0);
     if (labelDays > 0) return labelDays;
 
-    const createdAt = this.dateValue(finding.createdAt);
-    return createdAt ? this.businessDaysBetween(createdAt, dueAt) : 0;
+    const createdAt = this.reportDate(finding.createdAt);
+    return createdAt ? this.reportBusinessDays(createdAt, dueAt) : 0;
   }
 
-  private businessDaysBetween(start: Date, end: Date): number {
-    const from = this.utcDate(start);
-    const to = this.utcDate(end);
+  private reportBusinessDays(start: Date, end: Date): number {
+    const from = this.reportUtcDate(start);
+    const to = this.reportUtcDate(end);
     if (from.getTime() >= to.getTime()) return 0;
 
     let days = 0;
@@ -101,34 +101,34 @@ export class InspectionDetailReportPdfFinalService extends InspectionDetailRepor
     return days;
   }
 
-  private utcDate(value: Date): Date {
+  private reportUtcDate(value: Date): Date {
     return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
   }
 
-  private dateValue(value: unknown): Date | null {
+  private reportDate(value: unknown): Date | null {
     if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
     if (typeof value !== 'string' || !value.trim()) return null;
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 
-  private stringValue(value: unknown): string {
+  private reportString(value: unknown): string {
     if (typeof value === 'string') return value.trim();
     if (typeof value === 'number') return String(value);
     if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString();
     return '';
   }
 
-  private numberValue(value: unknown): number {
+  private reportNumber(value: unknown): number {
     const parsed = typeof value === 'number' ? value : Number(value);
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
-  private arrayValue(value: unknown): unknown[] {
+  private reportArray(value: unknown): unknown[] {
     return Array.isArray(value) ? value : [];
   }
 
-  private recordValue(value: unknown): UnknownRecord {
+  private reportRecord(value: unknown): UnknownRecord {
     return value && typeof value === 'object' && !Array.isArray(value) ? value as UnknownRecord : {};
   }
 }

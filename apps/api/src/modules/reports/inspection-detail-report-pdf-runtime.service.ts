@@ -38,6 +38,12 @@ type TimelineEvent = {
   last?: boolean;
 };
 
+type TimelineSla = {
+  es: string;
+  en: string;
+  overdue: boolean;
+};
+
 type Runtime = {
   generatedAt: string;
   asString: (value: unknown) => string;
@@ -119,8 +125,11 @@ export class InspectionDetailReportPdfRuntimeService extends InspectionDetailRep
       );
     };
     runtime.buildTimelineEvents = (...args) => {
+      const inspection = args[0] as UnknownRecord;
+      const findings = args[1] as UnknownRecord[];
       const events = fidelity.buildFidelityTimeline.call(this, ...args) as TimelineEvent[];
-      return events.map((event, index) => ({ ...event, last: index === events.length - 1 }));
+      return this.enrichTimelineEvents(events, inspection, findings, runtime)
+        .map((event, index, enrichedEvents) => ({ ...event, last: index === enrichedEvents.length - 1 }));
     };
     runtime.drawTimelineEvent = (...args) => {
       const [document, event, , height] = args;
@@ -213,6 +222,160 @@ export class InspectionDetailReportPdfRuntimeService extends InspectionDetailRep
     }
   }
 
+  private enrichTimelineEvents(
+    events: TimelineEvent[],
+    inspection: UnknownRecord,
+    findings: UnknownRecord[],
+    runtime: Runtime,
+  ): TimelineEvent[] {
+    const inspector = runtime.asString(inspection.inspectorName) || 'inspector no identificado';
+    const coordinatesCaptured = Boolean(runtime.asString(inspection.latitude) && runtime.asString(inspection.longitude));
+
+    return events.map((event) => {
+      if (event.title === 'Inspección inicial · Initial inspection') {
+        const count = findings.length;
+        const spanish = `Inspección realizada por ${inspector}. Se detectaron ${count} observación${count === 1 ? '' : 'es'}.${coordinatesCaptured ? ' Coordenadas capturadas automáticamente vía GPS.' : ''}`;
+        const english = `Inspection conducted by ${inspector}. ${count} observation${count === 1 ? '' : 's'} detected.${coordinatesCaptured ? ' Coordinates automatically captured via GPS.' : ''}`;
+        return { ...event, detail: this.bilingualDetail(spanish, english) };
+      }
+
+      if (event.ongoing) {
+        return {
+          ...event,
+          detail: this.buildOngoingDetail(findings, runtime),
+          summary: this.buildOngoingSummary(findings, event.date, runtime),
+        };
+      }
+
+      const observationNumber = this.observationNumberFromTitle(event.title);
+      if (observationNumber === null) return event;
+      const finding = findings.find((item) => this.numberValue(item.observationNumber) === observationNumber);
+      if (!finding) return event;
+
+      const responsibleCompany = runtime.asString(finding.responsibleCompanyName);
+      if (event.title.includes(' ejecutada · ')) {
+        const executor = runtime.asString(finding.executedByUserName) || runtime.asString(finding.ownerUserName) || 'Responsable';
+        const actor = responsibleCompany && !executor.includes(responsibleCompany) ? `${executor} (${responsibleCompany})` : executor;
+        const sla = this.timelineSla(finding, event.date, runtime);
+        const overdueEs = sla?.overdue ? ' SLA ya vencido al momento de la ejecución.' : '';
+        const overdueEn = sla?.overdue ? ' SLA already overdue at time of execution.' : '';
+        const summarySla = sla ? ` · SLA: ${sla.es}` : '';
+        return {
+          ...event,
+          detail: this.bilingualDetail(
+            `${actor} marcó la Obs. ${observationNumber} como ejecutada y adjuntó evidencia fotográfica.${overdueEs}`,
+            `${actor} marked Obs. ${observationNumber} as executed and uploaded photographic evidence.${overdueEn}`,
+          ),
+          summary: `${event.summary}${summarySla}`,
+        };
+      }
+
+      if (event.title.includes(' aprobada y cerrada · ')) {
+        const approver = runtime.asString(finding.closedByUserName) || 'Admin GF';
+        return {
+          ...event,
+          detail: this.bilingualDetail(
+            `${approver} revisó la evidencia fotográfica y aprobó el cierre de la Obs. ${observationNumber}.`,
+            `${approver} reviewed photographic evidence and approved closure of Obs. ${observationNumber}.`,
+          ),
+        };
+      }
+
+      if (event.title.includes(' rechazada · ')) {
+        const approver = runtime.asString(finding.rejectedByUserName) || 'Admin GF';
+        const sla = this.timelineSla(finding, event.date, runtime);
+        return {
+          ...event,
+          detail: this.bilingualDetail(
+            `${approver} rechazó la evidencia de la Obs. ${observationNumber}.`,
+            `${approver} rejected the evidence for Obs. ${observationNumber}.`,
+          ),
+          summary: `${event.summary}${sla ? ` · SLA: ${sla.es}` : ''}`,
+        };
+      }
+
+      return event;
+    });
+  }
+
+  private buildOngoingDetail(findings: UnknownRecord[], runtime: Runtime): string {
+    const active = findings.filter((finding) => {
+      const status = runtime.asString(finding.status);
+      return status !== InspectionFindingStatus.CLOSED && status !== InspectionFindingStatus.CANCELLED;
+    });
+    const executedCount = active.filter((finding) => runtime.asString(finding.status) === InspectionFindingStatus.IN_PROGRESS).length;
+    const openCount = active.filter((finding) => runtime.asString(finding.status) === InspectionFindingStatus.OPEN).length;
+    const rejectedCount = active.filter((finding) => runtime.asString(finding.status) === InspectionFindingStatus.REJECTED).length;
+    const spanish = [
+      executedCount > 0 ? `${executedCount} observación${executedCount === 1 ? '' : 'es'} ejecutada${executedCount === 1 ? '' : 's'} pendiente${executedCount === 1 ? '' : 's'} de aprobación del Admin GF.` : '',
+      openCount > 0 ? `${openCount} observación${openCount === 1 ? '' : 'es'} abierta${openCount === 1 ? '' : 's'} pendiente${openCount === 1 ? '' : 's'} de acción por EECC.` : '',
+      rejectedCount > 0 ? `${rejectedCount} observación${rejectedCount === 1 ? '' : 'es'} rechazada${rejectedCount === 1 ? '' : 's'} pendiente${rejectedCount === 1 ? '' : 's'} de corrección.` : '',
+    ].filter(Boolean).join(' ');
+    const english = [
+      executedCount > 0 ? `${executedCount} executed observation${executedCount === 1 ? '' : 's'} pending Admin GF approval.` : '',
+      openCount > 0 ? `${openCount} open observation${openCount === 1 ? '' : 's'} pending EECC action.` : '',
+      rejectedCount > 0 ? `${rejectedCount} rejected observation${rejectedCount === 1 ? '' : 's'} pending correction.` : '',
+    ].filter(Boolean).join(' ');
+    return this.bilingualDetail(spanish, english);
+  }
+
+  private buildOngoingSummary(findings: UnknownRecord[], referenceDate: string, runtime: Runtime): string {
+    return findings
+      .filter((finding) => {
+        const status = runtime.asString(finding.status);
+        return status !== InspectionFindingStatus.CLOSED && status !== InspectionFindingStatus.CANCELLED;
+      })
+      .sort((left, right) => this.numberValue(left.observationNumber) - this.numberValue(right.observationNumber))
+      .slice(0, 5)
+      .map((finding) => {
+        const number = this.numberValue(finding.observationNumber);
+        const status = runtime.asString(finding.status);
+        const sla = this.timelineSla(finding, referenceDate, runtime);
+        if (status === InspectionFindingStatus.IN_PROGRESS) {
+          return `Obs. ${number}: Ejecutada · pendiente aprobación Admin GF${sla ? ` · ${sla.es}` : ''}`;
+        }
+        if (status === InspectionFindingStatus.OPEN) {
+          return `Obs. ${number}: Abierta${sla ? ` · ${sla.es}` : ''}`;
+        }
+        if (status === InspectionFindingStatus.REJECTED) {
+          return `Obs. ${number}: Rechazada · pendiente de corrección${sla ? ` · ${sla.es}` : ''}`;
+        }
+        return `Obs. ${number}: ${runtime.asString(finding.status)}`;
+      })
+      .join(' · ');
+  }
+
+  private timelineSla(finding: UnknownRecord, referenceDate: string, runtime: Runtime): TimelineSla | null {
+    const dueAt = runtime.asString(finding.dueAt);
+    if (!dueAt) return null;
+    const due = new Date(dueAt);
+    const reference = new Date(referenceDate || runtime.generatedAt);
+    if (Number.isNaN(due.getTime()) || Number.isNaN(reference.getTime())) return null;
+    const overdue = reference.getTime() > due.getTime();
+    const days = Math.max(0, Math.ceil(Math.abs(reference.getTime() - due.getTime()) / 86400000));
+    const dayEs = days === 1 ? 'día' : 'días';
+    const dayEn = days === 1 ? 'day' : 'days';
+    return overdue
+      ? { es: `SLA vencido ${days} ${dayEs}`, en: `SLA overdue by ${days} ${dayEn}`, overdue }
+      : { es: `${days} ${dayEs} restantes`, en: `${days} ${dayEn} remaining`, overdue };
+  }
+
+  private bilingualDetail(spanish: string, english: string): string {
+    return english ? `${spanish}\n${english}` : spanish;
+  }
+
+  private observationNumberFromTitle(title: string): number | null {
+    const match = title.match(/Obs\.\s*(\d+)/);
+    if (!match) return null;
+    const value = Number(match[1]);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  private numberValue(value: unknown): number {
+    const parsed = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
   private normalizeValue(value: unknown): string {
     if (typeof value === 'string') return value.trim();
     if (typeof value === 'number') return String(value);
@@ -248,7 +411,17 @@ export class InspectionDetailReportPdfRuntimeService extends InspectionDetailRep
       ? `${runtime.formatDate(event.date)} · Estado actual / Current status`
       : runtime.formatDateTime(event.date);
     document.font('Helvetica').fontSize(6.5).fillColor(MUTED).text(dateLabel, MARGIN_X + 350, y + 1, { width: 160, align: 'right' });
-    document.font('Helvetica').fontSize(7.4).fillColor('#333333').text(event.detail, MARGIN_X + 26, y + 17, { width: CONTENT_WIDTH - 26, lineGap: 1.5 });
+    const [spanishDetail, ...englishParts] = event.detail.split('\n');
+    const englishDetail = englishParts.join('\n').trim();
+    const detailX = MARGIN_X + 26;
+    const detailY = y + 17;
+    const detailWidth = CONTENT_WIDTH - 26;
+    document.font('Helvetica').fontSize(7.4).fillColor('#333333').text(spanishDetail, detailX, detailY, { width: detailWidth, lineGap: 1.5 });
+    if (englishDetail) {
+      document.font('Helvetica').fontSize(7.4);
+      const spanishHeight = document.heightOfString(spanishDetail, { width: detailWidth, lineGap: 1.5 });
+      document.font('Helvetica-Oblique').fontSize(7.1).fillColor(MUTED).text(englishDetail, detailX, detailY + spanishHeight + 1, { width: detailWidth, lineGap: 1.5 });
+    }
     if (event.summary) {
       const summaryY = y + height - 28;
       document.roundedRect(MARGIN_X + 26, summaryY, CONTENT_WIDTH - 26, 22, 3).fillAndStroke(event.ongoing ? YELLOW_BG : LIGHT, event.ongoing ? GOLD : BORDER);

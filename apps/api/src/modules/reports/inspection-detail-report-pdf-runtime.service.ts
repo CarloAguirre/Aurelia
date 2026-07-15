@@ -1,10 +1,32 @@
 import { Injectable } from '@nestjs/common';
+import { InspectionFindingStatus } from '@aurelia/contracts';
 import { FilesService } from '../files/files.service';
 import { InspectionDetailReportPdfFidelityService } from './inspection-detail-report-pdf-fidelity.service';
 import { InspectionDetailReportPdfService } from './inspection-detail-report-pdf.service';
 import { ReportPdfService, type ReportPdfDocument } from './report-pdf.service';
 
 type RuntimeMethod = (...args: unknown[]) => unknown;
+type UnknownRecord = Record<string, unknown>;
+
+type ReportContext = {
+  inspectionNumber: string;
+  generatedAt: string;
+  inspectionDate: string;
+};
+
+type EvidenceAsset = {
+  path: string;
+  mimeType: string | null;
+};
+
+type FindingGroup = {
+  statuses: InspectionFindingStatus[];
+  title: string;
+  badgeSuffix: string;
+  color: string;
+  background: string;
+  textColor: string;
+};
 
 type TimelineEvent = {
   date: string;
@@ -22,8 +44,18 @@ type Runtime = {
   formatDate: (value: string) => string;
   formatDateTime: (value: string) => string;
   drawFindingsSummaryTable: RuntimeMethod;
-  drawGroupTitle: RuntimeMethod;
-  renderFinding: RuntimeMethod;
+  drawGroupTitle: (document: ReportPdfDocument, group: FindingGroup, count: number, continuation: boolean) => void;
+  renderFinding: (
+    document: ReportPdfDocument,
+    context: ReportContext,
+    finding: UnknownRecord,
+    groupIndex: number,
+    group: FindingGroup,
+    assets: Map<string, EvidenceAsset>,
+  ) => void;
+  renderFindingGroups: RuntimeMethod;
+  estimateFindingHeight: (document: ReportPdfDocument, finding: UnknownRecord) => number;
+  addCompactPage: (document: ReportPdfDocument, context: ReportContext) => void;
   buildTimelineEvents: RuntimeMethod;
   drawTimelineEvent: RuntimeMethod;
   drawRoundedSummaryTable: RuntimeMethod;
@@ -35,6 +67,7 @@ type Runtime = {
 
 const MARGIN_X = 42;
 const CONTENT_WIDTH = 595.28 - MARGIN_X * 2;
+const CONTENT_BOTTOM = 780;
 const NAVY = '#001E39';
 const GOLD = '#C8A064';
 const BORDER = '#D1D1D1';
@@ -42,6 +75,17 @@ const MUTED = '#646464';
 const TEXT = '#131313';
 const LIGHT = '#F7F7F7';
 const YELLOW_BG = '#FFEAB8';
+const GREEN = '#2A5C16';
+const GREEN_BORDER = '#6CC24A';
+const GREEN_BG = '#E0FFD3';
+const TEAL = '#006153';
+const TEAL_BORDER = '#00B398';
+const TEAL_BG = '#C5FFF6';
+const RED = '#570B1D';
+const RED_BORDER = '#BD3B5B';
+const RED_BG = '#FFD0DB';
+const YELLOW = '#463100';
+const YELLOW_BORDER = '#E8A820';
 
 @Injectable()
 export class InspectionDetailReportPdfRuntimeService extends InspectionDetailReportPdfFidelityService {
@@ -61,6 +105,15 @@ export class InspectionDetailReportPdfRuntimeService extends InspectionDetailRep
     runtime.drawFindingsSummaryTable = (...args) => fidelity.drawRoundedSummaryTable.call(this, ...args, baseSummaryTable);
     runtime.drawGroupTitle = (document, group, count) => fidelity.drawPersistentGroupTitle.call(this, document, group, count);
     runtime.renderFinding = (...args) => fidelity.drawBorderedFinding.call(this, ...args, baseFinding);
+    runtime.renderFindingGroups = (...args) => {
+      this.renderGroupsWithoutOrphanHeader(
+        args[0] as ReportPdfDocument,
+        args[1] as ReportContext,
+        args[2] as UnknownRecord[],
+        args[3] as Map<string, EvidenceAsset>,
+        runtime,
+      );
+    };
     runtime.buildTimelineEvents = (...args) => {
       const events = fidelity.buildFidelityTimeline.call(this, ...args) as TimelineEvent[];
       return events.map((event, index) => ({ ...event, last: index === events.length - 1 }));
@@ -76,6 +129,77 @@ export class InspectionDetailReportPdfRuntimeService extends InspectionDetailRep
     };
 
     return base.render.call(this, payload) as Promise<Buffer>;
+  }
+
+  private renderGroupsWithoutOrphanHeader(
+    document: ReportPdfDocument,
+    context: ReportContext,
+    findings: UnknownRecord[],
+    assets: Map<string, EvidenceAsset>,
+    runtime: Runtime,
+  ) {
+    const groups: FindingGroup[] = [
+      {
+        statuses: [InspectionFindingStatus.IN_PROGRESS],
+        title: 'Observaciones ejecutadas / Executed observations',
+        badgeSuffix: 'Pendiente aprobación Admin GF / Pending Admin GF approval',
+        color: TEAL_BORDER,
+        background: TEAL_BG,
+        textColor: TEAL,
+      },
+      {
+        statuses: [InspectionFindingStatus.OPEN],
+        title: 'Observaciones abiertas / Open observations',
+        badgeSuffix: 'Pendiente EECC / Pending EECC',
+        color: YELLOW_BORDER,
+        background: YELLOW_BG,
+        textColor: YELLOW,
+      },
+      {
+        statuses: [InspectionFindingStatus.CLOSED],
+        title: 'Observaciones cerradas / Closed observations',
+        badgeSuffix: '',
+        color: GREEN_BORDER,
+        background: GREEN_BG,
+        textColor: GREEN,
+      },
+      {
+        statuses: [InspectionFindingStatus.REJECTED],
+        title: 'Observaciones rechazadas / Rejected observations',
+        badgeSuffix: 'Pendiente de corrección / Pending correction',
+        color: RED_BORDER,
+        background: RED_BG,
+        textColor: RED,
+      },
+      {
+        statuses: [InspectionFindingStatus.CANCELLED],
+        title: 'Observaciones canceladas / Cancelled observations',
+        badgeSuffix: '',
+        color: BORDER,
+        background: LIGHT,
+        textColor: MUTED,
+      },
+    ];
+
+    for (const group of groups) {
+      const rows = findings.filter((finding) => group.statuses.includes(runtime.asString(finding.status) as InspectionFindingStatus));
+      if (rows.length === 0) continue;
+
+      const firstFindingHeight = runtime.estimateFindingHeight(document, rows[0]);
+      if (document.y + 25 + firstFindingHeight > CONTENT_BOTTOM) {
+        runtime.addCompactPage(document, context);
+      }
+
+      runtime.drawGroupTitle(document, group, rows.length, false);
+      rows.forEach((finding, index) => {
+        const required = runtime.estimateFindingHeight(document, finding);
+        if (document.y + required > CONTENT_BOTTOM) {
+          runtime.addCompactPage(document, context);
+          runtime.drawGroupTitle(document, group, rows.length, true);
+        }
+        runtime.renderFinding(document, context, finding, index, group, assets);
+      });
+    }
   }
 
   private normalizeValue(value: unknown): string {

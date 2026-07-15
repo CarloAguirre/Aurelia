@@ -4,6 +4,7 @@ import { runFindingClassificationsSeed } from './003-seed-finding-classification
 import { runPhase1Seed } from './001-seed-phase1';
 import { runResponsiblesSeed } from './004-seed-responsibles';
 import { runDevPasswordResetSeed } from './005-seed-dev-password-reset';
+import { runNotificationsPermissionsSeed } from './006-seed-notifications-permissions';
 
 const seedRegistry = {
   phase1: runPhase1Seed,
@@ -11,6 +12,7 @@ const seedRegistry = {
   'finding-classifications': runFindingClassificationsSeed,
   responsibles: runResponsiblesSeed,
   'dev-password-reset': runDevPasswordResetSeed,
+  'notifications-permissions': runNotificationsPermissionsSeed,
 } as const;
 
 export type SeedName = keyof typeof seedRegistry;

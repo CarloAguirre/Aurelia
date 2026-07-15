@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { createPortal } from 'react-dom';
+import { InspectionExportReportModal, type InspectionExportFormat } from './InspectionExportReportModal';
 
 type ExportMenuState = {
   top: number;
   left: number;
   trigger: HTMLButtonElement;
 };
-
-type ExportFormat = 'excel' | 'pdf';
 
 const menuWidth = 235;
 const menuHeight = 96;
@@ -45,7 +44,7 @@ export function InspectionExportMenuBridge(): ReactElement | null {
   const portalRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<ExportMenuState | null>(null);
   const [menu, setMenu] = useState<ExportMenuState | null>(null);
-  const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('excel');
+  const [modalFormat, setModalFormat] = useState<InspectionExportFormat | null>(null);
 
   function updateMenu(next: ExportMenuState | null) {
     const previous = menuRef.current;
@@ -56,9 +55,9 @@ export function InspectionExportMenuBridge(): ReactElement | null {
     setMenu(next);
   }
 
-  function selectFormat(format: ExportFormat) {
-    setSelectedFormat(format);
+  function selectFormat(format: InspectionExportFormat) {
     updateMenu(null);
+    setModalFormat(format);
   }
 
   useEffect(() => {
@@ -106,19 +105,24 @@ export function InspectionExportMenuBridge(): ReactElement | null {
     };
   }, []);
 
-  if (!menu) return null;
+  if (!menu && !modalFormat) return null;
 
-  return createPortal(
-    <div
-      ref={portalRef}
-      className="fixed z-[10000] flex h-[96px] w-[235px] flex-col items-start rounded-[12px] border border-[#d1d1d1] bg-white p-[8px] shadow-[0px_4px_8px_rgba(19,19,19,0.24)]"
-      style={{ top: `${menu.top}px`, left: `${menu.left}px` }}
-      role="menu"
-      aria-label="Formatos de exportación"
-    >
-      <button type="button" className={`flex h-[40px] w-full shrink-0 items-center rounded-[8px] px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313] ${selectedFormat === 'excel' ? 'bg-[#e3e3e3]' : 'bg-white hover:bg-[#e3e3e3]'}`} role="menuitem" aria-checked={selectedFormat === 'excel'} onClick={() => selectFormat('excel')}>Excel (.xlsx)</button>
-      <button type="button" className={`flex h-[40px] w-full shrink-0 items-center rounded-[8px] px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313] ${selectedFormat === 'pdf' ? 'bg-[#e3e3e3]' : 'bg-white hover:bg-[#e3e3e3]'}`} role="menuitem" aria-checked={selectedFormat === 'pdf'} onClick={() => selectFormat('pdf')}>PDF (.pdf)</button>
-    </div>,
-    document.body,
+  return (
+    <>
+      {menu ? createPortal(
+        <div
+          ref={portalRef}
+          className="fixed z-[10000] flex h-[96px] w-[235px] flex-col items-start rounded-[12px] border border-[#d1d1d1] bg-white p-[8px] shadow-[0px_4px_8px_rgba(19,19,19,0.24)]"
+          style={{ top: `${menu.top}px`, left: `${menu.left}px` }}
+          role="menu"
+          aria-label="Formatos de exportación"
+        >
+          <button type="button" className="flex h-[40px] w-full shrink-0 items-center rounded-[8px] bg-white px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313] hover:bg-[#e3e3e3]" role="menuitem" onClick={() => selectFormat('excel')}>Excel (.xlsx)</button>
+          <button type="button" className="flex h-[40px] w-full shrink-0 items-center rounded-[8px] bg-white px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313] hover:bg-[#e3e3e3]" role="menuitem" onClick={() => selectFormat('pdf')}>PDF (.pdf)</button>
+        </div>,
+        document.body,
+      ) : null}
+      <InspectionExportReportModal open={Boolean(modalFormat)} format={modalFormat} onClose={() => setModalFormat(null)} />
+    </>
   );
 }

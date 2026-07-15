@@ -7,6 +7,8 @@ type ExportMenuState = {
   trigger: HTMLButtonElement;
 };
 
+type ExportFormat = 'excel' | 'pdf';
+
 const menuWidth = 235;
 const menuHeight = 96;
 const viewportMargin = 8;
@@ -43,6 +45,7 @@ export function InspectionExportMenuBridge(): ReactElement | null {
   const portalRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<ExportMenuState | null>(null);
   const [menu, setMenu] = useState<ExportMenuState | null>(null);
+  const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('excel');
 
   function updateMenu(next: ExportMenuState | null) {
     const previous = menuRef.current;
@@ -51,6 +54,11 @@ export function InspectionExportMenuBridge(): ReactElement | null {
     if (next) setTriggerExpanded(next.trigger, true);
     menuRef.current = next;
     setMenu(next);
+  }
+
+  function selectFormat(format: ExportFormat) {
+    setSelectedFormat(format);
+    updateMenu(null);
   }
 
   useEffect(() => {
@@ -108,8 +116,8 @@ export function InspectionExportMenuBridge(): ReactElement | null {
       role="menu"
       aria-label="Formatos de exportación"
     >
-      <button type="button" className="flex h-[40px] w-full items-center rounded-[8px] bg-white px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313]" role="menuitem" onClick={() => updateMenu(null)}>Excel (.xlsx)</button>
-      <button type="button" className="flex h-[40px] w-full items-center rounded-[8px] bg-white px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313]" role="menuitem" onClick={() => updateMenu(null)}>PDF (.pdf)</button>
+      <button type="button" className={`flex h-[40px] w-full shrink-0 items-center rounded-[8px] px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313] ${selectedFormat === 'excel' ? 'bg-[#e3e3e3]' : 'bg-white hover:bg-[#e3e3e3]'}`} role="menuitem" aria-checked={selectedFormat === 'excel'} onClick={() => selectFormat('excel')}>Excel (.xlsx)</button>
+      <button type="button" className={`flex h-[40px] w-full shrink-0 items-center rounded-[8px] px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313] ${selectedFormat === 'pdf' ? 'bg-[#e3e3e3]' : 'bg-white hover:bg-[#e3e3e3]'}`} role="menuitem" aria-checked={selectedFormat === 'pdf'} onClick={() => selectFormat('pdf')}>PDF (.pdf)</button>
     </div>,
     document.body,
   );

@@ -58,6 +58,7 @@ type Runtime = {
   addCompactPage: (document: ReportPdfDocument, context: ReportContext) => void;
   buildTimelineEvents: RuntimeMethod;
   drawTimelineEvent: RuntimeMethod;
+  addFooters: RuntimeMethod;
   drawRoundedSummaryTable: RuntimeMethod;
   drawPersistentGroupTitle: RuntimeMethod;
   drawBorderedFinding: RuntimeMethod;
@@ -65,9 +66,12 @@ type Runtime = {
   render: RuntimeMethod;
 };
 
+const PAGE_WIDTH = 595.28;
+const PAGE_HEIGHT = 841.89;
 const MARGIN_X = 42;
-const CONTENT_WIDTH = 595.28 - MARGIN_X * 2;
+const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_X * 2;
 const CONTENT_BOTTOM = 780;
+const FOOTER_Y = 804;
 const NAVY = '#001E39';
 const GOLD = '#C8A064';
 const BORDER = '#D1D1D1';
@@ -124,6 +128,13 @@ export class InspectionDetailReportPdfRuntimeService extends InspectionDetailRep
         document as ReportPdfDocument,
         event as TimelineEvent,
         Number(height),
+        runtime,
+      );
+    };
+    runtime.addFooters = (...args) => {
+      this.drawFooters(
+        args[0] as ReportPdfDocument,
+        args[1] as ReportContext,
         runtime,
       );
     };
@@ -248,5 +259,16 @@ export class InspectionDetailReportPdfRuntimeService extends InspectionDetailRep
       });
     }
     document.y = y + height;
+  }
+
+  private drawFooters(document: ReportPdfDocument, context: ReportContext, runtime: Runtime) {
+    const range = document.bufferedPageRange();
+    for (let index = range.start; index < range.start + range.count; index += 1) {
+      document.switchToPage(index);
+      document.moveTo(MARGIN_X, FOOTER_Y).lineTo(MARGIN_X + CONTENT_WIDTH, FOOTER_Y).strokeColor(BORDER).lineWidth(0.5).stroke();
+      document.font('Helvetica').fontSize(5.3).fillColor(MUTED).text('Generado por AurelIA SGA · Gold Fields Salares Norte · aurelia.goldfields.cl', MARGIN_X, FOOTER_Y + 14, { width: 285 });
+      document.font('Helvetica').fontSize(5.3).fillColor(MUTED).text(`Generado / Generated: ${runtime.formatDateTime(context.generatedAt)} · Confidencial / Confidential`, 300, FOOTER_Y + 14, { width: 253, align: 'right' });
+      document.font('Helvetica').fontSize(6).fillColor(MUTED).text(`${index - range.start + 1} / ${range.count}`, 520, FOOTER_Y + 28, { width: 33, align: 'right', height: PAGE_HEIGHT - FOOTER_Y - 28 });
+    }
   }
 }

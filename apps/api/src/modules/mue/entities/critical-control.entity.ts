@@ -1,9 +1,9 @@
-import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from 'typeorm';
 import { ControlVerificationItemEntity } from './control-verification-item.entity';
 import { MueEntity } from './mue.entity';
 
 @Entity('critical_controls')
-@Index('uq_critical_controls_mue_code', ['mueId', 'code'], { unique: true })
+@Unique('uq_critical_controls_mue_code', ['mueId', 'code'])
 export class CriticalControlEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -12,8 +12,8 @@ export class CriticalControlEntity {
   @Column({ name: 'mue_id', type: 'uuid' })
   mueId: string;
 
-  @ManyToOne(() => MueEntity, (mue) => mue.controls, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'mue_id' })
+  @ManyToOne(() => MueEntity, (mue) => mue.controls, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'mue_id', foreignKeyConstraintName: 'fk_critical_controls_mue' })
   mue: MueEntity;
 
   @Column({ type: 'varchar', length: 40 })

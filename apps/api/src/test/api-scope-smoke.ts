@@ -6,6 +6,7 @@ import type { AddressInfo } from 'net';
 import { promisify } from 'util';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../app.module';
+import { ensureApiSmokeEnv } from './test-env';
 import { ResourceScopeInterceptor } from '../modules/access-control/resource-scope.interceptor';
 import { ResourceScopeService } from '../modules/access-control/resource-scope.service';
 import { IncidentEntity } from '../modules/incidents/entities/incident.entity';
@@ -61,11 +62,7 @@ const scopePermissions = [
 ];
 
 function configureScopeSmokeAuthEnv(): string {
-  process.env.API_TOKEN_KEY ??= `api-scope-smoke-token-key-${Date.now()}`;
-  process.env.AURELIA_DEMO_USER_PASSWORD ??= 'AureliaDemo123!';
-  const password = process.env.AURELIA_DEMO_USER_PASSWORD;
-  if (!password) throw new Error('AURELIA_DEMO_USER_PASSWORD is not configured for scope smoke tests');
-  return password;
+  return ensureApiSmokeEnv();
 }
 
 function createResourceScopeInterceptor(dataSource: DataSource): ResourceScopeInterceptor {

@@ -1,19 +1,38 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { InspectionFindingResponsibleEntity } from '../inspections/entities/inspection-finding-responsible.entity';
+import { InspectionFindingEntity } from '../inspections/entities/inspection-finding.entity';
+import { InspectionFormTemplateEntity } from '../inspections/entities/inspection-form-template.entity';
+import { InspectionTypeEntity } from '../inspections/entities/inspection-type.entity';
+import { InspectionEntity } from '../inspections/entities/inspection.entity';
+import { AreaEntity } from '../organization/entities/area.entity';
+import { CompanyEntity } from '../organization/entities/company.entity';
+import { SectorEntity } from '../organization/entities/sector.entity';
+import { UserEntity } from '../users/entities/user.entity';
+import { NotificationRecipientEntity } from './entities/notification-recipient.entity';
+import { NotificationEntity } from './entities/notification.entity';
+import { NotificationRecipientStateService } from './notification-recipient-state.service';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
-import { NotificationEntity } from './entities/notification.entity';
-import { NotificationRecipientEntity } from './entities/notification-recipient.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       NotificationEntity,
       NotificationRecipientEntity,
+      InspectionEntity,
+      InspectionFindingEntity,
+      InspectionFindingResponsibleEntity,
+      InspectionTypeEntity,
+      InspectionFormTemplateEntity,
+      AreaEntity,
+      CompanyEntity,
+      SectorEntity,
+      UserEntity,
     ]),
   ],
   controllers: [NotificationsController],
-  providers: [NotificationsService],
+  providers: [NotificationsService, NotificationRecipientStateService],
   exports: [NotificationsService],
 })
 export class NotificationsModule {}

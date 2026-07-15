@@ -1,6 +1,7 @@
+import { env } from '../config/env';
 import { readStoredToken } from './session-storage';
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
+const API_URL = env.apiUrl;
 
 function buildHeaders(init?: HeadersInit): HeadersInit {
   const headers = new Headers(init);
@@ -36,6 +37,22 @@ export async function httpPost<TRequest, TResponse>(
   if (!response.ok) {
     const details = (await response.text()).trim();
     throw new Error(`POST ${path} failed: ${response.status}${details ? ` - ${details}` : ''}`);
+  }
+  return (await response.json()) as TResponse;
+}
+
+export async function httpPatch<TRequest, TResponse>(
+  path: string,
+  body: TRequest,
+): Promise<TResponse> {
+  const response = await fetch(`${API_URL}${path}`, {
+    method: 'PATCH',
+    headers: buildHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const details = (await response.text()).trim();
+    throw new Error(`PATCH ${path} failed: ${response.status}${details ? ` - ${details}` : ''}`);
   }
   return (await response.json()) as TResponse;
 }

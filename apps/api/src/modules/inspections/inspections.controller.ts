@@ -1,15 +1,21 @@
-import { BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req } from '@nestjs/common';
 import {
   InspectionChecklistAnswerResponse,
   InspectionChecklistTemplateResponse,
   InspectionDashboardSummaryResponse,
+  InspectionDetailResponse,
   InspectionFindingResponse,
+  InspectionFindingStatus,
   InspectionFollowupResponse,
   InspectionResponse,
   InspectionStatus,
   InspectionTypeResponse,
+  UserResponse,
 } from '@aurelia/contracts';
+import { ResourceScopeService } from '../access-control/resource-scope.service';
+import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { RequirePermissions } from '../auth/require-permissions.decorator';
+import { UsersService } from '../users/users.service';
 import { CloseInspectionDto } from './dto/close-inspection.dto';
 import { CreateInspectionFindingDto } from './dto/create-inspection-finding.dto';
 import { CreateInspectionFollowupDto } from './dto/create-inspection-followup.dto';
@@ -19,12 +25,18 @@ import { UpdateInspectionFollowupDto } from './dto/update-inspection-followup.dt
 import { UpdateInspectionDto } from './dto/update-inspection.dto';
 import { UpdateInspectionStatusDto } from './dto/update-inspection-status.dto';
 import { UpsertInspectionAnswerDto } from './dto/upsert-inspection-answer.dto';
+import { InspectionDetailService } from './inspection-detail.service';
 import { InspectionsService } from './inspections.service';
 
 @RequirePermissions('inspections:read')
 @Controller('inspections')
 export class InspectionsController {
-  constructor(private readonly inspectionsService: InspectionsService) {}
+  constructor(
+    private readonly inspectionsService: InspectionsService,
+    private readonly usersService: UsersService,
+    private readonly inspectionDetailService: InspectionDetailService,
+    private readonly resourceScopeService: ResourceScopeService,
+  ) {}
 
   @Get('types')
   findTypes(): Promise<InspectionTypeResponse[]> {
@@ -34,6 +46,11 @@ export class InspectionsController {
   @Get('templates')
   findTemplates(): Promise<InspectionChecklistTemplateResponse[]> {
     return this.inspectionsService.findTemplates();
+  }
+
+  @Get('responsible-users')
+  findResponsibleUsers(@Query('companyId') companyId?: string): Promise<UserResponse[]> {
+    return this.usersService.findAll({ companyId });
   }
 
   @Get('dashboard/summary')
@@ -51,8 +68,8 @@ export class InspectionsController {
 
   @RequirePermissions('inspections:write')
   @Post()
-  create(@Body() dto: CreateInspectionDto): Promise<InspectionResponse> {
-    return this.inspectionsService.create(dto, null);
+  create(@Body() dto: CreateInspectionDto, @Req() request: AuthenticatedRequest): Promise<InspectionResponse> {
+    return this.inspectionsService.create(dto, request.user.sub);
   }
 
   @Get(':id/findings')
@@ -60,13 +77,19 @@ export class InspectionsController {
     return this.inspectionsService.findFindings(id);
   }
 
+  @Get(':id/detail')
+  getDetail(@Param('id', ParseUUIDPipe) id: string, @Req() request: AuthenticatedRequest): Promise<InspectionDetailResponse> {
+    return this.inspectionDetailService.getDetail(id, request.user.sub);
+  }
+
   @RequirePermissions('inspections:write')
   @Post(':id/findings')
   createFinding(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateInspectionFindingDto,
+    @Req() request: AuthenticatedRequest,
   ): Promise<InspectionFindingResponse> {
-    return this.inspectionsService.createFinding(id, dto, null);
+    return this.inspectionsService.createFinding(id, dto, request.user.sub);
   }
 
   @RequirePermissions('inspections:write')
@@ -74,15 +97,22 @@ export class InspectionsController {
   async closeInspection(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CloseInspectionDto,
+    @Req() request: AuthenticatedRequest,
   ): Promise<InspectionResponse> {
     const inspection = await this.inspectionsService.findOne(id);
     if (inspection.openFindingsCount > 0) {
       throw new BadRequestException('Inspection has open findings');
     }
-    return this.inspectionsService.updateStatus(
+    const closedAt = new Date().toISOString();
+    return this.inspectionsService.update(
       id,
-      { status: InspectionStatus.CLOSED, comment: dto.reason ?? undefined },
-      null,
+      {
+        status: InspectionStatus.CLOSED,
+        completedAt: inspection.completedAt ?? closedAt,
+        closedAt: inspection.closedAt ?? closedAt,
+        reason: dto.reason ?? null,
+      },
+      request.user.sub,
     );
   }
 
@@ -91,8 +121,9 @@ export class InspectionsController {
   upsertAnswer(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpsertInspectionAnswerDto,
+    @Req() request: AuthenticatedRequest,
   ): Promise<InspectionChecklistAnswerResponse> {
-    return this.inspectionsService.upsertAnswer(id, dto, null);
+    return this.inspectionsService.upsertAnswer(id, dto, request.user.sub);
   }
 
   @Get(':id')
@@ -102,11 +133,24 @@ export class InspectionsController {
 
   @RequirePermissions('inspections:write')
   @Patch(':id/status')
-  updateStatus(
+  async updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateInspectionStatusDto,
+    @Req() request: AuthenticatedRequest,
   ): Promise<InspectionResponse> {
-    return this.inspectionsService.updateStatus(id, dto, null);
+    if (dto.status !== InspectionStatus.CLOSED) return this.inspectionsService.updateStatus(id, dto, request.user.sub);
+    const inspection = await this.inspectionsService.findOne(id);
+    const closedAt = new Date().toISOString();
+    return this.inspectionsService.update(
+      id,
+      {
+        status: InspectionStatus.CLOSED,
+        completedAt: inspection.completedAt ?? closedAt,
+        closedAt: inspection.closedAt ?? closedAt,
+        reason: dto.comment ?? null,
+      },
+      request.user.sub,
+    );
   }
 
   @RequirePermissions('inspections:write')
@@ -114,8 +158,9 @@ export class InspectionsController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateInspectionDto,
+    @Req() request: AuthenticatedRequest,
   ): Promise<InspectionResponse> {
-    return this.inspectionsService.update(id, dto, null);
+    return this.inspectionsService.update(id, dto, request.user.sub);
   }
 
   @RequirePermissions('inspections:write')
@@ -123,17 +168,24 @@ export class InspectionsController {
   createFollowup(
     @Param('findingId', ParseUUIDPipe) findingId: string,
     @Body() dto: CreateInspectionFollowupDto,
+    @Req() request: AuthenticatedRequest,
   ): Promise<InspectionFollowupResponse> {
-    return this.inspectionsService.createFollowup(findingId, dto, null);
+    return this.inspectionsService.createFollowup(findingId, dto, request.user.sub);
   }
 
   @RequirePermissions('inspections:write')
   @Patch('findings/:findingId')
-  updateFinding(
+  async updateFinding(
     @Param('findingId', ParseUUIDPipe) findingId: string,
     @Body() dto: UpdateInspectionFindingDto,
+    @Req() request: AuthenticatedRequest,
   ): Promise<InspectionFindingResponse> {
-    return this.inspectionsService.updateFinding(findingId, dto, null);
+    if ((dto.status === InspectionFindingStatus.CLOSED || dto.status === InspectionFindingStatus.REJECTED) && !(await this.resourceScopeService.canReviewInspectionFindings(request.user))) {
+      throw new ForbiddenException('Only Gold Fields users can approve or reject findings');
+    }
+    const finding = await this.inspectionsService.updateFinding(findingId, dto, request.user.sub);
+    await this.closeInspectionIfAllFindingsClosed(finding.inspectionId, request.user.sub);
+    return finding;
   }
 
   @RequirePermissions('inspections:write')
@@ -143,5 +195,27 @@ export class InspectionsController {
     @Body() dto: UpdateInspectionFollowupDto,
   ): Promise<InspectionFollowupResponse> {
     return this.inspectionsService.updateFollowup(followupId, dto);
+  }
+
+  private async closeInspectionIfAllFindingsClosed(inspectionId: string, actorId: string | null): Promise<void> {
+    const [inspection, findings] = await Promise.all([
+      this.inspectionsService.findOne(inspectionId),
+      this.inspectionsService.findFindings(inspectionId),
+    ]);
+    if (inspection.status === InspectionStatus.CLOSED || inspection.status === InspectionStatus.CANCELLED) return;
+    const activeFindings = findings.filter((finding) => finding.status !== InspectionFindingStatus.CANCELLED);
+    if (activeFindings.length === 0) return;
+    if (activeFindings.some((finding) => finding.status !== InspectionFindingStatus.CLOSED)) return;
+    const closedAt = new Date().toISOString();
+    await this.inspectionsService.update(
+      inspectionId,
+      {
+        status: InspectionStatus.CLOSED,
+        completedAt: inspection.completedAt ?? closedAt,
+        closedAt: inspection.closedAt ?? closedAt,
+        reason: 'all findings closed',
+      },
+      actorId,
+    );
   }
 }

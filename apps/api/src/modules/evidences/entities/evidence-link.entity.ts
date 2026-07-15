@@ -13,6 +13,7 @@ import { EntityReferenceTypeEntity } from './entity-reference-type.entity';
 
 @Entity('evidence_links')
 @Unique('uq_evidence_links', ['evidenceId', 'entityType', 'entityId', 'relationType'])
+@Index('idx_evidence_links_entity', ['entityType', 'entityId'])
 export class EvidenceLinkEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -20,16 +21,15 @@ export class EvidenceLinkEntity {
   @Column({ name: 'evidence_id', type: 'uuid' })
   evidenceId: string;
 
-  @ManyToOne(() => EvidenceEntity, (evidence) => evidence.links, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'evidence_id' })
+  @ManyToOne(() => EvidenceEntity, (evidence) => evidence.links, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'evidence_id', foreignKeyConstraintName: 'fk_evidence_links_evidence' })
   evidence: EvidenceEntity;
 
-  @Index('idx_evidence_links_entity')
   @Column({ name: 'entity_type', type: 'varchar', length: 80 })
   entityType: string;
 
   @ManyToOne(() => EntityReferenceTypeEntity)
-  @JoinColumn({ name: 'entity_type', referencedColumnName: 'code' })
+  @JoinColumn({ name: 'entity_type', referencedColumnName: 'code', foreignKeyConstraintName: 'fk_evidence_links_entity_type' })
   entityReferenceType: EntityReferenceTypeEntity;
 
   @Column({ name: 'entity_id', type: 'uuid' })

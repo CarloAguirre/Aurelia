@@ -1,4 +1,6 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { UserEntity } from '../../users/entities/user.entity';
+import { IncidentEntity } from './incident.entity';
 
 @Entity('incident_validations')
 export class IncidentValidationEntity {
@@ -8,11 +10,19 @@ export class IncidentValidationEntity {
   @Column({ name: 'incident_id', type: 'uuid' })
   incidentId: string;
 
+  @ManyToOne(() => IncidentEntity, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'incident_id', foreignKeyConstraintName: 'fk_iv_incident' })
+  incident: IncidentEntity;
+
   @Column({ type: 'varchar', length: 80 })
   status: string;
 
   @Column({ name: 'validator_user_id', type: 'uuid', nullable: true })
   validatorUserId: string | null;
+
+  @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'validator_user_id', foreignKeyConstraintName: 'fk_iv_user' })
+  validatorUser: UserEntity | null;
 
   @Column({ type: 'text', nullable: true })
   comments: string | null;

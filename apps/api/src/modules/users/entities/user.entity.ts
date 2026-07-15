@@ -43,7 +43,7 @@ export class UserEntity {
     nullable: true,
     onDelete: 'SET NULL',
   })
-  @JoinColumn({ name: 'company_id' })
+  @JoinColumn({ name: 'company_id', foreignKeyConstraintName: 'fk_users_company' })
   company: CompanyEntity | null;
 
   @Index('idx_users_area')
@@ -54,7 +54,7 @@ export class UserEntity {
     nullable: true,
     onDelete: 'SET NULL',
   })
-  @JoinColumn({ name: 'area_id' })
+  @JoinColumn({ name: 'area_id', foreignKeyConstraintName: 'fk_users_area' })
   area: AreaEntity | null;
 
   @Column({ name: 'is_active', default: true })
@@ -69,6 +69,7 @@ export class UserEntity {
   @Column({ name: 'failed_login_attempts', type: 'int', default: 0 })
   failedLoginAttempts: number;
 
+  @Index('idx_users_locked_until')
   @Column({ name: 'locked_until', type: 'timestamptz', nullable: true })
   lockedUntil: Date | null;
 

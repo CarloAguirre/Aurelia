@@ -18,15 +18,8 @@ import {
 import { requestIdMiddleware } from './shared/security/request-id.middleware';
 import { SanitizedExceptionFilter } from './shared/security/sanitized-exception.filter';
 
-function parseOrigins(value: string | undefined): string[] {
-  return (value ?? 'http://localhost:8081,http://localhost:3001,http://localhost:5173')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-}
-
 function createRateLimitStore(config: ConfigService, dataSource: DataSource) {
-  const store = config.get<string>('security.rateLimitStore') ?? 'memory';
+  const store = config.get<'memory' | 'database'>('security.rateLimitStore');
   if (store === 'database') return new DatabaseRateLimitStore(dataSource);
   return new MemoryRateLimitStore();
 }
@@ -48,10 +41,19 @@ async function bootstrap() {
 
   const config = app.get(ConfigService);
   const dataSource = app.get(DataSource);
+  const corsOrigins = config.get<string[]>('cors.origins');
+  const rateLimitWindowMs = config.get<number>('security.rateLimitWindowMs');
+  const rateLimitMax = config.get<number>('security.rateLimitMax');
+  const port = config.get<number>('port');
+
+  if (!corsOrigins?.length) throw new Error('Missing validated cors.origins configuration');
+  if (!rateLimitWindowMs) throw new Error('Missing validated security.rateLimitWindowMs configuration');
+  if (!rateLimitMax) throw new Error('Missing validated security.rateLimitMax configuration');
+  if (!port) throw new Error('Missing validated port configuration');
 
   app.use(createRateLimit({
-    windowMs: config.get<number>('security.rateLimitWindowMs') ?? 60_000,
-    max: config.get<number>('security.rateLimitMax') ?? 180,
+    windowMs: rateLimitWindowMs,
+    max: rateLimitMax,
     store: createRateLimitStore(config, dataSource),
   }));
 
@@ -65,9 +67,8 @@ async function bootstrap() {
     }),
   );
 
-  const port = config.get<number>('port') ?? 3000;
   app.enableCors({
-    origin: parseOrigins(process.env.CORS_ORIGINS),
+    origin: corsOrigins,
     credentials: true,
   });
   await app.listen(port);

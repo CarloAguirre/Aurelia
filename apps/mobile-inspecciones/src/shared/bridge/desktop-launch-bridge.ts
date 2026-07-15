@@ -1,13 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import { useMobileSession } from '../../modules/auth/mobileSession.store';
+import { env } from '../config/env';
 import { exchangeDesktopLaunch } from '../services/api/auth.api';
-
-type GlobalWithProcess = typeof globalThis & {
-  process?: {
-    env?: Record<string, string | undefined>;
-  };
-};
 
 type MessageEventLike = { origin: string; data: unknown };
 type WindowLike = typeof globalThis & {
@@ -19,7 +14,7 @@ type WindowLike = typeof globalThis & {
 type Incoming = { type?: string; code?: string };
 
 function getParentOrigin() {
-  return (globalThis as GlobalWithProcess).process?.env?.EXPO_PUBLIC_WEB_PARENT_ORIGIN ?? 'http://localhost:5173';
+  return env.webParentOrigin;
 }
 
 function getWindow() {

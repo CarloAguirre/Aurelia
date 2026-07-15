@@ -4,8 +4,53 @@ export class InitPhase11719100000000 implements MigrationInterface {
   name = 'InitPhase11719100000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
-    await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "citext"`);
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        BEGIN
+          CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+        EXCEPTION WHEN OTHERS THEN
+          NULL;
+        END;
+
+        CREATE OR REPLACE FUNCTION public.uuid_generate_v4()
+        RETURNS uuid
+        LANGUAGE sql
+        VOLATILE
+        AS $fn$
+          SELECT (
+            lpad(to_hex((random() * 4294967295)::bigint), 8, '0') || '-' ||
+            lpad(to_hex((random() * 65535)::bigint), 4, '0') || '-' ||
+            '4' || substr(lpad(to_hex((random() * 4095)::bigint), 3, '0'), 1, 3) || '-' ||
+            substr('89ab', floor(random() * 4)::int + 1, 1) ||
+            substr(lpad(to_hex((random() * 4095)::bigint), 3, '0'), 1, 3) || '-' ||
+            lpad(to_hex((random() * 281474976710655)::bigint), 12, '0')
+          )::uuid;
+        $fn$;
+      END
+      $$;
+    `);
+
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        BEGIN
+          CREATE EXTENSION IF NOT EXISTS "citext";
+        EXCEPTION WHEN OTHERS THEN
+          NULL;
+        END;
+
+        IF NOT EXISTS (
+          SELECT 1
+          FROM pg_type t
+          JOIN pg_namespace n ON n.oid = t.typnamespace
+          WHERE t.typname = 'citext'
+        ) THEN
+          CREATE DOMAIN public.citext AS text;
+        END IF;
+      END
+      $$;
+    `);
 
     await queryRunner.query(`
       CREATE TYPE "record_status" AS ENUM ('active', 'inactive', 'archived')

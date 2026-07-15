@@ -26,7 +26,7 @@ export class LocationEntity {
     nullable: true,
     onDelete: 'SET NULL',
   })
-  @JoinColumn({ name: 'sector_id' })
+  @JoinColumn({ name: 'sector_id', foreignKeyConstraintName: 'fk_locations_sector' })
   sector: SectorEntity | null;
 
   @Column({ type: 'varchar', length: 50, nullable: true })

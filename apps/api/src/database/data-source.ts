@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { config } from 'dotenv';
 import { DataSource } from 'typeorm';
+import { readApiEnv } from '../config/env';
 import { UserSessionEntity } from '../modules/auth/entities/user-session.entity';
 import { AuditLogEntity } from '../modules/audit/entities/audit-log.entity';
 import { CommentEntity } from '../modules/comments/entities/comment.entity';
@@ -25,11 +26,16 @@ import { IncidentTypeEntity } from '../modules/incidents/entities/incident-type.
 import { IncidentValidationEntity } from '../modules/incidents/entities/incident-validation.entity';
 import { IncidentEntity } from '../modules/incidents/entities/incident.entity';
 import { InspectionFindingEntity } from '../modules/inspections/entities/inspection-finding.entity';
+import { InspectionFindingResponsibleEntity } from '../modules/inspections/entities/inspection-finding-responsible.entity';
+import { InspectionFindingSeverityEntity } from '../modules/inspections/entities/inspection-finding-severity.entity';
+import { InspectionFindingTypeEntity } from '../modules/inspections/entities/inspection-finding-type.entity';
 import { InspectionFollowupEntity } from '../modules/inspections/entities/inspection-followup.entity';
 import { InspectionFormItemEntity } from '../modules/inspections/entities/inspection-form-item.entity';
 import { InspectionFormSectionEntity } from '../modules/inspections/entities/inspection-form-section.entity';
 import { InspectionFormTemplateEntity } from '../modules/inspections/entities/inspection-form-template.entity';
 import { InspectionItemResponseEntity } from '../modules/inspections/entities/inspection-item-response.entity';
+import { InspectionRiskConsequenceEntity } from '../modules/inspections/entities/inspection-risk-consequence.entity';
+import { InspectionRiskProbabilityEntity } from '../modules/inspections/entities/inspection-risk-probability.entity';
 import { InspectionStateEntity } from '../modules/inspections/entities/inspection-state.entity';
 import { InspectionTypeEntity } from '../modules/inspections/entities/inspection-type.entity';
 import { InspectionEntity } from '../modules/inspections/entities/inspection.entity';
@@ -69,13 +75,16 @@ import { WorkflowInstanceEntity } from '../modules/workflows/entities/workflow-i
 
 config();
 
+const env = readApiEnv();
+
 export const AppDataSource = new DataSource({
   type: 'postgres',
-  host: process.env.DB_HOST ?? 'localhost',
-  port: parseInt(process.env.DB_PORT ?? '5432', 10),
-  username: process.env.DB_USERNAME ?? 'postgres',
-  password: process.env.DB_PASSWORD ?? 'postgres',
-  database: process.env.DB_NAME ?? 'aurelia',
+  host: env.database.host,
+  port: env.database.port,
+  username: env.database.username,
+  password: env.database.password,
+  database: env.database.name,
+  ssl: env.database.ssl ? { rejectUnauthorized: false } : false,
   entities: [
     BusinessUnitEntity,
     GerenciaEntity,
@@ -117,7 +126,12 @@ export const AppDataSource = new DataSource({
     InspectionEntity,
     InspectionItemResponseEntity,
     InspectionFindingEntity,
+    InspectionFindingTypeEntity,
+    InspectionFindingSeverityEntity,
+    InspectionFindingResponsibleEntity,
     InspectionFollowupEntity,
+    InspectionRiskProbabilityEntity,
+    InspectionRiskConsequenceEntity,
     InspectionStateEntity,
     IncidentTypeEntity,
     IncidentLevelEntity,
@@ -143,6 +157,6 @@ export const AppDataSource = new DataSource({
     SprRecordApprovalEntity,
     SprConsolidationRuleEntity,
   ],
-  migrations: ['src/database/migrations/*.ts'],
-  synchronize: false,
+  migrations: [__dirname + '/migrations/**/*{.ts,.js}'],
+  synchronize: env.database.synchronize,
 });

@@ -1,5 +1,6 @@
 import { RecordStatus, SprConsolidationMethod } from '@aurelia/contracts';
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { SprParameterEntity } from './spr-parameter.entity';
 
 @Entity('spr_consolidation_rules')
 export class SprConsolidationRuleEntity {
@@ -8,6 +9,10 @@ export class SprConsolidationRuleEntity {
 
   @Column({ name: 'parameter_id', type: 'uuid' })
   parameterId: string;
+
+  @ManyToOne(() => SprParameterEntity, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'parameter_id', foreignKeyConstraintName: 'fk_spr_consolidation_parameter' })
+  parameter: SprParameterEntity;
 
   @Column({ type: 'varchar', length: 100, unique: true })
   code: string;

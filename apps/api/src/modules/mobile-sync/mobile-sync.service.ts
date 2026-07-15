@@ -75,7 +75,7 @@ export class MobileSyncService {
   }
 
   getStatus() {
-    return { broker: process.env.MOBILE_SYNC_BROKER ?? 'in-memory-dev-materializer', pendingMessages: this.broker.peek().length, acceptedBatches: this.batches.size, operationCounts: {}, materializedOperationCounts: { ...this.materializedOperationCounts }, timestamp: new Date().toISOString() };
+    return { broker: this.broker.constructor.name, pendingMessages: this.broker.peek().length, acceptedBatches: this.batches.size, operationCounts: {}, materializedOperationCounts: { ...this.materializedOperationCounts }, timestamp: new Date().toISOString() };
   }
 
   getPendingMessagesCount(): number {

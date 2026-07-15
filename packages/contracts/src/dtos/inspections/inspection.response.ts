@@ -131,10 +131,19 @@ export interface InspectionManagementKpisResponse {
   closedFindingsRate: number;
 }
 
+export interface InspectionHistoryKpisResponse {
+  year: number;
+  closedInspections: number;
+  averageClosureDays: number;
+  closedFindingsRate: number;
+  contractorCompanies: number;
+}
+
 export interface InspectionManagementTableObservationSummaryResponse {
   executed: number;
   open: number;
   closed: number;
+  rejected: number;
 }
 
 export interface InspectionManagementTableRowResponse {

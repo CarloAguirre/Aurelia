@@ -26,7 +26,7 @@ export class GerenciaEntity {
     nullable: true,
     onDelete: 'SET NULL',
   })
-  @JoinColumn({ name: 'business_unit_id' })
+  @JoinColumn({ name: 'business_unit_id', foreignKeyConstraintName: 'fk_gerencias_business_unit' })
   businessUnit: BusinessUnitEntity | null;
 
   @Column({ length: 50, unique: true })

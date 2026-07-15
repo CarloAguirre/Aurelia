@@ -1,10 +1,10 @@
-import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from 'typeorm';
 import { ControlEvidenceEntity } from './control-evidence.entity';
 import { ControlSelfAssessmentEntity } from './control-self-assessment.entity';
 import { ControlVerificationItemEntity } from './control-verification-item.entity';
 
 @Entity('control_self_assessment_answers')
-@Index('uq_control_self_assessment_answers_item', ['assessmentId', 'verificationItemId'], { unique: true })
+@Unique('uq_control_self_assessment_answers_item', ['assessmentId', 'verificationItemId'])
 export class ControlSelfAssessmentAnswerEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -13,15 +13,15 @@ export class ControlSelfAssessmentAnswerEntity {
   @Column({ name: 'assessment_id', type: 'uuid' })
   assessmentId: string;
 
-  @ManyToOne(() => ControlSelfAssessmentEntity, (assessment) => assessment.answers, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'assessment_id' })
+  @ManyToOne(() => ControlSelfAssessmentEntity, (assessment) => assessment.answers, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'assessment_id', foreignKeyConstraintName: 'fk_control_self_assessment_answers_assessment' })
   assessment: ControlSelfAssessmentEntity;
 
   @Column({ name: 'verification_item_id', type: 'uuid' })
   verificationItemId: string;
 
-  @ManyToOne(() => ControlVerificationItemEntity, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'verification_item_id' })
+  @ManyToOne(() => ControlVerificationItemEntity, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'verification_item_id', foreignKeyConstraintName: 'fk_control_self_assessment_answers_item' })
   verificationItem: ControlVerificationItemEntity;
 
   @Column({ type: 'varchar', length: 40 })

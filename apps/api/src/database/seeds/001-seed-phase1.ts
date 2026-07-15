@@ -3,6 +3,7 @@ import { pbkdf2, randomBytes } from 'crypto';
 import { config } from 'dotenv';
 import { promisify } from 'util';
 import { DataSource } from 'typeorm';
+import { readApiEnv } from '../../config/env';
 import { AppDataSource } from '../data-source';
 
 config();
@@ -18,8 +19,8 @@ async function createPasswordHash(secret: string): Promise<string> {
   return `${FORMAT}$${ITERATIONS}$${salt.toString('base64url')}$${key.toString('base64url')}`;
 }
 
-async function seed(ds: DataSource): Promise<void> {
-  const demoPassword = process.env.AURELIA_DEMO_USER_PASSWORD ?? 'AureliaDemo123!';
+export async function runPhase1Seed(ds: DataSource): Promise<void> {
+  const demoPassword = readApiEnv().auth.demoUserPassword;
   const demoPasswordHash = await createPasswordHash(demoPassword);
   const qr = ds.createQueryRunner();
   await qr.connect();
@@ -304,10 +305,18 @@ async function seed(ds: DataSource): Promise<void> {
   }
 }
 
-AppDataSource.initialize()
-  .then((ds) => seed(ds))
-  .then(() => process.exit(0))
-  .catch((err) => {
+async function main(): Promise<void> {
+  const ds = await AppDataSource.initialize();
+  try {
+    await runPhase1Seed(ds);
+  } finally {
+    await ds.destroy();
+  }
+}
+
+if (require.main === module) {
+  void main().catch((err) => {
     console.error('Seed failed:', err);
     process.exit(1);
   });
+}

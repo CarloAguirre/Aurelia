@@ -1,6 +1,10 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from 'typeorm';
+import { UserEntity } from '../../users/entities/user.entity';
+import { InspectionFormItemEntity } from './inspection-form-item.entity';
+import { InspectionEntity } from './inspection.entity';
 
 @Entity('inspection_checklist_answers')
+@Unique('uq_ica_inspection_item', ['inspectionId', 'checklistItemId'])
 export class InspectionItemResponseEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -8,8 +12,16 @@ export class InspectionItemResponseEntity {
   @Column({ name: 'inspection_id', type: 'uuid' })
   inspectionId: string;
 
+  @ManyToOne(() => InspectionEntity, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'inspection_id', foreignKeyConstraintName: 'fk_ica_inspection' })
+  inspection: InspectionEntity;
+
   @Column({ name: 'checklist_item_id', type: 'uuid' })
   checklistItemId: string;
+
+  @ManyToOne(() => InspectionFormItemEntity, { nullable: false, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'checklist_item_id', foreignKeyConstraintName: 'fk_ica_item' })
+  checklistItem: InspectionFormItemEntity;
 
   @Column({ name: 'answer_value', type: 'varchar', length: 80, nullable: true })
   answerValue: string | null;
@@ -22,6 +34,10 @@ export class InspectionItemResponseEntity {
 
   @Column({ name: 'answered_by_user_id', type: 'uuid', nullable: true })
   answeredByUserId: string | null;
+
+  @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'answered_by_user_id', foreignKeyConstraintName: 'fk_ica_user' })
+  answeredByUser: UserEntity | null;
 
   @Column({ name: 'answered_at', type: 'timestamptz', nullable: true })
   answeredAt: Date | null;

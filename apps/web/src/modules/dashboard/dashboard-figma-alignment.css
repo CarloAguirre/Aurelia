@@ -117,3 +117,38 @@ aside[aria-label="Navegación lateral"] > div:first-of-type::-webkit-scrollbar-t
   background: rgba(255, 255, 255, 0.14);
   border-radius: 999px;
 }
+
+button[class*="bg-[#c8a064]"][class*="min-w-0"][class*="gap-[8px]"] {
+  color: #ffffff !important;
+}
+
+button[class*="bg-[#c8a064]"][class*="min-w-0"][class*="gap-[8px]"] svg path {
+  stroke: #ffffff !important;
+}
+
+div[class*="z-[1200]"][class*="bg-black/40"][class*="w-[360px]"] {
+  right: 32px !important;
+  left: auto !important;
+  width: 344px !important;
+  max-width: calc(100vw - 52px) !important;
+  transform: none !important;
+}
+
+div[class*="z-[1200]"][class*="bg-black/40"] > div {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+div[class*="z-[1200]"][class*="bg-black/40"] div[class*="mt-[8px]"][class*="flex"][class*="gap-[8px]"] {
+  display: grid !important;
+  grid-template-columns: 48px minmax(0, 1fr) 48px;
+}
+
+div[class*="z-[1200]"][class*="bg-black/40"] div[class*="mt-[8px]"][class*="flex"][class*="gap-[8px]"] > div {
+  min-width: 0;
+}
+
+div[class*="z-[1200]"][class*="bg-black/40"] input[type="number"] {
+  min-width: 0;
+  width: 100%;
+}

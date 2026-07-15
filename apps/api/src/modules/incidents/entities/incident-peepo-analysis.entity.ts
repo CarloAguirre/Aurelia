@@ -1,4 +1,5 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { IncidentInvestigationEntity } from './incident-investigation.entity';
 
 @Entity('incident_peepo_analysis')
 export class IncidentPeepoAnalysisEntity {
@@ -7,6 +8,10 @@ export class IncidentPeepoAnalysisEntity {
 
   @Column({ name: 'investigation_id', type: 'uuid', unique: true })
   investigationId: string;
+
+  @ManyToOne(() => IncidentInvestigationEntity, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'investigation_id', foreignKeyConstraintName: 'fk_ipa_investigation' })
+  investigation: IncidentInvestigationEntity;
 
   @Column({ type: 'text', nullable: true })
   people: string | null;

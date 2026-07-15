@@ -17,36 +17,36 @@ export class ControlSelfAssessmentEntity {
   @Column({ name: 'mue_id', type: 'uuid' })
   mueId: string;
 
-  @ManyToOne(() => MueEntity, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'mue_id' })
+  @ManyToOne(() => MueEntity, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'mue_id', foreignKeyConstraintName: 'fk_control_self_assessments_mue' })
   mue: MueEntity;
 
   @Column({ name: 'critical_control_id', type: 'uuid', nullable: true })
   criticalControlId: string | null;
 
   @ManyToOne(() => CriticalControlEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'critical_control_id' })
+  @JoinColumn({ name: 'critical_control_id', foreignKeyConstraintName: 'fk_control_self_assessments_control' })
   criticalControl: CriticalControlEntity | null;
 
   @Column({ name: 'area_id', type: 'uuid', nullable: true })
   areaId: string | null;
 
   @ManyToOne(() => AreaEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'area_id' })
+  @JoinColumn({ name: 'area_id', foreignKeyConstraintName: 'fk_control_self_assessments_area' })
   area: AreaEntity | null;
 
   @Column({ name: 'gerencia_id', type: 'uuid', nullable: true })
   gerenciaId: string | null;
 
   @ManyToOne(() => GerenciaEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'gerencia_id' })
+  @JoinColumn({ name: 'gerencia_id', foreignKeyConstraintName: 'fk_control_self_assessments_gerencia' })
   gerencia: GerenciaEntity | null;
 
   @Column({ name: 'company_id', type: 'uuid', nullable: true })
   companyId: string | null;
 
   @ManyToOne(() => CompanyEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'company_id' })
+  @JoinColumn({ name: 'company_id', foreignKeyConstraintName: 'fk_control_self_assessments_company' })
   company: CompanyEntity | null;
 
   @Column({ name: 'period_year', type: 'integer' })
@@ -66,14 +66,22 @@ export class ControlSelfAssessmentEntity {
   createdByUserId: string | null;
 
   @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'created_by_user_id' })
+  @JoinColumn({ name: 'created_by_user_id', foreignKeyConstraintName: 'fk_control_self_assessments_created_by' })
   createdByUser: UserEntity | null;
 
   @Column({ name: 'submitted_by_user_id', type: 'uuid', nullable: true })
   submittedByUserId: string | null;
 
+  @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'submitted_by_user_id', foreignKeyConstraintName: 'fk_control_self_assessments_submitted_by' })
+  submittedByUser: UserEntity | null;
+
   @Column({ name: 'validated_by_user_id', type: 'uuid', nullable: true })
   validatedByUserId: string | null;
+
+  @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'validated_by_user_id', foreignKeyConstraintName: 'fk_control_self_assessments_validated_by' })
+  validatedByUser: UserEntity | null;
 
   @Column({ name: 'submitted_at', type: 'timestamptz', nullable: true })
   submittedAt: Date | null;

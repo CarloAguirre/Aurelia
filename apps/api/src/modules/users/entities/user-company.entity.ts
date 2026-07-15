@@ -15,12 +15,12 @@ export class UserCompanyEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => UserEntity, (user) => user.userCompanies, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user_id' })
+  @ManyToOne(() => UserEntity, (user) => user.userCompanies, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id', foreignKeyConstraintName: 'fk_user_companies_user' })
   user: UserEntity;
 
-  @ManyToOne(() => CompanyEntity, (company) => company.userCompanies, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'company_id' })
+  @ManyToOne(() => CompanyEntity, (company) => company.userCompanies, { nullable: false, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'company_id', foreignKeyConstraintName: 'fk_user_companies_company' })
   company: CompanyEntity;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })

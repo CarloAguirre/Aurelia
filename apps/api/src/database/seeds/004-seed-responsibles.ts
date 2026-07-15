@@ -70,7 +70,7 @@ const gfUsers = [
   'carlos.aguirre@goldfields.com',
 ];
 
-async function seed(ds: DataSource): Promise<void> {
+export async function runResponsiblesSeed(ds: DataSource): Promise<void> {
   const qr = ds.createQueryRunner();
   await qr.connect();
   await qr.startTransaction();
@@ -108,12 +108,18 @@ async function seed(ds: DataSource): Promise<void> {
   }
 }
 
-AppDataSource.initialize()
-  .then(async (ds) => {
-    await seed(ds);
+async function main(): Promise<void> {
+  const ds = await AppDataSource.initialize();
+  try {
+    await runResponsiblesSeed(ds);
+  } finally {
     await ds.destroy();
-  })
-  .catch((err) => {
+  }
+}
+
+if (require.main === module) {
+  void main().catch((err) => {
     console.error(err);
     process.exit(1);
   });
+}

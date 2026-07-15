@@ -1,12 +1,12 @@
-import { Column, CreateDateColumn, Entity, Index, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from 'typeorm';
 import { CriticalControlEntity } from './critical-control.entity';
 
 @Entity('mues')
+@Unique('uq_mues_code', ['code'])
 export class MueEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Index('uq_mues_code', { unique: true })
   @Column({ type: 'varchar', length: 20 })
   code: string;
 

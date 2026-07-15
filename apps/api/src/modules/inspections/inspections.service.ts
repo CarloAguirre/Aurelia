@@ -305,13 +305,21 @@ export class InspectionsService {
       responsibleCompanyId: dto.responsibleCompanyId ?? null,
       title: dto.title,
       description: dto.description ?? null,
+      detectedCondition: dto.detectedCondition ?? null,
+      proposedCorrectiveAction: dto.proposedCorrectiveAction ?? null,
+      executedActionDescription: null,
+      rejectionReason: null,
       severity: dto.severity,
       status: InspectionFindingStatus.OPEN,
       ownerUserId: dto.ownerUserId ?? null,
       createdByUserId: actorId,
       dueAt: this.toNullableDate(dto.dueAt ?? null),
+      executedAt: null,
+      executedByUserId: null,
       closedAt: null,
       closedByUserId: null,
+      rejectedAt: null,
+      rejectedByUserId: null,
     });
 
     try {
@@ -330,22 +338,46 @@ export class InspectionsService {
     const entity = await this.getFindingOrThrow(findingId);
     if (dto.title !== undefined) entity.title = dto.title;
     if (dto.description !== undefined) entity.description = dto.description;
+    if (dto.detectedCondition !== undefined) entity.detectedCondition = dto.detectedCondition;
+    if (dto.proposedCorrectiveAction !== undefined) entity.proposedCorrectiveAction = dto.proposedCorrectiveAction;
+    if (dto.executedActionDescription !== undefined) entity.executedActionDescription = dto.executedActionDescription;
+    if (dto.rejectionReason !== undefined) entity.rejectionReason = dto.rejectionReason;
     if (dto.severity !== undefined) entity.severity = dto.severity;
     if (dto.ownerUserId !== undefined) entity.ownerUserId = dto.ownerUserId;
     if (dto.dueAt !== undefined) entity.dueAt = this.toNullableDate(dto.dueAt);
+    if (dto.executedAt !== undefined) entity.executedAt = this.toNullableDate(dto.executedAt);
+    if (dto.closedAt !== undefined) entity.closedAt = this.toNullableDate(dto.closedAt);
+    if (dto.rejectedAt !== undefined) entity.rejectedAt = this.toNullableDate(dto.rejectedAt);
     if (dto.status !== undefined) {
       entity.status = dto.status;
-      if (dto.status === InspectionFindingStatus.CLOSED) {
+      if (dto.status === InspectionFindingStatus.IN_PROGRESS) {
+        entity.executedAt = entity.executedAt ?? new Date();
+        entity.executedByUserId = entity.executedByUserId ?? actorId;
+        entity.closedAt = null;
+        entity.closedByUserId = null;
+        entity.rejectedAt = null;
+        entity.rejectedByUserId = null;
+      } else if (dto.status === InspectionFindingStatus.CLOSED) {
         entity.closedAt = entity.closedAt ?? new Date();
         entity.closedByUserId = actorId;
+        entity.rejectedAt = null;
+        entity.rejectedByUserId = null;
+      } else if (dto.status === InspectionFindingStatus.REJECTED) {
+        entity.rejectedAt = entity.rejectedAt ?? new Date();
+        entity.rejectedByUserId = actorId;
+        entity.closedAt = null;
+        entity.closedByUserId = null;
       } else {
         entity.closedAt = null;
         entity.closedByUserId = null;
+        entity.rejectedAt = null;
+        entity.rejectedByUserId = null;
       }
     }
 
     try {
       const saved = await this.findings.save(entity);
+      if (dto.responsibleUserIds !== undefined) await this.replaceFindingResponsibles(saved.id, dto.responsibleUserIds);
       await this.refreshFindingCounters(saved.inspectionId);
       return this.toFindingResponse(saved);
     } catch (err) {
@@ -437,6 +469,12 @@ export class InspectionsService {
     await this.inspections.update({ id: inspectionId }, { findingsCount, openFindingsCount });
   }
 
+  private async replaceFindingResponsibles(findingId: string, responsibleUserIds: string[]): Promise<void> {
+    await this.findingResponsibles.delete({ findingId });
+    if (responsibleUserIds.length === 0) return;
+    await this.findingResponsibles.save(responsibleUserIds.map((userId) => this.findingResponsibles.create({ findingId, userId })));
+  }
+
   private toTypeResponse(entity: InspectionTypeEntity): InspectionTypeResponse {
     return { id: entity.id, code: entity.code as InspectionType, name: entity.name, description: entity.description, status: entity.status, createdAt: entity.createdAt.toISOString(), updatedAt: entity.updatedAt.toISOString() };
   }
@@ -451,7 +489,7 @@ export class InspectionsService {
 
   private async toFindingResponse(entity: InspectionFindingEntity): Promise<InspectionFindingResponse> {
     const responsibleUserIds = (await this.findingResponsibles.find({ where: { findingId: entity.id } })).map((row) => row.userId);
-    return { id: entity.id, inspectionId: entity.inspectionId, checklistItemId: entity.checklistItemId, findingTypeId: entity.findingTypeId, severityId: entity.severityId, responsibleCompanyId: entity.responsibleCompanyId, responsibleUserIds, title: entity.title, description: entity.description, severity: entity.severity, status: entity.status, ownerUserId: entity.ownerUserId, createdByUserId: entity.createdByUserId, dueAt: this.toNullableIsoString(entity.dueAt), closedAt: this.toNullableIsoString(entity.closedAt), closedByUserId: entity.closedByUserId, createdAt: entity.createdAt.toISOString(), updatedAt: entity.updatedAt.toISOString() };
+    return { id: entity.id, inspectionId: entity.inspectionId, checklistItemId: entity.checklistItemId, findingTypeId: entity.findingTypeId, severityId: entity.severityId, responsibleCompanyId: entity.responsibleCompanyId, responsibleUserIds, title: entity.title, description: entity.description, detectedCondition: entity.detectedCondition, proposedCorrectiveAction: entity.proposedCorrectiveAction, executedActionDescription: entity.executedActionDescription, rejectionReason: entity.rejectionReason, severity: entity.severity, status: entity.status, ownerUserId: entity.ownerUserId, createdByUserId: entity.createdByUserId, dueAt: this.toNullableIsoString(entity.dueAt), executedAt: this.toNullableIsoString(entity.executedAt), executedByUserId: entity.executedByUserId, closedAt: this.toNullableIsoString(entity.closedAt), closedByUserId: entity.closedByUserId, rejectedAt: this.toNullableIsoString(entity.rejectedAt), rejectedByUserId: entity.rejectedByUserId, createdAt: entity.createdAt.toISOString(), updatedAt: entity.updatedAt.toISOString() };
   }
 
   private toFollowupResponse(entity: InspectionFollowupEntity): InspectionFollowupResponse {
@@ -463,7 +501,7 @@ export class InspectionsService {
   }
 
   private createFindingStatusCounter(): Record<InspectionFindingStatus, number> {
-    return { [InspectionFindingStatus.OPEN]: 0, [InspectionFindingStatus.IN_PROGRESS]: 0, [InspectionFindingStatus.CLOSED]: 0, [InspectionFindingStatus.CANCELLED]: 0 };
+    return Object.values(InspectionFindingStatus).reduce((acc, status) => ({ ...acc, [status]: 0 }), {} as Record<InspectionFindingStatus, number>);
   }
 
   private createFindingSeverityCounter(): Record<InspectionFindingSeverity, number> {

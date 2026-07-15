@@ -116,6 +116,12 @@ export function MigrationsPage() {
     await executeMaintenance(true);
   }
 
+  async function handleRunSeedsOnly() {
+    await executeMaintenance(false, {
+      runSeedsOnly: true,
+    });
+  }
+
   async function handleResetAndRunMaintenance() {
     const confirmation = window.prompt('Esto borrara TODO el esquema public de DEV. Escribe RESET_DEV_SCHEMA para confirmar.');
     if (confirmation !== 'RESET_DEV_SCHEMA') {
@@ -131,7 +137,7 @@ export function MigrationsPage() {
 
   async function executeMaintenance(
     allowRisky: boolean,
-    extraPayload?: { resetSchema?: boolean; resetConfirmation?: string },
+    extraPayload?: { resetSchema?: boolean; resetConfirmation?: string; runSeedsOnly?: boolean },
   ) {
     setLoadingRun(true);
     setError(null);
@@ -285,6 +291,14 @@ export function MigrationsPage() {
             </button>
             <button
               type="button"
+              onClick={handleRunSeedsOnly}
+              disabled={loadingRun}
+              style={{ height: 44, borderRadius: 14, border: '1px solid rgba(36, 88, 139, 0.2)', background: '#f4f8fc', color: '#24588b', fontWeight: 800, cursor: 'pointer' }}
+            >
+              {loadingRun ? 'Ejecutando seeds...' : 'Ejecutar solo seeds'}
+            </button>
+            <button
+              type="button"
               onClick={handleResetAndRunMaintenance}
               disabled={loadingRun}
               style={{ height: 44, borderRadius: 14, border: '1px solid rgba(196, 54, 90, 0.25)', background: '#fff6f8', color: '#c4365a', fontWeight: 800, cursor: 'pointer' }}
@@ -303,6 +317,9 @@ export function MigrationsPage() {
             ) : null}
             <p style={{ margin: 0, color: '#617183', fontSize: 12, lineHeight: 1.55 }}>
               Si el backend detecta cambios seguros, aplicará la migration y luego correrá los seeds seleccionados.
+            </p>
+            <p style={{ margin: 0, color: '#24588b', fontSize: 12, lineHeight: 1.55 }}>
+              "Ejecutar solo seeds" ignora el plan de esquema y ejecuta unicamente los seeds seleccionados.
             </p>
             <p style={{ margin: 0, color: '#c4365a', fontSize: 12, lineHeight: 1.55 }}>
               El boton de reset esta pensado solo para DEV cuando el esquema quedo en estado parcial. Borra todo el schema public y vuelve a reconstruirlo.

@@ -13,6 +13,7 @@ import { InspectionEvidenceViewerBridge } from './modules/inspections/components
 import { InspectionExecutedReviewRoleBridge } from './modules/inspections/components/InspectionExecutedReviewRoleBridge';
 import { InspectionExportMenuBridge } from './modules/inspections/components/InspectionExportMenuBridge';
 import { InspectionFollowupProgressBridge } from './modules/inspections/components/InspectionFollowupProgressBridge';
+import { InspectionManagementSelectMenuBridge } from './modules/inspections/components/InspectionManagementSelectMenuBridge';
 import { InspectionTableActionMenuBridge } from './modules/inspections/components/InspectionTableActionMenuBridge';
 import { ManualExecutionCancelConfirmBridge } from './modules/inspections/components/ManualExecutionCancelConfirmBridge';
 import { router } from './routes/router';
@@ -38,6 +39,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       <ManualExecutionCancelConfirmBridge />
       <InspectionTableActionMenuBridge />
       <InspectionExportMenuBridge />
+      <InspectionManagementSelectMenuBridge />
       <InspectionExecutedReviewRoleBridge />
     </QueryClientProvider>
   </React.StrictMode>,

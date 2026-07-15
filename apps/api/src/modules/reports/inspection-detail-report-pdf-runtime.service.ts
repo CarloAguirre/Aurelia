@@ -4,8 +4,21 @@ import { InspectionDetailReportPdfFidelityService } from './inspection-detail-re
 import { InspectionDetailReportPdfService } from './inspection-detail-report-pdf.service';
 import { ReportPdfService } from './report-pdf.service';
 
-type Runtime = Record<string, (...args: unknown[]) => unknown> & {
+type RuntimeMethod = (...args: unknown[]) => unknown;
+
+type Runtime = {
   generatedAt: string;
+  drawFindingsSummaryTable: RuntimeMethod;
+  drawGroupTitle: RuntimeMethod;
+  renderFinding: RuntimeMethod;
+  buildTimelineEvents: RuntimeMethod;
+  drawTimelineEvent: RuntimeMethod;
+  drawRoundedSummaryTable: RuntimeMethod;
+  drawPersistentGroupTitle: RuntimeMethod;
+  drawBorderedFinding: RuntimeMethod;
+  buildFidelityTimeline: RuntimeMethod;
+  drawFidelityTimelineEvent: RuntimeMethod;
+  render: RuntimeMethod;
 };
 
 @Injectable()

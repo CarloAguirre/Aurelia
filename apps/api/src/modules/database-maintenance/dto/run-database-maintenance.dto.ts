@@ -17,4 +17,8 @@ export class RunDatabaseMaintenanceDto {
   @IsOptional()
   @IsString()
   resetConfirmation?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  runSeedsOnly?: boolean;
 }

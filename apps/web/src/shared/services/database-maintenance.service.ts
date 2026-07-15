@@ -29,7 +29,7 @@ export interface DatabaseMaintenanceRunResponse {
   }>;
   availableSeeds: string[];
   error: {
-    phase: 'connect' | 'lock' | 'plan' | 'review' | 'artifact' | 'migration' | 'seed';
+    phase: 'connect' | 'lock' | 'reset' | 'prerequisites' | 'plan' | 'review' | 'artifact' | 'migration' | 'seed';
     message: string;
     details?: string;
     stack?: string;
@@ -41,6 +41,7 @@ export interface RunDatabaseMaintenanceRequest {
   allowRisky?: boolean;
   resetSchema?: boolean;
   resetConfirmation?: string;
+  runSeedsOnly?: boolean;
 }
 
 export async function getDatabaseMaintenancePlan(): Promise<DatabaseMaintenancePlanResponse> {

@@ -114,7 +114,8 @@ export class DatabaseMaintenanceService {
     const requestedSeeds = this.normalizeSeeds(dto.seeds ?? []);
     const allowRisky = dto.allowRisky === true;
     const resetSchema = dto.resetSchema === true;
-    this.logger.log(`Running database maintenance with seeds=[${requestedSeeds.join(', ')}], allowRisky=${allowRisky}, resetSchema=${resetSchema}`);
+    const runSeedsOnly = dto.runSeedsOnly === true;
+    this.logger.log(`Running database maintenance with seeds=[${requestedSeeds.join(', ')}], allowRisky=${allowRisky}, resetSchema=${resetSchema}, runSeedsOnly=${runSeedsOnly}`);
 
     if (resetSchema && dto.resetConfirmation !== DatabaseMaintenanceService.RESET_CONFIRMATION) {
       return {
@@ -152,6 +153,25 @@ export class DatabaseMaintenanceService {
 
       phase = 'prerequisites';
       await this.ensureDatabasePrerequisites(maintenanceRunner);
+
+      if (runSeedsOnly) {
+        phase = 'seed';
+        this.logger.log('runSeedsOnly enabled, skipping schema plan and migration execution');
+        const seeds = await this.runSeeds(requestedSeeds);
+        return {
+          migration: {
+            status: 'noop',
+            filePath: null,
+            migrationName: null,
+            upQueries: 0,
+            downQueries: 0,
+            riskyQueries: [],
+          },
+          seeds,
+          availableSeeds: availableSeedNames,
+          error: null,
+        };
+      }
 
       if (resetSchema) {
         phase = 'reset';

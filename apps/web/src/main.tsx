@@ -7,6 +7,7 @@ import { ChecklistResultBridge } from './modules/inspections/components/Checklis
 import { DraftProgressBridge } from './modules/inspections/components/DraftProgressBridge';
 import { IncompleteInspectionDraftBridge } from './modules/inspections/components/IncompleteInspectionDraftBridge';
 import { InspectionAreaSectorFilterBridge } from './modules/inspections/components/InspectionAreaSectorFilterBridge';
+import { InspectionAssignmentScopeBridge } from './modules/inspections/components/InspectionAssignmentScopeBridge';
 import { InspectionClosedReassignLockBridge } from './modules/inspections/components/InspectionClosedReassignLockBridge';
 import { InspectionEvidenceImageSourceBridge } from './modules/inspections/components/InspectionEvidenceImageSourceBridge';
 import { InspectionEvidenceViewerBridge } from './modules/inspections/components/InspectionEvidenceViewerBridge';
@@ -29,6 +30,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
       <InspectionAreaSectorFilterBridge key={bridgeKey} />
+      <InspectionAssignmentScopeBridge />
       <IncompleteInspectionDraftBridge />
       <DraftProgressBridge />
       <ApproveCloseConfirmBridge />

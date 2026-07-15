@@ -8,6 +8,7 @@ import { AreaEntity } from '../organization/entities/area.entity';
 import { CompanyEntity } from '../organization/entities/company.entity';
 import { SectorEntity } from '../organization/entities/sector.entity';
 import { UserEntity } from '../users/entities/user.entity';
+import { InspectionDetailReportPdfFidelityService } from './inspection-detail-report-pdf-fidelity.service';
 import { InspectionDetailReportPdfService } from './inspection-detail-report-pdf.service';
 import { InspectionPeriodicReportController } from './inspection-periodic-report.controller';
 import { InspectionPeriodicReportService } from './inspection-periodic-report.service';
@@ -37,7 +38,11 @@ import { ReportsService } from './reports.service';
     ReportPeriodService,
     ReportScopeService,
     InspectionPeriodicReportService,
-    InspectionDetailReportPdfService,
+    InspectionDetailReportPdfFidelityService,
+    {
+      provide: InspectionDetailReportPdfService,
+      useExisting: InspectionDetailReportPdfFidelityService,
+    },
   ],
   exports: [ReportPdfService, ReportPeriodService, ReportScopeService, InspectionDetailReportPdfService],
 })

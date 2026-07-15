@@ -50,8 +50,12 @@ export class InspectionsController {
   }
 
   @Get('responsible-users')
-  findResponsibleUsers(@Query('companyId') companyId?: string): Promise<UserResponse[]> {
-    return this.usersService.findAll({ companyId });
+  async findResponsibleUsers(
+    @Req() request: AuthenticatedRequest,
+    @Query('companyId') companyId?: string,
+  ): Promise<UserResponse[]> {
+    const scopedCompanyId = await this.resourceScopeService.resolveInspectionAssignmentCompany(request.user, companyId);
+    return this.usersService.findAll({ companyId: scopedCompanyId ?? undefined });
   }
 
   @Get('assignment-scope')

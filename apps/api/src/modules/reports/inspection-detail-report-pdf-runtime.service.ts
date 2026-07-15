@@ -66,11 +66,10 @@ export class InspectionDetailReportPdfRuntimeService extends InspectionDetailRep
       return events.map((event, index) => ({ ...event, last: index === events.length - 1 }));
     };
     runtime.drawTimelineEvent = (...args) => {
-      const [document, event, index, height] = args;
+      const [document, event, , height] = args;
       this.drawConnectedTimelineEvent(
         document as ReportPdfDocument,
         event as TimelineEvent,
-        Number(index),
         Number(height),
         runtime,
       );
@@ -89,7 +88,6 @@ export class InspectionDetailReportPdfRuntimeService extends InspectionDetailRep
   private drawConnectedTimelineEvent(
     document: ReportPdfDocument,
     event: TimelineEvent,
-    index: number,
     height: number,
     runtime: Runtime,
   ) {

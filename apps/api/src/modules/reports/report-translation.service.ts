@@ -20,11 +20,19 @@ export class ReportTranslationService {
 
   constructor(private readonly configService: ConfigService) {
     this.baseUrl = this.normalizeBaseUrl(
-      this.configService.get<string>('reportTranslation.baseUrl') ?? 'http://localhost:5000',
+      this.configService.get<string>('REPORT_TRANSLATION_URL') ?? 'http://localhost:5000',
     );
-    this.apiKey = this.configService.get<string | null>('reportTranslation.apiKey') ?? null;
-    this.timeoutMs = this.configService.get<number>('reportTranslation.timeoutMs') ?? 30000;
-    this.required = this.configService.get<boolean>('reportTranslation.required') ?? true;
+    this.apiKey = this.optionalString(
+      this.configService.get<string>('REPORT_TRANSLATION_API_KEY'),
+    );
+    this.timeoutMs = this.positiveNumber(
+      this.configService.get<string | number>('REPORT_TRANSLATION_TIMEOUT_MS'),
+      30000,
+    );
+    this.required = this.booleanValue(
+      this.configService.get<string | boolean>('REPORT_TRANSLATION_REQUIRED'),
+      true,
+    );
   }
 
   async translateToEnglish(values: string[]): Promise<string[]> {
@@ -147,5 +155,22 @@ export class ReportTranslationService {
 
   private normalizeBaseUrl(value: string): string {
     return value.trim().replace(/\/+$/, '');
+  }
+
+  private optionalString(value: string | undefined): string | null {
+    const normalized = value?.trim() ?? '';
+    return normalized || null;
+  }
+
+  private positiveNumber(value: string | number | undefined, fallback: number): number {
+    const parsed = typeof value === 'number' ? value : Number.parseInt(value ?? '', 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  }
+
+  private booleanValue(value: string | boolean | undefined, fallback: boolean): boolean {
+    if (typeof value === 'boolean') return value;
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return fallback;
   }
 }

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { createPortal } from 'react-dom';
+import { env } from '../../../shared/config/env';
+import { getInspectionManagementTable } from '../../../shared/services/inspections.service';
 
 type MenuState = {
   top: number;
@@ -9,12 +11,24 @@ type MenuState = {
   trigger: HTMLButtonElement | null;
 };
 
+const apiOrigin = env.apiUrl.replace(/\/api\/?$/, '');
+
 function getDirectButtons(element: HTMLElement) {
   return Array.from(element.children).filter((child): child is HTMLButtonElement => child instanceof HTMLButtonElement);
 }
 
 function normalizeText(value: string) {
   return value.replace(/\s+/g, ' ').trim();
+}
+
+function normalizeInspectionNumber(value: string) {
+  return normalizeText(value).replace(/^#/, '');
+}
+
+function inspectionNumberFromMenu(menu: HTMLElement) {
+  const row = menu.closest('tr');
+  const firstCell = row?.querySelector('td');
+  return normalizeInspectionNumber(firstCell?.textContent ?? '');
 }
 
 function isSourceMenu(element: Element) {
@@ -54,6 +68,7 @@ export function InspectionTableActionMenuBridge(): ReactElement | null {
   const portalRef = useRef<HTMLDivElement | null>(null);
   const hiddenSourceRef = useRef<HTMLElement | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   useEffect(() => {
     function restoreHiddenSource() {
@@ -123,12 +138,54 @@ export function InspectionTableActionMenuBridge(): ReactElement | null {
     if (button instanceof HTMLButtonElement) button.click();
   }
 
+  async function downloadInspectionPdf() {
+    if (!menu || isDownloadingPdf) return;
+
+    const inspectionNumber = inspectionNumberFromMenu(menu.source);
+    if (!inspectionNumber) {
+      window.alert('No fue posible identificar la inspección seleccionada.');
+      return;
+    }
+
+    const pdfWindow = window.open('', '_blank');
+    if (!pdfWindow) {
+      window.alert('El navegador bloqueó la descarga. Habilita las ventanas emergentes para Aurelia.');
+      return;
+    }
+
+    pdfWindow.opener = null;
+    pdfWindow.document.title = 'Generando informe PDF';
+    pdfWindow.document.body.textContent = 'Generando informe PDF…';
+    setIsDownloadingPdf(true);
+    menu.trigger?.click();
+
+    try {
+      const response = await getInspectionManagementTable({
+        page: 1,
+        pageSize: 10,
+        id: inspectionNumber,
+      });
+      const selected = response.rows.find(
+        (row) => normalizeInspectionNumber(row.inspectionNumber) === inspectionNumber,
+      ) ?? response.rows[0];
+
+      if (!selected) throw new Error('Inspection not found');
+
+      pdfWindow.location.href = `${apiOrigin}/api/inspections/${encodeURIComponent(selected.inspectionId)}/export/pdf`;
+    } catch {
+      pdfWindow.close();
+      window.alert('No fue posible generar el PDF de la inspección. Intenta nuevamente.');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  }
+
   if (!menu) return null;
 
   return createPortal(
     <div ref={portalRef} data-inspection-actions-portal="true" className="fixed z-[10000] flex flex-col items-start rounded-[12px] border border-[#d1d1d1] bg-white p-[8px] shadow-[0px_4px_8px_rgba(19,19,19,0.24)]" style={{ top: `${menu.top}px`, left: `${menu.left}px`, width: `${menu.width}px` }} role="menu">
       <button type="button" onClick={() => activateSourceButton(0)} className="flex h-[40px] w-full items-center rounded-[8px] bg-white px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313]" role="menuitem">Ver detalles</button>
-      <button type="button" onClick={() => activateSourceButton(1)} className="flex h-[40px] w-full items-center rounded-[8px] px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313]" role="menuitem">PDF (.pdf)</button>
+      <button type="button" disabled={isDownloadingPdf} onClick={downloadInspectionPdf} className="flex h-[40px] w-full items-center rounded-[8px] px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313] disabled:cursor-wait disabled:opacity-60" role="menuitem">{isDownloadingPdf ? 'Generando PDF…' : 'PDF (.pdf)'}</button>
     </div>,
     document.body,
   );

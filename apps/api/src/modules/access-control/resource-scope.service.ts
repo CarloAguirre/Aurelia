@@ -52,11 +52,10 @@ export class ResourceScopeService {
 
   async getInspectionAssignmentScope(user: AccessTokenPayload): Promise<InspectionAssignmentScopeResponse> {
     const scope = await this.getUserScope(user);
-    const canSelectCompany = scope.isAdmin || scope.isPrincipalCompanyUser;
     return {
-      canSelectCompany,
-      companyId: canSelectCompany ? null : scope.primaryCompany?.id ?? null,
-      companyName: canSelectCompany ? null : scope.primaryCompany?.name ?? null,
+      canSelectCompany: scope.isAdmin || scope.isPrincipalCompanyUser,
+      companyId: scope.primaryCompany?.id ?? null,
+      companyName: scope.primaryCompany?.name ?? null,
     };
   }
 

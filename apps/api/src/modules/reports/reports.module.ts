@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AiModule } from '../ai/ai.module';
 import { FilesModule } from '../files/files.module';
 import { InspectionFindingEntity } from '../inspections/entities/inspection-finding.entity';
 import { InspectionTypeEntity } from '../inspections/entities/inspection-type.entity';
@@ -20,12 +19,12 @@ import { InspectionPeriodicReportService } from './inspection-periodic-report.se
 import { ReportPdfService } from './report-pdf.service';
 import { ReportPeriodService } from './report-period.service';
 import { ReportScopeService } from './report-scope.service';
+import { ReportTranslationService } from './report-translation.service';
 import { ReportsController } from './reports.controller';
 import { ReportsService } from './reports.service';
 
 @Module({
   imports: [
-    AiModule,
     FilesModule,
     TypeOrmModule.forFeature([
       InspectionEntity,
@@ -43,6 +42,7 @@ import { ReportsService } from './reports.service';
     ReportPdfService,
     ReportPeriodService,
     ReportScopeService,
+    ReportTranslationService,
     InspectionPeriodicReportService,
     InspectionDetailReportPdfFidelityService,
     InspectionDetailReportPdfRuntimeService,

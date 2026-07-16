@@ -12,17 +12,27 @@ type TranslationPipelineRunner = (
   options?: Record<string, unknown>,
 ) => Promise<unknown>;
 
+type TranslationDtype =
+  | 'fp32'
+  | 'fp16'
+  | 'q8'
+  | 'int8'
+  | 'uint8'
+  | 'q4'
+  | 'bnb4'
+  | 'q4f16';
+
 const TRANSLATION_BATCH_SIZE = 12;
 const TRANSLATION_BATCH_CHARACTER_LIMIT = 4000;
 const DEFAULT_MODEL = 'Xenova/opus-mt-es-en';
-const DEFAULT_DTYPE = 'q8';
+const DEFAULT_DTYPE: TranslationDtype = 'q8';
 
 @Injectable()
 export class ReportTranslationService {
   private readonly logger = new Logger(ReportTranslationService.name);
   private readonly translationCache = new Map<string, string>();
   private readonly modelId: string;
-  private readonly dtype: string;
+  private readonly dtype: TranslationDtype;
   private readonly cacheDir: string;
   private readonly localModelPath: string | null;
   private readonly allowRemoteModels: boolean;
@@ -33,9 +43,9 @@ export class ReportTranslationService {
     this.modelId = this.optionalString(
       this.configService.get<string>('REPORT_TRANSLATION_MODEL'),
     ) ?? DEFAULT_MODEL;
-    this.dtype = this.optionalString(
+    this.dtype = this.translationDtype(
       this.configService.get<string>('REPORT_TRANSLATION_DTYPE'),
-    ) ?? DEFAULT_DTYPE;
+    );
     this.cacheDir = this.optionalString(
       this.configService.get<string>('REPORT_TRANSLATION_CACHE_DIR'),
     ) ?? this.defaultCacheDir();
@@ -95,7 +105,7 @@ export class ReportTranslationService {
 
     const translator = await this.getTranslator();
     const output = await translator(values, {
-      max_new_tokens: 256,
+      max_new_tokens: 512,
       do_sample: false,
     });
     const translations = this.translationTexts(output);
@@ -165,6 +175,23 @@ export class ReportTranslationService {
   private defaultCacheDir(): string {
     const home = process.env.HOME?.trim() || process.env.USERPROFILE?.trim();
     return join(home || process.cwd(), '.cache', 'aurelia', 'transformers');
+  }
+
+  private translationDtype(value: string | undefined): TranslationDtype {
+    const normalized = value?.trim();
+    if (
+      normalized === 'fp32'
+      || normalized === 'fp16'
+      || normalized === 'q8'
+      || normalized === 'int8'
+      || normalized === 'uint8'
+      || normalized === 'q4'
+      || normalized === 'bnb4'
+      || normalized === 'q4f16'
+    ) {
+      return normalized;
+    }
+    return DEFAULT_DTYPE;
   }
 
   private optionalString(value: string | undefined): string | null {

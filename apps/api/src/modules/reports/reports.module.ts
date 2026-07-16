@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AiModule } from '../ai/ai.module';
 import { FilesModule } from '../files/files.module';
 import { InspectionFindingEntity } from '../inspections/entities/inspection-finding.entity';
 import { InspectionTypeEntity } from '../inspections/entities/inspection-type.entity';
@@ -13,6 +14,7 @@ import { InspectionDetailReportPdfFinalService } from './inspection-detail-repor
 import { InspectionDetailReportPdfPixelPerfectService } from './inspection-detail-report-pdf-pixel-perfect.service';
 import { InspectionDetailReportPdfRuntimeService } from './inspection-detail-report-pdf-runtime.service';
 import { InspectionDetailReportPdfService } from './inspection-detail-report-pdf.service';
+import { InspectionDetailReportPdfTranslatedService } from './inspection-detail-report-pdf-translated.service';
 import { InspectionPeriodicReportController } from './inspection-periodic-report.controller';
 import { InspectionPeriodicReportService } from './inspection-periodic-report.service';
 import { ReportPdfService } from './report-pdf.service';
@@ -23,6 +25,7 @@ import { ReportsService } from './reports.service';
 
 @Module({
   imports: [
+    AiModule,
     FilesModule,
     TypeOrmModule.forFeature([
       InspectionEntity,
@@ -45,9 +48,10 @@ import { ReportsService } from './reports.service';
     InspectionDetailReportPdfRuntimeService,
     InspectionDetailReportPdfFinalService,
     InspectionDetailReportPdfPixelPerfectService,
+    InspectionDetailReportPdfTranslatedService,
     {
       provide: InspectionDetailReportPdfService,
-      useExisting: InspectionDetailReportPdfPixelPerfectService,
+      useExisting: InspectionDetailReportPdfTranslatedService,
     },
   ],
   exports: [ReportPdfService, ReportPeriodService, ReportScopeService, InspectionDetailReportPdfService],

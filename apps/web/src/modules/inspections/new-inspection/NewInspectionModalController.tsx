@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { InspectionType } from '@aurelia/contracts';
+import { getInspectionAssignmentScope } from '../../../shared/services/inspection-assignment-scope.service';
 import { useSessionStore } from '../../../shared/stores/session.store';
 import { StartStep } from './steps/StartStep';
 import { AssistantChatStep } from './steps/AssistantChatStepV4';
@@ -98,6 +100,12 @@ function CancelInspectionConfirmationDialog({ onConfirm, onReturn }: { onConfirm
 
 export function NewInspectionModalController({ open, onClose }: NewInspectionModalControllerProps) {
   const user = useSessionStore((state) => state.user);
+  const assignmentScopeQuery = useQuery({
+    queryKey: ['inspections', 'assignment-scope', user?.id],
+    queryFn: getInspectionAssignmentScope,
+    enabled: Boolean(open && user),
+    staleTime: 300000,
+  });
   const setInspector = useNewInspectionDraftStore((state) => state.setInspector);
   const setFlowMode = useNewInspectionDraftStore((state) => state.setFlowMode);
   const hydrateDraft = useNewInspectionDraftStore((state) => state.hydrate);
@@ -120,6 +128,9 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
   const resumeDraftOnOpenRef = useRef(false);
   const handledOpenRef = useRef(false);
+  const inspectorName = user?.fullName ?? '';
+  const inspectorCompanyName = assignmentScopeQuery.data?.companyName
+    ?? (user?.email.toLowerCase().endsWith('@goldfields.com') ? 'Gold Fields' : 'Sin empresa asignada');
 
   useEffect(() => {
     function requestDraftResume() {
@@ -166,16 +177,23 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
     goToChecklistObservations();
   }
 
+  function resetDraftForInspector() {
+    resetDraft();
+    setInspector(inspectorName, inspectorCompanyName);
+  }
+
   useEffect(() => {
-    if (!open || handledOpenRef.current) return;
+    if (!open || handledOpenRef.current || !user || assignmentScopeQuery.isLoading) return;
     handledOpenRef.current = true;
-    const fullName = user?.fullName ?? 'Karen Opazo S.';
-    const companyName = 'Gold Fields';
     const snapshot = loadNewInspectionDraftSnapshot();
     const shouldResumeDraft = resumeDraftOnOpenRef.current || shouldResumeStoredDraft();
     setResumeAssistantDraft(false);
     if (shouldResumeDraft && snapshot) {
-      const nextDraft = normalizeDraftForResume(snapshot.draft);
+      const nextDraft = {
+        ...normalizeDraftForResume(snapshot.draft),
+        inspectorName,
+        inspectorCompanyName,
+      };
       resumeDraftOnOpenRef.current = false;
       clearResumeStoredDraft();
       activateNewInspectionDraftSnapshot(snapshot.id);
@@ -196,12 +214,23 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
     clearResumeStoredDraft();
     clearActiveNewInspectionDraftSession();
     resetFlow();
-    resetDraft();
+    resetDraftForInspector();
     submitMutation.reset();
-    setInspector(fullName, companyName);
     goToStart();
     setInitialized(true);
-  }, [goToAssistantChat, goToStart, hydrateDraft, open, resetDraft, resetFlow, setInspector, user?.fullName]);
+  }, [
+    assignmentScopeQuery.isLoading,
+    goToAssistantChat,
+    goToStart,
+    hydrateDraft,
+    inspectorCompanyName,
+    inspectorName,
+    open,
+    resetDraft,
+    resetFlow,
+    setInspector,
+    user,
+  ]);
 
   function discardActiveDraft() {
     clearNewInspectionDraftSnapshot();
@@ -234,7 +263,7 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
     if (resumeAssistantDraft) {
       discardActiveDraft();
       setResumeAssistantDraft(false);
-      resetDraft();
+      resetDraftForInspector();
       submitMutation.reset();
       goToStart();
       return;
@@ -244,7 +273,7 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
 
   function handleCreateAnother() {
     discardActiveDraft();
-    resetDraft();
+    resetDraftForInspector();
     submitMutation.reset();
     setResumeAssistantDraft(false);
     goToStart();
@@ -253,7 +282,7 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
   function handleStartAssistant() {
     clearResumeStoredDraft();
     beginNewInspectionDraftSession();
-    resetDraft();
+    resetDraftForInspector();
     setFlowMode('assistant');
     submitMutation.reset();
     setResumeAssistantDraft(false);
@@ -263,7 +292,7 @@ export function NewInspectionModalController({ open, onClose }: NewInspectionMod
   function handleStartManual() {
     clearResumeStoredDraft();
     beginNewInspectionDraftSession();
-    resetDraft();
+    resetDraftForInspector();
     setFlowMode('manual');
     submitMutation.reset();
     setResumeAssistantDraft(false);

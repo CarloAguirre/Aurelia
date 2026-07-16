@@ -10,6 +10,7 @@ import { SectorEntity } from '../organization/entities/sector.entity';
 import { UserEntity } from '../users/entities/user.entity';
 import { InspectionDetailReportPdfFidelityService } from './inspection-detail-report-pdf-fidelity.service';
 import { InspectionDetailReportPdfFinalService } from './inspection-detail-report-pdf-final.service';
+import { InspectionDetailReportPdfLayoutService } from './inspection-detail-report-pdf-layout.service';
 import { InspectionDetailReportPdfPixelPerfectService } from './inspection-detail-report-pdf-pixel-perfect.service';
 import { InspectionDetailReportPdfRuntimeService } from './inspection-detail-report-pdf-runtime.service';
 import { InspectionDetailReportPdfService } from './inspection-detail-report-pdf.service';
@@ -49,9 +50,10 @@ import { ReportsService } from './reports.service';
     InspectionDetailReportPdfFinalService,
     InspectionDetailReportPdfPixelPerfectService,
     InspectionDetailReportPdfTranslatedService,
+    InspectionDetailReportPdfLayoutService,
     {
       provide: InspectionDetailReportPdfService,
-      useExisting: InspectionDetailReportPdfTranslatedService,
+      useExisting: InspectionDetailReportPdfLayoutService,
     },
   ],
   exports: [ReportPdfService, ReportPeriodService, ReportScopeService, InspectionDetailReportPdfService],

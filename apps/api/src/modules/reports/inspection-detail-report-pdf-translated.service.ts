@@ -1,69 +1,144 @@
 import { Injectable } from '@nestjs/common';
-import { AiService } from '../ai/ai.service';
 import { FilesService } from '../files/files.service';
 import { InspectionDetailReportPdfPixelPerfectService } from './inspection-detail-report-pdf-pixel-perfect.service';
 import { ReportPdfService } from './report-pdf.service';
+import { ReportTranslationService } from './report-translation.service';
 
 type UnknownRecord = Record<string, unknown>;
+
+type TranslationTarget =
+  | 'condition'
+  | 'proposedCorrectiveActionEn'
+  | 'executedActionDescriptionEn'
+  | 'rejectionReasonEn'
+  | 'cancellationReasonEn';
+
+type TranslationJob = {
+  findingIndex: number;
+  target: TranslationTarget;
+  source: string;
+};
 
 @Injectable()
 export class InspectionDetailReportPdfTranslatedService extends InspectionDetailReportPdfPixelPerfectService {
   constructor(
     pdf: ReportPdfService,
     files: FilesService,
-    private readonly aiService: AiService,
+    private readonly reportTranslation: ReportTranslationService,
   ) {
     super(pdf, files);
   }
 
   override async render(payload: Record<string, unknown>): Promise<Buffer> {
-    const findings = this.translationArray(payload.findings).map((value) =>
-      this.translationRecord(value),
-    );
+    const findings = this.translationArray(payload.findings).map((value) => ({
+      ...this.translationRecord(value),
+    }));
     if (findings.length === 0) return super.render(payload);
 
-    const pendingIndexes: number[] = [];
-    const pendingSources: string[] = [];
+    const jobs: TranslationJob[] = [];
 
-    findings.forEach((finding, index) => {
-      if (this.explicitEnglish(finding)) return;
-      const source = this.sourceCondition(finding);
-      if (!source) return;
-      pendingIndexes.push(index);
-      pendingSources.push(source);
+    findings.forEach((finding, findingIndex) => {
+      const conditionEnglish = this.explicitConditionEnglish(finding);
+      if (conditionEnglish) {
+        this.assignTranslation(finding, 'condition', conditionEnglish);
+      } else {
+        this.enqueueTranslation(
+          jobs,
+          findingIndex,
+          'condition',
+          this.translationString(finding.detectedCondition) || this.translationString(finding.title),
+        );
+      }
+
+      this.enqueueFieldTranslation(
+        jobs,
+        finding,
+        findingIndex,
+        'proposedCorrectiveAction',
+        'proposedCorrectiveActionEn',
+      );
+      this.enqueueFieldTranslation(
+        jobs,
+        finding,
+        findingIndex,
+        'executedActionDescription',
+        'executedActionDescriptionEn',
+      );
+      this.enqueueFieldTranslation(
+        jobs,
+        finding,
+        findingIndex,
+        'rejectionReason',
+        'rejectionReasonEn',
+      );
+      this.enqueueFieldTranslation(
+        jobs,
+        finding,
+        findingIndex,
+        'cancellationReason',
+        'cancellationReasonEn',
+      );
     });
 
-    const generatedTranslations = await this.aiService.translateToEnglish(pendingSources);
-    const translationsByIndex = new Map<number, string>();
-    pendingIndexes.forEach((findingIndex, translationIndex) => {
-      const translation = generatedTranslations[translationIndex]?.trim() ?? '';
-      if (translation) translationsByIndex.set(findingIndex, translation);
-    });
-
-    const translatedFindings = findings.map((finding, index) => {
-      const translation = this.explicitEnglish(finding) || translationsByIndex.get(index) || '';
-      if (!translation) return finding;
-      return {
-        ...finding,
-        titleEn: translation,
-        detectedConditionEn: translation,
-        reportSummaryConditionEn: translation,
-      };
-    });
+    if (jobs.length > 0) {
+      const translations = await this.reportTranslation.translateToEnglish(
+        jobs.map((job) => job.source),
+      );
+      jobs.forEach((job, index) => {
+        const translation = translations[index]?.trim() ?? '';
+        if (translation) this.assignTranslation(findings[job.findingIndex], job.target, translation);
+      });
+    }
 
     return super.render({
       ...payload,
-      findings: translatedFindings,
+      findings,
     });
   }
 
-  private sourceCondition(finding: UnknownRecord): string {
-    return this.translationString(finding.detectedCondition)
-      || this.translationString(finding.title);
+  private enqueueFieldTranslation(
+    jobs: TranslationJob[],
+    finding: UnknownRecord,
+    findingIndex: number,
+    sourceField: string,
+    targetField: Exclude<TranslationTarget, 'condition'>,
+  ): void {
+    if (this.translationString(finding[targetField])) return;
+    this.enqueueTranslation(
+      jobs,
+      findingIndex,
+      targetField,
+      this.translationString(finding[sourceField]),
+    );
   }
 
-  private explicitEnglish(finding: UnknownRecord): string {
-    return this.translationString(finding.detectedConditionEn)
+  private enqueueTranslation(
+    jobs: TranslationJob[],
+    findingIndex: number,
+    target: TranslationTarget,
+    source: string,
+  ): void {
+    if (!source) return;
+    jobs.push({ findingIndex, target, source });
+  }
+
+  private assignTranslation(
+    finding: UnknownRecord,
+    target: TranslationTarget,
+    translation: string,
+  ): void {
+    if (target === 'condition') {
+      finding.titleEn = translation;
+      finding.detectedConditionEn = translation;
+      finding.reportSummaryConditionEn = translation;
+      return;
+    }
+    finding[target] = translation;
+  }
+
+  private explicitConditionEnglish(finding: UnknownRecord): string {
+    return this.translationString(finding.reportSummaryConditionEn)
+      || this.translationString(finding.detectedConditionEn)
       || this.translationString(finding.titleEn)
       || this.translationString(finding.descriptionEn);
   }

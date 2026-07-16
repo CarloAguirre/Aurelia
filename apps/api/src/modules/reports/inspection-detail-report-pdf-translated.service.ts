@@ -17,7 +17,9 @@ export class InspectionDetailReportPdfTranslatedService extends InspectionDetail
   }
 
   override async render(payload: Record<string, unknown>): Promise<Buffer> {
-    const findings = this.reportArray(payload.findings).map((value) => this.reportRecord(value));
+    const findings = this.translationArray(payload.findings).map((value) =>
+      this.translationRecord(value),
+    );
     if (findings.length === 0) return super.render(payload);
 
     const pendingIndexes: number[] = [];
@@ -56,27 +58,27 @@ export class InspectionDetailReportPdfTranslatedService extends InspectionDetail
   }
 
   private sourceCondition(finding: UnknownRecord): string {
-    return this.reportString(finding.detectedCondition)
-      || this.reportString(finding.title);
+    return this.translationString(finding.detectedCondition)
+      || this.translationString(finding.title);
   }
 
   private explicitEnglish(finding: UnknownRecord): string {
-    return this.reportString(finding.detectedConditionEn)
-      || this.reportString(finding.titleEn)
-      || this.reportString(finding.descriptionEn);
+    return this.translationString(finding.detectedConditionEn)
+      || this.translationString(finding.titleEn)
+      || this.translationString(finding.descriptionEn);
   }
 
-  private reportArray(value: unknown): unknown[] {
+  private translationArray(value: unknown): unknown[] {
     return Array.isArray(value) ? value : [];
   }
 
-  private reportRecord(value: unknown): UnknownRecord {
+  private translationRecord(value: unknown): UnknownRecord {
     return value && typeof value === 'object' && !Array.isArray(value)
       ? value as UnknownRecord
       : {};
   }
 
-  private reportString(value: unknown): string {
+  private translationString(value: unknown): string {
     if (typeof value === 'string') return value.trim();
     if (typeof value === 'number') return String(value);
     return '';

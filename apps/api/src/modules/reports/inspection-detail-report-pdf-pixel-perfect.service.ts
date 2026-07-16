@@ -181,7 +181,7 @@ export class InspectionDetailReportPdfPixelPerfectService extends InspectionDeta
   }
 
   override async render(payload: Record<string, unknown>): Promise<Buffer> {
-    const runtime = this.runtime();
+    const runtime = this.pixelRuntime();
     const generatedAt = runtime.reportString(payload.generatedAt) || new Date().toISOString();
     const preparedPayload = {
       ...payload,
@@ -225,7 +225,7 @@ export class InspectionDetailReportPdfPixelPerfectService extends InspectionDeta
       }));
     };
     runtime.drawTimelineEvent = (document, event, _index, height) =>
-      this.drawTimelineEvent(document, event, height, runtime);
+      this.drawPixelTimelineEvent(document, event, height, runtime);
     runtime.addFooters = (document, context) => runtime.drawFooters(document, context, runtime);
 
     return base.render.call(this, preparedPayload);
@@ -449,7 +449,7 @@ export class InspectionDetailReportPdfPixelPerfectService extends InspectionDeta
     document.y = y + row.rowHeight;
   }
 
-  private drawTimelineEvent(
+  private drawPixelTimelineEvent(
     document: ReportPdfDocument,
     event: TimelineEvent,
     height: number,
@@ -567,7 +567,7 @@ export class InspectionDetailReportPdfPixelPerfectService extends InspectionDeta
     return formatter.formatDateTime(value);
   }
 
-  private runtime(): PixelPerfectRuntime {
+  private pixelRuntime(): PixelPerfectRuntime {
     return this as unknown as PixelPerfectRuntime;
   }
 }

@@ -83,6 +83,7 @@ interface ManualInspectionLocationInput {
 
 interface ManualInspectionState extends ManualInspectionDraft {
   setDraftId: (draftId: string | null) => void;
+  setInspectorIdentity: (name: string, companyName: string) => void;
   setArea: (id: string, name: string) => void;
   setSector: (id: string, name: string) => void;
   setInspectionDate: (value: string) => void;
@@ -144,6 +145,7 @@ function newObservationId() {
 export const useManualInspectionDraft = create<ManualInspectionState>((set) => ({
   ...initialDraft,
   setDraftId: (draftId) => set({ draftId }),
+  setInspectorIdentity: (inspectorName, inspectorCompanyName) => set({ inspectorName, inspectorCompanyName }),
   setArea: (id, name) => set({ areaId: id, areaName: name, sectorId: null, sectorName: null }),
   setSector: (id, name) => set({ sectorId: id, sectorName: name }),
   setInspectionDate: (inspectionDate) => set({ inspectionDate }),
@@ -175,5 +177,5 @@ export const useManualInspectionDraft = create<ManualInspectionState>((set) => (
   setFindingResponsibles: (findingResponsibleIds) => set({ findingResponsibleIds }),
   setLastSavedResult: (lastSavedResult) => set({ lastSavedResult }),
   hydrate: (draft) => set({ ...draft }),
-  reset: () => set(initialDraft),
+  reset: () => set((state) => ({ ...initialDraft, inspectorName: state.inspectorName, inspectorCompanyName: state.inspectorCompanyName })),
 }));

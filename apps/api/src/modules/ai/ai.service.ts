@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
 import { AiSuggestType, type AiSuggestResponse } from '@aurelia/contracts';
@@ -20,8 +20,10 @@ const TRANSLATION_BATCH_CHARACTER_LIMIT = 6000;
 
 @Injectable()
 export class AiService {
+  private readonly logger = new Logger(AiService.name);
   private readonly client: Anthropic | null;
   private readonly translationCache = new Map<string, string>();
+  private missingTranslationKeyWarningEmitted = false;
 
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<string | null>('ai.anthropicApiKey');
@@ -67,6 +69,13 @@ export class AiService {
       ),
     );
 
+    if (!this.client && missingValues.length > 0 && !this.missingTranslationKeyWarningEmitted) {
+      this.logger.warn(
+        'Automatic PDF translation is disabled because ANTHROPIC_API_KEY is not configured.',
+      );
+      this.missingTranslationKeyWarningEmitted = true;
+    }
+
     if (this.client && missingValues.length > 0) {
       for (const batch of this.translationBatches(missingValues)) {
         const translations = await this.requestTranslationBatch(batch);
@@ -109,7 +118,9 @@ export class AiService {
       const block = message.content?.[0];
       if (block?.type !== 'text') return [];
       return this.parseTranslationArray(block.text, values.length);
-    } catch {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown error';
+      this.logger.warn(`Automatic PDF translation failed: ${message}`);
       return [];
     }
   }

@@ -66,47 +66,13 @@ function manualCompanyButtons(root: ParentNode) {
   ) as HTMLButtonElement[];
 }
 
-function findChatButton(root: ParentNode, label: string) {
-  return Array.from(root.querySelectorAll('button')).find((button) => text(button.textContent) === label) as HTMLButtonElement | undefined;
-}
-
-function applyLockedCompanyUi(companyName: string) {
+function applyLockedManualCompanyUi() {
   const panel = document.querySelector('.new-inspection-modal-panel');
   if (!panel) return;
 
   manualCompanyButtons(panel).forEach((button) => {
     button.disabled = true;
     button.setAttribute('aria-disabled', 'true');
-  });
-
-  const confirmButton = findChatButton(panel, 'Confirmar empresa');
-  if (confirmButton && confirmButton.dataset.assignmentScopeHandled !== 'true') {
-    const card = confirmButton.closest('div');
-    const cardText = text(card?.textContent);
-    confirmButton.dataset.assignmentScopeHandled = 'true';
-    if (cardText.includes(companyName)) {
-      confirmButton.click();
-    } else {
-      const otherButton = findChatButton(card ?? panel, 'Elegir otra');
-      otherButton?.click();
-    }
-  }
-
-  const companyButton = Array.from(panel.querySelectorAll('button')).find(
-    (button) => text(button.textContent) === companyName && button.dataset.assignmentScopeHandled !== 'true',
-  ) as HTMLButtonElement | undefined;
-  if (companyButton) {
-    companyButton.dataset.assignmentScopeHandled = 'true';
-    companyButton.click();
-  }
-
-  Array.from(panel.querySelectorAll('button')).forEach((button) => {
-    const label = text(button.textContent);
-    if (label === 'Elegir otra' || label === 'Elegir otra empresa') {
-      const element = button as HTMLButtonElement;
-      element.disabled = true;
-      element.style.display = 'none';
-    }
   });
 }
 
@@ -136,7 +102,7 @@ export function InspectionAssignmentScopeBridge() {
 
     const syncUi = () => {
       lockDraftCompany();
-      applyLockedCompanyUi(scope.companyName as string);
+      applyLockedManualCompanyUi();
     };
 
     syncUi();

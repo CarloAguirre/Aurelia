@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
+import { useMobileInspectionAssignmentScope } from '../../stores/mobileInspectionAssignmentScope.store';
 import { SparklesMark } from '../icons/SparklesMark';
 
 interface Props {
@@ -27,8 +28,16 @@ function FormattedText({ text }: { text: string }) {
 }
 
 export function BotBubble({ text, time }: Props) {
+  const canSelectCompany = useMobileInspectionAssignmentScope((state) => state.canSelectCompany);
+  const hiddenForAssignedCompany = !canSelectCompany && [
+    'Te sugiero una empresa responsable para este hallazgo.',
+    'Selecciona empresa responsable de los hallazgos.',
+    'Selecciona empresa responsable.',
+  ].includes(text.trim());
   const now = new Date();
   const timeStr = time ?? `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+  if (hiddenForAssignedCompany) return null;
 
   return (
     <View style={styles.row}>

@@ -34,8 +34,7 @@ export class InspectionDetailReportPdfFinalService extends InspectionDetailRepor
     const primaryTitle = detectedCondition || originalTitle || description || 'Observación';
     const translatedTitle = this.reportString(finding.detectedConditionEn)
       || this.reportString(finding.descriptionEn)
-      || this.reportString(finding.titleEn)
-      || (description && description !== primaryTitle ? description : '');
+      || this.reportString(finding.titleEn);
 
     return {
       ...finding,

@@ -11,6 +11,18 @@ export function fetchResponsibleUsers(companyId: string): Promise<UserResponse[]
   return httpGet<UserResponse[]>(`/users?companyId=${encodeURIComponent(companyId)}`);
 }
 
+async function waitForAssignmentScope(): Promise<void> {
+  const current = useMobileInspectionAssignmentScope.getState();
+  if (current.loaded || !current.loading) return;
+  await new Promise<void>((resolve) => {
+    const unsubscribe = useMobileInspectionAssignmentScope.subscribe((scope) => {
+      if (!scope.loaded && scope.loading) return;
+      unsubscribe();
+      resolve();
+    });
+  });
+}
+
 function applyAssignmentScope(companies: CompanyResponse[]): CompanyResponse[] {
   const scope = useMobileInspectionAssignmentScope.getState();
   if (!scope.loaded || scope.canSelectCompany || !scope.companyId) return companies;
@@ -22,6 +34,7 @@ export async function fetchResponsibleCompaniesLocalFirst(): Promise<CompanyResp
     (items) => items,
     () => null,
   );
+  await waitForAssignmentScope();
 
   if (remote) return applyAssignmentScope(remote);
 
@@ -30,6 +43,7 @@ export async function fetchResponsibleCompaniesLocalFirst(): Promise<CompanyResp
 }
 
 export async function fetchResponsibleUsersLocalFirst(companyId: string): Promise<UserResponse[]> {
+  await waitForAssignmentScope();
   const scope = useMobileInspectionAssignmentScope.getState();
   const resolvedCompanyId = !scope.canSelectCompany && scope.companyId ? scope.companyId : companyId;
   const remote = await fetchResponsibleUsers(resolvedCompanyId).then(

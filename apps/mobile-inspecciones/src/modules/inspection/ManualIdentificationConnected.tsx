@@ -7,6 +7,7 @@ import { colors, fontWeight, spacing } from '../../shared/theme/tokens';
 import { formatLocationLabel } from '../../shared/utils/geo.utils';
 import { FieldBox, FieldLabel, FormCard, LocationMapPreview, OfflineBanner, SelectBox } from '../../shared/components/form/ManualFormUi';
 import { ManualFlowFooter, ManualFlowHeader } from '../../shared/components/form/ManualFlowScaffold';
+import { useMobileInspectionAssignmentScope } from '../../shared/stores/mobileInspectionAssignmentScope.store';
 import { useMobileSession } from '../auth/mobileSession.store';
 import { useManualInspectionDraft } from './manualInspection.store';
 import { useManualInspectionCatalogs } from './useManualInspectionCatalogs';
@@ -16,7 +17,6 @@ import { useManualInspectionFlowStore } from './manualInspectionFlow.store';
 import { removeManualInspectionDraft } from './manualInspectionDrafts.storage';
 import { usePersistManualInspectionDraft } from './hooks/usePersistManualInspectionDraft';
 import { ManualFormStepper, SelectSheet, type SelectSheetOption } from './ManualSelectionUi';
-import { useMobileInspectionAssignmentScope } from './mobileInspectionAssignmentScope.store';
 
 function LabeledField({ label, children }: { label: string; children: React.ReactNode }) {
   return <View style={styles.fieldGroup}><FieldLabel>{label}</FieldLabel>{children}</View>;

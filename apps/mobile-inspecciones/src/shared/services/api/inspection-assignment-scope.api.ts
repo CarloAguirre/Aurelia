@@ -29,10 +29,11 @@ export async function fetchInspectionAssignmentScopeLocalFirst(user: AuthUser): 
 
   if (!remote) return fallbackScope(user);
 
+  const assignedCompanyName = remote.canSelectCompany ? null : remote.companyName ?? user.companyName;
   return {
     ...remote,
     companyId: remote.canSelectCompany ? null : remote.companyId ?? user.companyId,
-    companyName: remote.canSelectCompany ? null : remote.companyName ?? user.companyName,
-    inspectorCompanyName: user.companyName,
+    companyName: assignedCompanyName,
+    inspectorCompanyName: user.companyName ?? assignedCompanyName,
   };
 }

@@ -1,38 +1,60 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { env, pipeline } from '@huggingface/transformers';
+import { join } from 'node:path';
 
-type LibreTranslateResponse = {
-  translatedText?: unknown;
-  error?: unknown;
+type TranslationOutput = {
+  translation_text?: unknown;
 };
 
-const TRANSLATION_BATCH_SIZE = 20;
-const TRANSLATION_BATCH_CHARACTER_LIMIT = 6000;
+type TranslationPipelineRunner = (
+  texts: string | string[],
+  options?: Record<string, unknown>,
+) => Promise<unknown>;
+
+const TRANSLATION_BATCH_SIZE = 12;
+const TRANSLATION_BATCH_CHARACTER_LIMIT = 4000;
+const DEFAULT_MODEL = 'Xenova/opus-mt-es-en';
+const DEFAULT_DTYPE = 'q8';
 
 @Injectable()
 export class ReportTranslationService {
   private readonly logger = new Logger(ReportTranslationService.name);
   private readonly translationCache = new Map<string, string>();
-  private readonly baseUrl: string;
-  private readonly apiKey: string | null;
-  private readonly timeoutMs: number;
+  private readonly modelId: string;
+  private readonly dtype: string;
+  private readonly cacheDir: string;
+  private readonly localModelPath: string | null;
+  private readonly allowRemoteModels: boolean;
   private readonly required: boolean;
+  private translatorPromise: Promise<TranslationPipelineRunner> | null = null;
 
   constructor(private readonly configService: ConfigService) {
-    this.baseUrl = this.normalizeBaseUrl(
-      this.configService.get<string>('REPORT_TRANSLATION_URL') ?? 'http://localhost:5000',
+    this.modelId = this.optionalString(
+      this.configService.get<string>('REPORT_TRANSLATION_MODEL'),
+    ) ?? DEFAULT_MODEL;
+    this.dtype = this.optionalString(
+      this.configService.get<string>('REPORT_TRANSLATION_DTYPE'),
+    ) ?? DEFAULT_DTYPE;
+    this.cacheDir = this.optionalString(
+      this.configService.get<string>('REPORT_TRANSLATION_CACHE_DIR'),
+    ) ?? this.defaultCacheDir();
+    this.localModelPath = this.optionalString(
+      this.configService.get<string>('REPORT_TRANSLATION_LOCAL_MODEL_PATH'),
     );
-    this.apiKey = this.optionalString(
-      this.configService.get<string>('REPORT_TRANSLATION_API_KEY'),
-    );
-    this.timeoutMs = this.positiveNumber(
-      this.configService.get<string | number>('REPORT_TRANSLATION_TIMEOUT_MS'),
-      30000,
+    this.allowRemoteModels = this.booleanValue(
+      this.configService.get<string | boolean>('REPORT_TRANSLATION_ALLOW_REMOTE_MODELS'),
+      true,
     );
     this.required = this.booleanValue(
       this.configService.get<string | boolean>('REPORT_TRANSLATION_REQUIRED'),
       true,
     );
+
+    env.cacheDir = this.cacheDir;
+    env.allowRemoteModels = this.allowRemoteModels;
+    env.allowLocalModels = true;
+    if (this.localModelPath) env.localModelPath = this.localModelPath;
   }
 
   async translateToEnglish(values: string[]): Promise<string[]> {
@@ -47,17 +69,17 @@ export class ReportTranslationService {
 
     for (const batch of this.translationBatches(missingValues)) {
       try {
-        const translations = await this.requestTranslationBatch(batch);
+        const translations = await this.translateBatch(batch);
         batch.forEach((source, index) => {
           const translation = translations[index]?.trim() ?? '';
           if (translation) this.translationCache.set(source, translation);
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'unknown error';
-        this.logger.warn(`LibreTranslate report translation failed: ${message}`);
+        this.logger.warn(`Local report translation failed: ${message}`);
         if (this.required) {
           throw new ServiceUnavailableException(
-            'No fue posible generar el informe bilingüe porque el servicio de traducción no está disponible.',
+            'No fue posible generar el informe bilingüe porque el traductor local no está disponible.',
           );
         }
       }
@@ -68,66 +90,53 @@ export class ReportTranslationService {
     );
   }
 
-  private async requestTranslationBatch(values: string[]): Promise<string[]> {
+  private async translateBatch(values: string[]): Promise<string[]> {
     if (values.length === 0) return [];
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
-    const body: Record<string, unknown> = {
-      q: values,
-      source: 'es',
-      target: 'en',
-      format: 'text',
-    };
-    if (this.apiKey) body.api_key = this.apiKey;
+    const translator = await this.getTranslator();
+    const output = await translator(values, {
+      max_new_tokens: 256,
+      do_sample: false,
+    });
+    const translations = this.translationTexts(output);
 
-    try {
-      const response = await fetch(`${this.baseUrl}/translate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
-      const rawBody = await response.text();
-      const payload = this.parseResponse(rawBody);
-
-      if (!response.ok) {
-        const detail = typeof payload.error === 'string' ? payload.error : `HTTP ${response.status}`;
-        throw new Error(detail);
-      }
-
-      const translatedText = payload.translatedText;
-      if (typeof translatedText === 'string' && values.length === 1) {
-        return [translatedText.trim()];
-      }
-      if (
-        Array.isArray(translatedText)
-        && translatedText.length === values.length
-        && translatedText.every((value): value is string => typeof value === 'string' && value.trim().length > 0)
-      ) {
-        return translatedText.map((value) => value.trim());
-      }
-
-      throw new Error('LibreTranslate returned an invalid translation payload.');
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error(`timeout after ${this.timeoutMs}ms`);
-      }
-      throw error;
-    } finally {
-      clearTimeout(timeout);
+    if (translations.length !== values.length) {
+      throw new Error(
+        `Transformers.js returned ${translations.length} translations for ${values.length} source texts.`,
+      );
     }
+
+    return translations;
   }
 
-  private parseResponse(value: string): LibreTranslateResponse {
-    try {
-      const parsed: unknown = JSON.parse(value);
-      return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-        ? parsed as LibreTranslateResponse
-        : {};
-    } catch {
-      return {};
+  private async getTranslator(): Promise<TranslationPipelineRunner> {
+    if (!this.translatorPromise) {
+      this.logger.log(
+        `Loading report translation model ${this.modelId} (${this.dtype}) into ${this.cacheDir}`,
+      );
+      this.translatorPromise = pipeline('translation', this.modelId, {
+        dtype: this.dtype,
+      })
+        .then((translator) => translator as unknown as TranslationPipelineRunner)
+        .catch((error) => {
+          this.translatorPromise = null;
+          throw error;
+        });
     }
+
+    return this.translatorPromise;
+  }
+
+  private translationTexts(value: unknown): string[] {
+    if (Array.isArray(value)) {
+      return value.flatMap((entry) => this.translationTexts(entry));
+    }
+    if (!value || typeof value !== 'object') return [];
+
+    const translatedText = (value as TranslationOutput).translation_text;
+    return typeof translatedText === 'string' && translatedText.trim()
+      ? [translatedText.trim()]
+      : [];
   }
 
   private translationBatches(values: string[]): string[][] {
@@ -153,18 +162,14 @@ export class ReportTranslationService {
     return batches;
   }
 
-  private normalizeBaseUrl(value: string): string {
-    return value.trim().replace(/\/+$/, '');
+  private defaultCacheDir(): string {
+    const home = process.env.HOME?.trim() || process.env.USERPROFILE?.trim();
+    return join(home || process.cwd(), '.cache', 'aurelia', 'transformers');
   }
 
   private optionalString(value: string | undefined): string | null {
     const normalized = value?.trim() ?? '';
     return normalized || null;
-  }
-
-  private positiveNumber(value: string | number | undefined, fallback: number): number {
-    const parsed = typeof value === 'number' ? value : Number.parseInt(value ?? '', 10);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
   }
 
   private booleanValue(value: string | boolean | undefined, fallback: boolean): boolean {

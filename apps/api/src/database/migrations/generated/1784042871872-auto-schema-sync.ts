@@ -23,7 +23,7 @@ export class AutoSchemaSync1784042871872 implements MigrationInterface {
           WHERE n.nspname = 'public'
             AND t.typname = 'inspection_finding_status'
         ) THEN
-          CREATE TYPE \"public\".\"inspection_finding_status\" AS ENUM('open', 'in_progress', 'closed', 'rejected', 'cancelled');
+          CREATE TYPE "public"."inspection_finding_status" AS ENUM('open', 'in_progress', 'closed', 'rejected', 'cancelled');
         END IF;
       END
       $$`,

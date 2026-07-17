@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { config } from 'dotenv';
-import { DataSource } from 'typeorm';
+import { DataSource, QueryRunner } from 'typeorm';
 import { AppDataSource } from '../data-source';
 
 config();
@@ -55,7 +55,7 @@ const consequences = [
   { code: 'CATASTROFICO', name: 'Catastrófico', description: 'Impacto severo o crítico con alta exposición ambiental/regulatoria.', score: 5, sortOrder: 5 },
 ];
 
-async function upsertSimple(qr: any, table: string, item: { code: string; name: string; sortOrder: number }) {
+async function upsertSimple(qr: QueryRunner, table: string, item: { code: string; name: string; sortOrder: number }) {
   await qr.query(
     `INSERT INTO ${table} (code, name, sort_order, is_active)
      VALUES ($1, $2, $3, true)
@@ -68,7 +68,7 @@ async function upsertSimple(qr: any, table: string, item: { code: string; name: 
   );
 }
 
-async function upsertScored(qr: any, table: string, item: { code: string; name: string; description: string; score: number; sortOrder: number }) {
+async function upsertScored(qr: QueryRunner, table: string, item: { code: string; name: string; description: string; score: number; sortOrder: number }) {
   await qr.query(
     `INSERT INTO ${table} (code, name, description, score, sort_order, is_active)
      VALUES ($1, $2, $3, $4, $5, true)

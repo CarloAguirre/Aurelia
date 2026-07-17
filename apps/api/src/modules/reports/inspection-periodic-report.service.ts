@@ -13,7 +13,7 @@ import {
   type InspectionPeriodicReportResponse,
   type InspectionPeriodicReportState,
 } from '@aurelia/contracts';
-import { Repository } from 'typeorm';
+import { In, Not, Repository } from 'typeorm';
 import type { AccessTokenPayload } from '../auth/jwt-token.service';
 import { AreaEntity } from '../organization/entities/area.entity';
 import { CompanyEntity } from '../organization/entities/company.entity';
@@ -34,6 +34,13 @@ interface CompanyAccumulator {
   closedFindings: number;
   pendingFindings: number;
   overdueFindings: number;
+}
+
+interface FindingBuckets {
+  closed: number;
+  executed: number;
+  open: number;
+  overdue: number;
 }
 
 @Injectable()
@@ -61,38 +68,72 @@ export class InspectionPeriodicReportService {
     const period = this.periods.resolve(request);
     const scope = await this.scopes.resolveCompanyScope(user, request.companyId);
     const state = this.resolveState(request.inspectionState);
-    const [inspections, findings, companies, areas, sectors, users, inspectionTypes] = await Promise.all([
-      this.inspections.find(),
-      this.findings.find(),
-      this.companies.find(),
-      this.areas.find(),
-      this.sectors.find(),
-      this.users.find(),
-      this.inspectionTypes.find(),
+
+    const inspectionQuery = this.inspections
+      .createQueryBuilder('inspection')
+      .where('inspection.status != :cancelledStatus', { cancelledStatus: InspectionStatus.CANCELLED })
+      .andWhere(
+        'COALESCE(inspection.started_at, inspection.scheduled_at, inspection.created_at) >= :periodStart',
+        { periodStart: period.start },
+      )
+      .andWhere(
+        'COALESCE(inspection.started_at, inspection.scheduled_at, inspection.created_at) < :periodEnd',
+        { periodEnd: period.end },
+      )
+      .orderBy('COALESCE(inspection.started_at, inspection.scheduled_at, inspection.created_at)', 'ASC');
+
+    if (!scope.unrestricted) {
+      if (scope.companyIds.length === 0) inspectionQuery.andWhere('1 = 0');
+      else inspectionQuery.andWhere('inspection.company_id IN (:...companyIds)', { companyIds: scope.companyIds });
+    }
+
+    const candidateInspections = await inspectionQuery.getMany();
+    const candidateInspectionIds = candidateInspections.map((inspection) => inspection.id);
+    const candidateFindings = candidateInspectionIds.length > 0
+      ? await this.findings.find({
+          where: {
+            inspectionId: In(candidateInspectionIds),
+            status: Not(InspectionFindingStatus.CANCELLED),
+          },
+        })
+      : [];
+
+    const candidateFindingsByInspection = this.groupFindings(candidateFindings);
+    const periodInspections = candidateInspections.filter((inspection) => {
+      const closed = this.isEffectivelyClosed(inspection, candidateFindingsByInspection.get(inspection.id) ?? []);
+      if (state === 'closed') return closed;
+      if (state === 'open') return !closed;
+      return true;
+    });
+
+    const selectedInspectionIds = new Set(periodInspections.map((inspection) => inspection.id));
+    const selectedFindings = candidateFindings.filter((finding) => selectedInspectionIds.has(finding.inspectionId));
+    const selectedFindingsByInspection = this.groupFindings(selectedFindings);
+
+    const companyIds = this.uniqueIds([
+      ...periodInspections.map((inspection) => inspection.companyId),
+      ...selectedFindings.map((finding) => finding.responsibleCompanyId),
+    ]);
+    const areaIds = this.uniqueIds(periodInspections.map((inspection) => inspection.areaId));
+    const sectorIds = this.uniqueIds(periodInspections.map((inspection) => inspection.sectorId));
+    const userIds = this.uniqueIds(periodInspections.map((inspection) => inspection.inspectorId));
+    const typeIds = this.uniqueIds(periodInspections.map((inspection) => inspection.inspectionTypeId));
+
+    const [companies, areas, sectors, users, inspectionTypes] = await Promise.all([
+      companyIds.length > 0 ? this.companies.findBy({ id: In(companyIds) }) : Promise.resolve([]),
+      areaIds.length > 0 ? this.areas.findBy({ id: In(areaIds) }) : Promise.resolve([]),
+      sectorIds.length > 0 ? this.sectors.findBy({ id: In(sectorIds) }) : Promise.resolve([]),
+      userIds.length > 0 ? this.users.findBy({ id: In(userIds) }) : Promise.resolve([]),
+      typeIds.length > 0 ? this.inspectionTypes.findBy({ id: In(typeIds) }) : Promise.resolve([]),
     ]);
 
-    const findingsByInspection = this.groupFindings(findings);
     const companyNameById = new Map(companies.map((company) => [company.id, company.name]));
     const areaNameById = new Map(areas.map((area) => [area.id, area.name]));
     const sectorNameById = new Map(sectors.map((sector) => [sector.id, sector.name]));
     const userById = new Map(users.map((entry) => [entry.id, entry]));
     const typeById = new Map(inspectionTypes.map((type) => [type.id, type]));
-
-    const periodInspections = inspections.filter((inspection) => {
-      if (inspection.status === InspectionStatus.CANCELLED) return false;
-      const date = this.getInspectionDate(inspection);
-      if (!date || date < period.start || date >= period.end) return false;
-      if (!scope.unrestricted && (!inspection.companyId || !scope.companyIds.includes(inspection.companyId))) return false;
-      const closed = this.isEffectivelyClosed(inspection, findingsByInspection.get(inspection.id) ?? []);
-      if (state === 'closed') return closed;
-      if (state === 'open') return !closed;
-      return true;
-    }).sort((left, right) => this.getInspectionDate(left).getTime() - this.getInspectionDate(right).getTime());
-
-    const selectedInspectionIds = new Set(periodInspections.map((inspection) => inspection.id));
-    const selectedFindings = findings.filter((finding) => selectedInspectionIds.has(finding.inspectionId) && finding.status !== InspectionFindingStatus.CANCELLED);
-    const selectedFindingsByInspection = this.groupFindings(selectedFindings);
     const now = new Date();
+
     const rows = periodInspections.map((inspection, index) => this.buildInspectionRow(
       inspection,
       index,
@@ -105,16 +146,24 @@ export class InspectionPeriodicReportService {
       typeById,
     ));
 
-    const closedFindings = selectedFindings.filter((finding) => finding.status === InspectionFindingStatus.CLOSED).length;
-    const executedFindings = selectedFindings.filter((finding) => finding.status === InspectionFindingStatus.IN_PROGRESS).length;
-    const openFindings = selectedFindings.filter((finding) => finding.status === InspectionFindingStatus.OPEN || finding.status === InspectionFindingStatus.REJECTED).length;
-    const overdueFindings = selectedFindings.filter((finding) => this.isOverdue(finding, now)).length;
+    const buckets = this.buildFindingBuckets(selectedFindings, now);
     const closedInspections = rows.filter((row) => row.effectiveStatus === 'closed').length;
-    const complianceRate = selectedFindings.length > 0 ? Number(((closedFindings / selectedFindings.length) * 100).toFixed(2)) : 0;
+    const complianceRate = selectedFindings.length > 0
+      ? Number(((buckets.closed / selectedFindings.length) * 100).toFixed(2))
+      : 0;
     const attentionRows = rows
-      .filter((row) => row.effectiveStatus === 'open' && (row.overdueObservations > 0 || row.maxSeverity === InspectionFindingSeverity.CRITICAL || row.maxSeverity === InspectionFindingSeverity.HIGH))
-      .sort((left, right) => right.overdueObservations - left.overdueObservations || this.severityWeight(right.maxSeverity) - this.severityWeight(left.maxSeverity) || right.daysOpen - left.daysOpen)
+      .filter((row) => row.effectiveStatus === 'open' && (
+        row.overdueObservations > 0
+        || row.maxSeverity === InspectionFindingSeverity.CRITICAL
+        || row.maxSeverity === InspectionFindingSeverity.HIGH
+      ))
+      .sort((left, right) => (
+        right.overdueObservations - left.overdueObservations
+        || this.severityWeight(right.maxSeverity) - this.severityWeight(left.maxSeverity)
+        || right.daysOpen - left.daysOpen
+      ))
       .map<InspectionPeriodicReportAttentionRowResponse>((row) => ({ ...row, requiresImmediateAttention: true }));
+    const inspectionsByArea = this.buildInspectionsByArea(periodInspections, areaNameById);
 
     return {
       metadata: {
@@ -124,7 +173,9 @@ export class InspectionPeriodicReportService {
         start: period.start.toISOString(),
         end: period.end.toISOString(),
         inspectionState: state,
-        companyId: !scope.unrestricted && scope.companyIds.length === 1 ? scope.companyIds[0] : request.companyId ?? null,
+        companyId: !scope.unrestricted && scope.companyIds.length === 1
+          ? scope.companyIds[0]
+          : request.companyId ?? null,
         generatedAt: now.toISOString(),
         generatedBy: user.fullName,
       },
@@ -133,16 +184,17 @@ export class InspectionPeriodicReportService {
         openInspections: rows.length - closedInspections,
         closedInspections,
         totalFindings: selectedFindings.length,
-        openFindings,
-        executedFindings,
-        pendingApprovalFindings: executedFindings,
-        closedFindings,
-        overdueFindings,
+        openFindings: buckets.open,
+        executedFindings: buckets.executed,
+        pendingApprovalFindings: buckets.executed,
+        closedFindings: buckets.closed,
+        overdueFindings: buckets.overdue,
         complianceRate,
       },
       inspectionsByMonth: this.buildMonthlyDistribution(rows, period.months, period.year),
       inspectionsByType: this.buildDistribution(rows.map((row) => row.type)),
-      findingsByArea: this.buildFindingsByArea(periodInspections, selectedFindingsByInspection, areaNameById),
+      inspectionsByArea,
+      findingsByArea: inspectionsByArea,
       inspections: {
         total: rows.length,
         rows,
@@ -151,7 +203,12 @@ export class InspectionPeriodicReportService {
         inspectionsCount: attentionRows.length,
         rows: attentionRows,
       },
-      companiesWithMostPending: this.buildCompanyRows(periodInspections, selectedFindingsByInspection, now, companyNameById),
+      companiesWithMostPending: this.buildCompanyRows(
+        periodInspections,
+        selectedFindingsByInspection,
+        now,
+        companyNameById,
+      ),
     };
   }
 
@@ -167,15 +224,18 @@ export class InspectionPeriodicReportService {
     types: Map<string, InspectionTypeEntity>,
   ): InspectionPeriodicReportInspectionRowResponse {
     const closed = this.isEffectivelyClosed(inspection, findings);
-    const maxSeverity = findings.reduce<InspectionFindingSeverity | null>((current, finding) => this.resolveMaxSeverity(current, finding.severity), null);
-    const closedObservations = findings.filter((finding) => finding.status === InspectionFindingStatus.CLOSED).length;
-    const executedObservations = findings.filter((finding) => finding.status === InspectionFindingStatus.IN_PROGRESS).length;
-    const openObservations = findings.filter((finding) => finding.status === InspectionFindingStatus.OPEN || finding.status === InspectionFindingStatus.REJECTED).length;
-    const overdueObservations = findings.filter((finding) => this.isOverdue(finding, now)).length;
+    const maxSeverity = findings.reduce<InspectionFindingSeverity | null>(
+      (current, finding) => this.resolveMaxSeverity(current, finding.severity),
+      null,
+    );
+    const buckets = this.buildFindingBuckets(findings, now);
     const date = this.getInspectionDate(inspection);
-    const closureRate = findings.length > 0 ? Number(((closedObservations / findings.length) * 100).toFixed(2)) : 0;
+    const closureRate = findings.length > 0
+      ? Number(((buckets.closed / findings.length) * 100).toFixed(2))
+      : 0;
     const inspector = inspection.inspectorId ? users.get(inspection.inspectorId) : null;
     const type = types.get(inspection.inspectionTypeId);
+    const hasExecutedFinding = findings.some((finding) => finding.status === InspectionFindingStatus.IN_PROGRESS);
 
     return {
       inspectionId: inspection.id,
@@ -185,23 +245,39 @@ export class InspectionPeriodicReportService {
       areaSector: this.formatAreaSector(inspection.areaId, inspection.sectorId, areaNames, sectorNames),
       company: inspection.companyId ? companyNames.get(inspection.companyId) ?? 'Sin empresa' : 'Sin empresa',
       type: type?.name ?? 'Sin tipo',
-      urgencyLabel: this.formatUrgencyLabel(closed, executedObservations > 0, maxSeverity),
+      urgencyLabel: this.formatUrgencyLabel(closed, hasExecutedFinding, maxSeverity),
       maxSeverity,
       observationsCount: findings.length,
-      closedObservations,
-      openObservations,
-      executedObservations,
-      overdueObservations,
+      closedObservations: buckets.closed,
+      openObservations: buckets.open,
+      executedObservations: buckets.executed,
+      overdueObservations: buckets.overdue,
       closureRate,
       daysOpen: this.resolveDaysOpen(inspection, findings, now, closed),
       effectiveStatus: closed ? 'closed' : 'open',
     };
   }
 
-  private buildMonthlyDistribution(rows: InspectionPeriodicReportInspectionRowResponse[], months: number[], year: number): InspectionPeriodicReportMonthRowResponse[] {
+  private buildFindingBuckets(findings: InspectionFindingEntity[], now: Date): FindingBuckets {
+    return findings.reduce<FindingBuckets>((buckets, finding) => {
+      if (finding.status === InspectionFindingStatus.CLOSED) buckets.closed += 1;
+      else if (this.isOverdue(finding, now)) buckets.overdue += 1;
+      else if (finding.status === InspectionFindingStatus.IN_PROGRESS) buckets.executed += 1;
+      else buckets.open += 1;
+      return buckets;
+    }, { closed: 0, executed: 0, open: 0, overdue: 0 });
+  }
+
+  private buildMonthlyDistribution(
+    rows: InspectionPeriodicReportInspectionRowResponse[],
+    months: number[],
+    year: number,
+  ): InspectionPeriodicReportMonthRowResponse[] {
     return months.map((month) => {
       const count = rows.filter((row) => row.date && new Date(row.date).getUTCMonth() === month).length;
-      const label = new Intl.DateTimeFormat('es-CL', { month: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(year, month, 1))).replace('.', '');
+      const label = new Intl.DateTimeFormat('es-CL', { month: 'short', timeZone: 'UTC' })
+        .format(new Date(Date.UTC(year, month, 1)))
+        .replace('.', '');
       return {
         key: String(month + 1),
         month: month + 1,
@@ -213,23 +289,28 @@ export class InspectionPeriodicReportService {
   }
 
   private buildDistribution(values: string[]): InspectionPeriodicReportDistributionRowResponse[] {
-    const counts = values.reduce<Map<string, number>>((map, value) => map.set(value, (map.get(value) ?? 0) + 1), new Map());
+    const counts = values.reduce<Map<string, number>>(
+      (map, value) => map.set(value, (map.get(value) ?? 0) + 1),
+      new Map(),
+    );
     return Array.from(counts.entries())
-      .map(([label, count]) => ({ key: label, label, count, percentage: values.length > 0 ? Number(((count / values.length) * 100).toFixed(2)) : 0 }))
+      .map(([label, count]) => ({
+        key: label,
+        label,
+        count,
+        percentage: values.length > 0 ? Number(((count / values.length) * 100).toFixed(2)) : 0,
+      }))
       .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label, 'es'));
   }
 
-  private buildFindingsByArea(
+  private buildInspectionsByArea(
     inspections: InspectionEntity[],
-    findingsByInspection: Map<string, InspectionFindingEntity[]>,
     areaNames: Map<string, string>,
   ): InspectionPeriodicReportDistributionRowResponse[] {
-    const values: string[] = [];
-    for (const inspection of inspections) {
-      const label = inspection.areaId ? areaNames.get(inspection.areaId) ?? 'Sin área' : 'Sin área';
-      for (const finding of findingsByInspection.get(inspection.id) ?? []) values.push(label);
-    }
-    return this.buildDistribution(values).slice(0, 8);
+    const values = inspections.map((inspection) => (
+      inspection.areaId ? areaNames.get(inspection.areaId) ?? 'Sin área' : 'Sin área'
+    ));
+    return this.buildDistribution(values).slice(0, 5);
   }
 
   private buildCompanyRows(
@@ -273,9 +354,15 @@ export class InspectionPeriodicReportService {
         openInspections: row.openInspections.size,
         pendingFindings: row.pendingFindings,
         overdueFindings: row.overdueFindings,
-        complianceRate: row.totalFindings > 0 ? Number(((row.closedFindings / row.totalFindings) * 100).toFixed(2)) : 0,
+        complianceRate: row.totalFindings > 0
+          ? Number(((row.closedFindings / row.totalFindings) * 100).toFixed(2))
+          : 0,
       }))
-      .sort((left, right) => right.pendingFindings - left.pendingFindings || right.overdueFindings - left.overdueFindings || left.company.localeCompare(right.company, 'es'))
+      .sort((left, right) => (
+        right.pendingFindings - left.pendingFindings
+        || right.overdueFindings - left.overdueFindings
+        || left.company.localeCompare(right.company, 'es')
+      ))
       .slice(0, 5);
   }
 
@@ -288,6 +375,10 @@ export class InspectionPeriodicReportService {
       grouped.set(finding.inspectionId, current);
     }
     return grouped;
+  }
+
+  private uniqueIds(values: Array<string | null | undefined>): string[] {
+    return Array.from(new Set(values.filter((value): value is string => Boolean(value))));
   }
 
   private resolveState(value?: string): InspectionPeriodicReportState {
@@ -306,10 +397,18 @@ export class InspectionPeriodicReportService {
   }
 
   private isOverdue(finding: InspectionFindingEntity, now: Date): boolean {
-    return Boolean(finding.dueAt && finding.dueAt < now && finding.status !== InspectionFindingStatus.CLOSED && finding.status !== InspectionFindingStatus.CANCELLED);
+    return Boolean(
+      finding.dueAt
+      && finding.dueAt < now
+      && finding.status !== InspectionFindingStatus.CLOSED
+      && finding.status !== InspectionFindingStatus.CANCELLED,
+    );
   }
 
-  private resolveMaxSeverity(current: InspectionFindingSeverity | null, next: InspectionFindingSeverity): InspectionFindingSeverity {
+  private resolveMaxSeverity(
+    current: InspectionFindingSeverity | null,
+    next: InspectionFindingSeverity,
+  ): InspectionFindingSeverity {
     return this.severityWeight(next) > this.severityWeight(current) ? next : current ?? next;
   }
 
@@ -321,7 +420,11 @@ export class InspectionPeriodicReportService {
     return 0;
   }
 
-  private formatUrgencyLabel(closed: boolean, executed: boolean, severity: InspectionFindingSeverity | null): string {
+  private formatUrgencyLabel(
+    closed: boolean,
+    executed: boolean,
+    severity: InspectionFindingSeverity | null,
+  ): string {
     const state = closed ? 'Cerrada' : executed ? 'Ejecutada' : 'Abierta';
     const severityLabel = severity === InspectionFindingSeverity.CRITICAL
       ? 'Crítica'
@@ -335,7 +438,12 @@ export class InspectionPeriodicReportService {
     return `${state} · ${severityLabel}`;
   }
 
-  private formatAreaSector(areaId: string | null, sectorId: string | null, areaNames: Map<string, string>, sectorNames: Map<string, string>): string {
+  private formatAreaSector(
+    areaId: string | null,
+    sectorId: string | null,
+    areaNames: Map<string, string>,
+    sectorNames: Map<string, string>,
+  ): string {
     const area = areaId ? areaNames.get(areaId) : null;
     const sector = sectorId ? sectorNames.get(sectorId) : null;
     if (area && sector) return `${area} · ${sector}`;
@@ -347,13 +455,21 @@ export class InspectionPeriodicReportService {
     return match?.[1] ?? String(index + 1).padStart(3, '0');
   }
 
-  private resolveDaysOpen(inspection: InspectionEntity, findings: InspectionFindingEntity[], now: Date, closed: boolean): number {
+  private resolveDaysOpen(
+    inspection: InspectionEntity,
+    findings: InspectionFindingEntity[],
+    now: Date,
+    closed: boolean,
+  ): number {
     const start = this.getInspectionDate(inspection);
     if (closed) {
       const end = inspection.closedAt ?? inspection.completedAt ?? inspection.updatedAt;
       return this.daysBetween(start, end);
     }
-    const openFindings = findings.filter((finding) => finding.status !== InspectionFindingStatus.CLOSED && finding.status !== InspectionFindingStatus.CANCELLED);
+    const openFindings = findings.filter((finding) => (
+      finding.status !== InspectionFindingStatus.CLOSED
+      && finding.status !== InspectionFindingStatus.CANCELLED
+    ));
     if (openFindings.length === 0) return this.daysBetween(start, now);
     return Math.max(...openFindings.map((finding) => this.daysBetween(finding.createdAt, now)));
   }

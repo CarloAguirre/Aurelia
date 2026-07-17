@@ -34,7 +34,7 @@ export async function httpDownload(path: string): Promise<{ blob: Blob; filename
   });
   await assertResponse(response, 'GET', path);
   const disposition = response.headers.get('Content-Disposition') ?? '';
-  const filename = disposition.match(/filename\*?=(?:UTF-8''|\")?([^\";]+)/i)?.[1]?.trim() ?? null;
+  const filename = disposition.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i)?.[1]?.trim() ?? null;
   return {
     blob: await response.blob(),
     filename: filename ? decodeURIComponent(filename) : null,

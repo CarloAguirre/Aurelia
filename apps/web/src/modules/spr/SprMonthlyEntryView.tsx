@@ -364,9 +364,10 @@ export function SprMonthlyEntryView({
       if (!row.needsHistoricalReview) return false;
       return !hasSprHistoricalDeviationNote(undefined, row.record?.notes);
     });
-    if (rowsMissingDeviationNote.length > 0) {
+    const firstMissingDeviationNote = rowsMissingDeviationNote[0];
+    if (firstMissingDeviationNote) {
       setSubmitEvidenceError(
-        `El parámetro "${rowsMissingDeviationNote[0].parameter.name}" tiene desviación histórica y requiere notas justificando la diferencia antes de firmar y enviar.`,
+        `El parámetro "${firstMissingDeviationNote.parameter.name}" tiene desviación histórica y requiere notas justificando la diferencia antes de firmar y enviar.`,
       );
       return;
     }

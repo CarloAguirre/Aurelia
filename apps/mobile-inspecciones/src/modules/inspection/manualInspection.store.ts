@@ -171,7 +171,7 @@ export const useManualInspectionDraft = create<ManualInspectionState>((set) => (
   removeFindingObservation: (id) => set((state) => ({ findingObservations: state.findingObservations.filter((item) => item.id !== id) })),
   setTemplate: ({ id, name, code, itemsCount }) => set({ templateId: id, templateName: name, templateCode: code, templateItemsCount: itemsCount, answersByItemId: {}, detailsByItemId: {}, generalPhoto: null }),
   setAnswer: (itemId, value) => set((state) => ({ answersByItemId: { ...state.answersByItemId, [itemId]: value } })),
-  setItemDetail: (itemId, detail) => set((state) => ({ detailsByItemId: { ...state.detailsByItemId, [itemId]: { ...state.detailsByItemId[itemId], ...detail } })),
+  setItemDetail: (itemId, detail) => set((state) => ({ detailsByItemId: { ...state.detailsByItemId, [itemId]: { ...state.detailsByItemId[itemId], ...detail } } } )),
   setGeneralPhoto: (generalPhoto) => set({ generalPhoto }),
   setFindingCompany: (findingCompanyId, findingCompanyName) => set({ findingCompanyId, findingCompanyName, findingResponsibleIds: [] }),
   setFindingResponsibles: (findingResponsibleIds) => set({ findingResponsibleIds }),

@@ -1673,12 +1673,6 @@ export function SprConsolidatedReportView() {
     });
   }
 
-  function openCycleIncompleteModal() {
-    patchSearchParams((next) => {
-      next.set(SPR_CONSOLIDATED_DEMO_MODAL_QUERY, SPR_CONSOLIDATED_DEMO_CICLO_INCOMPLETO_MODAL);
-    });
-  }
-
   const goToFirmasCompletas = () => {
     setFirmaGerenteModalOpen(false);
     setActiveTab('firma');

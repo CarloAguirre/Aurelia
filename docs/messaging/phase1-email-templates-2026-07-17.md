@@ -96,17 +96,17 @@ Reglas:
 
 El frontend crea primero la inspección y todas sus observaciones. Al finalizar el formulario actualiza la inspección a `IN_PROGRESS`.
 
-La API detecta la transición hacia `IN_PROGRESS` y después:
+La API detecta esa transición una sola vez y después:
 
 1. busca todas las observaciones abiertas de la inspección;
 2. obtiene responsables desde `inspection_finding_responsibles` y `owner_user_id`;
 3. agrupa las observaciones por usuario;
 4. envía un solo correo por usuario con el número de observaciones que tiene asignadas;
 5. utiliza la empresa del usuario, la empresa responsable del hallazgo o la empresa de la inspección;
-6. genera un enlace autenticado hacia `/inspections` con los parámetros usados por el modal de detalle;
+6. genera un enlace hacia la ruta autenticada `/inspections`, con los parámetros usados por el modal de detalle;
 7. registra éxito o error en los logs de la API.
 
-También se dispara un correo cuando se modifica el responsable de un hallazgo de una inspección activa.
+No se dispara desde cada creación o edición individual de hallazgo. Esto evita duplicar mensajes cuando el formulario crea varias observaciones o cuando la UI realiza actualizaciones consecutivas.
 
 La creación o actualización de la inspección no se revierte si SMTP falla. El error queda registrado para que una indisponibilidad de correo no bloquee el flujo operacional.
 

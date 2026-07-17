@@ -1,8 +1,10 @@
-# Fase 1 - Plantillas comunes de correo
+# Mensajería por correo - plantilla de hallazgo asignado
 
 ## Objetivo
 
-Crear una base transversal de mensajería en la API para que inspecciones, SPR, incidentes, controles críticos y workflows puedan renderizar y enviar correos sin duplicar HTML ni acoplarse a un proveedor específico.
+Proveer una base transversal de mensajería en la API para que inspecciones, SPR, incidentes, controles críticos y workflows puedan renderizar y enviar correos sin duplicar HTML ni acoplar la lógica de negocio al protocolo SMTP.
+
+Esta iteración deja completamente conectada la notificación de **hallazgo asignado** del módulo de inspecciones.
 
 ## Diseño de referencia
 
@@ -11,8 +13,6 @@ Figma:
 - Desktop: nodo `693:33892`.
 - Mobile: nodo `693:33925`.
 - Logo: nodo `693:33900`, exportado como SVG y almacenado en el repositorio.
-
-Medidas principales:
 
 | Elemento | Desktop | Mobile |
 | --- | ---: | ---: |
@@ -24,7 +24,7 @@ Medidas principales:
 | CTA | 450 x 39 px | 296 x 39 px |
 | Footer | 100 px | 78 px |
 
-## Archivos
+## Arquitectura
 
 ```txt
 apps/api/src/modules/messaging/
@@ -34,9 +34,11 @@ apps/api/src/modules/messaging/
   messaging.module.ts
   messaging.service.ts
   messaging.types.ts
-```
+  smtp-email.transport.ts
 
-## Responsabilidades
+apps/api/src/modules/inspections/
+  inspection-assignment-email.service.ts
+```
 
 ### `EmailTemplateService`
 
@@ -44,80 +46,135 @@ apps/api/src/modules/messaging/
 - Genera una alternativa `text/plain`.
 - Escapa todos los parámetros visibles.
 - Valida URLs de CTA y solo acepta `http` o `https`.
-- Expone un layout común de CTA y el primer template funcional:
-  `inspection.finding-assigned`.
+- Expone el template `inspection.finding-assigned`.
 
 ### `MessagingService`
 
-- Expone métodos de dominio para renderizar o enviar mensajes.
+- Expone métodos comunes de renderizado y envío.
 - Valida destinatarios.
 - Delega la entrega al puerto `EmailTransport`.
 
-### `EmailTransport`
+### `SmtpEmailTransport`
 
-Contrato intercambiable para integrar posteriormente:
+Implementación SMTP real sin acoplar los módulos consumidores al protocolo. Incluye:
 
-- Azure Communication Services Email;
-- Microsoft Graph;
-- SMTP/Nodemailer;
-- un proveedor transaccional externo.
+- SMTP con STARTTLS para `SMTP_SECURE=false` cuando el servidor lo anuncia;
+- TLS implícito para `SMTP_SECURE=true`;
+- autenticación `AUTH PLAIN` y `AUTH LOGIN`;
+- mensajes MIME `multipart/alternative` con HTML y texto plano;
+- codificación UTF-8 de asuntos y nombres;
+- múltiples destinatarios `to`, `cc` y `bcc`;
+- timeout configurable;
+- resultado con destinatarios aceptados y rechazados.
 
-La implementación inicial `DisabledEmailTransport` falla explícitamente al intentar enviar. Esto evita simular entregas exitosas mientras infraestructura no haya definido el proveedor.
+El transporte SMTP queda registrado por defecto mediante `MessagingModule.register()`. `DisabledEmailTransport` permanece disponible para pruebas o ambientes que deseen registrar explícitamente el módulo con `{ disabled: true }`.
 
-## Consumo desde otro módulo
+## Variables de entorno
 
-```ts
-constructor(private readonly messaging: MessagingService) {}
+```dotenv
+WEB_APP_URL=http://localhost:5173
 
-const preview = this.messaging.renderInspectionFindingAssigned({
-  recipientName: user.fullName,
-  companyName: company.name,
-  inspectionNumber: inspection.code,
-  observationCount: findings.length,
-  platformUrl: `${webBaseUrl}/inspections/${inspection.id}`,
-});
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=usuario-smtp
+SMTP_PASS=secreto-smtp
+SMTP_FROM=AurelIA <no-reply-aurelia@kabeli.cl>
+SMTP_TIMEOUT_MS=15000
 ```
 
-Cuando exista un transporte configurado:
+Reglas:
+
+- `SMTP_HOST` y `SMTP_FROM` son obligatorios al intentar enviar.
+- `SMTP_USER` y `SMTP_PASS` deben configurarse juntos. Ambos pueden omitirse si infraestructura permite relay autenticado por red.
+- `SMTP_SECURE=false` se usa normalmente con puerto 587 y permite STARTTLS.
+- `SMTP_SECURE=true` se usa para TLS implícito, normalmente en puerto 465.
+- `WEB_APP_URL` define el dominio del botón del correo. Si se omite, el servicio usa el primer origen web de `CORS_ORIGINS`, priorizando el puerto 5173 en desarrollo.
+- En Azure, usuario y contraseña deben venir de secretos o referencias a Key Vault; nunca se versionan valores reales.
+
+## Evento de negocio conectado
+
+El frontend crea primero la inspección y todas sus observaciones. Al finalizar el formulario actualiza la inspección a `IN_PROGRESS`.
+
+La API detecta la transición hacia `IN_PROGRESS` y después:
+
+1. busca todas las observaciones abiertas de la inspección;
+2. obtiene responsables desde `inspection_finding_responsibles` y `owner_user_id`;
+3. agrupa las observaciones por usuario;
+4. envía un solo correo por usuario con el número de observaciones que tiene asignadas;
+5. utiliza la empresa del usuario, la empresa responsable del hallazgo o la empresa de la inspección;
+6. genera un enlace autenticado hacia `/inspections` con los parámetros usados por el modal de detalle;
+7. registra éxito o error en los logs de la API.
+
+También se dispara un correo cuando se modifica el responsable de un hallazgo de una inspección activa.
+
+La creación o actualización de la inspección no se revierte si SMTP falla. El error queda registrado para que una indisponibilidad de correo no bloquee el flujo operacional.
+
+## Parámetros del template
 
 ```ts
-await this.messaging.sendInspectionFindingAssigned({
+{
+  recipientName,
+  companyName,
+  inspectionNumber,
+  observationCount,
+  platformUrl,
+}
+```
+
+Ejemplo de uso transversal:
+
+```ts
+await messaging.sendInspectionFindingAssigned({
   to: [{ email: user.email, name: user.fullName }],
   params: {
     recipientName: user.fullName,
     companyName: company.name,
-    inspectionNumber: inspection.code,
+    inspectionNumber: inspectionReference,
     observationCount: findings.length,
-    platformUrl: `${webBaseUrl}/inspections/${inspection.id}`,
+    platformUrl,
   },
 });
 ```
 
-## Prueba
+## Pruebas
 
 ```powershell
-pnpm --filter api exec ts-node src/test/api-messaging-template-smoke.ts
+pnpm --filter api test:mail
 ```
 
-Valida:
+El comando ejecuta:
 
-- diseño desktop y breakpoint mobile;
-- inclusión del logo exacto exportado desde Figma;
-- singular/plural de observaciones;
-- escape de HTML;
-- versión de texto plano.
+1. smoke test del template desktop/mobile;
+2. servidor SMTP local efímero;
+3. autenticación SMTP de prueba;
+4. validación de `MAIL FROM`, `RCPT TO` y `DATA`;
+5. validación del MIME HTML/texto y `Message-ID`.
 
-## Riesgos y decisiones pendientes
+No utiliza las credenciales SMTP reales ni envía correo a Internet.
 
-1. El SVG se incluye como `data:` para permitir previews autocontenidas. El transporte de producción deberá preferir un asset público HTTPS o una imagen adjunta con CID para maximizar compatibilidad con Outlook.
-2. No se conecta todavía a la generación perezosa de notificaciones internas, porque esa ruta se ejecuta al consultar el panel y podría duplicar correos.
-3. La integración con cada módulo debe ocurrir desde eventos de negocio idempotentes y registrar la entrega para evitar reenvíos.
-4. Falta seleccionar y configurar el proveedor de entrega para Azure.
+Para una prueba end-to-end real:
 
-## Siguiente iteración
+1. configurar las variables SMTP en `apps/api/.env`;
+2. iniciar API y web;
+3. crear una inspección con observaciones;
+4. asignar un usuario activo con correo real;
+5. finalizar el formulario;
+6. comprobar el correo y el log `Inspection assignment email sent`.
 
-- elegir proveedor de correo;
-- implementar el adaptador de transporte;
-- crear outbox o registro de entregas;
-- conectar el evento real de asignación de hallazgo;
-- añadir templates para aprobación, rechazo, vencimiento y cierre.
+## Consideraciones operativas
+
+- El envío actual es inmediato y best effort.
+- El servidor debe permitir salida de red hacia el host y puerto SMTP.
+- El remitente de `SMTP_FROM` debe estar autorizado por el relay.
+- Para reintentos persistentes, trazabilidad de entrega y recuperación tras reinicios se recomienda una siguiente fase con outbox y worker. Esa mejora no es necesaria para que el correo actual se renderice y entregue por SMTP, pero sí para garantías de entrega de nivel transaccional.
+- El SVG se incluye como `data:`. Debe probarse en los clientes corporativos objetivo; si Outlook bloquea SVG embebido, el transporte puede evolucionar a una imagen CID sin cambiar el template de dominio.
+
+## Próximas plantillas
+
+- evidencia ejecutada pendiente de aprobación;
+- evidencia rechazada;
+- observación cerrada;
+- SLA próximo a vencer o vencido;
+- cierre completo de inspección;
+- eventos SPR, incidentes y controles críticos.

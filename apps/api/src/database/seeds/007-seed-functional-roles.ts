@@ -2,31 +2,18 @@ import 'reflect-metadata';
 import { config } from 'dotenv';
 import type { DataSource } from 'typeorm';
 import { AppDataSource } from '../data-source';
-import { MigrateFunctionalRoles1783100000000 } from '../migrations/1783100000000-MigrateFunctionalRoles';
 
 config();
 
 export async function runFunctionalRolesSeed(dataSource: DataSource): Promise<void> {
-  const queryRunner = dataSource.createQueryRunner();
-  await queryRunner.connect();
-  await queryRunner.startTransaction();
-
-  try {
-    await new MigrateFunctionalRoles1783100000000().up(queryRunner);
-    await queryRunner.commitTransaction();
-  } catch (error) {
-    await queryRunner.rollbackTransaction();
-    throw error;
-  } finally {
-    await queryRunner.release();
-  }
+  await dataSource.runMigrations({ transaction: 'all' });
 }
 
 async function main(): Promise<void> {
   const dataSource = await AppDataSource.initialize();
   try {
     await runFunctionalRolesSeed(dataSource);
-    console.log('Functional roles seed applied.');
+    console.log('Functional roles sync completed using pending migrations.');
   } finally {
     await dataSource.destroy();
   }

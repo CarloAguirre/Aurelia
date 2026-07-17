@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { createPortal } from 'react-dom';
+import { downloadInspectionPeriodicReport } from '../../../shared/services/periodic-inspection-reports.service';
 import { InspectionExportCaretIcon, InspectionExportCloseIcon, InspectionExportInfoIcon } from './InspectionExportReportIcons';
 
 export type InspectionExportFormat = 'excel' | 'pdf';
@@ -70,7 +71,10 @@ export function InspectionExportReportModal({ open, format, onClose }: Props): R
   const [period, setPeriod] = useState('year');
   const [inspectionType, setInspectionType] = useState<InspectionType>('all');
   const [openDropdown, setOpenDropdown] = useState<OpenDropdown>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const periodLabel = periodOptions.find((option) => option.value === period)?.label ?? 'Todo el año';
+  const formatLabel = format === 'excel' ? 'Excel' : 'PDF';
+  const actionLabel = isExporting ? `Generando ${formatLabel}…` : `Exportar ${formatLabel}`;
 
   useEffect(() => {
     if (!open) return;
@@ -78,12 +82,13 @@ export function InspectionExportReportModal({ open, format, onClose }: Props): R
     setPeriod('year');
     setInspectionType('all');
     setOpenDropdown(null);
+    setIsExporting(false);
   }, [currentYear, open]);
 
   useEffect(() => {
     if (!open) return;
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key !== 'Escape') return;
+      if (event.key !== 'Escape' || isExporting) return;
       if (openDropdown) setOpenDropdown(null);
       else onClose();
     }
@@ -98,22 +103,40 @@ export function InspectionExportReportModal({ open, format, onClose }: Props): R
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('pointerdown', handlePointerDown);
     };
-  }, [onClose, open, openDropdown]);
+  }, [isExporting, onClose, open, openDropdown]);
+
+  async function handleExport() {
+    if (!format || isExporting) return;
+    setIsExporting(true);
+    setOpenDropdown(null);
+    try {
+      await downloadInspectionPeriodicReport(format === 'excel' ? 'xlsx' : 'pdf', {
+        year,
+        period,
+        inspectionState: inspectionType,
+      });
+      setIsExporting(false);
+      onClose();
+    } catch {
+      setIsExporting(false);
+      window.alert(`No fue posible generar el informe ${formatLabel}. Intenta nuevamente.`);
+    }
+  }
 
   if (!open || !format) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[10050] flex items-center justify-center bg-black/60" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <div ref={rootRef} className="flex h-[329px] w-[495px] max-w-[calc(100vw-32px)] flex-col items-start justify-center gap-[32px] rounded-[16px] bg-white p-[16px]" role="dialog" aria-modal="true" aria-label={`Configurar exportación ${format === 'excel' ? 'Excel' : 'PDF'}`}>
+    <div className="fixed inset-0 z-[10050] flex items-center justify-center bg-black/60" role="presentation" onMouseDown={(event) => { if (!isExporting && event.target === event.currentTarget) onClose(); }}>
+      <div ref={rootRef} className="flex h-[329px] w-[495px] max-w-[calc(100vw-32px)] flex-col items-start justify-center gap-[32px] rounded-[16px] bg-white p-[16px]" role="dialog" aria-modal="true" aria-label={`Configurar exportación ${formatLabel}`} aria-busy={isExporting}>
         <div className="flex h-[32px] w-full shrink-0 items-center justify-between">
           <InspectionExportInfoIcon />
-          <button type="button" className="flex size-[16px] items-center justify-center" aria-label="Cerrar" onClick={onClose}><InspectionExportCloseIcon /></button>
+          <button type="button" className="flex size-[16px] items-center justify-center disabled:cursor-not-allowed disabled:opacity-40" aria-label="Cerrar" disabled={isExporting} onClick={onClose}><InspectionExportCloseIcon /></button>
         </div>
 
         <div className="flex w-full shrink-0 flex-col items-start gap-[8px]">
           <h2 className="w-full font-['Inter:Bold',sans-serif] text-[18px] font-bold leading-[22px] tracking-[0.36px] text-[#2a2a2a]">Exportar informe de inspecciones</h2>
           <p className="w-full font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313]">Seleccione un periodo de tiempo para la exportación</p>
-          <div className="flex h-[36px] w-full items-center gap-[8px]">
+          <div className={`flex h-[36px] w-full items-center gap-[8px] ${isExporting ? 'pointer-events-none opacity-60' : ''}`}>
             <ExportDropdown label={String(year)} open={openDropdown === 'year'} widthClass="flex-1" menuWidthClass="w-[228px]" onToggle={() => setOpenDropdown((current) => current === 'year' ? null : 'year')}>
               <DropdownMenu>
                 {years.map((option) => <DropdownOption key={option} selected={option === year} onClick={() => { setYear(option); setOpenDropdown(null); }}>{String(option)}</DropdownOption>)}
@@ -126,7 +149,7 @@ export function InspectionExportReportModal({ open, format, onClose }: Props): R
             </ExportDropdown>
           </div>
           <p className="w-full font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313]">Seleccione el tipo de inspecciones que desea exportar</p>
-          <div className="flex h-[25px] items-center gap-[8px]">
+          <div className={`flex h-[25px] items-center gap-[8px] ${isExporting ? 'pointer-events-none opacity-60' : ''}`}>
             <InspectionTypeChip active={inspectionType === 'all'} widthClass="w-[64px]" onClick={() => setInspectionType('all')}>Todas</InspectionTypeChip>
             <InspectionTypeChip active={inspectionType === 'open'} widthClass="w-[65px]" onClick={() => setInspectionType('open')}>Abiertas</InspectionTypeChip>
             <InspectionTypeChip active={inspectionType === 'closed'} widthClass="w-[68px]" onClick={() => setInspectionType('closed')}>Cerradas</InspectionTypeChip>
@@ -134,8 +157,11 @@ export function InspectionExportReportModal({ open, format, onClose }: Props): R
         </div>
 
         <div className="flex h-[40px] w-full shrink-0 items-center justify-end gap-[12px]">
-          <button type="button" className="flex h-[40px] flex-1 items-center justify-center rounded-[8px] border border-[#c8a064] bg-white px-[16px] py-[8px] font-['Inter:Bold',sans-serif] text-[14px] font-bold leading-[22.7px] tracking-[0.28px] text-[#c8a064]" onClick={onClose}>Cancelar</button>
-          <button type="button" className="flex h-[40px] flex-1 items-center justify-center rounded-[8px] bg-[#c8a064] px-[16px] py-[8px] font-['Inter:Bold',sans-serif] text-[14px] font-bold leading-[22.7px] tracking-[0.28px] text-white" onClick={onClose}>Rechazar observación</button>
+          <button type="button" className="flex h-[40px] flex-1 items-center justify-center rounded-[8px] border border-[#c8a064] bg-white px-[16px] py-[8px] font-['Inter:Bold',sans-serif] text-[14px] font-bold leading-[22.7px] tracking-[0.28px] text-[#c8a064] disabled:cursor-not-allowed disabled:opacity-50" disabled={isExporting} onClick={onClose}>Cancelar</button>
+          <button type="button" className="flex h-[40px] flex-1 items-center justify-center gap-[8px] rounded-[8px] bg-[#c8a064] px-[16px] py-[8px] font-['Inter:Bold',sans-serif] text-[14px] font-bold leading-[22.7px] tracking-[0.28px] text-white disabled:cursor-wait disabled:opacity-80" disabled={isExporting} onClick={() => { void handleExport(); }}>
+            {isExporting ? <span className="size-[14px] shrink-0 animate-spin rounded-full border-2 border-white/50 border-t-white" aria-hidden="true" /> : null}
+            <span>{actionLabel}</span>
+          </button>
         </div>
       </div>
     </div>,

@@ -168,7 +168,8 @@ export function SprCycleTraceabilityToolbar({
   const rootRef = useRef<HTMLDivElement>(null);
   const selectedLabel =
     SPR_CYCLE_TRACEABILITY_FILTER_OPTIONS.find((option) => option.id === filter)?.label ??
-    SPR_CYCLE_TRACEABILITY_FILTER_OPTIONS[0].label;
+    SPR_CYCLE_TRACEABILITY_FILTER_OPTIONS[0]?.label ??
+    'Todos';
 
   useEffect(() => {
     if (!open) return;

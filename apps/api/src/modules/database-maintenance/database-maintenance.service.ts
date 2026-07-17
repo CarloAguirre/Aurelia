@@ -137,8 +137,6 @@ export class DatabaseMaintenanceService {
 
     const maintenanceRunner = this.dataSource.createQueryRunner();
     let lockAcquired = false;
-    let schemaPlan: { upQueries: SqlQuery[]; downQueries: SqlQuery[] } | null = null;
-    let migrationArtifact: { migrationName: string; filePath: string } | null = null;
     let appliedMigrationsCount = 0;
     let lastAppliedMigration: string | null = null;
     let phase: MaintenancePhase = 'connect';

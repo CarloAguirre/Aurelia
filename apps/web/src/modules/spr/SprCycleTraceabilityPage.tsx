@@ -45,7 +45,7 @@ function SprCycleTraceabilityPageHeader() {
   );
 }
 
-// Trazabilidad completa del ciclo SPR (Figma 1831:51316). Solo rol SUSTAINABILITY_SPECIALIST.
+// Trazabilidad completa del ciclo SPR (Figma 1831:51316). Roles: SPR_SUSTAINABILITY_SPECIALIST / SPR_ENVIRONMENT_MANAGER.
 export function SprCycleTraceabilityPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();

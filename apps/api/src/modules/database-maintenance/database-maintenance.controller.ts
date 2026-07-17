@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-import { DatabaseMaintenanceGuard } from './database-maintenance.guard';
 import { DatabaseMaintenanceService } from './database-maintenance.service';
 import { RunDatabaseMaintenanceDto } from './dto/run-database-maintenance.dto';
+import { DatabaseMaintenanceGuard } from './database-maintenance.guard';
 
 @UseGuards(DatabaseMaintenanceGuard)
 @Controller('admin/database')

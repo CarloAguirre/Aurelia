@@ -10,6 +10,10 @@ export function markNotificationRead(notificationId: string): Promise<Notificati
   return httpPatch<Record<string, never>, NotificationResponse>(`/notifications/${encodeURIComponent(notificationId)}/read`, {});
 }
 
+export function dismissNotification(notificationId: string): Promise<MarkAllNotificationsReadResponse> {
+  return httpPatch<Record<string, never>, MarkAllNotificationsReadResponse>(`/notifications/${encodeURIComponent(notificationId)}/dismiss`, {});
+}
+
 export function dismissInspectionNotificationThread(notificationId: string): Promise<MarkAllNotificationsReadResponse> {
   return httpPatch<Record<string, never>, MarkAllNotificationsReadResponse>(`/notifications/${encodeURIComponent(notificationId)}/inspection-thread/dismiss`, {});
 }

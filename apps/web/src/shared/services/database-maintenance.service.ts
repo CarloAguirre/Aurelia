@@ -14,7 +14,7 @@ export interface DatabaseMaintenancePlanResponse {
 
 export interface DatabaseMaintenanceRunResponse {
   migration: {
-    status: 'applied' | 'noop' | 'review_required';
+    status: 'applied' | 'noop' | 'review_required' | 'failed';
     filePath: string | null;
     migrationName: string | null;
     upQueries: number;
@@ -25,13 +25,23 @@ export interface DatabaseMaintenanceRunResponse {
     seed: string;
     status: 'applied' | 'skipped' | 'failed';
     error?: string;
+    details?: string;
   }>;
   availableSeeds: string[];
+  error: {
+    phase: 'connect' | 'lock' | 'reset' | 'prerequisites' | 'plan' | 'review' | 'artifact' | 'migration' | 'seed';
+    message: string;
+    details?: string;
+    stack?: string;
+  } | null;
 }
 
 export interface RunDatabaseMaintenanceRequest {
   seeds?: string[];
   allowRisky?: boolean;
+  resetSchema?: boolean;
+  resetConfirmation?: string;
+  runSeedsOnly?: boolean;
 }
 
 export async function getDatabaseMaintenancePlan(): Promise<DatabaseMaintenancePlanResponse> {

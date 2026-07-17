@@ -22,6 +22,7 @@ export class RolesService {
 
   async findAll(): Promise<RoleResponse[]> {
     const rows = await this.roles.find({
+      where: { isActive: true },
       order: { code: 'ASC' },
       relations: { rolePermissions: { permission: true } },
     });

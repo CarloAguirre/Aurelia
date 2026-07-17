@@ -74,7 +74,7 @@ export function DashboardPeriodLite({ value, onChange, clearIconPath, caretIconP
         {open === 'year' ? (
           <div className="absolute right-0 top-[44px] z-50 bg-white border border-[#d1d1d1] border-solid flex flex-col items-start p-[8px] rounded-[12px] shadow-[0px_4px_8px_rgba(19,19,19,0.24)] w-[128px]">
             {years.slice().reverse().map((year) => (
-              <button key={year} className={`h-[40px] w-full rounded-[8px] px-[8px] text-left font-['Inter:Regular',sans-serif] font-normal text-[#131313] text-[13px] ${year === value.year ? 'bg-[#e3e3e3]' : 'bg-white'}`} type="button" onClick={() => { onChange({ ...value, year }); setOpen(null); }}>
+              <button key={year} className={`h-[40px] min-h-[40px] w-full shrink-0 rounded-[8px] px-[8px] text-left font-['Inter:Regular',sans-serif] font-normal text-[#131313] text-[13px] ${year === value.year ? 'bg-[#e3e3e3]' : 'bg-white hover:bg-[#e3e3e3]'}`} type="button" onClick={() => { onChange({ ...value, year }); setOpen(null); }}>
                 {year}
               </button>
             ))}
@@ -88,9 +88,9 @@ export function DashboardPeriodLite({ value, onChange, clearIconPath, caretIconP
           <svg className="h-[10px] w-[12.5px]" fill="none" preserveAspectRatio="none" viewBox="0 0 12.5 10"><Icon path={caretIconPath} fill="#131313" /></svg>
         </button>
         {open === 'period' ? (
-          <div className="absolute right-0 top-[44px] z-50 bg-white border border-[#d1d1d1] border-solid flex flex-col items-start p-[8px] rounded-[12px] shadow-[0px_4px_8px_rgba(19,19,19,0.24)] w-[210px]">
+          <div className="absolute right-0 top-[44px] z-50 bg-white border border-[#d1d1d1] border-solid flex max-h-[680px] flex-col items-start overflow-y-auto p-[8px] rounded-[12px] shadow-[0px_4px_8px_rgba(19,19,19,0.24)] w-[210px]">
             {periodItems.map((period) => (
-              <button key={period.value} className={`h-[40px] w-full rounded-[8px] px-[8px] text-left font-['Inter:Regular',sans-serif] font-normal text-[13px] ${period.value === value.period ? 'bg-[#e3e3e3] text-[#131313]' : 'bg-white text-[#131313]'} ${period.disabled ? 'opacity-40 cursor-not-allowed' : ''}`} type="button" disabled={period.disabled} onClick={() => { onChange({ ...value, period: period.value }); setOpen(null); }}>
+              <button key={period.value} className={`h-[40px] min-h-[40px] w-full shrink-0 rounded-[8px] px-[8px] text-left font-['Inter:Regular',sans-serif] font-normal text-[13px] ${period.value === value.period ? 'bg-[#e3e3e3] text-[#131313]' : period.disabled ? 'bg-white text-[#131313] opacity-40 cursor-not-allowed' : 'bg-white text-[#131313] hover:bg-[#e3e3e3]'}`} type="button" disabled={period.disabled} onClick={() => { onChange({ ...value, period: period.value }); setOpen(null); }}>
                 {period.label}
               </button>
             ))}

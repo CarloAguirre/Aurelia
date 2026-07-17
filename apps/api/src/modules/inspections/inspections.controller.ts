@@ -1,5 +1,6 @@
-import { BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req } from '@nestjs/common';
 import {
+  InspectionAssignmentScopeResponse,
   InspectionChecklistAnswerResponse,
   InspectionChecklistTemplateResponse,
   InspectionDashboardSummaryResponse,
@@ -12,6 +13,7 @@ import {
   InspectionTypeResponse,
   UserResponse,
 } from '@aurelia/contracts';
+import { ResourceScopeService } from '../access-control/resource-scope.service';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { RequirePermissions } from '../auth/require-permissions.decorator';
 import { UsersService } from '../users/users.service';
@@ -34,6 +36,7 @@ export class InspectionsController {
     private readonly inspectionsService: InspectionsService,
     private readonly usersService: UsersService,
     private readonly inspectionDetailService: InspectionDetailService,
+    private readonly resourceScopeService: ResourceScopeService,
   ) {}
 
   @Get('types')
@@ -47,8 +50,17 @@ export class InspectionsController {
   }
 
   @Get('responsible-users')
-  findResponsibleUsers(@Query('companyId') companyId?: string): Promise<UserResponse[]> {
-    return this.usersService.findAll({ companyId });
+  async findResponsibleUsers(
+    @Req() request: AuthenticatedRequest,
+    @Query('companyId') companyId?: string,
+  ): Promise<UserResponse[]> {
+    const scopedCompanyId = await this.resourceScopeService.resolveInspectionAssignmentCompany(request.user, companyId);
+    return this.usersService.findAll({ companyId: scopedCompanyId ?? undefined });
+  }
+
+  @Get('assignment-scope')
+  getAssignmentScope(@Req() request: AuthenticatedRequest): Promise<InspectionAssignmentScopeResponse> {
+    return this.resourceScopeService.getInspectionAssignmentScope(request.user);
   }
 
   @Get('dashboard/summary')
@@ -66,8 +78,9 @@ export class InspectionsController {
 
   @RequirePermissions('inspections:write')
   @Post()
-  create(@Body() dto: CreateInspectionDto, @Req() request: AuthenticatedRequest): Promise<InspectionResponse> {
-    return this.inspectionsService.create(dto, request.user.sub);
+  async create(@Body() dto: CreateInspectionDto, @Req() request: AuthenticatedRequest): Promise<InspectionResponse> {
+    const companyId = await this.resourceScopeService.resolveInspectionAssignmentCompany(request.user, dto.companyId);
+    return this.inspectionsService.create({ ...dto, companyId }, request.user.sub);
   }
 
   @Get(':id/findings')
@@ -82,12 +95,16 @@ export class InspectionsController {
 
   @RequirePermissions('inspections:write')
   @Post(':id/findings')
-  createFinding(
+  async createFinding(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateInspectionFindingDto,
     @Req() request: AuthenticatedRequest,
   ): Promise<InspectionFindingResponse> {
-    return this.inspectionsService.createFinding(id, dto, request.user.sub);
+    const responsibleCompanyId = await this.resourceScopeService.resolveInspectionAssignmentCompany(
+      request.user,
+      dto.responsibleCompanyId,
+    );
+    return this.inspectionsService.createFinding(id, { ...dto, responsibleCompanyId }, request.user.sub);
   }
 
   @RequirePermissions('inspections:write')
@@ -178,6 +195,9 @@ export class InspectionsController {
     @Body() dto: UpdateInspectionFindingDto,
     @Req() request: AuthenticatedRequest,
   ): Promise<InspectionFindingResponse> {
+    if ((dto.status === InspectionFindingStatus.CLOSED || dto.status === InspectionFindingStatus.REJECTED) && !(await this.resourceScopeService.canReviewInspectionFindings(request.user))) {
+      throw new ForbiddenException('Only Gold Fields users can approve or reject findings');
+    }
     const finding = await this.inspectionsService.updateFinding(findingId, dto, request.user.sub);
     await this.closeInspectionIfAllFindingsClosed(finding.inspectionId, request.user.sub);
     return finding;

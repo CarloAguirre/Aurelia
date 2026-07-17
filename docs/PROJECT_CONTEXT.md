@@ -23,21 +23,41 @@ Conceptos transversales del negocio (compartidos entre apps):
 - **Flujos de aprobación** — registrar → revisar → validar → aprobar / devolver.
 - **Reportabilidad** — segmentada por área, MUE, estado, responsable y criticidad.
 
-> El modelo de datos definitivo y las reglas de negocio están **pendientes de definición**. Este documento describe el dominio a alto nivel, no el esquema final.
+> El modelo de datos definitivo y las reglas de negocio continúan evolucionando por módulo. Las responsabilidades funcionales se representan mediante roles específicos y permisos; el alcance de empresa/área se resuelve además con las asignaciones organizacionales del usuario.
 
 ## Roles
 
-Roles iniciales (ver `Role` en `@aurelia/contracts`):
+Catálogo funcional vigente:
 
-| Rol | Descripción |
-| --- | --- |
-| `ADMIN` | Administración de usuarios, catálogos y configuración. |
-| `SUPERVISOR` | Supervisión y revisión de registros. |
-| `INSPECTOR` | Registro de inspecciones/incidentes en terreno. |
-| `APPROVER` | Validación y aprobación de registros. |
-| `VIEWER` | Solo lectura / reportabilidad. |
+| Dominio | Rol | Responsabilidad principal |
+| --- | --- | --- |
+| Transversal | `ADMIN` | Administración integral de usuarios, catálogos, permisos y configuración. |
+| Transversal | `VIEWER` | Consulta y reportabilidad en modo lectura. |
+| Inspecciones | `INSPECTOR` | Crear y ejecutar inspecciones en terreno. |
+| Inspecciones | `INSPECTION_RESPONSIBLE` | Ejecutar acciones correctivas y adjuntar evidencias de observaciones asignadas. |
+| Inspecciones | `INSPECTION_CLOSURE_VERIFIER` | Revisar evidencias y aprobar o rechazar cierres de observaciones. |
+| SPR | `SPR_RESPONSIBLE` | Registrar y enviar datos mensuales de su área. |
+| SPR | `SPR_AREA_MANAGER` | Revisar y aprobar los datos del área responsable. |
+| SPR | `SPR_SUSTAINABILITY_SPECIALIST` | Validar técnicamente consolidación y evidencias. |
+| SPR | `SPR_ENVIRONMENT_MANAGER` | Autorizar el cierre final del período. |
+| Incidentes | `INCIDENT_GENERATOR` | Registrar incidentes, acciones inmediatas y Flash Report. |
+| Incidentes | `INCIDENT_ENV_VALIDATOR` | Validar técnicamente incidentes y Flash Report. |
+| Incidentes | `INCIDENT_ENV_COORDINATOR` | Coordinar clasificación, seguimiento y escalamiento. |
+| Incidentes | `INCIDENT_SUPERINTENDENT` | Supervisar investigación, acciones y cierre. |
+| Incidentes | `INCIDENT_ICAM_LEAD` | Liderar investigaciones ICAM. |
+| Controles críticos | `CONTROL_VERIFIER` | Ejecutar verificaciones y autoevaluaciones. |
+| Controles críticos | `CONTROL_OWNER` | Gestionar el cumplimiento y las evidencias del control asignado. |
+| Controles críticos | `CONTROL_SUPERINTENDENT` | Supervisar y validar controles de su ámbito. |
+| Controles críticos | `CONTROL_MANAGER` | Aprobar resultados y planes de acción. |
+| Controles críticos | `CONTROL_CORPORATE_APPROVER` | Realizar la aprobación corporativa final. |
 
-La matriz de permisos por rol se definirá junto con las reglas de negocio.
+`SUPERVISOR` y `APPROVER` son códigos legados. La migración `1783100000000-MigrateFunctionalRoles` reasigna sus usuarios, actualiza referencias de workflow y los deja inactivos. No deben utilizarse para nuevas asignaciones.
+
+La autorización efectiva combina:
+
+1. roles funcionales;
+2. permisos por acción;
+3. empresa, área y asignación contextual del recurso.
 
 ## Módulos
 
@@ -51,9 +71,9 @@ La matriz de permisos por rol se definirá junto con las reglas de negocio.
 | Workflows / aprobaciones | ✓ | | ✓ |
 | Reportes | ✓ | | ✓ |
 | Administración (usuarios, roles, MUE, áreas) | ✓ | | ✓ |
-| Notificaciones / IA | (futuro) | | (futuro) |
+| Notificaciones / IA | En evolución | | En evolución |
 
-Nota de estado actual (2026-07): el desarrollo funcional activo está concentrado en inspecciones (web + mobile-inspecciones). El módulo de incidentes no está en foco funcional de implementación en esta etapa.
+Nota de estado actual (2026-07): el desarrollo funcional activo está concentrado en inspecciones (web + mobile-inspecciones). El módulo de incidentes no está en foco funcional de implementación en esta etapa; sus roles se incorporan para dejar preparado el modelo de autorización, no para declarar el flujo completo terminado.
 
 ## Motivo del monorepo
 

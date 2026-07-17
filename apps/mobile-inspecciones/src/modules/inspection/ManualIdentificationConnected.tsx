@@ -7,6 +7,7 @@ import { colors, fontWeight, spacing } from '../../shared/theme/tokens';
 import { formatLocationLabel } from '../../shared/utils/geo.utils';
 import { FieldBox, FieldLabel, FormCard, LocationMapPreview, OfflineBanner, SelectBox } from '../../shared/components/form/ManualFormUi';
 import { ManualFlowFooter, ManualFlowHeader } from '../../shared/components/form/ManualFlowScaffold';
+import { useMobileInspectionAssignmentScope } from '../../shared/stores/mobileInspectionAssignmentScope.store';
 import { useMobileSession } from '../auth/mobileSession.store';
 import { useManualInspectionDraft } from './manualInspection.store';
 import { useManualInspectionCatalogs } from './useManualInspectionCatalogs';
@@ -42,6 +43,10 @@ export function ManualIdentificationConnected() {
   usePersistManualInspectionDraft();
   const draft = useManualInspectionDraft();
   const user = useMobileSession((state) => state.user);
+  const scopeLoaded = useMobileInspectionAssignmentScope((state) => state.loaded);
+  const inspectorCompanyName = useMobileInspectionAssignmentScope((state) => state.inspectorCompanyName);
+  const hydrateAssignmentScope = useMobileInspectionAssignmentScope((state) => state.hydrate);
+  const setInspectorIdentity = useManualInspectionDraft((state) => state.setInspectorIdentity);
   const activePicker = useManualInspectionFlowStore((state) => state.activePicker);
   const currentStep = useManualInspectionFlowStore((state) => state.currentStep);
   const openPicker = useManualInspectionFlowStore((state) => state.openPicker);
@@ -52,12 +57,21 @@ export function ManualIdentificationConnected() {
   const { areas, sectors, loadingAreas, loadingSectors, catalogErrorMessage } = useManualInspectionCatalogs();
   const { captureLocation, capturing, locationError } = useManualInspectionLocation();
   const inspectorName = user?.fullName ?? draft.inspectorName;
-  const inspectorCompanyName = user?.companyName ?? draft.inspectorCompanyName;
+  const resolvedInspectorCompanyName = inspectorCompanyName ?? user?.companyName ?? draft.inspectorCompanyName;
   const areaOptions = useMemo<SelectSheetOption[]>(() => areas.map((area) => ({ id: area.id, label: area.name, description: area.code })), [areas]);
   const sectorOptions = useMemo<SelectSheetOption[]>(() => sectors.map((sector) => ({ id: sector.id, label: sector.name, description: sector.code })), [sectors]);
   const dateOptions = useMemo<SelectSheetOption[]>(buildDateOptions, []);
   const canContinue = Boolean(draft.areaId && draft.sectorId && draft.inspectionDate && draft.locationCaptured);
   const catalogEmptyText = catalogErrorMessage ?? 'No hay catálogos disponibles para operar offline';
+
+  React.useEffect(() => {
+    void hydrateAssignmentScope(user);
+  }, [hydrateAssignmentScope, user]);
+
+  React.useEffect(() => {
+    if (!scopeLoaded) return;
+    setInspectorIdentity(inspectorName, resolvedInspectorCompanyName);
+  }, [inspectorName, resolvedInspectorCompanyName, scopeLoaded, setInspectorIdentity]);
 
   React.useEffect(() => {
     goToIdentification();
@@ -119,7 +133,7 @@ export function ManualIdentificationConnected() {
             <View><Text style={styles.title}>Identificación</Text><Text style={styles.subtitle}>Completa los datos del inspector y de la inspección antes de continuar</Text></View>
             <FormCard icon={<FontAwesome5 name="user-tag" size={11} color={colors.blueLink} />} title="Datos del inspector" subtitle="¿Quién está realizando esta inspección?">
               <LabeledField label="Inspector *"><FieldBox value={inspectorName} /></LabeledField>
-              <LabeledField label="Empresa del inspector *"><FieldBox value={inspectorCompanyName} /></LabeledField>
+              <LabeledField label="Empresa del inspector *"><FieldBox value={resolvedInspectorCompanyName} /></LabeledField>
             </FormCard>
             <FormCard icon={<FontAwesome5 name="map-marked-alt" size={11} color={colors.teal} />} title="Datos de la inspección" subtitle="¿Dónde y cuándo se realiza esta inspección?">
               <View style={styles.twoColumns}>

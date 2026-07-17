@@ -5,6 +5,6 @@ import { DatabaseMaintenanceService } from './database-maintenance.service';
 
 @Module({
   controllers: [DatabaseMaintenanceController],
-  providers: [DatabaseMaintenanceGuard, DatabaseMaintenanceService],
+  providers: [DatabaseMaintenanceService, DatabaseMaintenanceGuard],
 })
 export class DatabaseMaintenanceModule {}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors, fontSize, fontWeight, radius, spacing } from '../../theme/tokens';
+import { useMobileInspectionAssignmentScope } from '../../stores/mobileInspectionAssignmentScope.store';
 import type { CompanyResponse } from '../../services/api/organization.api';
 
 interface CompanySuggestionCardProps {
@@ -12,6 +13,29 @@ interface CompanySuggestionCardProps {
 }
 
 export function CompanySuggestionCard({ company, reason, disabled = false, onConfirm, onChooseOther }: CompanySuggestionCardProps) {
+  const canSelectCompany = useMobileInspectionAssignmentScope((state) => state.canSelectCompany);
+  const assignedCompanyId = useMobileInspectionAssignmentScope((state) => state.companyId);
+  const assignedCompanyName = useMobileInspectionAssignmentScope((state) => state.companyName);
+  const confirmedRef = React.useRef(false);
+  const locked = !canSelectCompany && Boolean(assignedCompanyId);
+
+  React.useEffect(() => {
+    if (!locked || disabled || confirmedRef.current || company.id !== assignedCompanyId) return;
+    confirmedRef.current = true;
+    onConfirm();
+  }, [assignedCompanyId, company.id, disabled, locked, onConfirm]);
+
+  if (locked) {
+    return (
+      <View style={styles.lockedCard}>
+        <Text style={styles.lockedLabel}>Empresa responsable</Text>
+        <View style={styles.lockedField}>
+          <Text style={styles.lockedValue}>{assignedCompanyName ?? company.name}</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>
@@ -53,6 +77,35 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
+  },
+  lockedCard: {
+    marginLeft: 33,
+    marginRight: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.white,
+    borderColor: colors.border,
+    borderRadius: radius.md + 2,
+    borderWidth: 1,
+  },
+  lockedLabel: {
+    color: colors.primary,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.bold,
+  },
+  lockedField: {
+    height: 50,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    justifyContent: 'center',
+    backgroundColor: '#F6FAFF',
+    borderColor: '#24588B',
+    borderRadius: radius.sm + 2,
+    borderWidth: 1.5,
+  },
+  lockedValue: {
+    color: colors.primary,
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
   },
   header: {
     alignItems: 'center',

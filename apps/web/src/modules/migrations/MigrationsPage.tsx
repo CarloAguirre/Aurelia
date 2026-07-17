@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useSessionStore } from '../../shared/stores/session.store';
 import {
   getDatabaseMaintenancePlan,
   runDatabaseMaintenance,
@@ -14,6 +12,8 @@ function statusLabel(status: string): string {
       return 'Listo para ejecutar';
     case 'applied':
       return 'Aplicado';
+    case 'failed':
+      return 'Falló';
     case 'review_required':
       return 'Requiere revisión';
     case 'noop':
@@ -28,6 +28,8 @@ function statusTone(status: string): string {
     case 'ready':
     case 'applied':
       return '#00b398';
+    case 'failed':
+      return '#c4365a';
     case 'review_required':
       return '#c8a064';
     case 'noop':
@@ -38,8 +40,6 @@ function statusTone(status: string): string {
 }
 
 export function MigrationsPage() {
-  const user = useSessionStore((state) => state.user);
-  const isAdmin = user?.roles?.includes('ADMIN') ?? false;
   const [plan, setPlan] = useState<DatabaseMaintenancePlanResponse | null>(null);
   const [runResult, setRunResult] = useState<DatabaseMaintenanceRunResponse | null>(null);
   const [selectedSeeds, setSelectedSeeds] = useState<string[]>([]);
@@ -108,10 +108,6 @@ export function MigrationsPage() {
     },
   ], [activePlan]);
 
-  if (!isAdmin) {
-    return <Navigate to="/" replace />;
-  }
-
   async function handleRunMaintenance() {
     await executeMaintenance(false);
   }
@@ -120,24 +116,49 @@ export function MigrationsPage() {
     await executeMaintenance(true);
   }
 
-  async function executeMaintenance(allowRisky: boolean) {
+  async function handleRunSeedsOnly() {
+    await executeMaintenance(false, {
+      runSeedsOnly: true,
+    });
+  }
+
+  async function handleResetAndRunMaintenance() {
+    const confirmation = window.prompt('Esto borrara TODO el esquema public de DEV. Escribe RESET_DEV_SCHEMA para confirmar.');
+    if (confirmation !== 'RESET_DEV_SCHEMA') {
+      setError('Confirmacion invalida. No se ejecuto el reset.');
+      return;
+    }
+
+    await executeMaintenance(false, {
+      resetSchema: true,
+      resetConfirmation: confirmation,
+    });
+  }
+
+  async function executeMaintenance(
+    allowRisky: boolean,
+    extraPayload?: { resetSchema?: boolean; resetConfirmation?: string; runSeedsOnly?: boolean },
+  ) {
     setLoadingRun(true);
     setError(null);
 
     try {
-      const response = await runDatabaseMaintenance({ seeds: selectedSeeds, allowRisky });
+      const response = await runDatabaseMaintenance({ seeds: selectedSeeds, allowRisky, ...extraPayload });
       setRunResult(response);
-      setPlan({
-        migration: {
-          status: response.migration.status === 'applied' ? 'noop' : response.migration.status,
-          filePath: response.migration.filePath,
-          migrationName: response.migration.migrationName,
-          upQueries: response.migration.upQueries,
-          downQueries: response.migration.downQueries,
-          riskyQueries: response.migration.riskyQueries,
-        },
-        availableSeeds: response.availableSeeds,
-      });
+
+      if (response.migration.status !== 'failed') {
+        setPlan({
+          migration: {
+            status: response.migration.status === 'applied' ? 'noop' : response.migration.status,
+            filePath: response.migration.filePath,
+            migrationName: response.migration.migrationName,
+            upQueries: response.migration.upQueries,
+            downQueries: response.migration.downQueries,
+            riskyQueries: response.migration.riskyQueries,
+          },
+          availableSeeds: response.availableSeeds,
+        });
+      }
     } catch (runError) {
       setError(runError instanceof Error ? runError.message : 'No se pudo ejecutar la mantenimiento');
     } finally {
@@ -268,6 +289,22 @@ export function MigrationsPage() {
             <button type="button" onClick={handleRunMaintenance} disabled={loadingRun} style={{ height: 46, borderRadius: 14, border: 'none', background: 'linear-gradient(135deg, #00b398 0%, #24588b 100%)', color: '#ffffff', fontWeight: 800, cursor: 'pointer', boxShadow: '0 12px 24px rgba(0, 179, 152, 0.2)' }}>
               {loadingRun ? 'Ejecutando...' : 'Ejecutar mantenimiento'}
             </button>
+            <button
+              type="button"
+              onClick={handleRunSeedsOnly}
+              disabled={loadingRun}
+              style={{ height: 44, borderRadius: 14, border: '1px solid rgba(36, 88, 139, 0.2)', background: '#f4f8fc', color: '#24588b', fontWeight: 800, cursor: 'pointer' }}
+            >
+              {loadingRun ? 'Ejecutando seeds...' : 'Ejecutar solo seeds'}
+            </button>
+            <button
+              type="button"
+              onClick={handleResetAndRunMaintenance}
+              disabled={loadingRun}
+              style={{ height: 44, borderRadius: 14, border: '1px solid rgba(196, 54, 90, 0.25)', background: '#fff6f8', color: '#c4365a', fontWeight: 800, cursor: 'pointer' }}
+            >
+              {loadingRun ? 'Reseteando schema...' : 'Reset DEV + migrar + seeds'}
+            </button>
             {activePlan?.migration.status === 'review_required' ? (
               <button
                 type="button"
@@ -281,6 +318,12 @@ export function MigrationsPage() {
             <p style={{ margin: 0, color: '#617183', fontSize: 12, lineHeight: 1.55 }}>
               Si el backend detecta cambios seguros, aplicará la migration y luego correrá los seeds seleccionados.
             </p>
+            <p style={{ margin: 0, color: '#24588b', fontSize: 12, lineHeight: 1.55 }}>
+              "Ejecutar solo seeds" ignora el plan de esquema y ejecuta unicamente los seeds seleccionados.
+            </p>
+            <p style={{ margin: 0, color: '#c4365a', fontSize: 12, lineHeight: 1.55 }}>
+              El boton de reset esta pensado solo para DEV cuando el esquema quedo en estado parcial. Borra todo el schema public y vuelve a reconstruirlo.
+            </p>
             {activePlan?.migration.status === 'review_required' ? (
               <p style={{ margin: 0, color: '#c4365a', fontSize: 12, lineHeight: 1.55 }}>
                 El botón de forzado ejecuta también planes con `DROP`, cambios de constraints o ajustes destructivos una vez revisados manualmente.
@@ -293,6 +336,27 @@ export function MigrationsPage() {
               <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#001e39' }}>Última ejecución</p>
               <p style={{ margin: 0, fontSize: 13, color: '#617183', lineHeight: 1.6 }}>{statusLabel(runResult.migration.status)}</p>
               <p style={{ margin: '6px 0 0', fontSize: 12, color: '#617183' }}>{runResult.seeds.filter((seed) => seed.status === 'applied').length} seeds aplicados</p>
+              {runResult.error ? (
+                <div style={{ marginTop: 12, borderRadius: 12, border: '1px solid rgba(196, 54, 90, 0.18)', background: '#fff5f7', padding: 12, color: '#a42f4e' }}>
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.8 }}>Error detectado</p>
+                  <p style={{ margin: '6px 0 0', fontSize: 13, fontWeight: 700 }}>{runResult.error.phase}</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 13, lineHeight: 1.5 }}>{runResult.error.message}</p>
+                  {runResult.error.details ? <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', fontSize: 12, lineHeight: 1.5, overflowX: 'auto' }}>{runResult.error.details}</pre> : null}
+                  {runResult.error.stack ? <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', fontSize: 11, lineHeight: 1.45, overflowX: 'auto', opacity: 0.9 }}>{runResult.error.stack}</pre> : null}
+                </div>
+              ) : null}
+              {runResult.seeds.some((seed) => seed.status === 'failed') ? (
+                <div style={{ marginTop: 12, borderRadius: 12, border: '1px solid rgba(196, 54, 90, 0.18)', background: '#fff5f7', padding: 12, color: '#a42f4e' }}>
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.8 }}>Seed fallido</p>
+                  {runResult.seeds.filter((seed) => seed.status === 'failed').map((seed) => (
+                    <div key={seed.seed} style={{ marginTop: 8 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>{seed.seed}</p>
+                      {seed.error ? <p style={{ margin: '4px 0 0', fontSize: 13, lineHeight: 1.5 }}>{seed.error}</p> : null}
+                      {seed.details ? <pre style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap', fontSize: 11, lineHeight: 1.45, overflowX: 'auto' }}>{seed.details}</pre> : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ) : null}
         </aside>

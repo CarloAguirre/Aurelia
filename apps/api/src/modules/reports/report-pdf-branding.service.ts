@@ -58,7 +58,6 @@ export class ReportPdfBrandingService {
     try {
       document.image(GOLD_FIELDS_LOGO, MARGIN_X, top, {
         fit: [logoWidth, logoHeight],
-        align: 'left',
         valign: 'center',
       });
     } catch {

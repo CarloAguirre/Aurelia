@@ -8,6 +8,10 @@
       {
         "include": "modules/reports/assets/**/*",
         "watchAssets": true
+      },
+      {
+        "include": "modules/messaging/assets/**/*",
+        "watchAssets": true
       }
     ]
   }

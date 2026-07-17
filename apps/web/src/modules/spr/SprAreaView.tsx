@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useSprParameters } from '../../shared/hooks/useSprParameters';
 import { useSprMonthlyRecords } from '../../shared/hooks/useSprMonthlyRecords';
 import { useSprCycleCorrectionHistory } from '../../shared/hooks/useSprCycleCorrectionHistory';
+import { useSessionStore } from '../../shared/stores/session.store';
 import { SprAreaReviewView } from './SprAreaReviewView';
 import { SprAreaStatusView } from './SprAreaStatusView';
 import {
@@ -12,6 +13,11 @@ import {
 } from './spr.constants';
 import { resolveSprAreaDisplayMode, resolveSprAreaEffectiveDisplayMode } from './sprAreaStatus';
 import {
+  getSprFormAreaCatalog,
+  isSprFormAreaAutomatic,
+  resolveSprFormAreaKey,
+} from './sprFormFlow.constants';
+import {
   getSprCycleRecordIds,
   resolveSprManagerApprovalDateLabel,
   resolveSprSignDateLabel,
@@ -20,6 +26,9 @@ import {
 export function SprAreaView() {
   const [searchParams] = useSearchParams();
   const demoState = searchParams.get(SPR_AREA_DEMO_STATE_QUERY);
+  const areaName = useSessionStore((state) => state.user?.areaName ?? null);
+  const isAutomaticArea = isSprFormAreaAutomatic(areaName);
+  const areaCatalog = getSprFormAreaCatalog(resolveSprFormAreaKey(areaName));
   const parametersQuery = useSprParameters();
   const recordsQuery = useSprMonthlyRecords({
     periodYear: SPR_ACTIVE_CYCLE.periodYear,
@@ -28,8 +37,11 @@ export function SprAreaView() {
 
   const totalParameterCount = parametersQuery.data?.length ?? 0;
   const displayMode = useMemo(
-    () => resolveSprAreaDisplayMode(recordsQuery.data, totalParameterCount),
-    [recordsQuery.data, totalParameterCount],
+    () =>
+      resolveSprAreaDisplayMode(recordsQuery.data, totalParameterCount, {
+        isAutomaticArea,
+      }),
+    [isAutomaticArea, recordsQuery.data, totalParameterCount],
   );
   const cycleRecordIds = useMemo(() => getSprCycleRecordIds(recordsQuery.data), [recordsQuery.data]);
   const needsCorrectionHistory = displayMode === 'pending_review';
@@ -89,7 +101,15 @@ export function SprAreaView() {
   }
 
   if (effectiveDisplayMode === 'pending_review') {
-    return <SprAreaReviewView />;
+    return (
+      <SprAreaReviewView
+        automaticEmission={isAutomaticArea}
+        automaticAreaLabel={isAutomaticArea ? areaCatalog.label : undefined}
+        automaticSource={
+          isAutomaticArea ? (areaCatalog.automaticSource ?? areaCatalog.sources[0]) : undefined
+        }
+      />
+    );
   }
 
   if (effectiveDisplayMode === 'approved') {

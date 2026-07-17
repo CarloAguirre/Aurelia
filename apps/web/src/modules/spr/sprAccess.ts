@@ -26,6 +26,11 @@ export function canAccessSprReport(roles: Role[]): boolean {
   );
 }
 
+/** Cualquier rol SPR (formulario, área o reporte) — trazabilidad del ciclo. */
+export function canAccessSprTraceability(roles: Role[]): boolean {
+  return canAccessSprForm(roles) || canAccessSprArea(roles) || canAccessSprReport(roles) || roles.includes(Role.ADMIN);
+}
+
 export function resolveSprDefaultRoute(roles: Role[]): SprDefaultRoute {
   if (canAccessSprReport(roles)) return '/spr/reporte';
   if (canAccessSprArea(roles)) return '/spr/mi-area';

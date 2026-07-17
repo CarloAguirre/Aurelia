@@ -35,13 +35,26 @@ function isWaitingForResponsibleEmission(
   return cycleRecords.some((record) => record.status === SprRecordStatus.DRAFT);
 }
 
+export type ResolveSprAreaDisplayModeOptions = {
+  /**
+   * Áreas automáticas (Figma 2606:5127): el sistema emite; no se espera al responsable.
+   * El gerente debe ver el formulario listo para firmar.
+   */
+  isAutomaticArea?: boolean;
+};
+
 export function resolveSprAreaDisplayMode(
   records: SprMonthlyRecordResponse[] | undefined,
   totalParameterCount: number,
+  options?: ResolveSprAreaDisplayModeOptions,
 ): SprAreaDisplayMode {
   const cycleRecords = filterSprCycleRecords(records);
+  const waiting = isWaitingForResponsibleEmission(cycleRecords, totalParameterCount);
 
-  if (isWaitingForResponsibleEmission(cycleRecords, totalParameterCount)) {
+  // MOCK: sin backend de emisión automática, tratamos el área automática como ya emitida
+  // para que el gerente vea "listo para firmar" en lugar de "a la espera del responsable".
+  if (waiting) {
+    if (options?.isAutomaticArea) return 'pending_review';
     return 'waiting_for_responsible';
   }
 

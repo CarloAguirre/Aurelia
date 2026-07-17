@@ -4,12 +4,13 @@ import { useSprParameters } from '../../shared/hooks/useSprParameters';
 import { useSprMonthlyRecords } from '../../shared/hooks/useSprMonthlyRecords';
 import { useSprRecordApprovals } from '../../shared/hooks/useSprRecordApprovals';
 import { useSprCycleCorrectionHistory } from '../../shared/hooks/useSprCycleCorrectionHistory';
+import { useSessionStore } from '../../shared/stores/session.store';
+import { SprAutomaticAreaStatusView } from './components/SprAutomaticAreaStatusView';
 import { SprKpiReviewView } from './SprKpiReviewView';
 import { SprDiscrepancyCorrectionView } from './SprDiscrepancyCorrectionView';
 import { SprMonthlyEntryView } from './SprMonthlyEntryView';
 import { SprSubmittedStatusView } from './SprSubmittedStatusView';
 import {
-  SPR_ACTIVE_CYCLE,
   SPR_DISCREPANCY_CORRECTION,
   SPR_FORM_DEMO_CORRECTION_REQUESTED_STATE,
   SPR_FORM_DEMO_CORRECTION_RESUBMITTED_STATE,
@@ -25,6 +26,12 @@ import {
   SPR_FORM_DEMO_VIEW_QUERY,
   SPR_RESPONSIBLE_CORRECTION_RESUBMITTED_STATUS,
 } from './spr.constants';
+import { resolveSprFormCycle, SPR_FORM_CYCLE_QUERY } from './sprFormCycles';
+import {
+  getSprFormAreaCatalog,
+  isSprFormAreaAutomatic,
+  resolveSprFormAreaKey,
+} from './sprFormFlow.constants';
 import { findSprRejectedRecordId, resolveSprRejectionContext } from './sprRejectedContext';
 import {
   getSprCycleRecordIds,
@@ -37,6 +44,10 @@ import {
 export function SprFormView() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const areaName = useSessionStore((state) => state.user?.areaName ?? null);
+  const areaCatalog = getSprFormAreaCatalog(resolveSprFormAreaKey(areaName));
+  const isAutomaticArea = isSprFormAreaAutomatic(areaName);
+  const cycle = resolveSprFormCycle(searchParams.get(SPR_FORM_CYCLE_QUERY));
   const demoState = searchParams.get(SPR_FORM_DEMO_STATE_QUERY);
   const demoView = searchParams.get(SPR_FORM_DEMO_VIEW_QUERY);
   const isDemoKpiValidation = demoState === SPR_FORM_DEMO_KPI_VALIDATION_STATE;
@@ -50,21 +61,43 @@ export function SprFormView() {
   const [isCorrectingRejectedForm, setIsCorrectingRejectedForm] = useState(false);
   const parametersQuery = useSprParameters();
   const recordsQuery = useSprMonthlyRecords({
-    periodYear: SPR_ACTIVE_CYCLE.periodYear,
-    periodMonth: SPR_ACTIVE_CYCLE.periodMonth,
+    periodYear: cycle.periodYear,
+    periodMonth: cycle.periodMonth,
   });
 
   const totalParameterCount = parametersQuery.data?.length ?? 0;
   const displayMode = useMemo(
-    () => resolveSprFormDisplayMode(recordsQuery.data, totalParameterCount),
-    [recordsQuery.data, totalParameterCount],
+    () =>
+      resolveSprFormDisplayMode(recordsQuery.data, totalParameterCount, {
+        periodYear: cycle.periodYear,
+        periodMonth: cycle.periodMonth,
+      }),
+    [cycle.periodMonth, cycle.periodYear, recordsQuery.data, totalParameterCount],
   );
-  const signDateLabel = useMemo(() => resolveSprSignDateLabel(recordsQuery.data), [recordsQuery.data]);
+  const signDateLabel = useMemo(
+    () =>
+      resolveSprSignDateLabel(recordsQuery.data, {
+        periodYear: cycle.periodYear,
+        periodMonth: cycle.periodMonth,
+      }),
+    [cycle.periodMonth, cycle.periodYear, recordsQuery.data],
+  );
   const managerApprovalDateLabel = useMemo(
-    () => resolveSprManagerApprovalDateLabel(recordsQuery.data),
-    [recordsQuery.data],
+    () =>
+      resolveSprManagerApprovalDateLabel(recordsQuery.data, {
+        periodYear: cycle.periodYear,
+        periodMonth: cycle.periodMonth,
+      }),
+    [cycle.periodMonth, cycle.periodYear, recordsQuery.data],
   );
-  const cycleRecordIds = useMemo(() => getSprCycleRecordIds(recordsQuery.data), [recordsQuery.data]);
+  const cycleRecordIds = useMemo(
+    () =>
+      getSprCycleRecordIds(recordsQuery.data, {
+        periodYear: cycle.periodYear,
+        periodMonth: cycle.periodMonth,
+      }),
+    [cycle.periodMonth, cycle.periodYear, recordsQuery.data],
+  );
   const needsCorrectionHistory =
     displayMode === 'pending_approval' ||
     displayMode === 'manager_approved' ||
@@ -142,7 +175,7 @@ export function SprFormView() {
   }
 
   if (displayMode === 'rejected' && isCorrectingRejectedForm) {
-    return <SprMonthlyEntryView correctionMode rejectionContext={rejectionContext} />;
+    return <SprMonthlyEntryView cycle={cycle} correctionMode rejectionContext={rejectionContext} />;
   }
 
   if (displayMode === 'rejected' && !isCorrectingRejectedForm) {
@@ -230,6 +263,16 @@ export function SprFormView() {
     );
   }
 
-  return <SprMonthlyEntryView />;
+  // Figma 2606:5127 — áreas automáticas: el responsable no llena formulario.
+  if (isAutomaticArea) {
+    return (
+      <SprAutomaticAreaStatusView
+        areaLabel={areaCatalog.label}
+        automaticSource={areaCatalog.automaticSource ?? areaCatalog.sources[0] ?? ''}
+      />
+    );
+  }
+
+  return <SprMonthlyEntryView cycle={cycle} />;
 }
 

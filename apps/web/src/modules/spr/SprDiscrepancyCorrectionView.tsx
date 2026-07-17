@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSessionStore } from '../../shared/stores/session.store';
 import { SprDiscrepancyCorrectionSummary } from './components/SprDiscrepancyCorrectionSummary';
 import { SprReopenProcessAlertBanner } from './components/SprReopenProcessAlertBanner';
 import { SprSubmitModal } from './components/SprSubmitModal';
@@ -16,10 +17,11 @@ import {
 } from './icons/SprIcons';
 import {
   SPR_ACTIVE_CYCLE,
-  SPR_DATA_SOURCE_OPTIONS,
   SPR_DISCREPANCY_CORRECTION,
   SPR_MOCK_ATTACHMENTS,
 } from './spr.constants';
+import { SPR_CYCLE_TRACEABILITY_ROUTE } from './sprCycleTraceability.constants';
+import { getSprFormDataSourcesForArea, SPR_FORM_FLOW_COPY } from './sprFormFlow.constants';
 
 const copy = SPR_DISCREPANCY_CORRECTION;
 const parameter = copy.parameterToEdit;
@@ -41,6 +43,8 @@ function AttachmentIcon({ type }: { type: 'pdf' | 'excel' }) {
 // Vista de corrección tras reapertura por discrepancia (Figma 1760:27773).
 export function SprDiscrepancyCorrectionView() {
   const navigate = useNavigate();
+  const areaName = useSessionStore((state) => state.user?.areaName ?? null);
+  const dataSources = useMemo(() => getSprFormDataSourcesForArea(areaName), [areaName]);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [value, setValue] = useState('');
   const [notApplicable, setNotApplicable] = useState(false);
@@ -93,8 +97,8 @@ export function SprDiscrepancyCorrectionView() {
         </p>
         <button
           type="button"
+          onClick={() => navigate(SPR_CYCLE_TRACEABILITY_ROUTE)}
           className="flex h-[26px] items-center gap-[5px] rounded-[6px] border border-[#e3e3e3] bg-white px-[11px] font-['Inter:Semi_Bold',sans-serif] text-[10.5px] font-semibold text-[#24588b] hover:bg-[#fafafa]"
-          title="Pendiente de integración con historial/aprobaciones"
         >
           <SprTraceabilityIcon className="h-[11px] w-[13.75px] shrink-0" />
           Ver trazabilidad
@@ -210,7 +214,14 @@ export function SprDiscrepancyCorrectionView() {
                 <input
                   type="checkbox"
                   checked={notApplicable}
-                  onChange={(event) => setNotApplicable(event.target.checked)}
+                  onChange={(event) => {
+                    const checked = event.target.checked;
+                    setNotApplicable(checked);
+                    if (checked) {
+                      setValue('');
+                      setSource('');
+                    }
+                  }}
                   className="size-[16px] shrink-0 rounded-[4px] border-[1.5px] border-[#d1d1d1]"
                 />
                 <span className="flex flex-col">
@@ -218,34 +229,36 @@ export function SprDiscrepancyCorrectionView() {
                     Sin consumo / No aplica en este período
                   </span>
                   <span className="font-['Inter:Regular',sans-serif] text-[9.5px] text-[#acacac]">
-                    Marcará el parámetro como &quot;No aplica&quot; sin valor numérico
+                    {SPR_FORM_FLOW_COPY.noAplicaHelper}
                   </span>
                 </span>
               </label>
 
-              <div className="flex flex-col gap-[5px]">
-                <FieldLabel required>Fuente del dato</FieldLabel>
-                <select
-                  value={source}
-                  onChange={(event) => setSource(event.target.value)}
-                  className="h-[36px] w-full rounded-[8px] border-[1.5px] border-[#d1d1d1] bg-white px-[11px] font-['Inter:Regular',sans-serif] text-[12px] text-[#131313] outline-none focus:border-[#24588b]"
-                >
-                  <option value="">Selecciona una fuente…</option>
-                  {SPR_DATA_SOURCE_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {!notApplicable ? (
+                <div className="flex flex-col gap-[5px]">
+                  <FieldLabel required>Fuente del dato</FieldLabel>
+                  <select
+                    value={source}
+                    onChange={(event) => setSource(event.target.value)}
+                    className="h-[36px] w-full rounded-[8px] border-[1.5px] border-[#d1d1d1] bg-white px-[11px] font-['Inter:Regular',sans-serif] text-[12px] text-[#131313] outline-none focus:border-[#24588b]"
+                  >
+                    <option value="">Selecciona una fuente…</option>
+                    {dataSources.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
 
               <div className="flex flex-col gap-[5px]">
-                <FieldLabel>Nota para el Gerente de Área (opcional)</FieldLabel>
+                <FieldLabel>{SPR_FORM_FLOW_COPY.notesLabel}</FieldLabel>
                 <textarea
                   value={note}
                   onChange={(event) => setNote(event.target.value)}
                   rows={3}
-                  placeholder="Agrega contexto, aclaraciones o referencias adicionales para facilitar la revisión…"
+                  placeholder={SPR_FORM_FLOW_COPY.notesPlaceholder}
                   className="w-full resize-none rounded-[8px] border-[1.5px] border-[#d1d1d1] bg-white px-[13.5px] py-[10.5px] font-['Inter:Regular',sans-serif] text-[12px] text-[#131313] outline-none focus:border-[#24588b]"
                 />
               </div>

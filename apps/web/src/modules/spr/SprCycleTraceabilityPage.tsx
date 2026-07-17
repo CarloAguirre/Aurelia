@@ -7,8 +7,10 @@ import { resolveSprReportCycleContext, SPR_REPORT_CYCLE_QUERY } from './sprRepor
 import { SprReportCycleSelector } from './components/SprReportCycleSelector';
 import { SprCycleTraceabilityToolbar, SprCycleTraceabilityView } from './SprCycleTraceabilityView';
 import { SprTraceabilityIcon } from './icons/SprIcons';
+import { canAccessSprReport, resolveSessionUserRoles, resolveSprDefaultRoute } from './sprAccess';
 import { AppSidebar } from '../../shared/layout/AppSidebar';
 import { DashboardFrameShell } from '../dashboard/components/DashboardSections';
+import { useSessionStore } from '../../shared/stores/session.store';
 
 function SprCycleTraceabilityPageHeader() {
   const [searchParams] = useSearchParams();
@@ -45,15 +47,19 @@ function SprCycleTraceabilityPageHeader() {
   );
 }
 
-// Trazabilidad completa del ciclo SPR (Figma 1831:51316). Roles: SPR_SUSTAINABILITY_SPECIALIST / SPR_ENVIRONMENT_MANAGER.
+// Trazabilidad completa del ciclo SPR (Figma 1831:51316 / 2670:1398). Accesible a todas las áreas SPR.
 export function SprCycleTraceabilityPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [filter, setFilter] = useState<SprCycleTraceabilityFilterId>('all');
+  const user = useSessionStore((state) => state.user);
+  const roles = resolveSessionUserRoles(user);
   const { cycle } = resolveSprReportCycleContext(
     searchParams.get(SPR_REPORT_CYCLE_QUERY),
     searchParams.get('estado'),
   );
+
+  const backHref = canAccessSprReport(roles) ? SPR_REPORT_CICLO_CERRADO_DEMO_HREF : resolveSprDefaultRoute(roles);
 
   return (
     <div className="relative h-screen w-full overflow-hidden">
@@ -63,7 +69,7 @@ export function SprCycleTraceabilityPage() {
         content={
           <div className="flex h-[calc(100vh-56px)] flex-col overflow-hidden">
             <SprCycleTraceabilityToolbar
-              onBack={() => navigate(SPR_REPORT_CICLO_CERRADO_DEMO_HREF)}
+              onBack={() => navigate(backHref)}
               filter={filter}
               onFilterChange={setFilter}
               cycleLabel={cycle.label}

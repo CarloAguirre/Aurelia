@@ -14,4 +14,6 @@ export interface SprParameterRow {
   // PLACEHOLDER: alerta de rango historico (sin backend).
   needsHistoricalReview: boolean;
   historicalRange: SprHistoricalRangeResult | null;
+  /** MOCK: valor estimado pendiente de reemplazo (Figma 2424:1066). */
+  isEstimated: boolean;
 }

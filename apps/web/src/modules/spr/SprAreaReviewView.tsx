@@ -17,6 +17,7 @@ import { SPR_ACTIVE_CYCLE } from './spr.constants';
 import { findSprActionableRecordIds, resolveSprAreaReviewContext } from './sprAreaReview';
 import { evaluateHistoricalRange } from './sprHistoricalRange';
 import type { SprParameterRow } from './spr.types';
+import { SprAutomaticEmissionReadyBanner } from './components/SprAutomaticEmissionReadyBanner';
 
 const numberFormatter = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 });
 
@@ -80,11 +81,21 @@ function buildReviewRow(
     valueLabel,
     needsHistoricalReview,
     historicalRange,
+    isEstimated: false,
   };
 }
 
 // Pantalla de revision del gerente (Figma 1399:13951).
-export function SprAreaReviewView() {
+// Áreas automáticas (Figma 2606:5127): banner de notificación "listo para firmar".
+export function SprAreaReviewView({
+  automaticEmission = false,
+  automaticAreaLabel,
+  automaticSource,
+}: {
+  automaticEmission?: boolean;
+  automaticAreaLabel?: string;
+  automaticSource?: string;
+} = {}) {
   const parametersQuery = useSprParameters();
   const unitsQuery = useSprUnits();
   const recordsQuery = useSprMonthlyRecords({
@@ -181,21 +192,37 @@ export function SprAreaReviewView() {
 
   if (totalCount === 0) {
     return (
-      <div className="flex h-[calc(100vh-56px)] w-full items-center justify-center bg-[#f7f7f7] px-[22px]">
-        <p className="font-['Inter:Regular',sans-serif] text-[12px] text-[#646464]">
-          No hay parámetros disponibles para revisar en este período.
-        </p>
+      <div className="flex h-[calc(100vh-56px)] w-full flex-col bg-[#f7f7f7]">
+        {automaticEmission ? (
+          <SprAutomaticEmissionReadyBanner
+            areaLabel={automaticAreaLabel}
+            automaticSource={automaticSource}
+          />
+        ) : null}
+        <div className="flex flex-1 items-center justify-center px-[22px]">
+          <p className="font-['Inter:Regular',sans-serif] text-[12px] text-[#646464]">
+            {automaticEmission
+              ? 'AurelIA notificó que el formulario está listo. Cuando existan registros del ciclo podrás revisarlos y firmar aquí.'
+              : 'No hay parámetros disponibles para revisar en este período.'}
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex h-[calc(100vh-56px)] w-full flex-col bg-[#f7f7f7]">
+      {automaticEmission ? (
+        <SprAutomaticEmissionReadyBanner
+          areaLabel={automaticAreaLabel}
+          automaticSource={automaticSource}
+        />
+      ) : null}
       <SprAreaKpiHeader
         completedParameterCount={completedCount}
         totalParameterCount={totalCount}
         receivedDateLabel={reviewContext.receivedDateLabel}
-        responsibleLabel={reviewContext.responsibleLabel}
+        responsibleLabel={automaticEmission ? 'AurelIA (emisión automática)' : reviewContext.responsibleLabel}
         signedDateTimeLabel={reviewContext.signedDateTimeLabel}
       />
 

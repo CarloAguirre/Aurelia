@@ -14,6 +14,8 @@ export interface SprParameterFormEntry {
   source: string;
   // Nota para el Gerente de Area -> se mapea a notes al guardar.
   note: string;
+  /** MOCK: el usuario reemplazó el estimado con un dato real (Figma 2424:1066). */
+  estimateCleared?: boolean;
 }
 
 const emptyEntry: SprParameterFormEntry = {
@@ -21,6 +23,7 @@ const emptyEntry: SprParameterFormEntry = {
   notApplicable: false,
   source: '',
   note: '',
+  estimateCleared: false,
 };
 
 interface SprMonthlyFormState {
@@ -31,6 +34,7 @@ interface SprMonthlyFormState {
   setNotApplicable: (parameterId: string, notApplicable: boolean) => void;
   setSource: (parameterId: string, source: string) => void;
   setNote: (parameterId: string, note: string) => void;
+  clearEstimate: (parameterId: string) => void;
   reset: () => void;
 }
 
@@ -55,10 +59,19 @@ export const useSprMonthlyFormStore = create<SprMonthlyFormState>((set) => ({
   selectedParameterId: null,
   entries: {},
   selectParameter: (selectedParameterId) => set({ selectedParameterId }),
-  setValue: (parameterId, value) => set((state) => ({ entries: patchEntry(state, parameterId, { value }) })),
+  setValue: (parameterId, value) =>
+    set((state) => ({ entries: patchEntry(state, parameterId, { value, estimateCleared: true }) })),
   setNotApplicable: (parameterId, notApplicable) =>
-    set((state) => ({ entries: patchEntry(state, parameterId, { notApplicable }) })),
+    set((state) => ({
+      entries: patchEntry(state, parameterId, {
+        notApplicable,
+        estimateCleared: true,
+        ...(notApplicable ? { value: '', source: '' } : {}),
+      }),
+    })),
   setSource: (parameterId, source) => set((state) => ({ entries: patchEntry(state, parameterId, { source }) })),
   setNote: (parameterId, note) => set((state) => ({ entries: patchEntry(state, parameterId, { note }) })),
+  clearEstimate: (parameterId) =>
+    set((state) => ({ entries: patchEntry(state, parameterId, { estimateCleared: true }) })),
   reset: () => set({ selectedParameterId: null, entries: {} }),
 }));

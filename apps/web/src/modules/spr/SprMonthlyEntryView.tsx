@@ -17,6 +17,7 @@ import { useSubmitSprMonthlyRecord } from '../../shared/hooks/useSubmitSprMonthl
 import { useSprRecordEvidences } from '../../shared/hooks/useSprRecordEvidences';
 import { useUploadSprRecordEvidence } from '../../shared/hooks/useUploadSprRecordEvidence';
 import { getSprRecordEvidences } from '../../shared/services/spr.service';
+import { useSessionStore } from '../../shared/stores/session.store';
 import { SprCycleContextHeader } from './components/SprCycleContextHeader';
 import { SprParametersList } from './components/SprParametersList';
 import { SprParameterDetailForm } from './components/SprParameterDetailForm';
@@ -25,15 +26,25 @@ import { SprFooterActions } from './components/SprFooterActions';
 import { SprSubmitModal } from './components/SprSubmitModal';
 import { SprHistoricalRangeBadge } from './components/SprHistoricalRangeBadge';
 import { SprRejectionAlertBanner } from './components/SprRejectionAlertBanner';
+import { SprEstimatesAlertBanner } from './components/SprEstimatesAlertBanner';
 import { SprTraceabilityIcon } from './icons/SprIcons';
-import { SPR_ACTIVE_CYCLE, SPR_CORRECTION_MODE } from './spr.constants';
+import { SPR_CORRECTION_MODE } from './spr.constants';
+import {
+  getSprFormMockEstimateValue,
+  isSprFormCycleEstimatesMode,
+  type SprFormCycle,
+} from './sprFormCycles';
+import { getSprFormDataSourcesForArea } from './sprFormFlow.constants';
 import { parameterRequiresEvidence } from './sprEvidence';
-import { evaluateHistoricalRange, parseSprNumericValue } from './sprHistoricalRange';
+import { evaluateHistoricalRange, hasSprHistoricalDeviationNote, parseSprNumericValue } from './sprHistoricalRange';
+import { SPR_CYCLE_TRACEABILITY_ROUTE } from './sprCycleTraceability.constants';
+import { useNavigate } from 'react-router-dom';
 import type { SprRejectionContext } from './sprRejectedContext';
 import { getSprFormEntry, useSprMonthlyFormStore, type SprParameterFormEntry } from './state/sprMonthlyForm.store';
 import type { SprParameterRow } from './spr.types';
 
 interface SprMonthlyEntryViewProps {
+  cycle: SprFormCycle;
   correctionMode?: boolean;
   rejectionContext?: SprRejectionContext | null;
 }
@@ -76,15 +87,22 @@ function buildAssignmentMap(assignments: SprParameterAreaAssignmentResponse[] | 
 }
 
 // Combina el borrador de UI (Zustand) con el registro persistido para mostrar el valor efectivo.
-function resolveEntry(draft: SprParameterFormEntry, record: SprMonthlyRecordResponse | null): SprParameterFormEntry {
-  const recordValue = record?.numericValue !== null && record?.numericValue !== undefined
-    ? formatNumber(record.numericValue)
-    : record?.textValue ?? '';
+function resolveEntry(
+  draft: SprParameterFormEntry,
+  record: SprMonthlyRecordResponse | null,
+  mockEstimateValue?: string,
+): SprParameterFormEntry {
+  const recordValue =
+    record?.numericValue !== null && record?.numericValue !== undefined
+      ? formatNumber(record.numericValue)
+      : (record?.textValue ?? '');
+  const fallbackValue = draft.value !== '' ? draft.value : recordValue || mockEstimateValue || '';
   return {
-    value: draft.value !== '' ? draft.value : recordValue,
+    value: fallbackValue,
     notApplicable: draft.notApplicable || looksNotApplicable(record?.textValue),
     source: draft.source,
-    note: draft.note !== '' ? draft.note : record?.notes ?? '',
+    note: draft.note !== '' ? draft.note : (record?.notes ?? ''),
+    estimateCleared: draft.estimateCleared,
   };
 }
 
@@ -93,10 +111,14 @@ function buildRow(
   record: SprMonthlyRecordResponse | null,
   unitSymbol: string | null,
   draft: SprParameterFormEntry,
+  options?: { estimatesMode?: boolean; mockEstimateValue?: string },
 ): SprParameterRow {
+  const estimatesMode = Boolean(options?.estimatesMode);
+  const mockEstimateValue = options?.mockEstimateValue;
+  const isEstimated = estimatesMode && !draft.estimateCleared;
   const notApplicable = draft.notApplicable || looksNotApplicable(record?.textValue);
   const hasDraftValue = draft.value.trim() !== '';
-  const completed = notApplicable || hasDraftValue || recordHasValue(record);
+  const completed = notApplicable || hasDraftValue || recordHasValue(record) || (isEstimated && Boolean(mockEstimateValue));
   const completion = notApplicable ? 'not-applicable' : completed ? 'completed' : 'pending';
 
   let valueLabel = 'Sin completar';
@@ -108,31 +130,50 @@ function buildRow(
     valueLabel = unitSymbol ? `${formatNumber(record.numericValue)} ${unitSymbol}` : formatNumber(record.numericValue);
   } else if (record?.textValue) {
     valueLabel = record.textValue;
+  } else if (isEstimated && mockEstimateValue) {
+    valueLabel = unitSymbol ? `${mockEstimateValue} ${unitSymbol}` : mockEstimateValue;
   }
 
   const effectiveValue = hasDraftValue
     ? draft.value
     : record?.numericValue !== null && record?.numericValue !== undefined
       ? String(record.numericValue).replace('.', ',')
-      : record?.textValue ?? '';
+      : record?.textValue ?? (isEstimated ? mockEstimateValue ?? '' : '');
 
-  const historicalRange = notApplicable ? null : evaluateHistoricalRange(parameter.code, effectiveValue);
+  const historicalRange = notApplicable || isEstimated ? null : evaluateHistoricalRange(parameter.code, effectiveValue);
   const needsHistoricalReview = Boolean(historicalRange?.isOutOfRange);
 
-  return { parameter, record, unitSymbol, completion, valueLabel, needsHistoricalReview, historicalRange };
+  return {
+    parameter,
+    record,
+    unitSymbol,
+    completion,
+    valueLabel,
+    needsHistoricalReview,
+    historicalRange,
+    isEstimated,
+  };
 }
 
 function parseNumeric(value: string): number | null {
   return parseSprNumericValue(value);
 }
 
-export function SprMonthlyEntryView({ correctionMode = false, rejectionContext = null }: SprMonthlyEntryViewProps) {
+export function SprMonthlyEntryView({
+  cycle,
+  correctionMode = false,
+  rejectionContext = null,
+}: SprMonthlyEntryViewProps) {
+  const navigate = useNavigate();
+  const estimatesMode = isSprFormCycleEstimatesMode(cycle);
+  const areaName = useSessionStore((state) => state.user?.areaName ?? null);
+  const dataSources = useMemo(() => getSprFormDataSourcesForArea(areaName), [areaName]);
   const parametersQuery = useSprParameters();
   const unitsQuery = useSprUnits();
   const assignmentsQuery = useSprAssignments();
   const recordsQuery = useSprMonthlyRecords({
-    periodYear: SPR_ACTIVE_CYCLE.periodYear,
-    periodMonth: SPR_ACTIVE_CYCLE.periodMonth,
+    periodYear: cycle.periodYear,
+    periodMonth: cycle.periodMonth,
   });
 
   const saveMutation = useSaveSprMonthlyRecord();
@@ -150,36 +191,85 @@ export function SprMonthlyEntryView({ correctionMode = false, rejectionContext =
   const setNotApplicable = useSprMonthlyFormStore((state) => state.setNotApplicable);
   const setSource = useSprMonthlyFormStore((state) => state.setSource);
   const setNote = useSprMonthlyFormStore((state) => state.setNote);
+  const clearEstimate = useSprMonthlyFormStore((state) => state.clearEstimate);
+  const resetForm = useSprMonthlyFormStore((state) => state.reset);
+
+  useEffect(() => {
+    resetForm();
+  }, [cycle.id, resetForm]);
 
   const unitSymbolMap = useMemo(() => buildUnitSymbolMap(unitsQuery.data), [unitsQuery.data]);
   const recordMap = useMemo(() => buildRecordMap(recordsQuery.data), [recordsQuery.data]);
   const assignmentMap = useMemo(() => buildAssignmentMap(assignmentsQuery.data), [assignmentsQuery.data]);
 
   const rows = useMemo<SprParameterRow[]>(() => {
-    const parameters = [...(parametersQuery.data ?? [])].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'es'));
-    return parameters.map((parameter) => {
+    const parameters = [...(parametersQuery.data ?? [])].sort(
+      (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'es'),
+    );
+    return parameters.map((parameter, index) => {
       const record = recordMap.get(parameter.id) ?? null;
       const unitSymbol = parameter.unitId ? unitSymbolMap.get(parameter.unitId) ?? null : null;
       const draft = getSprFormEntry(entries, parameter.id);
-      return buildRow(parameter, record, unitSymbol, draft);
+      return buildRow(parameter, record, unitSymbol, draft, {
+        estimatesMode,
+        mockEstimateValue: estimatesMode ? getSprFormMockEstimateValue(index) : undefined,
+      });
     });
-  }, [parametersQuery.data, recordMap, unitSymbolMap, entries]);
+  }, [parametersQuery.data, recordMap, unitSymbolMap, entries, estimatesMode]);
 
   const totalCount = rows.length;
   const completedCount = rows.filter((row) => row.completion !== 'pending').length;
-  const remainingCount = Math.max(0, totalCount - completedCount);
+  const estimatedRemainingCount = rows.filter((row) => row.isEstimated).length;
+  const remainingCount = estimatesMode ? estimatedRemainingCount : Math.max(0, totalCount - completedCount);
   const historicalAlertCount = rows.filter((row) => row.needsHistoricalReview).length;
   const soxParameterCount = rows.filter((row) => row.parameter.isSox).length;
 
   const activeParameterId = selectedParameterId ?? rows[0]?.parameter.id ?? null;
   const selectedRow = rows.find((row) => row.parameter.id === activeParameterId) ?? null;
   const selectedDraft = getSprFormEntry(entries, activeParameterId);
-  const selectedEntry = selectedRow ? resolveEntry(selectedDraft, selectedRow.record) : selectedDraft;
+  const selectedMockEstimate =
+    estimatesMode && selectedRow
+      ? getSprFormMockEstimateValue(rows.findIndex((row) => row.parameter.id === selectedRow.parameter.id))
+      : undefined;
+  const selectedEntry = selectedRow
+    ? resolveEntry(selectedDraft, selectedRow.record, selectedRow.isEstimated ? selectedMockEstimate : undefined)
+    : selectedDraft;
   const selectedRecordId = selectedRow?.record?.id ?? null;
   const selectedEvidencesQuery = useSprRecordEvidences(selectedRecordId);
 
-  // Habilitar envio solo cuando todos los parametros tienen registro persistido con valor.
-  const canSubmit = totalCount > 0 && rows.every((row) => recordHasValue(row.record) || looksNotApplicable(row.record?.textValue));
+  // Firmar y enviar: todos intervenidos (dato o No aplica) + notas obligatorias si hay desviación ±10%.
+  const missingDeviationNoteCount = rows.filter((row) => {
+    if (!row.needsHistoricalReview) return false;
+    const entry = getSprFormEntry(entries, row.parameter.id);
+    return !hasSprHistoricalDeviationNote(entry.note, row.record?.notes);
+  }).length;
+
+  const unsavedDeviationNoteCount = rows.filter((row) => {
+    if (!row.needsHistoricalReview) return false;
+    const entry = getSprFormEntry(entries, row.parameter.id);
+    const draftNote = entry.note.trim();
+    const persistedNote = row.record?.notes?.trim() ?? '';
+    return draftNote !== '' && draftNote !== persistedNote;
+  }).length;
+
+  const canSubmit = estimatesMode
+    ? totalCount > 0 &&
+      estimatedRemainingCount === 0 &&
+      missingDeviationNoteCount === 0 &&
+      unsavedDeviationNoteCount === 0 &&
+      rows.every((row) => {
+        const entry = getSprFormEntry(entries, row.parameter.id);
+        return (
+          entry.notApplicable ||
+          entry.value.trim() !== '' ||
+          recordHasValue(row.record) ||
+          looksNotApplicable(row.record?.textValue)
+        );
+      })
+    : totalCount > 0 &&
+      missingDeviationNoteCount === 0 &&
+      unsavedDeviationNoteCount === 0 &&
+      rows.every((row) => recordHasValue(row.record) || looksNotApplicable(row.record?.textValue));
 
   const saveErrorMessage = saveDraftErrorMessage
     ?? (saveMutation.error instanceof Error
@@ -207,7 +297,11 @@ export function SprMonthlyEntryView({ correctionMode = false, rejectionContext =
       return;
     }
 
-    const entry = resolveEntry(getSprFormEntry(entries, activeParameterId), selectedRow.record);
+    const entry = resolveEntry(
+      getSprFormEntry(entries, activeParameterId),
+      selectedRow.record,
+      selectedRow.isEstimated ? selectedMockEstimate : undefined,
+    );
     const numericValue = entry.notApplicable ? null : parseNumeric(entry.value);
     const textValue = entry.notApplicable ? 'No aplica' : numericValue === null && entry.value.trim() !== '' ? entry.value.trim() : null;
     const notes = entry.note.trim() === '' ? null : entry.note.trim();
@@ -216,7 +310,12 @@ export function SprMonthlyEntryView({ correctionMode = false, rejectionContext =
       const payload: UpdateSprMonthlyRecordRequest = { numericValue, textValue, notes };
       saveMutation.mutate(
         { mode: 'update', recordId: selectedRow.record.id, payload },
-        { onSuccess: () => setSaveDraftErrorMessage(null) },
+        {
+          onSuccess: () => {
+            clearEstimate(activeParameterId);
+            setSaveDraftErrorMessage(null);
+          },
+        },
       );
       return;
     }
@@ -226,13 +325,21 @@ export function SprMonthlyEntryView({ correctionMode = false, rejectionContext =
       parameterId: activeParameterId,
       areaId: assignment?.areaId ?? null,
       assignmentId: assignment?.id ?? null,
-      periodYear: SPR_ACTIVE_CYCLE.periodYear,
-      periodMonth: SPR_ACTIVE_CYCLE.periodMonth,
+      periodYear: cycle.periodYear,
+      periodMonth: cycle.periodMonth,
       numericValue,
       textValue,
       notes,
     };
-    saveMutation.mutate({ mode: 'create', payload });
+    saveMutation.mutate(
+      { mode: 'create', payload },
+      {
+        onSuccess: () => {
+          clearEstimate(activeParameterId);
+          setSaveDraftErrorMessage(null);
+        },
+      },
+    );
   }
 
   function handleOpenSubmitModal() {
@@ -252,6 +359,17 @@ export function SprMonthlyEntryView({ correctionMode = false, rejectionContext =
   async function handleConfirmSubmit() {
     if (!canSubmit || submitMutation.isPending) return;
     setSubmitEvidenceError(null);
+
+    const rowsMissingDeviationNote = rows.filter((row) => {
+      if (!row.needsHistoricalReview) return false;
+      return !hasSprHistoricalDeviationNote(undefined, row.record?.notes);
+    });
+    if (rowsMissingDeviationNote.length > 0) {
+      setSubmitEvidenceError(
+        `El parámetro "${rowsMissingDeviationNote[0].parameter.name}" tiene desviación histórica y requiere notas justificando la diferencia antes de firmar y enviar.`,
+      );
+      return;
+    }
 
     const rowsRequiringEvidence = rows.filter(
       (row) => parameterRequiresEvidence(row.parameter) && row.record?.id,
@@ -291,27 +409,32 @@ export function SprMonthlyEntryView({ correctionMode = false, rejectionContext =
       {correctionMode && rejectionContext && !rejectionBannerDismissed ? (
         <SprRejectionAlertBanner context={rejectionContext} onDismiss={() => setRejectionBannerDismissed(true)} />
       ) : null}
+      {estimatesMode ? <SprEstimatesAlertBanner /> : null}
 
       <SprCycleContextHeader
+        cycleLabel={cycle.label}
+        cycleRangeLabel={cycle.rangeLabel}
+        deadlineLabel={cycle.deadlineLabel}
+        deadlineHelper={cycle.deadlineHelper}
         completedCount={completedCount}
         totalCount={totalCount}
         isLoading={parametersQuery.isLoading}
         isError={parametersQuery.isError}
-        variant={correctionMode ? 'rejected' : 'draft'}
+        variant={correctionMode ? 'rejected' : estimatesMode ? 'estimates' : 'draft'}
         rejectionContext={rejectionContext}
       />
 
       <div className="flex items-center justify-between border-b border-[#e3e3e3] bg-white px-[20px] py-[10px]">
         <p className="font-['Inter:Semi_Bold',sans-serif] text-[12px] font-semibold text-[#131313]">
-          Ingresa los datos de tu área para el período {SPR_ACTIVE_CYCLE.label}
+          Ingresa los datos de tu área para el período {cycle.label}
           <span className="font-['Inter:Regular',sans-serif] text-[#acacac]"> · Todos los campos son obligatorios</span>
         </p>
         <div className="flex items-center gap-[8px]">
           <SprHistoricalRangeBadge count={historicalAlertCount} />
           <button
             type="button"
+            onClick={() => navigate(SPR_CYCLE_TRACEABILITY_ROUTE)}
             className="flex h-[26px] items-center gap-[5px] rounded-[6px] border border-[#e3e3e3] bg-white px-[11px] font-['Inter:Semi_Bold',sans-serif] text-[10.5px] font-semibold text-[#24588b] hover:bg-[#fafafa]"
-            title="Pendiente de integración con historial/aprobaciones"
           >
             <SprTraceabilityIcon className="h-[11px] w-[13.75px] shrink-0" />
             Ver trazabilidad
@@ -345,6 +468,7 @@ export function SprMonthlyEntryView({ correctionMode = false, rejectionContext =
           <SprParameterDetailForm
             row={selectedRow}
             entry={selectedEntry}
+            dataSources={dataSources}
             onValueChange={(value) => activeParameterId && setValue(activeParameterId, value)}
             onNotApplicableChange={(value) => activeParameterId && setNotApplicable(activeParameterId, value)}
             onSourceChange={(value) => activeParameterId && setSource(activeParameterId, value)}
@@ -355,6 +479,8 @@ export function SprMonthlyEntryView({ correctionMode = false, rejectionContext =
 
       <SprFooterActions
         remainingCount={remainingCount}
+        missingDeviationNoteCount={missingDeviationNoteCount}
+        unsavedDeviationNoteCount={unsavedDeviationNoteCount}
         canSubmit={canSubmit}
         correctionMode={correctionMode}
         isSaving={saveMutation.isPending}

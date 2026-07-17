@@ -488,13 +488,8 @@ export const SPR_SUBMIT_MODAL = {
 } as const;
 
 // PLACEHOLDER: "Fuente del dato" no existe como campo en spr_monthly_records.
-// Se ofrece como selector visual; el valor no se persiste por ahora.
-export const SPR_DATA_SOURCE_OPTIONS = [
-  'Sistema Monitoreo de Extracciones DGEA',
-  'Medición directa en terreno',
-  'Estimación / cálculo interno',
-  'Reporte de proveedor externo',
-] as const;
+// Listas por área (Figma 2606:5127) viven en sprFormFlow.constants.ts.
+export { SPR_DATA_SOURCE_OPTIONS } from './sprFormFlow.constants';
 
 // PLACEHOLDER: la documentacion adjunta requiere un record id y flujo de evidencias
 // (GET/POST /spr/monthly-records/:id/evidences). Para la primera pantalla se listan

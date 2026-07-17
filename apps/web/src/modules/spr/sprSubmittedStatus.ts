@@ -22,9 +22,22 @@ export type SprProcessStatusVariant =
   | 'correction_requested'
   | 'correction_resubmitted';
 
-function filterSprCycleRecords(records: SprMonthlyRecordResponse[] | undefined): SprMonthlyRecordResponse[] {
+export type SprCyclePeriod = {
+  periodYear: number;
+  periodMonth: number;
+};
+
+const DEFAULT_CYCLE_PERIOD: SprCyclePeriod = {
+  periodYear: SPR_ACTIVE_CYCLE.periodYear,
+  periodMonth: SPR_ACTIVE_CYCLE.periodMonth,
+};
+
+function filterSprCycleRecords(
+  records: SprMonthlyRecordResponse[] | undefined,
+  period: SprCyclePeriod = DEFAULT_CYCLE_PERIOD,
+): SprMonthlyRecordResponse[] {
   return (records ?? []).filter(
-    (record) => record.periodYear === SPR_ACTIVE_CYCLE.periodYear && record.periodMonth === SPR_ACTIVE_CYCLE.periodMonth,
+    (record) => record.periodYear === period.periodYear && record.periodMonth === period.periodMonth,
   );
 }
 
@@ -48,17 +61,19 @@ function resolveLatestSprDateLabel(
 export function isSprFormSubmitted(
   records: SprMonthlyRecordResponse[] | undefined,
   totalParameterCount: number,
+  period?: SprCyclePeriod,
 ): boolean {
-  return resolveSprFormDisplayMode(records, totalParameterCount) !== 'entry';
+  return resolveSprFormDisplayMode(records, totalParameterCount, period) !== 'entry';
 }
 
 export function resolveSprFormDisplayMode(
   records: SprMonthlyRecordResponse[] | undefined,
   totalParameterCount: number,
+  period?: SprCyclePeriod,
 ): SprFormDisplayMode {
   if (totalParameterCount <= 0) return 'entry';
 
-  const cycleRecords = filterSprCycleRecords(records);
+  const cycleRecords = filterSprCycleRecords(records, period);
   if (cycleRecords.length < totalParameterCount) return 'entry';
   if (cycleRecords.some((record) => record.status === SprRecordStatus.DRAFT)) return 'entry';
   if (cycleRecords.some((record) => record.status === SprRecordStatus.REJECTED)) return 'rejected';
@@ -73,8 +88,11 @@ export function resolveSprFormDisplayMode(
   return 'pending_approval';
 }
 
-export function getSprCycleRecordIds(records: SprMonthlyRecordResponse[] | undefined): string[] {
-  return filterSprCycleRecords(records).map((record) => record.id);
+export function getSprCycleRecordIds(
+  records: SprMonthlyRecordResponse[] | undefined,
+  period?: SprCyclePeriod,
+): string[] {
+  return filterSprCycleRecords(records, period).map((record) => record.id);
 }
 
 export function resolveSprProcessStatusVariant(
@@ -89,17 +107,23 @@ export function resolveSprProcessStatusVariant(
   return 'initial';
 }
 
-export function resolveSprSignDateLabel(records: SprMonthlyRecordResponse[] | undefined): string {
+export function resolveSprSignDateLabel(
+  records: SprMonthlyRecordResponse[] | undefined,
+  period?: SprCyclePeriod,
+): string {
   return resolveLatestSprDateLabel(
-    filterSprCycleRecords(records),
+    filterSprCycleRecords(records, period),
     'submittedAt',
     SPR_SUBMITTED_STATUS.signDateFallbackLabel,
   );
 }
 
-export function resolveSprManagerApprovalDateLabel(records: SprMonthlyRecordResponse[] | undefined): string {
+export function resolveSprManagerApprovalDateLabel(
+  records: SprMonthlyRecordResponse[] | undefined,
+  period?: SprCyclePeriod,
+): string {
   return resolveLatestSprDateLabel(
-    filterSprCycleRecords(records),
+    filterSprCycleRecords(records, period),
     'approvedAt',
     SPR_APPROVED_STATUS.managerApprovalDateFallback,
   );

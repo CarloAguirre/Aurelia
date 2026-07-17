@@ -13,6 +13,7 @@ import type {
   SprReportAreaDetailParameter,
   SprReportAreaDetailTone,
 } from './spr.constants';
+import { SPR_CYCLE_TRACEABILITY_ROUTE } from './sprCycleTraceability.constants';
 
 interface SprReportAreaViewProps {
   areaName: string;
@@ -472,8 +473,8 @@ export function SprReportAreaView({ areaName, detail }: SprReportAreaViewProps) 
           ) : null}
           <button
             type="button"
-            title="Pendiente de integración con trazabilidad del área"
-            className="flex h-[27px] items-center gap-[5px] rounded-[6px] border border-[#e3e3e3] bg-white px-[12px] font-['Inter:Semi_Bold',sans-serif] text-[10.5px] font-semibold text-[#24588b]"
+            onClick={() => navigate(SPR_CYCLE_TRACEABILITY_ROUTE)}
+            className="flex h-[27px] items-center gap-[5px] rounded-[6px] border border-[#e3e3e3] bg-white px-[12px] font-['Inter:Semi_Bold',sans-serif] text-[10.5px] font-semibold text-[#24588b] hover:bg-[#fafafa]"
           >
             <SprTraceabilityIcon className="text-[#24588b]" />
             {detail.traceabilityLabel}

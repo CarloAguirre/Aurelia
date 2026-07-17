@@ -6,6 +6,7 @@ const roleLabels: Record<Role, string> = {
   [Role.INSPECTOR]: 'Inspector',
   [Role.APPROVER]: 'Aprobador',
   [Role.VIEWER]: 'Visualizador',
+  [Role.SUSTAINABILITY_SPECIALIST]: 'Especialista de Sustentabilidad',
 };
 
 export function roleLabel(role: Role): string {

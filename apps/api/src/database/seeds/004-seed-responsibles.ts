@@ -68,6 +68,7 @@ const gfUsers = [
   'karen.opazo@goldfields.com',
   'pedro.silva@goldfields.com',
   'carlos.aguirre@goldfields.com',
+  'sofia.mendez@goldfields.com',
 ];
 
 export async function runResponsiblesSeed(ds: DataSource): Promise<void> {

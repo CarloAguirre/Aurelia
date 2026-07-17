@@ -120,6 +120,13 @@ export async function runDemoSeed(ds: DataSource): Promise<void> {
       { email: 'karen.opazo@goldfields.com',   first: 'Karen',   last: 'Opazo',    pos: 'Inspector Medio Ambiente' },
       { email: 'pedro.silva@goldfields.com',    first: 'Pedro',   last: 'Silva',    pos: 'Supervisor Medio Ambiente' },
       { email: 'carlos.aguirre@goldfields.com', first: 'Carlos',  last: 'Aguirre',  pos: 'Administrador Sistema' },
+      // Especialista de Sustentabilidad (Dashboard SPR) — rol nuevo; pantallas aún no implementadas.
+      {
+        email: 'sofia.mendez@goldfields.com',
+        first: 'Sofía',
+        last: 'Méndez',
+        pos: 'Especialista de Sustentabilidad',
+      },
     ];
 
     for (const u of gfUsers) {
@@ -158,6 +165,12 @@ export async function runDemoSeed(ds: DataSource): Promise<void> {
       `INSERT INTO user_roles (user_id, role_id)
        SELECT u.id, r.id FROM users u, roles r
        WHERE u.email = 'carlos.aguirre@goldfields.com' AND r.code = 'ADMIN'
+       ON CONFLICT DO NOTHING`,
+    );
+    await qr.query(
+      `INSERT INTO user_roles (user_id, role_id)
+       SELECT u.id, r.id FROM users u, roles r
+       WHERE u.email = 'sofia.mendez@goldfields.com' AND r.code = 'SUSTAINABILITY_SPECIALIST'
        ON CONFLICT DO NOTHING`,
     );
 

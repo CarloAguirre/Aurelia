@@ -7,6 +7,8 @@ import { Role, type LoginResponse } from '@aurelia/contracts';
 
 type SessionUser = LoginResponse['user'] & { roles?: Role[] };
 
+export type SprDefaultRoute = '/spr' | '/spr/mi-area' | '/spr/reporte';
+
 export function resolveSessionUserRoles(user: SessionUser | null | undefined): Role[] {
   if (!user) return [];
 
@@ -29,7 +31,13 @@ export function canAccessSprArea(roles: Role[]): boolean {
   return roles.some((role) => role === Role.SUPERVISOR || role === Role.ADMIN);
 }
 
-export function resolveSprDefaultRoute(roles: Role[]): '/spr' | '/spr/mi-area' {
+/** Solo el rol SUSTAINABILITY_SPECIALIST (Dashboard / Reporte SPR consolidado). */
+export function canAccessSprReport(roles: Role[]): boolean {
+  return roles.includes(Role.SUSTAINABILITY_SPECIALIST);
+}
+
+export function resolveSprDefaultRoute(roles: Role[]): SprDefaultRoute {
+  if (canAccessSprReport(roles)) return '/spr/reporte';
   if (canAccessSprArea(roles)) return '/spr/mi-area';
   if (canAccessSprForm(roles)) return '/spr';
   return '/spr';

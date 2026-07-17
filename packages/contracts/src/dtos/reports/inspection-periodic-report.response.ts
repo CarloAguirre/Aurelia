@@ -22,10 +22,14 @@ export interface InspectionPeriodicReportSummaryResponse {
   openInspections: number;
   closedInspections: number;
   totalFindings: number;
+  /** Observaciones abiertas o rechazadas, dentro de plazo. */
   openFindings: number;
+  /** Observaciones ejecutadas pendientes de aprobación, dentro de plazo. */
   executedFindings: number;
+  /** Alias funcional de executedFindings usado por tarjetas del informe. */
   pendingApprovalFindings: number;
   closedFindings: number;
+  /** Observaciones no cerradas cuyo SLA ya venció. Categoría excluyente. */
   overdueFindings: number;
   complianceRate: number;
 }
@@ -80,6 +84,9 @@ export interface InspectionPeriodicReportResponse {
   summary: InspectionPeriodicReportSummaryResponse;
   inspectionsByMonth: InspectionPeriodicReportMonthRowResponse[];
   inspectionsByType: InspectionPeriodicReportDistributionRowResponse[];
+  /** Distribución por área contando cada inspección una sola vez. */
+  inspectionsByArea: InspectionPeriodicReportDistributionRowResponse[];
+  /** @deprecated Usar inspectionsByArea. Se conserva temporalmente por compatibilidad. */
   findingsByArea: InspectionPeriodicReportDistributionRowResponse[];
   inspections: {
     total: number;

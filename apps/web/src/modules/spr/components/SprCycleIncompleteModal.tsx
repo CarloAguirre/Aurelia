@@ -1,3 +1,4 @@
+import type { ReactPortal } from 'react';
 import { createPortal } from 'react-dom';
 import { SPR_CONSOLIDATED_REPORT } from '../spr.constants';
 
@@ -20,7 +21,7 @@ function MilestoneBadge({ status }: { status: MilestoneStatus }) {
 }
 
 // Figma 2035:5007 — modal tras validación SOX aprobada; ciclo no cerrable por estimados.
-export function SprCycleIncompleteModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function SprCycleIncompleteModal({ open, onClose }: { open: boolean; onClose: () => void }): ReactPortal | null {
   const copy = SPR_CONSOLIDATED_REPORT.cycleIncompleteModal;
 
   if (!open || typeof document === 'undefined') return null;

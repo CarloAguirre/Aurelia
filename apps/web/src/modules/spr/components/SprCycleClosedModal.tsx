@@ -1,3 +1,4 @@
+import type { ReactPortal } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { SPR_ACTIVE_CYCLE, SPR_CONSOLIDATED_REPORT } from '../spr.constants';
@@ -22,7 +23,7 @@ function MilestoneBadge({ status }: { status: MilestoneStatus }) {
 }
 
 // Figma 2035:7406 — modal ciclo cerrado exitosamente tras cumplir los 4 hitos.
-export function SprCycleClosedModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function SprCycleClosedModal({ open, onClose }: { open: boolean; onClose: () => void }): ReactPortal | null {
   const navigate = useNavigate();
   const copy = SPR_CONSOLIDATED_REPORT.cycleClosedModal;
 

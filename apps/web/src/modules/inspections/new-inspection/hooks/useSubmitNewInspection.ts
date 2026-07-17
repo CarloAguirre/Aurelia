@@ -10,6 +10,7 @@ import {
   type InspectionChecklistTemplateResponse,
   type UpsertInspectionAnswerRequest,
 } from '@aurelia/contracts';
+import { finalizeInspectionForm } from '../../../../shared/services/inspection-finalization.service';
 import {
   closeInspection,
   createEvidence,
@@ -107,6 +108,7 @@ async function submitChecklistFlow(draft: NewInspectionDraft) {
   const templates = await getInspectionTemplates();
   const template = templates.find((item) => item.id === draft.templateId);
   if (!template) throw new Error('No se encontro la plantilla seleccionada.');
+  const inspectionDate = parseInspectionDate(draft.inspectionDate);
 
   const createPayload: CreateInspectionRequest = {
     inspectionTypeId: template.inspectionTypeId,
@@ -117,7 +119,7 @@ async function submitChecklistFlow(draft: NewInspectionDraft) {
     locationId: null,
     title: buildChecklistTitle(draft),
     description: 'Inspeccion checklist registrada desde web.',
-    scheduledAt: parseInspectionDate(draft.inspectionDate),
+    scheduledAt: inspectionDate,
     latitude: draft.latitude,
     longitude: draft.longitude,
     notes: draft.generalPhoto?.name ? `Foto general: ${draft.generalPhoto.name}` : null,
@@ -196,6 +198,8 @@ async function submitChecklistFlow(draft: NewInspectionDraft) {
 
   if (notCompliantCount === 0) {
     await closeInspection(inspection.id, 'Checklist sin hallazgos abiertos');
+  } else {
+    await finalizeInspectionForm(inspection.id, inspectionDate);
   }
 
   return inspection.id;
@@ -205,6 +209,7 @@ async function submitFindingFlow(draft: NewInspectionDraft) {
   const inspectionTypes = await getInspectionTypes();
   const type = inspectionTypes.find((item) => item.code === InspectionType.ENVIRONMENTAL);
   if (!type) throw new Error('No se encontro el tipo de inspeccion Hallazgo.');
+  const inspectionDate = parseInspectionDate(draft.inspectionDate);
 
   const createPayload: CreateInspectionRequest = {
     inspectionTypeId: type.id,
@@ -215,7 +220,7 @@ async function submitFindingFlow(draft: NewInspectionDraft) {
     locationId: null,
     title: `${draft.findingTypeLabel ?? 'Hallazgo'} · ${draft.areaName ?? 'Sin area'} · ${draft.inspectionDate}`.slice(0, 180),
     description: 'Inspeccion tipo hallazgo registrada desde web.',
-    scheduledAt: parseInspectionDate(draft.inspectionDate),
+    scheduledAt: inspectionDate,
     latitude: draft.latitude,
     longitude: draft.longitude,
     notes: draft.locationLabel,
@@ -277,6 +282,8 @@ async function submitFindingFlow(draft: NewInspectionDraft) {
       });
     }
   }
+
+  await finalizeInspectionForm(inspection.id, inspectionDate);
 
   return inspection.id;
 }

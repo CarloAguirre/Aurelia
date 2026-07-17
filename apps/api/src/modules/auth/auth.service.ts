@@ -179,8 +179,9 @@ export class AuthService {
       ? { key: existingRefreshToken, session: { id: existingSessionId } }
       : await this.sessionRegistryService.issue(await this.findActiveUserById(userId), context);
     const user = await this.findActiveUserById(userId);
-    const roles = user.userRoles?.map((userRole) => userRole.role.code) ?? [];
-    const permissions = this.resolvePermissions(user);
+    const activeUserRoles = user.userRoles?.filter((userRole) => userRole.role.isActive) ?? [];
+    const roles = activeUserRoles.map((userRole) => userRole.role.code);
+    const permissions = this.resolvePermissions(activeUserRoles);
     const isGoldFieldsUser = user.email.endsWith('@goldfields.com');
     const fullName = `${user.firstName} ${user.lastName}`.trim();
     const companyName = user.company?.name ?? (isGoldFieldsUser ? 'Gold Fields' : null);
@@ -244,10 +245,10 @@ export class AuthService {
     });
   }
 
-  private resolvePermissions(user: UserEntity): string[] {
-    const permissions = user.userRoles?.flatMap((userRole) => (
+  private resolvePermissions(userRoles: UserEntity['userRoles']): string[] {
+    const permissions = userRoles.flatMap((userRole) => (
       userRole.role.rolePermissions?.map((rolePermission) => rolePermission.permission.code) ?? []
-    )) ?? [];
+    ));
 
     return Array.from(new Set(permissions)).sort();
   }

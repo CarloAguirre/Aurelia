@@ -1,5 +1,6 @@
 import { BadRequestException, Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req } from '@nestjs/common';
 import {
+  InspectionAssignmentScopeResponse,
   InspectionChecklistAnswerResponse,
   InspectionChecklistTemplateResponse,
   InspectionDashboardSummaryResponse,
@@ -49,8 +50,17 @@ export class InspectionsController {
   }
 
   @Get('responsible-users')
-  findResponsibleUsers(@Query('companyId') companyId?: string): Promise<UserResponse[]> {
-    return this.usersService.findAll({ companyId });
+  async findResponsibleUsers(
+    @Req() request: AuthenticatedRequest,
+    @Query('companyId') companyId?: string,
+  ): Promise<UserResponse[]> {
+    const scopedCompanyId = await this.resourceScopeService.resolveInspectionAssignmentCompany(request.user, companyId);
+    return this.usersService.findAll({ companyId: scopedCompanyId ?? undefined });
+  }
+
+  @Get('assignment-scope')
+  getAssignmentScope(@Req() request: AuthenticatedRequest): Promise<InspectionAssignmentScopeResponse> {
+    return this.resourceScopeService.getInspectionAssignmentScope(request.user);
   }
 
   @Get('dashboard/summary')
@@ -68,8 +78,9 @@ export class InspectionsController {
 
   @RequirePermissions('inspections:write')
   @Post()
-  create(@Body() dto: CreateInspectionDto, @Req() request: AuthenticatedRequest): Promise<InspectionResponse> {
-    return this.inspectionsService.create(dto, request.user.sub);
+  async create(@Body() dto: CreateInspectionDto, @Req() request: AuthenticatedRequest): Promise<InspectionResponse> {
+    const companyId = await this.resourceScopeService.resolveInspectionAssignmentCompany(request.user, dto.companyId);
+    return this.inspectionsService.create({ ...dto, companyId }, request.user.sub);
   }
 
   @Get(':id/findings')
@@ -84,12 +95,16 @@ export class InspectionsController {
 
   @RequirePermissions('inspections:write')
   @Post(':id/findings')
-  createFinding(
+  async createFinding(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: CreateInspectionFindingDto,
     @Req() request: AuthenticatedRequest,
   ): Promise<InspectionFindingResponse> {
-    return this.inspectionsService.createFinding(id, dto, request.user.sub);
+    const responsibleCompanyId = await this.resourceScopeService.resolveInspectionAssignmentCompany(
+      request.user,
+      dto.responsibleCompanyId,
+    );
+    return this.inspectionsService.createFinding(id, { ...dto, responsibleCompanyId }, request.user.sub);
   }
 
   @RequirePermissions('inspections:write')

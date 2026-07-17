@@ -1,32 +1,24 @@
 import { Role, type LoginResponse } from '@aurelia/contracts';
 
-// DECISION TEMPORAL (Nico, sin confirmacion de Alexis/Carlo):
-// El backend ya devuelve user.roles[] en login, pero AuthUserResponse del contrato
-// aun expone role singular. Este modulo lee roles[] en runtime para SPR sin tocar
-// apps/api ni packages/contracts hasta la respuesta oficial (pregunta E1).
+type SessionUser = LoginResponse['user'];
 
-type SessionUser = LoginResponse['user'] & { roles?: Role[] };
+const sprAreaRoles = new Set<Role>([
+  Role.ADMIN,
+  Role.SPR_AREA_MANAGER,
+  Role.SPR_SUSTAINABILITY_SPECIALIST,
+  Role.SPR_ENVIRONMENT_MANAGER,
+]);
 
 export function resolveSessionUserRoles(user: SessionUser | null | undefined): Role[] {
-  if (!user) return [];
-
-  if (Array.isArray(user.roles) && user.roles.length > 0) {
-    return user.roles;
-  }
-
-  if (user.role) {
-    return [user.role];
-  }
-
-  return [];
+  return user?.roles ?? [];
 }
 
 export function canAccessSprForm(roles: Role[]): boolean {
-  return roles.includes(Role.INSPECTOR);
+  return roles.some((role) => role === Role.ADMIN || role === Role.SPR_RESPONSIBLE);
 }
 
 export function canAccessSprArea(roles: Role[]): boolean {
-  return roles.some((role) => role === Role.SUPERVISOR || role === Role.ADMIN);
+  return roles.some((role) => sprAreaRoles.has(role));
 }
 
 export function resolveSprDefaultRoute(roles: Role[]): '/spr' | '/spr/mi-area' {

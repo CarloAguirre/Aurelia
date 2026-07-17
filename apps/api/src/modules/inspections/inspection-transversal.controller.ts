@@ -54,7 +54,7 @@ export class InspectionTransversalController {
   ): Promise<void> {
     const pdf = await this.inspectionTransversalService.getExportPdf(id);
     response.setHeader('Content-Type', 'application/pdf');
-    response.setHeader('Content-Disposition', `attachment; filename="inspection-${id}.pdf"`);
-    response.send(pdf);
+    response.setHeader('Content-Disposition', `attachment; filename="${pdf.filename}"`);
+    response.send(pdf.buffer);
   }
 }

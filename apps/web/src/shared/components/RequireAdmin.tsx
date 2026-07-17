@@ -1,3 +1,4 @@
+import { Role } from '@aurelia/contracts';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useSessionStore } from '../stores/session.store';
 
@@ -8,9 +9,9 @@ interface RequireAdminProps {
 export function RequireAdmin({ children }: RequireAdminProps) {
   const user = useSessionStore((state) => state.user);
   const location = useLocation();
-  const roles = user?.roles ?? [];
+  const roles = user?.roles ?? (user?.role ? [user.role] : []);
 
-  if (!roles.includes('ADMIN')) {
+  if (!roles.includes(Role.ADMIN)) {
     return <Navigate to="/" replace state={{ from: location.pathname }} />;
   }
 

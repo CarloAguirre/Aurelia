@@ -5,6 +5,11 @@ import { In, Repository } from 'typeorm';
 import { AuditService } from '../audit/audit.service';
 import { CommentsService } from '../comments/comments.service';
 import { EvidencesService } from '../evidences/evidences.service';
+import { AreaEntity } from '../organization/entities/area.entity';
+import { CompanyEntity } from '../organization/entities/company.entity';
+import { SectorEntity } from '../organization/entities/sector.entity';
+import { InspectionDetailReportPdfService } from '../reports/inspection-detail-report-pdf.service';
+import { UserEntity } from '../users/entities/user.entity';
 import { CreateInspectionCommentDto } from './dto/create-inspection-comment.dto';
 import { LinkInspectionEvidenceDto } from './dto/link-inspection-evidence.dto';
 import { InspectionFindingEntity } from './entities/inspection-finding.entity';
@@ -13,6 +18,7 @@ import { InspectionFormItemEntity } from './entities/inspection-form-item.entity
 import { InspectionFormSectionEntity } from './entities/inspection-form-section.entity';
 import { InspectionFormTemplateEntity } from './entities/inspection-form-template.entity';
 import { InspectionItemResponseEntity } from './entities/inspection-item-response.entity';
+import { InspectionTypeEntity } from './entities/inspection-type.entity';
 import { InspectionEntity } from './entities/inspection.entity';
 
 interface RelatedEvidenceGroup {
@@ -25,6 +31,11 @@ interface RelatedInspectionEvidences {
   findings: RelatedEvidenceGroup[];
   followups: RelatedEvidenceGroup[];
   all: EvidenceResponse[];
+}
+
+export interface InspectionExportPdfResult {
+  buffer: Buffer;
+  filename: string;
 }
 
 @Injectable()
@@ -44,9 +55,20 @@ export class InspectionTransversalService {
     private readonly findings: Repository<InspectionFindingEntity>,
     @InjectRepository(InspectionFollowupEntity)
     private readonly followups: Repository<InspectionFollowupEntity>,
+    @InjectRepository(CompanyEntity)
+    private readonly companies: Repository<CompanyEntity>,
+    @InjectRepository(AreaEntity)
+    private readonly areas: Repository<AreaEntity>,
+    @InjectRepository(SectorEntity)
+    private readonly sectors: Repository<SectorEntity>,
+    @InjectRepository(UserEntity)
+    private readonly users: Repository<UserEntity>,
+    @InjectRepository(InspectionTypeEntity)
+    private readonly inspectionTypes: Repository<InspectionTypeEntity>,
     private readonly evidencesService: EvidencesService,
     private readonly commentsService: CommentsService,
     private readonly auditService: AuditService,
+    private readonly inspectionDetailReportPdf: InspectionDetailReportPdfService,
   ) {}
 
   async findEvidences(inspectionId: string): Promise<EvidenceResponse[]> {
@@ -109,18 +131,41 @@ export class InspectionTransversalService {
     const followups = findingIds.length
       ? await this.followups.find({ where: { findingId: In(findingIds) }, order: { sequenceNumber: 'ASC' } })
       : [];
-    const relatedEvidences = await this.collectRelatedEvidences(
-      inspectionId,
-      findingIds,
-      followups.map((followup) => followup.id),
-    );
+    const [relatedEvidences, comments, companies, areas, sectors, users, inspectionTypes] = await Promise.all([
+      this.collectRelatedEvidences(
+        inspectionId,
+        findingIds,
+        followups.map((followup) => followup.id),
+      ),
+      this.commentsService.findAll('inspection', inspectionId),
+      this.companies.find(),
+      this.areas.find(),
+      this.sectors.find(),
+      this.users.find(),
+      this.inspectionTypes.find(),
+    ]);
     const evidencesByFinding = new Map(relatedEvidences.findings.map((group) => [group.entityId, group.evidences]));
     const evidencesByFollowup = new Map(relatedEvidences.followups.map((group) => [group.entityId, group.evidences]));
-    const comments = await this.commentsService.findAll('inspection', inspectionId);
+    const companyById = new Map(companies.map((company) => [company.id, company]));
+    const areaById = new Map(areas.map((area) => [area.id, area]));
+    const sectorById = new Map(sectors.map((sector) => [sector.id, sector]));
+    const userById = new Map(users.map((user) => [user.id, user]));
+    const inspectionTypeById = new Map(inspectionTypes.map((type) => [type.id, type]));
+    const closedFindingsCount = findings.filter((finding) => finding.status === InspectionFindingStatus.CLOSED).length;
+    const openFindingsCount = findings.filter((finding) => finding.status === InspectionFindingStatus.OPEN).length;
+    const executedFindingsCount = findings.filter((finding) => finding.status === InspectionFindingStatus.IN_PROGRESS).length;
+    const rejectedFindingsCount = findings.filter((finding) => finding.status === InspectionFindingStatus.REJECTED).length;
 
     return {
       generatedAt: new Date().toISOString(),
-      inspection: this.toInspectionExport(inspection),
+      inspection: this.toInspectionExport(
+        inspection,
+        companyById,
+        areaById,
+        sectorById,
+        userById,
+        inspectionTypeById,
+      ),
       checklist: {
         template,
         sections: sections.map((section) => ({
@@ -129,13 +174,21 @@ export class InspectionTransversalService {
         })),
       },
       answers,
-      findings: findings.map((finding) => ({
+      findings: findings.map((finding, index) => ({
         ...finding,
+        observationNumber: index + 1,
+        responsibleCompanyName: this.companyName(finding.responsibleCompanyId, companyById),
+        ownerUserName: this.userName(finding.ownerUserId, userById),
+        createdByUserName: this.userName(finding.createdByUserId, userById),
+        executedByUserName: this.userName(finding.executedByUserId, userById),
+        closedByUserName: this.userName(finding.closedByUserId, userById),
+        rejectedByUserName: this.userName(finding.rejectedByUserId, userById),
         evidences: evidencesByFinding.get(finding.id) ?? [],
         followups: followups
           .filter((followup) => followup.findingId === finding.id)
           .map((followup) => ({
             ...followup,
+            performedByUserName: this.userName(followup.performedByUserId, userById),
             evidences: evidencesByFollowup.get(followup.id) ?? [],
           })),
       })),
@@ -149,35 +202,25 @@ export class InspectionTransversalService {
       summary: {
         answersCount: answers.length,
         findingsCount: findings.length,
-        openFindingsCount: findings.filter((finding) => [InspectionFindingStatus.OPEN, InspectionFindingStatus.IN_PROGRESS].includes(finding.status)).length,
+        openFindingsCount,
+        executedFindingsCount,
+        closedFindingsCount,
+        rejectedFindingsCount,
+        closureRate: findings.length > 0 ? Number(((closedFindingsCount / findings.length) * 100).toFixed(2)) : 0,
         evidencesCount: relatedEvidences.all.length,
         commentsCount: comments.length,
       },
     };
   }
 
-  async getExportPdf(inspectionId: string): Promise<Buffer> {
+  async getExportPdf(inspectionId: string): Promise<InspectionExportPdfResult> {
     const payload = await this.getExportPayload(inspectionId);
     const inspection = payload.inspection as Record<string, unknown>;
-    const summary = payload.summary as Record<string, unknown>;
-    const lines = [
-      'Aurelia - Reporte de inspeccion',
-      `Generado: ${String(payload.generatedAt)}`,
-      `ID: ${String(inspection.id)}`,
-      `Titulo: ${String(inspection.title)}`,
-      `Estado: ${String(inspection.status)}`,
-      `Programada: ${String(inspection.scheduledAt ?? 'N/A')}`,
-      `Inicio: ${String(inspection.startedAt ?? 'N/A')}`,
-      `Cierre: ${String(inspection.closedAt ?? 'N/A')}`,
-      `Hallazgos: ${String(summary.findingsCount ?? 0)}`,
-      `Hallazgos abiertos: ${String(summary.openFindingsCount ?? 0)}`,
-      `Evidencias: ${String(summary.evidencesCount ?? 0)}`,
-      `Comentarios: ${String(summary.commentsCount ?? 0)}`,
-      '',
-      'Este PDF es una salida operativa base. El formato visual avanzado queda para frontend/reporting.',
-    ];
-
-    return this.createSimplePdf(lines);
+    const inspectionNumber = typeof inspection.inspectionNumber === 'string' ? inspection.inspectionNumber : inspectionId;
+    return {
+      buffer: await this.inspectionDetailReportPdf.render(payload),
+      filename: `inspection-${this.sanitizeFilename(inspectionNumber)}.pdf`,
+    };
   }
 
   private async collectRelatedEvidences(
@@ -217,16 +260,36 @@ export class InspectionTransversalService {
     return inspection;
   }
 
-  private toInspectionExport(entity: InspectionEntity): Record<string, unknown> {
+  private toInspectionExport(
+    entity: InspectionEntity,
+    companies: Map<string, CompanyEntity>,
+    areas: Map<string, AreaEntity>,
+    sectors: Map<string, SectorEntity>,
+    users: Map<string, UserEntity>,
+    inspectionTypes: Map<string, InspectionTypeEntity>,
+  ): Record<string, unknown> {
+    const inspector = entity.inspectorId ? users.get(entity.inspectorId) : null;
+    const company = entity.companyId ? companies.get(entity.companyId) : null;
+    const area = entity.areaId ? areas.get(entity.areaId) : null;
+    const sector = entity.sectorId ? sectors.get(entity.sectorId) : null;
+    const inspectionType = inspectionTypes.get(entity.inspectionTypeId);
     return {
       id: entity.id,
+      inspectionNumber: this.resolveInspectionNumber(entity),
       inspectionTypeId: entity.inspectionTypeId,
+      inspectionTypeName: inspectionType?.name ?? null,
       templateId: entity.templateId,
       companyId: entity.companyId,
+      companyName: company?.name ?? null,
       areaId: entity.areaId,
+      areaName: area?.name ?? null,
       sectorId: entity.sectorId,
+      sectorName: sector?.name ?? null,
       locationId: entity.locationId,
+      locationLabel: [area?.name, sector?.name].filter(Boolean).join(' · ') || null,
       inspectorId: entity.inspectorId,
+      inspectorName: inspector ? this.formatUserName(inspector) : null,
+      inspectorCompanyName: inspector?.companyId ? companies.get(inspector.companyId)?.name ?? null : null,
       title: entity.title,
       description: entity.description,
       status: entity.status,
@@ -245,38 +308,25 @@ export class InspectionTransversalService {
     };
   }
 
-  private createSimplePdf(lines: string[]): Buffer {
-    const normalizedLines = lines.flatMap((line) => this.wrapLine(line, 88)).slice(0, 44);
-    const content = ['BT', '/F1 11 Tf', '14 TL', '50 780 Td', ...normalizedLines.flatMap((line) => [`(${this.escapePdfText(line)}) Tj`, 'T*']), 'ET'].join('\n');
-    const objects = [
-      '<< /Type /Catalog /Pages 2 0 R >>',
-      '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-      '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
-      '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
-      `<< /Length ${Buffer.byteLength(content, 'utf8')} >>\nstream\n${content}\nendstream`,
-    ];
-    let pdf = '%PDF-1.4\n';
-    const offsets = [0];
-    for (let index = 0; index < objects.length; index += 1) {
-      offsets.push(Buffer.byteLength(pdf, 'utf8'));
-      pdf += `${index + 1} 0 obj\n${objects[index]}\nendobj\n`;
-    }
-    const xrefOffset = Buffer.byteLength(pdf, 'utf8');
-    pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
-    pdf += offsets.slice(1).map((offset) => `${String(offset).padStart(10, '0')} 00000 n `).join('\n');
-    pdf += `\ntrailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
-    return Buffer.from(pdf, 'utf8');
+  private companyName(id: string | null, companies: Map<string, CompanyEntity>): string | null {
+    return id ? companies.get(id)?.name ?? null : null;
   }
 
-  private wrapLine(value: string, maxLength: number): string[] {
-    if (value.length <= maxLength) return [value];
-    const chunks: string[] = [];
-    for (let index = 0; index < value.length; index += maxLength) chunks.push(value.slice(index, index + maxLength));
-    return chunks;
+  private userName(id: string | null, users: Map<string, UserEntity>): string | null {
+    const user = id ? users.get(id) : null;
+    return user ? this.formatUserName(user) : null;
   }
 
-  private escapePdfText(value: string): string {
-    return value.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+  private formatUserName(user: UserEntity): string {
+    return `${user.firstName} ${user.lastName}`.trim() || user.email;
+  }
+
+  private resolveInspectionNumber(entity: InspectionEntity): string {
+    return entity.title.match(/#?(\d+)/)?.[1] ?? entity.id.slice(0, 8);
+  }
+
+  private sanitizeFilename(value: string): string {
+    return value.replace(/[^a-zA-Z0-9_-]/g, '-');
   }
 
   private async logAudit(

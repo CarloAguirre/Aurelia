@@ -1,11 +1,20 @@
-import type { AuthUserResponse } from '@aurelia/contracts';
+import type { AuthUserResponse, Role } from '@aurelia/contracts';
 
 const TOKEN_KEY = 'aurelia_token';
 const USER_KEY = 'aurelia_user';
+const LEGACY_ROLE_CODES = new Set(['SUPERVISOR', 'APPROVER']);
 
 export interface StoredSession {
   token: string;
   user: AuthUserResponse;
+}
+
+function isCurrentAuthUser(value: unknown): value is AuthUserResponse {
+  if (!value || Array.isArray(value) || typeof value !== 'object') return false;
+  const user = value as Partial<AuthUserResponse>;
+  if (!Array.isArray(user.roles) || !Array.isArray(user.permissions)) return false;
+  if (user.roles.some((role: Role) => LEGACY_ROLE_CODES.has(role))) return false;
+  return typeof user.id === 'string' && typeof user.email === 'string' && typeof user.fullName === 'string';
 }
 
 export function readStoredSession(): StoredSession | null {
@@ -21,10 +30,9 @@ export function readStoredSession(): StoredSession | null {
   }
 
   try {
-    return {
-      token,
-      user: JSON.parse(userRaw) as AuthUserResponse,
-    };
+    const user: unknown = JSON.parse(userRaw);
+    if (!isCurrentAuthUser(user)) return null;
+    return { token, user };
   } catch {
     return null;
   }

@@ -83,6 +83,7 @@ interface ManualInspectionLocationInput {
 
 interface ManualInspectionState extends ManualInspectionDraft {
   setDraftId: (draftId: string | null) => void;
+  setInspectorIdentity: (name: string, companyName: string) => void;
   setArea: (id: string, name: string) => void;
   setSector: (id: string, name: string) => void;
   setInspectionDate: (value: string) => void;
@@ -144,6 +145,7 @@ function newObservationId() {
 export const useManualInspectionDraft = create<ManualInspectionState>((set) => ({
   ...initialDraft,
   setDraftId: (draftId) => set({ draftId }),
+  setInspectorIdentity: (inspectorName, inspectorCompanyName) => set({ inspectorName, inspectorCompanyName }),
   setArea: (id, name) => set({ areaId: id, areaName: name, sectorId: null, sectorName: null }),
   setSector: (id, name) => set({ sectorId: id, sectorName: name }),
   setInspectionDate: (inspectionDate) => set({ inspectionDate }),
@@ -169,11 +171,11 @@ export const useManualInspectionDraft = create<ManualInspectionState>((set) => (
   removeFindingObservation: (id) => set((state) => ({ findingObservations: state.findingObservations.filter((item) => item.id !== id) })),
   setTemplate: ({ id, name, code, itemsCount }) => set({ templateId: id, templateName: name, templateCode: code, templateItemsCount: itemsCount, answersByItemId: {}, detailsByItemId: {}, generalPhoto: null }),
   setAnswer: (itemId, value) => set((state) => ({ answersByItemId: { ...state.answersByItemId, [itemId]: value } })),
-  setItemDetail: (itemId, detail) => set((state) => ({ detailsByItemId: { ...state.detailsByItemId, [itemId]: { ...state.detailsByItemId[itemId], ...detail } } })),
+  setItemDetail: (itemId, detail) => set((state) => ({ detailsByItemId: { ...state.detailsByItemId, [itemId]: { ...state.detailsByItemId[itemId], ...detail } })),
   setGeneralPhoto: (generalPhoto) => set({ generalPhoto }),
   setFindingCompany: (findingCompanyId, findingCompanyName) => set({ findingCompanyId, findingCompanyName, findingResponsibleIds: [] }),
   setFindingResponsibles: (findingResponsibleIds) => set({ findingResponsibleIds }),
   setLastSavedResult: (lastSavedResult) => set({ lastSavedResult }),
-  hydrate: (draft) => set({ ...draft }),
-  reset: () => set(initialDraft),
+  hydrate: (draft) => set((state) => ({ ...draft, inspectorName: state.inspectorName, inspectorCompanyName: state.inspectorCompanyName })),
+  reset: () => set((state) => ({ ...initialDraft, inspectorName: state.inspectorName, inspectorCompanyName: state.inspectorCompanyName })),
 }));

@@ -5,10 +5,20 @@ export interface AuthUserResponse {
   id: ID;
   email: string;
   fullName: string;
-  role: Role;
+  firstName: string;
+  lastName: string;
+  position: string | null;
+  companyId: ID | null;
+  companyName: string | null;
+  areaId: ID | null;
+  areaName: string | null;
+  roles: Role[];
+  permissions: string[];
 }
 
+/** Respuesta normalizada por los clientes web. */
 export interface LoginResponse {
   accessToken: string;
+  refreshToken?: string;
   user: AuthUserResponse;
 }

@@ -33,7 +33,8 @@ export function AppSidebar({
   user,
 }: AppSidebarProps) {
   const userName = user?.fullName ?? 'Usuario';
-  const userRole = user ? roleLabel(user.role) : 'Sin rol';
+  const primaryRole = user?.roles[0];
+  const userRole = primaryRole ? roleLabel(primaryRole) : 'Sin rol';
 
   return (
     <aside style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #012659 0%, #002143 100%)', color: '#ffffff', padding: 16, display: 'flex', flexDirection: 'column', gap: 18, position: 'sticky', top: 0 }}>
@@ -82,7 +83,7 @@ export function AppSidebar({
           {!sidebarCollapsed ? (
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{userName}</div>
-              <div style={{ marginTop: 4, fontSize: 12, color: 'rgba(255,255,255,0.62)' }}>{userRole ?? 'Sin rol'}</div>
+              <div style={{ marginTop: 4, fontSize: 12, color: 'rgba(255,255,255,0.62)' }}>{userRole}</div>
             </div>
           ) : null}
         </div>

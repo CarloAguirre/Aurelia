@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, Logger, Param, ParseUUIDPipe, Patch, Post, Query, Req } from '@nestjs/common';
 import {
   InspectionAssignmentScopeResponse,
   InspectionChecklistAnswerResponse,
@@ -26,17 +26,21 @@ import { UpdateInspectionFollowupDto } from './dto/update-inspection-followup.dt
 import { UpdateInspectionDto } from './dto/update-inspection.dto';
 import { UpdateInspectionStatusDto } from './dto/update-inspection-status.dto';
 import { UpsertInspectionAnswerDto } from './dto/upsert-inspection-answer.dto';
+import { InspectionAssignmentEmailService } from './inspection-assignment-email.service';
 import { InspectionDetailService } from './inspection-detail.service';
 import { InspectionsService } from './inspections.service';
 
 @RequirePermissions('inspections:read')
 @Controller('inspections')
 export class InspectionsController {
+  private readonly logger = new Logger(InspectionsController.name);
+
   constructor(
     private readonly inspectionsService: InspectionsService,
     private readonly usersService: UsersService,
     private readonly inspectionDetailService: InspectionDetailService,
     private readonly resourceScopeService: ResourceScopeService,
+    private readonly assignmentEmails: InspectionAssignmentEmailService,
   ) {}
 
   @Get('types')
@@ -153,15 +157,19 @@ export class InspectionsController {
     @Body() dto: UpdateInspectionStatusDto,
     @Req() request: AuthenticatedRequest,
   ): Promise<InspectionResponse> {
-    if (dto.status !== InspectionStatus.CLOSED) return this.inspectionsService.updateStatus(id, dto, request.user.sub);
-    const inspection = await this.inspectionsService.findOne(id);
+    const previous = await this.inspectionsService.findOne(id);
+    if (dto.status !== InspectionStatus.CLOSED) {
+      const updated = await this.inspectionsService.updateStatus(id, dto, request.user.sub);
+      await this.notifyIfInspectionActivated(previous.status, updated);
+      return updated;
+    }
     const closedAt = new Date().toISOString();
     return this.inspectionsService.update(
       id,
       {
         status: InspectionStatus.CLOSED,
-        completedAt: inspection.completedAt ?? closedAt,
-        closedAt: inspection.closedAt ?? closedAt,
+        completedAt: previous.completedAt ?? closedAt,
+        closedAt: previous.closedAt ?? closedAt,
         reason: dto.comment ?? null,
       },
       request.user.sub,
@@ -170,12 +178,15 @@ export class InspectionsController {
 
   @RequirePermissions('inspections:write')
   @Patch(':id')
-  update(
+  async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateInspectionDto,
     @Req() request: AuthenticatedRequest,
   ): Promise<InspectionResponse> {
-    return this.inspectionsService.update(id, dto, request.user.sub);
+    const previous = await this.inspectionsService.findOne(id);
+    const updated = await this.inspectionsService.update(id, dto, request.user.sub);
+    await this.notifyIfInspectionActivated(previous.status, updated);
+    return updated;
   }
 
   @RequirePermissions('inspections:write')
@@ -210,6 +221,18 @@ export class InspectionsController {
     @Body() dto: UpdateInspectionFollowupDto,
   ): Promise<InspectionFollowupResponse> {
     return this.inspectionsService.updateFollowup(followupId, dto);
+  }
+
+  private async notifyIfInspectionActivated(previousStatus: InspectionStatus, updated: InspectionResponse): Promise<void> {
+    if (previousStatus === InspectionStatus.IN_PROGRESS || updated.status !== InspectionStatus.IN_PROGRESS) return;
+    await this.assignmentEmails.notifyInspectionAssigned(updated.id).catch((error) => {
+      this.logAssignmentEmailFailure(updated.id, error);
+    });
+  }
+
+  private logAssignmentEmailFailure(inspectionId: string, error: unknown): void {
+    const detail = error instanceof Error ? error.message : String(error);
+    this.logger.error(`Unable to dispatch inspection assignment email inspection=${inspectionId}: ${detail}`);
   }
 
   private async closeInspectionIfAllFindingsClosed(inspectionId: string, actorId: string | null): Promise<void> {

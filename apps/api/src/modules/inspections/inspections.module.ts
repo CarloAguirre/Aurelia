@@ -24,6 +24,7 @@ import { InspectionRiskProbabilityEntity } from './entities/inspection-risk-prob
 import { InspectionStateEntity } from './entities/inspection-state.entity';
 import { InspectionTypeEntity } from './entities/inspection-type.entity';
 import { InspectionEntity } from './entities/inspection.entity';
+import { InspectionAssignmentEmailService } from './inspection-assignment-email.service';
 import { InspectionCriticalityCatalogController } from './inspection-criticality-catalog.controller';
 import { InspectionDashboardController } from './inspection-dashboard.controller';
 import { InspectionDashboardService } from './inspection-dashboard.service';
@@ -67,7 +68,7 @@ import { InspectionsService } from './inspections.service';
     ]),
   ],
   controllers: [InspectionsController, InspectionDashboardController, InspectionHistoryController, InspectionTransversalController, InspectionFindingCatalogController, InspectionCriticalityCatalogController],
-  providers: [InspectionsService, InspectionDashboardService, InspectionHistoryService, InspectionDetailService, InspectionTransversalService, InspectionFindingCatalogService],
+  providers: [InspectionsService, InspectionDashboardService, InspectionHistoryService, InspectionDetailService, InspectionTransversalService, InspectionFindingCatalogService, InspectionAssignmentEmailService],
   exports: [InspectionsService, InspectionDashboardService, InspectionHistoryService, InspectionDetailService, InspectionFindingCatalogService],
 })
 export class InspectionsModule {}

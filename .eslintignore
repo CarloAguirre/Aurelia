@@ -4,3 +4,4 @@ build
 .expo
 .turbo
 coverage
+apps/api/src/database/migrations/generated

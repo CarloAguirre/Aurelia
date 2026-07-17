@@ -13,6 +13,7 @@ import { FilesModule } from './modules/files/files.module';
 import { HealthModule } from './modules/health/health.module';
 import { IncidentsModule } from './modules/incidents/incidents.module';
 import { InspectionsModule } from './modules/inspections/inspections.module';
+import { MessagingModule } from './modules/messaging/messaging.module';
 import { MobileBootstrapModule } from './modules/mobile-bootstrap/mobile-bootstrap.module';
 import { MobileSyncModule } from './modules/mobile-sync/mobile-sync.module';
 import { MueModule } from './modules/mue/mue.module';
@@ -43,6 +44,7 @@ import { WorkflowsModule } from './modules/workflows/workflows.module';
     AuditModule,
     DatabaseMaintenanceModule,
     WorkflowsModule,
+    MessagingModule.register(),
     InspectionsModule,
     IncidentsModule,
     ReportsModule,

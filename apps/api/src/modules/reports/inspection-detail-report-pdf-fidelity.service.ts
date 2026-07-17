@@ -75,7 +75,6 @@ const PAGE_WIDTH = 595.28;
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_X * 2;
 const CONTENT_BOTTOM = 780;
 const NAVY = '#001E39';
-const BLUE = '#0D3862';
 const GOLD = '#C8A064';
 const BORDER = '#D1D1D1';
 const MUTED = '#646464';

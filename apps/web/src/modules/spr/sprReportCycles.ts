@@ -102,7 +102,7 @@ export function sprReportCycleSearchParams(cycle: SprReportCycle, flow?: SprRepo
 
 /** Añade `?ciclo=` a hrefs del dashboard (consolidado, etc.). */
 export function appendSprReportCycleToHref(href: string, cycleId: SprReportCycleId) {
-  const [pathname, search = ''] = href.split('?');
+  const [pathname = '', search = ''] = href.split('?');
   const params = new URLSearchParams(search);
   params.set(SPR_REPORT_CYCLE_QUERY, cycleId);
   const query = params.toString();

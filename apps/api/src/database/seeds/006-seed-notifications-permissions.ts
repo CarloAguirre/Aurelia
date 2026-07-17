@@ -25,6 +25,7 @@ const notificationReaderRoles = [
   'CONTROL_MANAGER',
   'CONTROL_CORPORATE_APPROVER',
 ] as const;
+
 export async function runNotificationsPermissionsSeed(ds: DataSource): Promise<void> {
   const qr = ds.createQueryRunner();
   await qr.connect();
@@ -52,7 +53,6 @@ export async function runNotificationsPermissionsSeed(ds: DataSource): Promise<v
       `INSERT INTO role_permissions (role_id, permission_id)
        SELECT r.id, p.id
        FROM roles r, permissions p
-       WHERE r.code = ANY($1::text[])
        WHERE r.code = ANY($1::text[])
          AND r.is_active = true
          AND p.code = 'notifications:read'

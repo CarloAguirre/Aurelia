@@ -44,7 +44,7 @@ export function SprDiscrepancyCorrectionView() {
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [value, setValue] = useState('');
   const [notApplicable, setNotApplicable] = useState(false);
-  const [source, setSource] = useState(parameter.defaultSource);
+  const [source, setSource] = useState<string>(parameter.defaultSource);
   const [note, setNote] = useState('');
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);

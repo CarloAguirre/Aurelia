@@ -27,30 +27,6 @@ export async function runPhase1Seed(ds: DataSource): Promise<void> {
   await qr.startTransaction();
 
   try {
-    // System roles
-    const roles = [
-      { code: 'ADMIN',      name: 'Administrador',        is_system: true },
-      { code: 'SUPERVISOR', name: 'Supervisor',            is_system: true },
-      { code: 'INSPECTOR',  name: 'Inspector',             is_system: true },
-      { code: 'APPROVER',   name: 'Aprobador',             is_system: true },
-      { code: 'VIEWER',     name: 'Visualizador',          is_system: true },
-      // Especialista de Sustentabilidad (Dashboard SPR) — sin pantallas aún; rol + permisos listos.
-      {
-        code: 'SUSTAINABILITY_SPECIALIST',
-        name: 'Especialista de Sustentabilidad',
-        is_system: true,
-      },
-    ];
-
-    for (const role of roles) {
-      await qr.query(
-        `INSERT INTO roles (code, name, is_system, is_active)
-         VALUES ($1, $2, $3, true)
-         ON CONFLICT (code) DO NOTHING`,
-        [role.code, role.name, role.is_system],
-      );
-    }
-
     // Default company (owner org)
     await qr.query(
       `INSERT INTO companies (code, name, is_contractor, status)
@@ -94,146 +70,6 @@ export async function runPhase1Seed(ds: DataSource): Promise<void> {
          AND r.code  = 'ADMIN'
        ON CONFLICT DO NOTHING`,
     );
-
-    // Base permissions
-    const permissions = [
-      { code: 'organization:read',  name: 'Ver organización',       module: 'organization', action: 'read'  },
-      { code: 'organization:write', name: 'Editar organización',    module: 'organization', action: 'write' },
-      { code: 'users:read',         name: 'Ver usuarios',           module: 'users',        action: 'read'  },
-      { code: 'users:write',        name: 'Editar usuarios',        module: 'users',        action: 'write' },
-      { code: 'roles:read',         name: 'Ver roles',              module: 'roles',        action: 'read'  },
-      { code: 'roles:write',        name: 'Editar roles',           module: 'roles',        action: 'write' },
-      { code: 'permissions:read',   name: 'Ver permisos',           module: 'permissions',  action: 'read'  },
-      { code: 'permissions:write',  name: 'Editar permisos',        module: 'permissions',  action: 'write' },
-      { code: 'mobile:read',        name: 'Ver bootstrap mobile',    module: 'mobile',       action: 'read'  },
-      { code: 'mobile:sync',        name: 'Sincronizar mobile',      module: 'mobile',       action: 'sync'  },
-      { code: 'inspections:read',   name: 'Ver inspecciones',       module: 'inspections',  action: 'read'  },
-      { code: 'inspections:write',  name: 'Editar inspecciones',    module: 'inspections',  action: 'write' },
-      { code: 'incidents:read',     name: 'Ver incidentes',         module: 'incidents',    action: 'read'  },
-      { code: 'incidents:write',    name: 'Editar incidentes',      module: 'incidents',    action: 'write' },
-      { code: 'spr:read',           name: 'Ver SPR',                module: 'spr',          action: 'read'  },
-      { code: 'spr:write',          name: 'Editar SPR',             module: 'spr',          action: 'write' },
-      { code: 'spr:submit',         name: 'Enviar SPR',             module: 'spr',          action: 'submit' },
-      { code: 'spr:approve',        name: 'Aprobar SPR',            module: 'spr',          action: 'approve' },
-      { code: 'evidences:read',     name: 'Ver evidencias',         module: 'evidences',    action: 'read'  },
-      { code: 'evidences:write',    name: 'Editar evidencias',      module: 'evidences',    action: 'write' },
-      { code: 'evidences:validate', name: 'Validar evidencias',     module: 'evidences',    action: 'validate' },
-      { code: 'comments:read',      name: 'Ver comentarios',        module: 'comments',     action: 'read'  },
-      { code: 'comments:write',     name: 'Crear comentarios',      module: 'comments',     action: 'write' },
-      { code: 'workflows:read',     name: 'Ver workflows',          module: 'workflows',    action: 'read'  },
-      { code: 'workflows:write',    name: 'Editar workflows',       module: 'workflows',    action: 'write' },
-      { code: 'workflows:approve',  name: 'Aprobar workflows',      module: 'workflows',    action: 'approve' },
-    ];
-
-    for (const perm of permissions) {
-      await qr.query(
-        `INSERT INTO permissions (code, name, module, action)
-         VALUES ($1, $2, $3, $4)
-         ON CONFLICT (code) DO NOTHING`,
-        [perm.code, perm.name, perm.module, perm.action],
-      );
-    }
-
-    // Assign all base permissions to ADMIN role
-    await qr.query(
-      `INSERT INTO role_permissions (role_id, permission_id)
-       SELECT r.id, p.id
-       FROM roles r, permissions p
-       WHERE r.code = 'ADMIN'
-       ON CONFLICT DO NOTHING`,
-    );
-
-    const rolePermissions: Record<string, string[]> = {
-      SUPERVISOR: [
-        'organization:read',
-        'users:read',
-        'mobile:read',
-        'mobile:sync',
-        'inspections:read',
-        'inspections:write',
-        'incidents:read',
-        'incidents:write',
-        'spr:read',
-        'spr:write',
-        'spr:submit',
-        'spr:approve',
-        'evidences:read',
-        'evidences:write',
-        'evidences:validate',
-        'comments:read',
-        'comments:write',
-        'workflows:read',
-        'workflows:write',
-        'workflows:approve',
-      ],
-      INSPECTOR: [
-        'organization:read',
-        'mobile:read',
-        'mobile:sync',
-        'inspections:read',
-        'inspections:write',
-        'incidents:read',
-        'incidents:write',
-        'spr:read',
-        'spr:write',
-        'spr:submit',
-        'evidences:read',
-        'evidences:write',
-        'comments:read',
-        'comments:write',
-        'workflows:read',
-      ],
-      APPROVER: [
-        'organization:read',
-        'users:read',
-        'mobile:read',
-        'inspections:read',
-        'incidents:read',
-        'spr:read',
-        'spr:approve',
-        'evidences:read',
-        'evidences:validate',
-        'comments:read',
-        'comments:write',
-        'workflows:read',
-        'workflows:approve',
-      ],
-      VIEWER: [
-        'organization:read',
-        'mobile:read',
-        'inspections:read',
-        'incidents:read',
-        'spr:read',
-        'evidences:read',
-        'comments:read',
-        'workflows:read',
-      ],
-      // Dashboard SPR consolidado / validación KPI — sin write/submit (eso es Responsable).
-      SUSTAINABILITY_SPECIALIST: [
-        'organization:read',
-        'users:read',
-        'spr:read',
-        'spr:approve',
-        'evidences:read',
-        'evidences:validate',
-        'comments:read',
-        'comments:write',
-        'workflows:read',
-        'workflows:approve',
-      ],
-    };
-
-    for (const [roleCode, permissionCodes] of Object.entries(rolePermissions)) {
-      await qr.query(
-        `INSERT INTO role_permissions (role_id, permission_id)
-         SELECT r.id, p.id
-         FROM roles r, permissions p
-         WHERE r.code = $1
-           AND p.code = ANY($2::text[])
-         ON CONFLICT DO NOTHING`,
-        [roleCode, permissionCodes],
-      );
-    }
 
     // Entity reference type catalog (Phase 2)
     const entityRefTypes = [
@@ -281,17 +117,17 @@ export async function runPhase1Seed(ds: DataSource): Promise<void> {
     // Steps for WF-INSPECTION-VALIDATION
     await qr.query(
       `INSERT INTO workflow_definition_steps (workflow_definition_id, step_order, code, name, required_role_id, sla_hours)
-       SELECT wd.id, 1, 'SUPERVISOR_REVIEW', 'Revisión Supervisor',
-              (SELECT id FROM roles WHERE code = 'SUPERVISOR'), 48
+      SELECT wd.id, 1, 'CLOSURE_VERIFIER_REVIEW', 'Revisión verificador de cierre', role.id, 48
        FROM workflow_definitions wd
+      INNER JOIN roles role ON role.code = 'INSPECTION_CLOSURE_VERIFIER' AND role.is_active = true
        WHERE wd.code = 'WF-INSPECTION-VALIDATION'
        ON CONFLICT (workflow_definition_id, step_order) DO NOTHING`,
     );
     await qr.query(
       `INSERT INTO workflow_definition_steps (workflow_definition_id, step_order, code, name, required_role_id, sla_hours)
-       SELECT wd.id, 2, 'APPROVER_APPROVAL', 'Aprobación Final',
-              (SELECT id FROM roles WHERE code = 'APPROVER'), 24
+      SELECT wd.id, 2, 'CLOSURE_VERIFIER_FINAL', 'Aprobación final verificador de cierre', role.id, 24
        FROM workflow_definitions wd
+      INNER JOIN roles role ON role.code = 'INSPECTION_CLOSURE_VERIFIER' AND role.is_active = true
        WHERE wd.code = 'WF-INSPECTION-VALIDATION'
        ON CONFLICT (workflow_definition_id, step_order) DO NOTHING`,
     );
@@ -299,17 +135,17 @@ export async function runPhase1Seed(ds: DataSource): Promise<void> {
     // Steps for WF-INCIDENT-VALIDATION
     await qr.query(
       `INSERT INTO workflow_definition_steps (workflow_definition_id, step_order, code, name, required_role_id, sla_hours)
-       SELECT wd.id, 1, 'SUPERVISOR_REVIEW', 'Revisión Supervisor',
-              (SELECT id FROM roles WHERE code = 'SUPERVISOR'), 24
+      SELECT wd.id, 1, 'INCIDENT_SUPERINTENDENT_REVIEW', 'Revisión superintendente ambiental', role.id, 24
        FROM workflow_definitions wd
+      INNER JOIN roles role ON role.code = 'INCIDENT_SUPERINTENDENT' AND role.is_active = true
        WHERE wd.code = 'WF-INCIDENT-VALIDATION'
        ON CONFLICT (workflow_definition_id, step_order) DO NOTHING`,
     );
     await qr.query(
       `INSERT INTO workflow_definition_steps (workflow_definition_id, step_order, code, name, required_role_id, sla_hours)
-       SELECT wd.id, 2, 'APPROVER_APPROVAL', 'Aprobación Final',
-              (SELECT id FROM roles WHERE code = 'APPROVER'), 12
+      SELECT wd.id, 2, 'INCIDENT_ENV_VALIDATOR_APPROVAL', 'Aprobación validador ambiental', role.id, 12
        FROM workflow_definitions wd
+      INNER JOIN roles role ON role.code = 'INCIDENT_ENV_VALIDATOR' AND role.is_active = true
        WHERE wd.code = 'WF-INCIDENT-VALIDATION'
        ON CONFLICT (workflow_definition_id, step_order) DO NOTHING`,
     );

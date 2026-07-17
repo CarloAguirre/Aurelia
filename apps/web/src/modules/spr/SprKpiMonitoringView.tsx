@@ -8,6 +8,8 @@ import {
   SPR_KPI_MONITORING_PERIODS,
   SPR_KPI_MONITORING_SECTIONS,
   type SprKpiMonitoringCategory,
+  type SprKpiMonitoringChartConfig,
+  type SprKpiMonitoringLegendItem,
   type SprKpiMonitoringPeriod,
 } from './sprKpiMonitoring.constants';
 
@@ -33,7 +35,18 @@ function SectionHeader({
   );
 }
 
-function ChartRow({ charts }: { charts: (typeof SPR_KPI_MONITORING_SECTIONS.energia.charts)[number][] }) {
+type ImmutableChartConfig = Omit<SprKpiMonitoringChartConfig, 'legend'> & {
+  readonly legend: readonly SprKpiMonitoringLegendItem[];
+};
+
+function normalizeCharts(charts: readonly ImmutableChartConfig[]): SprKpiMonitoringChartConfig[] {
+  return charts.map(({ legend, ...chart }) => ({
+    ...chart,
+    legend: [...legend],
+  }));
+}
+
+function ChartRow({ charts }: { charts: readonly SprKpiMonitoringChartConfig[] }) {
   const full = charts.filter((c) => c.width === 'full');
   const halves = charts.filter((c) => c.width === 'half');
 
@@ -125,7 +138,7 @@ export function SprKpiMonitoringView() {
               helper={SPR_KPI_MONITORING_SECTIONS.energia.helper}
               chartCountLabel={SPR_KPI_MONITORING_SECTIONS.energia.chartCountLabel}
             />
-            <ChartRow charts={[...SPR_KPI_MONITORING_SECTIONS.energia.charts]} />
+            <ChartRow charts={normalizeCharts(SPR_KPI_MONITORING_SECTIONS.energia.charts)} />
           </section>
         ) : null}
 
@@ -136,7 +149,7 @@ export function SprKpiMonitoringView() {
               helper={SPR_KPI_MONITORING_SECTIONS.agua.helper}
               chartCountLabel={SPR_KPI_MONITORING_SECTIONS.agua.chartCountLabel}
             />
-            <ChartRow charts={[...SPR_KPI_MONITORING_SECTIONS.agua.charts]} />
+            <ChartRow charts={normalizeCharts(SPR_KPI_MONITORING_SECTIONS.agua.charts)} />
           </section>
         ) : null}
 
@@ -147,7 +160,7 @@ export function SprKpiMonitoringView() {
               helper={SPR_KPI_MONITORING_SECTIONS.incidentes.helper}
               chartCountLabel={SPR_KPI_MONITORING_SECTIONS.incidentes.chartCountLabel}
             />
-            <ChartRow charts={[...SPR_KPI_MONITORING_SECTIONS.incidentes.charts]} />
+            <ChartRow charts={normalizeCharts(SPR_KPI_MONITORING_SECTIONS.incidentes.charts)} />
           </section>
         ) : null}
 

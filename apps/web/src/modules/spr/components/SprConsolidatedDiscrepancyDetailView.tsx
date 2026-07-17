@@ -12,6 +12,7 @@ import {
 import { SprDiscrepancyCorrectionSummary } from './SprDiscrepancyCorrectionSummary';
 
 const copy = SPR_CONSOLIDATED_REPORT.validacionDiscrepancia;
+const attachments = Array.from(SPR_MOCK_ATTACHMENTS);
 
 type DetailTabId = 'parameters' | 'discrepancy' | 'files';
 
@@ -192,12 +193,12 @@ export function SprConsolidatedDiscrepancyDetailView({ onBack }: { onBack: () =>
 
               {activeTab === 'files' ? (
                 <div className="flex flex-col gap-[8px]">
-                  {SPR_MOCK_ATTACHMENTS.length === 0 ? (
+                  {attachments.length === 0 ? (
                     <p className="font-['Inter:Regular',sans-serif] text-[11px] text-[#acacac]">
                       {copy.detailFilesEmpty}
                     </p>
                   ) : (
-                    SPR_MOCK_ATTACHMENTS.map((attachment) => (
+                    attachments.map((attachment) => (
                       <div
                         key={attachment.name}
                         className="flex items-center gap-[10px] rounded-[8px] border border-[#e3e3e3] bg-[#f9fafb] px-[12px] py-[10px]"

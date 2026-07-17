@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type R
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Role } from '@aurelia/contracts';
 import { DashboardSidebarTopBrandBar } from '../../modules/dashboard/components/DashboardSections';
-import { canAccessSprArea, canAccessSprForm, resolveSessionUserRoles, resolveSprDefaultRoute } from '../../modules/spr/sprAccess';
+import { canAccessSprArea, canAccessSprForm, canAccessSprReport, resolveSessionUserRoles, resolveSprDefaultRoute } from '../../modules/spr/sprAccess';
 import { useNotifications } from '../hooks/useNotifications';
 import { logout } from '../services/auth.service';
 import { useSessionStore } from '../stores/session.store';
@@ -41,29 +41,29 @@ const mainItems: SidebarItem[] = [
     to: '/inspections',
     children: [
       { label: 'Dashboard', to: '/inspections/dashboard', end: true, lineMode: 'single' },
-      { label: 'Gestión de inspecciones', to: '/inspections', end: true, lineMode: 'double' },
+      { label: 'Gesti?n de inspecciones', to: '/inspections', end: true, lineMode: 'double' },
       { label: 'Historial', to: '/inspections/history', end: true, lineMode: 'single' },
-      { label: 'Administración', to: '/inspections/admin', icon: 'admin', disabled: true, lineMode: 'single', tone: 'gold' },
+      { label: 'Administraci?n', to: '/inspections/admin', icon: 'admin', disabled: true, lineMode: 'single', tone: 'gold' },
     ],
   },
-  { label: 'Incidentes', icon: 'incidents', disabled: true, badge: 'Próximo' },
+  { label: 'Incidentes', icon: 'incidents', disabled: true, badge: 'Pr?ximo' },
   {
     label: 'SPR',
     icon: 'spr',
     to: '/spr',
     children: [],
   },
-  { label: 'Impuesto verde', icon: 'greenTax', disabled: true, badge: 'Próximo' },
-  { label: 'Residuos', icon: 'waste', disabled: true, badge: 'Próximo' },
-  { label: 'Controles críticos', icon: 'criticalControls', disabled: true, badge: 'Próximo' },
-  { label: 'Monitoreo de agua', icon: 'waterMonitoring', disabled: true, badge: 'Próximo' },
-  { label: 'Material particulado', icon: 'particulateMatter', disabled: true, badge: 'Próximo' },
-  { label: 'Meteorológico', icon: 'weather', disabled: true, badge: 'Próximo' },
-  { label: 'Sustancias peligrosas', icon: 'hazardousSubstances', disabled: true, badge: 'Próximo' },
-  { label: 'Gestión del cambio', icon: 'changeManagement', disabled: true, badge: 'Próximo' },
-  { label: 'Catastro de agua', icon: 'waterCadastre', disabled: true, badge: 'Próximo' },
-  { label: 'Incumplimientos', icon: 'nonCompliances', disabled: true, badge: 'Próximo' },
-  { label: 'Workflow contratos', icon: 'contractWorkflow', disabled: true, badge: 'Próximo' },
+  { label: 'Impuesto verde', icon: 'greenTax', disabled: true, badge: 'Pr?ximo' },
+  { label: 'Residuos', icon: 'waste', disabled: true, badge: 'Pr?ximo' },
+  { label: 'Controles cr?ticos', icon: 'criticalControls', disabled: true, badge: 'Pr?ximo' },
+  { label: 'Monitoreo de agua', icon: 'waterMonitoring', disabled: true, badge: 'Pr?ximo' },
+  { label: 'Material particulado', icon: 'particulateMatter', disabled: true, badge: 'Pr?ximo' },
+  { label: 'Meteorol?gico', icon: 'weather', disabled: true, badge: 'Pr?ximo' },
+  { label: 'Sustancias peligrosas', icon: 'hazardousSubstances', disabled: true, badge: 'Pr?ximo' },
+  { label: 'Gesti?n del cambio', icon: 'changeManagement', disabled: true, badge: 'Pr?ximo' },
+  { label: 'Catastro de agua', icon: 'waterCadastre', disabled: true, badge: 'Pr?ximo' },
+  { label: 'Incumplimientos', icon: 'nonCompliances', disabled: true, badge: 'Pr?ximo' },
+  { label: 'Workflow contratos', icon: 'contractWorkflow', disabled: true, badge: 'Pr?ximo' },
 ];
 
 function isRouteActive(pathname: string, to: string, end?: boolean) {
@@ -91,7 +91,7 @@ function SidebarSectionTitle({ children }: { children: ReactNode }) {
 }
 
 function ComingSoonBadge() {
-  return <span className="flex h-[14px] shrink-0 items-center rounded-[4px] bg-[rgba(255,255,255,0.07)] px-[6px] font-['Inter:Semi_Bold',sans-serif] text-[8.5px] font-semibold leading-none text-[rgba(255,255,255,0.32)]">Próximo</span>;
+  return <span className="flex h-[14px] shrink-0 items-center rounded-[4px] bg-[rgba(255,255,255,0.07)] px-[6px] font-['Inter:Semi_Bold',sans-serif] text-[8.5px] font-semibold leading-none text-[rgba(255,255,255,0.32)]">Pr?ximo</span>;
 }
 
 function SidebarModuleItem({ item }: { item: SidebarItem }) {
@@ -238,7 +238,7 @@ function SidebarUser() {
     try {
       await logout();
     } catch {
-      // Aunque falle el backend, igual limpiamos sesión local para no dejar al usuario atrapado.
+      // Aunque falle el backend, igual limpiamos sesi?n local para no dejar al usuario atrapado.
     } finally {
       clearSession();
       navigate('/login', { replace: true });
@@ -293,7 +293,7 @@ function SidebarUser() {
                 onClick={() => void handleLogout()}
                 className="flex w-full items-center px-[12px] py-[8px] text-left font-['Inter:Semi_Bold',sans-serif] text-[11.5px] font-semibold text-[rgba(255,255,255,0.85)] transition-colors hover:bg-[rgba(255,255,255,0.08)] disabled:opacity-50"
               >
-                {isLoggingOut ? 'Cerrando…' : 'Cerrar sesión'}
+                {isLoggingOut ? 'Cerrando?' : 'Cerrar sesi?n'}
               </button>
             </div>
           ) : null}
@@ -306,15 +306,22 @@ function SidebarUser() {
 function buildSprSidebarChildren(roles: Role[]): SidebarChildItem[] {
   const children: SidebarChildItem[] = [];
 
+  if (canAccessSprReport(roles)) {
+    children.push({ label: 'Dashboard', to: '/spr/reporte', end: true, lineMode: 'single' });
+    children.push({ label: 'Reporte SPR', to: '/spr/reporte/consolidado', end: true, lineMode: 'single' });
+    children.push({ label: 'Monitoreo de KPIs', to: '/spr/monitoreo-kpis', end: true, lineMode: 'single', tone: 'gold' });
+    return children;
+  }
+
   if (canAccessSprForm(roles)) {
     children.push({ label: 'Mi formulario', to: '/spr', end: true, lineMode: 'single' });
   }
 
   if (canAccessSprArea(roles)) {
-    children.push({ label: 'Mi área', to: '/spr/mi-area', end: true, lineMode: 'single' });
+    children.push({ label: 'Mi ?rea', to: '/spr/mi-area', end: true, lineMode: 'single' });
   }
 
-  children.push({ label: 'Administración', disabled: true, icon: 'admin', lineMode: 'single', tone: 'gold' });
+  children.push({ label: 'Administraci?n', disabled: true, icon: 'admin', lineMode: 'single', tone: 'gold' });
   return children;
 }
 
@@ -342,10 +349,10 @@ export function AppSidebar() {
   return (
     <>
       <DashboardSidebarTopBrandBar />
-      <aside aria-label="Navegación lateral" className="fixed bottom-0 left-0 top-[56px] z-[80] flex w-[220px] flex-col overflow-hidden bg-gradient-to-b from-[#002659] to-[#004a3a]">
+      <aside aria-label="Navegaci?n lateral" className="fixed bottom-0 left-0 top-[56px] z-[80] flex w-[220px] flex-col overflow-hidden bg-gradient-to-b from-[#002659] to-[#004a3a]">
         <div className="min-h-0 flex-1 overflow-hidden pb-[4px]">
           <div className="flex w-full flex-col items-start px-[10px] pb-[6px] pt-[8px]">
-            <SidebarSectionTitle>Módulos</SidebarSectionTitle>
+            <SidebarSectionTitle>M?dulos</SidebarSectionTitle>
             <div className="flex w-full flex-col items-start">
               {sidebarItems.map((item) => <div key={item.label} className="w-full"><SidebarModuleItem item={item} />{item.children ? <SidebarChildren>{item.children}</SidebarChildren> : null}</div>)}
             </div>

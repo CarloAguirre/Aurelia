@@ -9,11 +9,16 @@ import {
   SPR_ACTIVE_CYCLE,
   SPR_APPROVED_STATUS,
   SPR_CORRECTED_STATUS,
+  SPR_MANAGER_APPROVED_STATUS,
   SPR_MANAGER_PENDING_REVIEW_STATUS,
   SPR_MANAGER_PENDING_RE_REVIEW_STATUS,
   SPR_MANAGER_REJECTED_WAITING_STATUS,
   SPR_MANAGER_WAITING_STATUS,
   SPR_REJECTED_STATUS,
+  SPR_RESPONSIBLE_KPI_REVIEW_SUBMITTED_STATUS,
+  SPR_RESPONSIBLE_KPI_VALIDATION_STATUS,
+  SPR_RESPONSIBLE_CORRECTION_REQUESTED_STATUS,
+  SPR_RESPONSIBLE_CORRECTION_RESUBMITTED_STATUS,
   SPR_SUBMITTED_STATUS,
 } from '../spr.constants';
 import type { SprProcessStatusVariant } from '../sprSubmittedStatus';
@@ -22,6 +27,8 @@ import type { SprAreaProcessStatusVariant } from '../sprAreaStatus';
 interface SprProcessStatusSectionProps {
   variant?: SprProcessStatusVariant | SprAreaProcessStatusVariant;
   managerApprovalDateLabel?: string;
+  signDateLabel?: string;
+  onKpiValidationClick?: () => void;
 }
 
 type ProcessStepIcon = 'document' | 'rejected' | 'corrected' | 'approved' | 'pending-report';
@@ -124,6 +131,200 @@ function KpiPendingRow({ withBottomBorder = false }: { withBottomBorder?: boolea
   );
 }
 
+function KpiValidationPendingRow({
+  withBottomBorder = false,
+  onClick,
+}: {
+  withBottomBorder?: boolean;
+  onClick?: () => void;
+}) {
+  const row = (
+    <ProcessStepRow
+      icon="pending-report"
+      iconBgClassName="bg-[#e6f3ff]"
+      iconClassName="text-[#24588b]"
+      title={SPR_RESPONSIBLE_KPI_VALIDATION_STATUS.kpiValidationStepTitle(SPR_ACTIVE_CYCLE.label)}
+      helper={SPR_RESPONSIBLE_KPI_VALIDATION_STATUS.kpiValidationStepHelper}
+      badgeLabel={SPR_RESPONSIBLE_KPI_VALIDATION_STATUS.kpiValidationBadgeLabel}
+      badgeClassName="bg-[#ffeab8] text-[10px] text-[#8e6e3e]"
+      withBottomBorder={withBottomBorder}
+    />
+  );
+
+  if (!onClick) return row;
+
+  return (
+    <button type="button" onClick={onClick} className="w-full text-left hover:bg-[#fafcff]">
+      {row}
+    </button>
+  );
+}
+
+function KpiValidationCompletedRow({ withBottomBorder = false }: { withBottomBorder?: boolean }) {
+  return (
+    <ProcessStepRow
+      icon="approved"
+      iconBgClassName="bg-[#e0ffd3]"
+      iconClassName="text-[#2a5c16]"
+      title={SPR_RESPONSIBLE_KPI_REVIEW_SUBMITTED_STATUS.kpiValidationStepTitle(SPR_ACTIVE_CYCLE.label)}
+      helper={SPR_RESPONSIBLE_KPI_REVIEW_SUBMITTED_STATUS.kpiValidationStepHelper}
+      badgeLabel={SPR_RESPONSIBLE_KPI_REVIEW_SUBMITTED_STATUS.kpiValidationBadgeLabel}
+      badgeClassName="bg-[#e0ffd3] text-[#2a5c16]"
+      withBottomBorder={withBottomBorder}
+    />
+  );
+}
+
+function ResponsibleDiscrepancyPendingRow({ withBottomBorder = false }: { withBottomBorder?: boolean }) {
+  return (
+    <ProcessStepRow
+      icon="rejected"
+      iconBgClassName="bg-[#ffd0db]"
+      iconClassName="text-[#570b1d]"
+      title={SPR_RESPONSIBLE_KPI_REVIEW_SUBMITTED_STATUS.discrepancyStepTitle(SPR_ACTIVE_CYCLE.label)}
+      helper={SPR_RESPONSIBLE_KPI_REVIEW_SUBMITTED_STATUS.discrepancyStepHelper}
+      badgeLabel={SPR_RESPONSIBLE_KPI_REVIEW_SUBMITTED_STATUS.discrepancyBadgeLabel}
+      badgeClassName="bg-[#ffeab8] text-[10px] text-[#8e6e3e]"
+      withBottomBorder={withBottomBorder}
+    />
+  );
+}
+
+function CorrectionRequestedUrgentRow({ withBottomBorder = false }: { withBottomBorder?: boolean }) {
+  return (
+    <ProcessStepRow
+      icon="rejected"
+      iconBgClassName="bg-[#ffd0db]"
+      iconClassName="text-[#570b1d]"
+      title={SPR_RESPONSIBLE_CORRECTION_REQUESTED_STATUS.urgentStepTitle(SPR_ACTIVE_CYCLE.label)}
+      helper={SPR_RESPONSIBLE_CORRECTION_REQUESTED_STATUS.urgentStepHelper}
+      badgeLabel={SPR_RESPONSIBLE_CORRECTION_REQUESTED_STATUS.urgentBadgeLabel}
+      badgeClassName="bg-[#ffeab8] text-[10px] text-[#8e6e3e]"
+      withBottomBorder={withBottomBorder}
+    />
+  );
+}
+
+function CorrectionRequestedSubmittedHistoryRow({
+  signDateLabel,
+  withBottomBorder = false,
+}: {
+  signDateLabel: string;
+  withBottomBorder?: boolean;
+}) {
+  return (
+    <ProcessStepRow
+      icon="document"
+      iconBgClassName="bg-[#e0ffd3]"
+      iconClassName="text-[#2a5c16]"
+      title={SPR_RESPONSIBLE_CORRECTION_REQUESTED_STATUS.submittedHistoryStepTitle(signDateLabel)}
+      helper={SPR_RESPONSIBLE_CORRECTION_REQUESTED_STATUS.submittedHistoryStepHelper}
+      badgeLabel="Completado"
+      badgeClassName="bg-[#e0ffd3] text-[#2a5c16]"
+      withBottomBorder={withBottomBorder}
+    />
+  );
+}
+
+function CorrectionRequestedEmittedHistoryRow({ withBottomBorder = false }: { withBottomBorder?: boolean }) {
+  return (
+    <ProcessStepRow
+      icon="document"
+      iconBgClassName="bg-[#e0ffd3]"
+      iconClassName="text-[#2a5c16]"
+      title={SPR_RESPONSIBLE_CORRECTION_REQUESTED_STATUS.emittedStepTitle(SPR_ACTIVE_CYCLE.label)}
+      helper={SPR_RESPONSIBLE_CORRECTION_REQUESTED_STATUS.emittedStepHelper(
+        SPR_RESPONSIBLE_CORRECTION_REQUESTED_STATUS.emittedDateFallback,
+      )}
+      badgeLabel="Completado"
+      badgeClassName="bg-[#e0ffd3] text-[#2a5c16]"
+      withBottomBorder={withBottomBorder}
+    />
+  );
+}
+
+function CorrectionResubmittedKpiUrgentRow({
+  withBottomBorder = false,
+  onClick,
+}: {
+  withBottomBorder?: boolean;
+  onClick?: () => void;
+}) {
+  const row = (
+    <ProcessStepRow
+      icon="pending-report"
+      iconBgClassName="bg-[#e6f3ff]"
+      iconClassName="text-[#24588b]"
+      title={SPR_RESPONSIBLE_CORRECTION_RESUBMITTED_STATUS.kpiValidationUrgentStepTitle}
+      helper={SPR_RESPONSIBLE_CORRECTION_RESUBMITTED_STATUS.kpiValidationUrgentStepHelper}
+      badgeLabel={SPR_RESPONSIBLE_CORRECTION_RESUBMITTED_STATUS.kpiValidationUrgentBadgeLabel}
+      badgeClassName="bg-[#ffeab8] text-[10px] text-[#8e6e3e]"
+      withBottomBorder={withBottomBorder}
+    />
+  );
+
+  if (!onClick) return row;
+
+  return (
+    <button type="button" onClick={onClick} className="w-full text-left hover:bg-[#fafcff]">
+      {row}
+    </button>
+  );
+}
+
+function CorrectionResubmittedCompletedRow({ withBottomBorder = false }: { withBottomBorder?: boolean }) {
+  return (
+    <ProcessStepRow
+      icon="approved"
+      iconBgClassName="bg-[#e0ffd3]"
+      iconClassName="text-[#2a5c16]"
+      title={SPR_RESPONSIBLE_CORRECTION_RESUBMITTED_STATUS.correctedStepTitle}
+      helper={SPR_RESPONSIBLE_CORRECTION_RESUBMITTED_STATUS.correctedStepHelper}
+      badgeLabel="Completado"
+      badgeClassName="bg-[#e0ffd3] text-[#2a5c16]"
+      withBottomBorder={withBottomBorder}
+    />
+  );
+}
+
+function CorrectionResubmittedSubmittedHistoryRow({
+  withBottomBorder = false,
+}: {
+  withBottomBorder?: boolean;
+}) {
+  return (
+    <ProcessStepRow
+      icon="document"
+      iconBgClassName="bg-[#e0ffd3]"
+      iconClassName="text-[#2a5c16]"
+      title={SPR_RESPONSIBLE_CORRECTION_RESUBMITTED_STATUS.submittedHistoryStepTitle(
+        SPR_RESPONSIBLE_CORRECTION_RESUBMITTED_STATUS.resubmittedDateFallback,
+      )}
+      helper={SPR_RESPONSIBLE_CORRECTION_RESUBMITTED_STATUS.submittedHistoryStepHelper}
+      badgeLabel="Completado"
+      badgeClassName="bg-[#e0ffd3] text-[#2a5c16]"
+      withBottomBorder={withBottomBorder}
+    />
+  );
+}
+
+function CorrectionResubmittedEmittedHistoryRow({ withBottomBorder = false }: { withBottomBorder?: boolean }) {
+  return (
+    <ProcessStepRow
+      icon="document"
+      iconBgClassName="bg-[#e0ffd3]"
+      iconClassName="text-[#2a5c16]"
+      title={SPR_RESPONSIBLE_CORRECTION_RESUBMITTED_STATUS.emittedStepTitle(SPR_ACTIVE_CYCLE.label)}
+      helper={SPR_RESPONSIBLE_CORRECTION_RESUBMITTED_STATUS.emittedStepHelper(
+        SPR_RESPONSIBLE_CORRECTION_RESUBMITTED_STATUS.emittedDateFallback,
+      )}
+      badgeLabel="Completado"
+      badgeClassName="bg-[#e0ffd3] text-[#2a5c16]"
+      withBottomBorder={withBottomBorder}
+    />
+  );
+}
+
 function ManagerApprovedRow({
   managerApprovalDateLabel,
   withBottomBorder = false,
@@ -149,6 +350,8 @@ function ManagerApprovedRow({
 export function SprProcessStatusSection({
   variant = 'initial',
   managerApprovalDateLabel = SPR_APPROVED_STATUS.managerApprovalDateFallback,
+  signDateLabel = SPR_SUBMITTED_STATUS.signDateFallbackLabel,
+  onKpiValidationClick,
 }: SprProcessStatusSectionProps) {
   return (
     <div className="w-full overflow-hidden rounded-[9px] border border-[#e3e3e3] bg-white">
@@ -241,6 +444,89 @@ export function SprProcessStatusSection({
             iconClassName="text-[#2a5c16]"
             title={SPR_MANAGER_PENDING_RE_REVIEW_STATUS.deliveredStepTitle(SPR_ACTIVE_CYCLE.label)}
             helper={SPR_MANAGER_PENDING_RE_REVIEW_STATUS.deliveredStepHelper}
+            badgeLabel="Completado"
+            badgeClassName="bg-[#e0ffd3] text-[#2a5c16]"
+          />
+        </>
+      ) : variant === 'kpi_validation_corrected' ? (
+        <>
+          <KpiValidationPendingRow withBottomBorder onClick={onKpiValidationClick} />
+          <ManagerApprovedRow managerApprovalDateLabel={managerApprovalDateLabel} withBottomBorder />
+          <CompletedCorrectedRow withBottomBorder />
+          <CompletedEmittedRow />
+        </>
+      ) : variant === 'correction_resubmitted' ? (
+        <>
+          <CorrectionResubmittedKpiUrgentRow withBottomBorder onClick={onKpiValidationClick} />
+          <CorrectionResubmittedCompletedRow withBottomBorder />
+          <CorrectionResubmittedSubmittedHistoryRow withBottomBorder />
+          <CorrectionResubmittedEmittedHistoryRow />
+        </>
+      ) : variant === 'correction_requested' ? (
+        <>
+          <CorrectionRequestedUrgentRow withBottomBorder />
+          <CorrectionRequestedSubmittedHistoryRow signDateLabel={signDateLabel} withBottomBorder />
+          <CorrectionRequestedEmittedHistoryRow />
+        </>
+      ) : variant === 'kpi_validation_submitted_corrected' ? (
+        <>
+          <ResponsibleDiscrepancyPendingRow withBottomBorder />
+          <KpiValidationCompletedRow withBottomBorder />
+          <ManagerApprovedRow managerApprovalDateLabel={managerApprovalDateLabel} withBottomBorder />
+          <CompletedCorrectedRow withBottomBorder />
+          <CompletedEmittedRow />
+        </>
+      ) : variant === 'kpi_validation_submitted' ? (
+        <>
+          <ResponsibleDiscrepancyPendingRow withBottomBorder />
+          <KpiValidationCompletedRow withBottomBorder />
+          <ManagerApprovedRow managerApprovalDateLabel={managerApprovalDateLabel} withBottomBorder />
+          <CompletedEmittedRow />
+        </>
+      ) : variant === 'kpi_validation' ? (
+        <>
+          <KpiValidationPendingRow withBottomBorder onClick={onKpiValidationClick} />
+          <ManagerApprovedRow managerApprovalDateLabel={managerApprovalDateLabel} withBottomBorder />
+          <CompletedEmittedRow />
+        </>
+      ) : variant === 'manager_approved' ? (
+        <>
+          <ProcessStepRow
+            icon="rejected"
+            iconBgClassName="bg-[#ffd0db]"
+            iconClassName="text-[#570b1d]"
+            title={SPR_MANAGER_APPROVED_STATUS.discrepancyStepTitle(SPR_ACTIVE_CYCLE.label)}
+            helper={SPR_MANAGER_APPROVED_STATUS.discrepancyStepHelper}
+            badgeLabel={SPR_MANAGER_APPROVED_STATUS.discrepancyBadgeLabel}
+            badgeClassName="bg-[#ffeab8] text-[10px] text-[#8e6e3e]"
+            withBottomBorder
+          />
+          <ProcessStepRow
+            icon="approved"
+            iconBgClassName="bg-[#e0ffd3]"
+            iconClassName="text-[#2a5c16]"
+            title={SPR_MANAGER_APPROVED_STATUS.approvedStepTitle(SPR_ACTIVE_CYCLE.label)}
+            helper={SPR_MANAGER_APPROVED_STATUS.approvedStepHelper(managerApprovalDateLabel)}
+            badgeLabel="Completado"
+            badgeClassName="bg-[#e0ffd3] text-[#2a5c16]"
+            withBottomBorder
+          />
+          <ProcessStepRow
+            icon="rejected"
+            iconBgClassName="bg-[#e0ffd3]"
+            iconClassName="text-[#2a5c16]"
+            title={SPR_MANAGER_APPROVED_STATUS.rejectedStepTitle(SPR_ACTIVE_CYCLE.label)}
+            helper={SPR_MANAGER_APPROVED_STATUS.rejectedStepHelper}
+            badgeLabel="Completado"
+            badgeClassName="bg-[#e0ffd3] text-[#2a5c16]"
+            withBottomBorder
+          />
+          <ProcessStepRow
+            icon="document"
+            iconBgClassName="bg-[#e0ffd3]"
+            iconClassName="text-[#2a5c16]"
+            title={SPR_MANAGER_APPROVED_STATUS.deliveredStepTitle(SPR_ACTIVE_CYCLE.label)}
+            helper={SPR_MANAGER_APPROVED_STATUS.deliveredStepHelper}
             badgeLabel="Completado"
             badgeClassName="bg-[#e0ffd3] text-[#2a5c16]"
           />

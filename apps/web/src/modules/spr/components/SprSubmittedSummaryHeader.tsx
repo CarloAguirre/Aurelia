@@ -1,9 +1,14 @@
 import {
   SPR_ACTIVE_CYCLE,
   SPR_APPROVED_STATUS,
+  SPR_MANAGER_APPROVED_STATUS,
   SPR_MANAGER_REJECTED_WAITING_STATUS,
   SPR_MANAGER_WAITING_STATUS,
   SPR_REJECTED_STATUS,
+  SPR_RESPONSIBLE_KPI_REVIEW_SUBMITTED_STATUS,
+  SPR_RESPONSIBLE_KPI_VALIDATION_STATUS,
+  SPR_RESPONSIBLE_CORRECTION_REQUESTED_STATUS,
+  SPR_RESPONSIBLE_CORRECTION_RESUBMITTED_STATUS,
   SPR_SUBMITTED_STATUS,
 } from '../spr.constants';
 
@@ -11,6 +16,11 @@ export type SprSubmittedSummaryVariant =
   | 'pending_approval'
   | 'rejected'
   | 'completed'
+  | 'kpi_validation_pending'
+  | 'kpi_review_submitted'
+  | 'correction_requested'
+  | 'correction_resubmitted'
+  | 'manager_approved'
   | 'waiting_for_responsible'
   | 'manager_corrections_pending';
 
@@ -46,17 +56,52 @@ export function SprSubmittedSummaryHeader({ signDateLabel, variant = 'pending_ap
   const statusCopy =
     variant === 'rejected'
       ? SPR_REJECTED_STATUS
-      : variant === 'completed'
-        ? SPR_APPROVED_STATUS
-        : variant === 'waiting_for_responsible'
-          ? SPR_MANAGER_WAITING_STATUS
-          : variant === 'manager_corrections_pending'
-            ? SPR_MANAGER_REJECTED_WAITING_STATUS
-            : SPR_SUBMITTED_STATUS;
+      : variant === 'kpi_validation_pending'
+        ? SPR_RESPONSIBLE_KPI_VALIDATION_STATUS
+        : variant === 'kpi_review_submitted'
+          ? SPR_RESPONSIBLE_KPI_REVIEW_SUBMITTED_STATUS
+          : variant === 'correction_requested'
+            ? SPR_RESPONSIBLE_CORRECTION_REQUESTED_STATUS
+            : variant === 'correction_resubmitted'
+              ? SPR_RESPONSIBLE_CORRECTION_RESUBMITTED_STATUS
+          : variant === 'completed' || variant === 'manager_approved'
+          ? variant === 'manager_approved'
+            ? SPR_MANAGER_APPROVED_STATUS
+            : SPR_APPROVED_STATUS
+          : variant === 'waiting_for_responsible'
+            ? SPR_MANAGER_WAITING_STATUS
+            : variant === 'manager_corrections_pending'
+              ? SPR_MANAGER_REJECTED_WAITING_STATUS
+              : SPR_SUBMITTED_STATUS;
+  const cycleStatusLabel =
+    variant === 'correction_requested' || variant === 'correction_resubmitted'
+      ? variant === 'correction_resubmitted'
+        ? SPR_RESPONSIBLE_CORRECTION_RESUBMITTED_STATUS.cycleStatusLabel
+        : SPR_RESPONSIBLE_CORRECTION_REQUESTED_STATUS.cycleStatusLabel
+      : variant === 'manager_approved'
+      ? SPR_MANAGER_APPROVED_STATUS.cycleStatusLabel
+      : variant === 'kpi_validation_pending' || variant === 'kpi_review_submitted'
+        ? SPR_RESPONSIBLE_KPI_VALIDATION_STATUS.cycleStatusLabel
+        : SPR_ACTIVE_CYCLE.cycleStatusLabel;
+  const reportHelper =
+    variant === 'correction_requested'
+      ? SPR_RESPONSIBLE_CORRECTION_REQUESTED_STATUS.reportStatusHelper
+      : variant === 'correction_resubmitted'
+        ? SPR_RESPONSIBLE_CORRECTION_RESUBMITTED_STATUS.reportStatusHelper
+      : variant === 'kpi_validation_pending' || variant === 'kpi_review_submitted'
+        ? SPR_RESPONSIBLE_KPI_VALIDATION_STATUS.reportSignHelper(
+            SPR_RESPONSIBLE_KPI_VALIDATION_STATUS.reportSignDateFallback,
+            SPR_RESPONSIBLE_KPI_VALIDATION_STATUS.reportSignerFallback,
+          )
+        : `Fecha de firma · ${signDateLabel}`;
   const formStatusColor =
-    variant === 'rejected' || variant === 'manager_corrections_pending'
+    variant === 'rejected' || variant === 'manager_corrections_pending' || variant === 'correction_requested'
       ? 'text-[#570b1d]'
-      : variant === 'completed'
+      : variant === 'completed' ||
+          variant === 'manager_approved' ||
+          variant === 'kpi_validation_pending' ||
+          variant === 'kpi_review_submitted' ||
+          variant === 'correction_resubmitted'
         ? 'text-[#3a9b3a]'
         : 'text-[#8e6e3e]';
 
@@ -66,7 +111,7 @@ export function SprSubmittedSummaryHeader({ signDateLabel, variant = 'pending_ap
         <SummaryColumn
           label="Ciclo"
           value={SPR_ACTIVE_CYCLE.label}
-          helper={SPR_ACTIVE_CYCLE.cycleStatusLabel}
+          helper={cycleStatusLabel}
           valueClassName="text-[#131313]"
         />
         <div className="pl-[20px]">
@@ -80,7 +125,7 @@ export function SprSubmittedSummaryHeader({ signDateLabel, variant = 'pending_ap
         <SummaryColumn
           label="Reporte SPR"
           value={statusCopy.reportStatusLabel}
-          helper={`Fecha de firma · ${signDateLabel}`}
+          helper={reportHelper}
           valueClassName="text-[#24588b]"
           withDivider={false}
         />

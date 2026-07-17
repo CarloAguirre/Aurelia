@@ -34,6 +34,12 @@ export async function runPhase1Seed(ds: DataSource): Promise<void> {
       { code: 'INSPECTOR',  name: 'Inspector',             is_system: true },
       { code: 'APPROVER',   name: 'Aprobador',             is_system: true },
       { code: 'VIEWER',     name: 'Visualizador',          is_system: true },
+      // Especialista de Sustentabilidad (Dashboard SPR) — sin pantallas aún; rol + permisos listos.
+      {
+        code: 'SUSTAINABILITY_SPECIALIST',
+        name: 'Especialista de Sustentabilidad',
+        is_system: true,
+      },
     ];
 
     for (const role of roles) {
@@ -201,6 +207,19 @@ export async function runPhase1Seed(ds: DataSource): Promise<void> {
         'evidences:read',
         'comments:read',
         'workflows:read',
+      ],
+      // Dashboard SPR consolidado / validación KPI — sin write/submit (eso es Responsable).
+      SUSTAINABILITY_SPECIALIST: [
+        'organization:read',
+        'users:read',
+        'spr:read',
+        'spr:approve',
+        'evidences:read',
+        'evidences:validate',
+        'comments:read',
+        'comments:write',
+        'workflows:read',
+        'workflows:approve',
       ],
     };
 

@@ -14,7 +14,13 @@ export type SprProcessStatusVariant =
   | 'rejected'
   | 'corrected'
   | 'approved'
-  | 'approved_corrected';
+  | 'approved_corrected'
+  | 'kpi_validation'
+  | 'kpi_validation_corrected'
+  | 'kpi_validation_submitted'
+  | 'kpi_validation_submitted_corrected'
+  | 'correction_requested'
+  | 'correction_resubmitted';
 
 function filterSprCycleRecords(records: SprMonthlyRecordResponse[] | undefined): SprMonthlyRecordResponse[] {
   return (records ?? []).filter(

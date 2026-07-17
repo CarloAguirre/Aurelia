@@ -9,6 +9,7 @@ import { UserSessionEntity } from './entities/user-session.entity';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { JwtTokenService } from './jwt-token.service';
 import { PermissionsGuard } from './permissions.guard';
+import { RolesGuard } from './roles.guard';
 import { SessionRegistryService } from './session-registry.service';
 
 @Module({
@@ -26,6 +27,10 @@ import { SessionRegistryService } from './session-registry.service';
     {
       provide: APP_GUARD,
       useClass: PermissionsGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
   ],
   exports: [JwtTokenService, CredentialHashService, SessionRegistryService],

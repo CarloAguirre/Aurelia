@@ -210,17 +210,6 @@ export class InspectionsController {
       throw new ForbiddenException('Only Gold Fields users can approve or reject findings');
     }
     const finding = await this.inspectionsService.updateFinding(findingId, dto, request.user.sub);
-    if (dto.responsibleUserIds !== undefined || dto.ownerUserId !== undefined) {
-      const assignedUserIds = Array.from(
-        new Set([
-          ...(dto.responsibleUserIds ?? finding.responsibleUserIds),
-          dto.ownerUserId ?? finding.ownerUserId,
-        ].filter((value): value is string => Boolean(value))),
-      );
-      await this.assignmentEmails.notifyInspectionAssigned(finding.inspectionId, assignedUserIds).catch((error) => {
-        this.logAssignmentEmailFailure(finding.inspectionId, error);
-      });
-    }
     await this.closeInspectionIfAllFindingsClosed(finding.inspectionId, request.user.sub);
     return finding;
   }

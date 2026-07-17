@@ -1,25 +1,25 @@
 import { useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useSprParameters } from '../../shared/hooks/useSprParameters';
 import { useSprMonthlyRecords } from '../../shared/hooks/useSprMonthlyRecords';
 import { useSprCycleCorrectionHistory } from '../../shared/hooks/useSprCycleCorrectionHistory';
 import { SprAreaReviewView } from './SprAreaReviewView';
 import { SprAreaStatusView } from './SprAreaStatusView';
-import { SPR_ACTIVE_CYCLE } from './spr.constants';
+import {
+  SPR_ACTIVE_CYCLE,
+  SPR_AREA_DEMO_APPROVED_STATE,
+  SPR_AREA_DEMO_STATE_QUERY,
+} from './spr.constants';
 import { resolveSprAreaDisplayMode, resolveSprAreaEffectiveDisplayMode } from './sprAreaStatus';
-import { getSprCycleRecordIds, resolveSprSignDateLabel } from './sprSubmittedStatus';
-
-function SprAreaPendingNodePlaceholder({ displayMode }: { displayMode: string }) {
-  return (
-    <div className="flex h-[calc(100vh-56px)] w-full items-center justify-center bg-[#f7f7f7] px-[22px]">
-      <p className="max-w-[480px] text-center font-['Inter:Regular',sans-serif] text-[12px] text-[#646464]">
-        Vista del gerente para el estado <span className="font-semibold text-[#131313]">{displayMode}</span> pendiente de
-        implementación (siguiente nodo Figma de la fila Gerente de Área).
-      </p>
-    </div>
-  );
-}
+import {
+  getSprCycleRecordIds,
+  resolveSprManagerApprovalDateLabel,
+  resolveSprSignDateLabel,
+} from './sprSubmittedStatus';
 
 export function SprAreaView() {
+  const [searchParams] = useSearchParams();
+  const demoState = searchParams.get(SPR_AREA_DEMO_STATE_QUERY);
   const parametersQuery = useSprParameters();
   const recordsQuery = useSprMonthlyRecords({
     periodYear: SPR_ACTIVE_CYCLE.periodYear,
@@ -34,13 +34,19 @@ export function SprAreaView() {
   const cycleRecordIds = useMemo(() => getSprCycleRecordIds(recordsQuery.data), [recordsQuery.data]);
   const needsCorrectionHistory = displayMode === 'pending_review';
   const correctionHistoryQuery = useSprCycleCorrectionHistory(cycleRecordIds, needsCorrectionHistory);
-  const effectiveDisplayMode = useMemo(
-    () => resolveSprAreaEffectiveDisplayMode(displayMode, correctionHistoryQuery.hasCorrectionHistory),
-    [correctionHistoryQuery.hasCorrectionHistory, displayMode],
-  );
+  const effectiveDisplayMode = useMemo(() => {
+    if (demoState === SPR_AREA_DEMO_APPROVED_STATE) return 'approved' as const;
+    return resolveSprAreaEffectiveDisplayMode(displayMode, correctionHistoryQuery.hasCorrectionHistory);
+  }, [correctionHistoryQuery.hasCorrectionHistory, demoState, displayMode]);
   const signDateLabel = useMemo(() => resolveSprSignDateLabel(recordsQuery.data), [recordsQuery.data]);
+  const managerApprovalDateLabel = useMemo(
+    () => resolveSprManagerApprovalDateLabel(recordsQuery.data),
+    [recordsQuery.data],
+  );
 
-  if (parametersQuery.isLoading || recordsQuery.isLoading) {
+  const isDemoApproved = demoState === SPR_AREA_DEMO_APPROVED_STATE;
+
+  if (!isDemoApproved && (parametersQuery.isLoading || recordsQuery.isLoading)) {
     return (
       <div className="flex h-[calc(100vh-56px)] w-full items-center justify-center bg-[#f7f7f7]">
         <p className="font-['Inter:Regular',sans-serif] text-[12px] text-[#646464]">Cargando vista SPR del área…</p>
@@ -48,7 +54,7 @@ export function SprAreaView() {
     );
   }
 
-  if (needsCorrectionHistory && correctionHistoryQuery.isLoading) {
+  if (!isDemoApproved && needsCorrectionHistory && correctionHistoryQuery.isLoading) {
     return (
       <div className="flex h-[calc(100vh-56px)] w-full items-center justify-center bg-[#f7f7f7]">
         <p className="font-['Inter:Regular',sans-serif] text-[12px] text-[#646464]">Cargando historial del ciclo…</p>
@@ -56,7 +62,7 @@ export function SprAreaView() {
     );
   }
 
-  if (parametersQuery.isError || recordsQuery.isError) {
+  if (!isDemoApproved && (parametersQuery.isError || recordsQuery.isError)) {
     return (
       <div className="flex h-[calc(100vh-56px)] w-full items-center justify-center bg-[#f7f7f7] px-[22px]">
         <p className="font-['Inter:Regular',sans-serif] text-[12px] text-[#bd3b5b]">
@@ -86,7 +92,15 @@ export function SprAreaView() {
     return <SprAreaReviewView />;
   }
 
-  // approved del gerente: placeholder hasta que Alexis confirme el nodo Figma (pregunta G5).
-  // 1672:10661 fue candidato no confirmado y se revirtió deliberadamente.
-  return <SprAreaPendingNodePlaceholder displayMode={effectiveDisplayMode} />;
+  if (effectiveDisplayMode === 'approved') {
+    return (
+      <SprAreaStatusView
+        signDateLabel={signDateLabel}
+        managerApprovalDateLabel={managerApprovalDateLabel}
+        mode="approved"
+      />
+    );
+  }
+
+  return null;
 }

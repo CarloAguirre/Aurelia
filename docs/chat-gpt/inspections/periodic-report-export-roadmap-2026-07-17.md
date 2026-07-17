@@ -3,6 +3,7 @@
 Fecha: 2026-07-17
 Rama: `feature/inspecciones/carlo`
 Módulos: `packages/contracts`, `apps/api`, `apps/web`
+Estado: implementación completa; validación local y fidelización visual pendientes.
 
 ## Objetivo
 
@@ -29,8 +30,9 @@ Implementar la exportación autenticada del informe periódico de inspecciones e
 5. El alcance por empresa reutiliza `ReportScopeService`; ningún exportador puede ampliar el alcance autorizado del usuario.
 6. PDF y Excel consumen el mismo `InspectionPeriodicReportResponse` producido por `InspectionPeriodicReportService`.
 7. Las descargas web usan `httpDownload` y Bearer token; no se navega directamente a los endpoints.
+8. El Excel se genera como OOXML dentro de la API, sin ExcelJS ni otra dependencia. Esto evita modificar el lockfile y simplifica el despliegue.
 
-## Endpoints objetivo
+## Endpoints implementados
 
 ```text
 GET /api/reports/inspections/periodic/data
@@ -47,7 +49,7 @@ inspectionState=all|open|closed
 companyId=<opcional>
 ```
 
-## Arquitectura
+## Arquitectura implementada
 
 ```text
 InspectionExportReportModal
@@ -59,6 +61,7 @@ InspectionPeriodicReportController
      -> InspectionPeriodicReportService
      -> InspectionPeriodicReportPdfService
      -> InspectionPeriodicReportXlsxService
+        -> XlsxWorkbookService
 
 ReportPdfBrandingService
   -> header, títulos, footer, márgenes y numeración comunes
@@ -66,60 +69,108 @@ ReportPdfBrandingService
 
 ## Roadmap de implementación
 
-### Fase 1 — Contratos y datos
+### Fase 1 — Contratos y datos: completada
 
-- [ ] Corregir distribución por área a inspecciones.
-- [ ] Hacer excluyentes las categorías de observaciones.
-- [ ] Filtrar en SQL por período, estado cancelado y alcance de empresa.
-- [ ] Mantener tipos de respuesta compartidos en `@aurelia/contracts`.
+- [x] Corregir distribución por área a inspecciones.
+- [x] Hacer excluyentes las categorías de observaciones.
+- [x] Filtrar en SQL por período, estado cancelado y alcance de empresa.
+- [x] Mantener tipos de respuesta compartidos en `@aurelia/contracts`.
 
-### Fase 2 — Base PDF compartida
+Commits:
 
-- [ ] Crear servicio reutilizable de branding PDF.
-- [ ] Conservar el renderer individual sin regresiones.
-- [ ] Reutilizar logo, Inter, márgenes de 42 pt laterales / 36 pt verticales y footer seguro.
+- `ce0c4350` — aclara contrato del reporte periódico.
+- `6701de2f` — corrige agregaciones y limita la carga de datos.
 
-### Fase 3 — PDF periódico
+### Fase 2 — Base PDF compartida: completada
 
-- [ ] Crear renderer de las tres páginas.
-- [ ] Implementar KPI, barras, dona, tablas, chips y alertas con PDFKit.
-- [ ] Agregar endpoint autenticado `/pdf`.
-- [ ] Limitar la tabla del PDF a 15 filas y mantener totales reales.
+- [x] Crear servicio reutilizable de branding PDF.
+- [x] Conservar el renderer individual sin modificaciones.
+- [x] Reutilizar logo, Inter, márgenes de 42 pt laterales / 36 pt verticales y footer seguro.
 
-### Fase 4 — Excel
+Commit:
 
-- [ ] Generar `.xlsx` sin duplicar reglas de negocio.
-- [ ] Hojas: `Resumen`, `Inspecciones`, `Atención inmediata`, `Empresas`.
-- [ ] Autofiltro, panel congelado, fechas, porcentajes y estilos.
-- [ ] Agregar endpoint autenticado `/xlsx`.
+- `575e689d` — agrega branding compartido para reportes PDF.
 
-### Fase 5 — Frontend
+### Fase 3 — PDF periódico: completada
 
-- [ ] Cambiar botón incorrecto `Rechazar observación` por `Exportar PDF` o `Exportar Excel`.
-- [ ] Conectar el modal con los endpoints autenticados.
-- [ ] Mostrar spinner y estado `Generando PDF…` / `Generando Excel…`.
-- [ ] Mantener el modal abierto en error y cerrarlo después de una descarga exitosa.
+- [x] Crear renderer de las tres páginas.
+- [x] Implementar KPI, barras, dona, tablas, chips y alertas con PDFKit.
+- [x] Agregar endpoint autenticado `/pdf`.
+- [x] Limitar la tabla del PDF a 15 filas y mantener totales reales.
 
-### Fase 6 — Validación
+Commits:
+
+- `5536717a` — implementa PDF periódico de inspecciones.
+- `390535e1` — orquesta exportaciones periódicas.
+- `386d2891` — expone descarga PDF y Excel.
+- `f09204cc` — registra servicios en `ReportsModule`.
+
+### Fase 4 — Excel: completada
+
+- [x] Generar `.xlsx` sin duplicar reglas de negocio.
+- [x] Hojas: `Resumen`, `Inspecciones`, `Atención inmediata`, `Empresas`.
+- [x] Autofiltro, panel congelado, fechas, porcentajes y estilos.
+- [x] Agregar endpoint autenticado `/xlsx`.
+
+Commits:
+
+- `d0d6ed01` — agrega generador ZIP/OOXML para Excel.
+- `2b412325` — implementa las cuatro hojas del informe.
+
+### Fase 5 — Frontend: completada
+
+- [x] Cambiar botón incorrecto `Rechazar observación` por `Exportar PDF` o `Exportar Excel`.
+- [x] Conectar el modal con los endpoints autenticados.
+- [x] Mostrar spinner y estado `Generando PDF…` / `Generando Excel…`.
+- [x] Mantener el modal abierto en error y cerrarlo después de una descarga exitosa.
+
+Commits:
+
+- `ae396b7a` — agrega servicio autenticado de descarga periódica.
+- `d091385e` — conecta el modal y corrige la acción principal.
+
+### Fase 6 — Validación: pendiente de ejecución local
 
 - [ ] `pnpm --filter @aurelia/contracts build`
 - [ ] `pnpm --filter api lint`
 - [ ] `pnpm --filter api build`
 - [ ] `pnpm --filter web typecheck`
 - [ ] `pnpm --filter web build`
-- [ ] Validación visual contra los nodos Figma.
+- [ ] Validación visual del PDF contra los nodos Figma.
+- [ ] Apertura del Excel en Microsoft Excel o LibreOffice sin advertencias de reparación.
 - [ ] Pruebas de año, trimestre, mes, todas, abiertas y cerradas.
 - [ ] Pruebas de permisos para Gold Fields y empresas contratistas.
 
+## Archivos incorporados
+
+```text
+packages/contracts/src/dtos/reports/inspection-periodic-report.response.ts
+apps/api/src/modules/reports/inspection-periodic-report.service.ts
+apps/api/src/modules/reports/report-pdf-branding.service.ts
+apps/api/src/modules/reports/inspection-periodic-report-pdf.service.ts
+apps/api/src/modules/reports/xlsx-workbook.service.ts
+apps/api/src/modules/reports/inspection-periodic-report-xlsx.service.ts
+apps/api/src/modules/reports/inspection-periodic-report-export.service.ts
+apps/api/src/modules/reports/inspection-periodic-report.controller.ts
+apps/api/src/modules/reports/reports.module.ts
+apps/web/src/shared/services/periodic-inspection-reports.service.ts
+apps/web/src/modules/inspections/components/InspectionExportReportModal.tsx
+```
+
 ## Riesgos y controles
 
-- No modificar el PDF individual al extraer elementos comunes sin comparar una exportación previa y posterior.
-- No contar observaciones vencidas dos veces en el resumen.
-- No usar la muestra de 15 filas para calcular KPI o rankings.
-- No exponer información de empresas fuera del alcance autorizado.
-- No abrir endpoints de descarga en una pestaña sin token.
-- El Excel debe abrir sin advertencias de reparación en Excel o LibreOffice.
+- No se modificó el renderer del PDF individual.
+- Las observaciones vencidas se clasifican antes que abiertas o ejecutadas para evitar doble conteo.
+- La muestra de 15 filas solo afecta la página 2 del PDF; KPI y rankings usan el universo completo.
+- Los endpoints reutilizan el alcance autorizado de `ReportScopeService`.
+- El frontend descarga mediante Bearer token y `Blob`.
+- El generador OOXML debe probarse en Excel y LibreOffice antes de desplegar.
+- La primera iteración del PDF requiere comparación visual y ajustes de fidelidad con datos reales.
 
-## Estado de continuidad
+## Siguiente acción
 
-Este documento debe actualizarse al cerrar cada fase con commits, archivos modificados, validaciones ejecutadas y deuda pendiente.
+1. Traer los commits desde `aurelia-old/feature/inspecciones/carlo`.
+2. Ejecutar build y lint.
+3. Generar un PDF trimestral con suficientes datos para llenar las tres páginas.
+4. Generar un Excel y abrir las cuatro hojas.
+5. Compartir capturas o archivos resultantes para la siguiente iteración de fidelización visual.

@@ -41,29 +41,29 @@ const mainItems: SidebarItem[] = [
     to: '/inspections',
     children: [
       { label: 'Dashboard', to: '/inspections/dashboard', end: true, lineMode: 'single' },
-      { label: 'Gesti?n de inspecciones', to: '/inspections', end: true, lineMode: 'double' },
+      { label: 'Gestión de inspecciones', to: '/inspections', end: true, lineMode: 'double' },
       { label: 'Historial', to: '/inspections/history', end: true, lineMode: 'single' },
-      { label: 'Administraci?n', to: '/inspections/admin', icon: 'admin', disabled: true, lineMode: 'single', tone: 'gold' },
+      { label: 'Administración', to: '/inspections/admin', icon: 'admin', disabled: true, lineMode: 'single', tone: 'gold' },
     ],
   },
-  { label: 'Incidentes', icon: 'incidents', disabled: true, badge: 'Pr?ximo' },
+  { label: 'Incidentes', icon: 'incidents', disabled: true, badge: 'Próximo' },
   {
     label: 'SPR',
     icon: 'spr',
     to: '/spr',
     children: [],
   },
-  { label: 'Impuesto verde', icon: 'greenTax', disabled: true, badge: 'Pr?ximo' },
-  { label: 'Residuos', icon: 'waste', disabled: true, badge: 'Pr?ximo' },
-  { label: 'Controles cr?ticos', icon: 'criticalControls', disabled: true, badge: 'Pr?ximo' },
-  { label: 'Monitoreo de agua', icon: 'waterMonitoring', disabled: true, badge: 'Pr?ximo' },
-  { label: 'Material particulado', icon: 'particulateMatter', disabled: true, badge: 'Pr?ximo' },
-  { label: 'Meteorol?gico', icon: 'weather', disabled: true, badge: 'Pr?ximo' },
-  { label: 'Sustancias peligrosas', icon: 'hazardousSubstances', disabled: true, badge: 'Pr?ximo' },
-  { label: 'Gesti?n del cambio', icon: 'changeManagement', disabled: true, badge: 'Pr?ximo' },
-  { label: 'Catastro de agua', icon: 'waterCadastre', disabled: true, badge: 'Pr?ximo' },
-  { label: 'Incumplimientos', icon: 'nonCompliances', disabled: true, badge: 'Pr?ximo' },
-  { label: 'Workflow contratos', icon: 'contractWorkflow', disabled: true, badge: 'Pr?ximo' },
+  { label: 'Impuesto verde', icon: 'greenTax', disabled: true, badge: 'Próximo' },
+  { label: 'Residuos', icon: 'waste', disabled: true, badge: 'Próximo' },
+  { label: 'Controles críticos', icon: 'criticalControls', disabled: true, badge: 'Próximo' },
+  { label: 'Monitoreo de agua', icon: 'waterMonitoring', disabled: true, badge: 'Próximo' },
+  { label: 'Material particulado', icon: 'particulateMatter', disabled: true, badge: 'Próximo' },
+  { label: 'Meteorológico', icon: 'weather', disabled: true, badge: 'Próximo' },
+  { label: 'Sustancias peligrosas', icon: 'hazardousSubstances', disabled: true, badge: 'Próximo' },
+  { label: 'Gestión del cambio', icon: 'changeManagement', disabled: true, badge: 'Próximo' },
+  { label: 'Catastro de agua', icon: 'waterCadastre', disabled: true, badge: 'Próximo' },
+  { label: 'Incumplimientos', icon: 'nonCompliances', disabled: true, badge: 'Próximo' },
+  { label: 'Workflow contratos', icon: 'contractWorkflow', disabled: true, badge: 'Próximo' },
 ];
 
 function isRouteActive(pathname: string, to: string, end?: boolean) {
@@ -91,10 +91,20 @@ function SidebarSectionTitle({ children }: { children: ReactNode }) {
 }
 
 function ComingSoonBadge() {
-  return <span className="flex h-[14px] shrink-0 items-center rounded-[4px] bg-[rgba(255,255,255,0.07)] px-[6px] font-['Inter:Semi_Bold',sans-serif] text-[8.5px] font-semibold leading-none text-[rgba(255,255,255,0.32)]">Pr?ximo</span>;
+  return <span className="flex h-[14px] shrink-0 items-center rounded-[4px] bg-[rgba(255,255,255,0.07)] px-[6px] font-['Inter:Semi_Bold',sans-serif] text-[8.5px] font-semibold leading-none text-[rgba(255,255,255,0.32)]">Próximo</span>;
 }
 
-function SidebarModuleItem({ item }: { item: SidebarItem }) {
+function SidebarModuleItem({
+  item,
+  expanded,
+  controlsId,
+  onToggle,
+}: {
+  item: SidebarItem;
+  expanded: boolean;
+  controlsId?: string;
+  onToggle?: () => void;
+}) {
   const location = useLocation();
   const navigate = useNavigate();
   const hasChildren = Boolean(item.children?.length);
@@ -104,15 +114,27 @@ function SidebarModuleItem({ item }: { item: SidebarItem }) {
   const baseClass = `group flex h-[32px] w-full items-center rounded-[7px] text-left transition-colors duration-150 ${isActive ? 'bg-[rgba(255,255,255,0.1)]' : item.disabled ? '' : 'hover:bg-[rgba(255,255,255,0.055)]'} ${item.icon === 'inspections' ? 'gap-[10px] px-[10px] py-[8px]' : 'gap-[9px] px-[10px] py-[7px]'}`;
 
   function handleClick() {
+    if (hasChildren) {
+      onToggle?.();
+      return;
+    }
     if (item.to && !item.disabled) navigate(item.to);
   }
 
   return (
-    <button aria-current={isActive ? 'page' : undefined} className={baseClass} disabled={item.disabled && !item.to} onClick={handleClick} type="button">
+    <button
+      aria-controls={hasChildren ? controlsId : undefined}
+      aria-current={isActive ? 'page' : undefined}
+      aria-expanded={hasChildren ? expanded : undefined}
+      className={baseClass}
+      disabled={item.disabled && !item.to}
+      onClick={handleClick}
+      type="button"
+    >
       <SidebarIcon name={item.icon} className={getModuleIconSize(item.icon)} />
       <span className={`min-w-0 flex-1 truncate font-['Inter:Medium',sans-serif] font-medium leading-[15px] ${isActive ? 'text-white' : 'text-[rgba(255,255,255,0.55)]'} ${item.icon === 'inspections' ? 'text-[13px]' : 'text-[12.5px]'}`}>{item.label}</span>
       {item.badge ? <ComingSoonBadge /> : null}
-      {hasChildren ? <SidebarIcon name="chevron" className="h-[13px] w-[13px]" /> : null}
+      {hasChildren ? <SidebarIcon name="chevron" className={`h-[13px] w-[13px] transition-transform duration-150 ${expanded ? 'rotate-0' : '-rotate-90'}`} /> : null}
     </button>
   );
 }
@@ -155,9 +177,9 @@ function SidebarSubItem({ item }: { item: SidebarChildItem }) {
   return <button aria-current={isActive ? 'page' : undefined} className={className} disabled={item.disabled} type="button">{content}</button>;
 }
 
-function SidebarChildren({ children }: { children: SidebarChildItem[] }) {
+function SidebarChildren({ children, id }: { children: SidebarChildItem[]; id: string }) {
   return (
-    <div className="flex max-h-[400px] w-full flex-col overflow-hidden">
+    <div id={id} className="flex max-h-[400px] w-full flex-col overflow-hidden">
       {children.slice(0, 3).map((item) => <SidebarSubItem key={item.label} item={item} />)}
       <div className="w-full pl-[38px] pr-[10px] pt-[4px]"><div className="h-px w-full bg-[rgba(255,255,255,0.06)]" /></div>
       {children.slice(3).map((item) => <div key={item.label} className="w-full pt-[4px]"><SidebarSubItem item={item} /></div>)}
@@ -238,7 +260,7 @@ function SidebarUser() {
     try {
       await logout();
     } catch {
-      // Aunque falle el backend, igual limpiamos sesi?n local para no dejar al usuario atrapado.
+      // Aunque falle el backend, igual limpiamos sesión local para no dejar al usuario atrapado.
     } finally {
       clearSession();
       navigate('/login', { replace: true });
@@ -293,7 +315,7 @@ function SidebarUser() {
                 onClick={() => void handleLogout()}
                 className="flex w-full items-center px-[12px] py-[8px] text-left font-['Inter:Semi_Bold',sans-serif] text-[11.5px] font-semibold text-[rgba(255,255,255,0.85)] transition-colors hover:bg-[rgba(255,255,255,0.08)] disabled:opacity-50"
               >
-                {isLoggingOut ? 'Cerrando?' : 'Cerrar sesi?n'}
+                {isLoggingOut ? 'Cerrando…' : 'Cerrar sesión'}
               </button>
             </div>
           ) : null}
@@ -318,10 +340,10 @@ function buildSprSidebarChildren(roles: Role[]): SidebarChildItem[] {
   }
 
   if (canAccessSprArea(roles)) {
-    children.push({ label: 'Mi ?rea', to: '/spr/mi-area', end: true, lineMode: 'single' });
+    children.push({ label: 'Mi área', to: '/spr/mi-area', end: true, lineMode: 'single' });
   }
 
-  children.push({ label: 'Administraci?n', disabled: true, icon: 'admin', lineMode: 'single', tone: 'gold' });
+  children.push({ label: 'Administración', disabled: true, icon: 'admin', lineMode: 'single', tone: 'gold' });
   return children;
 }
 
@@ -340,21 +362,47 @@ function resolveSidebarItems(roles: Role[]): SidebarItem[] {
 
 export function AppSidebar() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(() => new Set());
   const notificationsQuery = useNotifications();
   const unreadCount = notificationsQuery.data?.filter((notification) => !notification.readAt).length ?? 0;
   const user = useSessionStore((state) => state.user);
   const userRoles = resolveSessionUserRoles(user);
   const sidebarItems = resolveSidebarItems(userRoles);
 
+  function toggleModule(label: string) {
+    setExpandedModules((current) => {
+      const next = new Set(current);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  }
+
   return (
     <>
       <DashboardSidebarTopBrandBar />
-      <aside aria-label="Navegaci?n lateral" className="fixed bottom-0 left-0 top-[56px] z-[80] flex w-[220px] flex-col overflow-hidden bg-gradient-to-b from-[#002659] to-[#004a3a]">
+      <aside aria-label="Navegación lateral" className="fixed bottom-0 left-0 top-[56px] z-[80] flex w-[220px] flex-col overflow-hidden bg-gradient-to-b from-[#002659] to-[#004a3a]">
         <div className="min-h-0 flex-1 overflow-hidden pb-[4px]">
           <div className="flex w-full flex-col items-start px-[10px] pb-[6px] pt-[8px]">
-            <SidebarSectionTitle>M?dulos</SidebarSectionTitle>
+            <SidebarSectionTitle>Módulos</SidebarSectionTitle>
             <div className="flex w-full flex-col items-start">
-              {sidebarItems.map((item) => <div key={item.label} className="w-full"><SidebarModuleItem item={item} />{item.children ? <SidebarChildren>{item.children}</SidebarChildren> : null}</div>)}
+              {sidebarItems.map((item, index) => {
+                const hasChildren = Boolean(item.children?.length);
+                const expanded = hasChildren && expandedModules.has(item.label);
+                const controlsId = `sidebar-module-${index}-children`;
+
+                return (
+                  <div key={item.label} className="w-full">
+                    <SidebarModuleItem
+                      item={item}
+                      expanded={expanded}
+                      controlsId={hasChildren ? controlsId : undefined}
+                      onToggle={hasChildren ? () => toggleModule(item.label) : undefined}
+                    />
+                    {hasChildren && expanded ? <SidebarChildren id={controlsId}>{item.children as SidebarChildItem[]}</SidebarChildren> : null}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

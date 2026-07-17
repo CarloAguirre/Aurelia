@@ -9,8 +9,9 @@ interface RequireAdminProps {
 export function RequireAdmin({ children }: RequireAdminProps) {
   const user = useSessionStore((state) => state.user);
   const location = useLocation();
+  const roles = user?.roles ?? (user?.role ? [user.role] : []);
 
-  if (user?.role !== Role.ADMIN) {
+  if (!roles.includes(Role.ADMIN)) {
     return <Navigate to="/" replace state={{ from: location.pathname }} />;
   }
 

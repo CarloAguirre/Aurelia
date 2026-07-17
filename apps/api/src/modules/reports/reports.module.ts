@@ -16,13 +16,18 @@ import { InspectionDetailReportPdfRuntimeService } from './inspection-detail-rep
 import { InspectionDetailReportPdfService } from './inspection-detail-report-pdf.service';
 import { InspectionDetailReportPdfTranslatedService } from './inspection-detail-report-pdf-translated.service';
 import { InspectionPeriodicReportController } from './inspection-periodic-report.controller';
+import { InspectionPeriodicReportExportService } from './inspection-periodic-report-export.service';
+import { InspectionPeriodicReportPdfService } from './inspection-periodic-report-pdf.service';
 import { InspectionPeriodicReportService } from './inspection-periodic-report.service';
+import { InspectionPeriodicReportXlsxService } from './inspection-periodic-report-xlsx.service';
+import { ReportPdfBrandingService } from './report-pdf-branding.service';
 import { ReportPdfService } from './report-pdf.service';
 import { ReportPeriodService } from './report-period.service';
 import { ReportScopeService } from './report-scope.service';
 import { ReportTranslationService } from './report-translation.service';
 import { ReportsController } from './reports.controller';
 import { ReportsService } from './reports.service';
+import { XlsxWorkbookService } from './xlsx-workbook.service';
 
 @Module({
   imports: [
@@ -41,10 +46,15 @@ import { ReportsService } from './reports.service';
   providers: [
     ReportsService,
     ReportPdfService,
+    ReportPdfBrandingService,
     ReportPeriodService,
     ReportScopeService,
     ReportTranslationService,
+    XlsxWorkbookService,
     InspectionPeriodicReportService,
+    InspectionPeriodicReportPdfService,
+    InspectionPeriodicReportXlsxService,
+    InspectionPeriodicReportExportService,
     InspectionDetailReportPdfFidelityService,
     InspectionDetailReportPdfRuntimeService,
     InspectionDetailReportPdfFinalService,
@@ -56,6 +66,12 @@ import { ReportsService } from './reports.service';
       useExisting: InspectionDetailReportPdfLayoutService,
     },
   ],
-  exports: [ReportPdfService, ReportPeriodService, ReportScopeService, InspectionDetailReportPdfService],
+  exports: [
+    ReportPdfService,
+    ReportPdfBrandingService,
+    ReportPeriodService,
+    ReportScopeService,
+    InspectionDetailReportPdfService,
+  ],
 })
 export class ReportsModule {}

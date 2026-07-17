@@ -33,6 +33,44 @@ type SidebarItem = {
   children?: SidebarChildItem[];
 };
 
+const SIDEBAR_EXPANDED_MODULES_STORAGE_KEY = 'aurelia.sidebar.expanded-modules';
+
+function readExpandedModules(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+
+  try {
+    const stored = window.sessionStorage.getItem(SIDEBAR_EXPANDED_MODULES_STORAGE_KEY);
+    if (!stored) return new Set();
+
+    const parsed: unknown = JSON.parse(stored);
+    if (!Array.isArray(parsed)) return new Set();
+
+    return new Set(parsed.filter((value): value is string => typeof value === 'string'));
+  } catch {
+    return new Set();
+  }
+}
+
+function persistExpandedModules(modules: Set<string>) {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.sessionStorage.setItem(SIDEBAR_EXPANDED_MODULES_STORAGE_KEY, JSON.stringify([...modules]));
+  } catch {
+    // El sidebar sigue funcionando aunque el navegador bloquee sessionStorage.
+  }
+}
+
+function clearPersistedExpandedModules() {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.sessionStorage.removeItem(SIDEBAR_EXPANDED_MODULES_STORAGE_KEY);
+  } catch {
+    // No bloqueamos el cierre de sesión por un fallo de almacenamiento local.
+  }
+}
+
 const mainItems: SidebarItem[] = [
   { label: 'Dashboard', icon: 'dashboard', to: '/', end: true },
   {
@@ -262,6 +300,7 @@ function SidebarUser() {
     } catch {
       // Aunque falle el backend, igual limpiamos sesión local para no dejar al usuario atrapado.
     } finally {
+      clearPersistedExpandedModules();
       clearSession();
       navigate('/login', { replace: true });
     }
@@ -362,7 +401,7 @@ function resolveSidebarItems(roles: Role[]): SidebarItem[] {
 
 export function AppSidebar() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [expandedModules, setExpandedModules] = useState<Set<string>>(() => new Set());
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(readExpandedModules);
   const notificationsQuery = useNotifications();
   const unreadCount = notificationsQuery.data?.filter((notification) => !notification.readAt).length ?? 0;
   const user = useSessionStore((state) => state.user);
@@ -374,6 +413,7 @@ export function AppSidebar() {
       const next = new Set(current);
       if (next.has(label)) next.delete(label);
       else next.add(label);
+      persistExpandedModules(next);
       return next;
     });
   }

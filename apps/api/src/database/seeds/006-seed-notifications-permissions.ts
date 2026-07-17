@@ -5,6 +5,27 @@ import { AppDataSource } from '../data-source';
 
 config();
 
+const notificationReaderRoles = [
+  'VIEWER',
+  'INSPECTOR',
+  'INSPECTION_RESPONSIBLE',
+  'INSPECTION_CLOSURE_VERIFIER',
+  'SPR_RESPONSIBLE',
+  'SPR_AREA_MANAGER',
+  'SPR_SUSTAINABILITY_SPECIALIST',
+  'SPR_ENVIRONMENT_MANAGER',
+  'INCIDENT_GENERATOR',
+  'INCIDENT_ENV_VALIDATOR',
+  'INCIDENT_ENV_COORDINATOR',
+  'INCIDENT_SUPERINTENDENT',
+  'INCIDENT_ICAM_LEAD',
+  'CONTROL_VERIFIER',
+  'CONTROL_OWNER',
+  'CONTROL_SUPERINTENDENT',
+  'CONTROL_MANAGER',
+  'CONTROL_CORPORATE_APPROVER',
+] as const;
+
 export async function runNotificationsPermissionsSeed(ds: DataSource): Promise<void> {
   const qr = ds.createQueryRunner();
   await qr.connect();
@@ -32,9 +53,11 @@ export async function runNotificationsPermissionsSeed(ds: DataSource): Promise<v
       `INSERT INTO role_permissions (role_id, permission_id)
        SELECT r.id, p.id
        FROM roles r, permissions p
-       WHERE r.code IN ('SUPERVISOR', 'INSPECTOR', 'APPROVER', 'VIEWER')
+       WHERE r.code = ANY($1::text[])
+         AND r.is_active = true
          AND p.code = 'notifications:read'
        ON CONFLICT DO NOTHING`,
+      [notificationReaderRoles],
     );
 
     await qr.commitTransaction();
@@ -57,8 +80,8 @@ async function main(): Promise<void> {
 }
 
 if (require.main === module) {
-  void main().catch((err) => {
-    console.error('Notification permissions seed failed:', err);
+  void main().catch((error: unknown) => {
+    console.error('Notification permissions seed failed:', error);
     process.exit(1);
   });
 }

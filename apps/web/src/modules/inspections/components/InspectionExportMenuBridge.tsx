@@ -117,8 +117,22 @@ export function InspectionExportMenuBridge(): ReactElement | null {
           role="menu"
           aria-label="Formatos de exportación"
         >
-          <button type="button" className="flex h-[40px] w-full shrink-0 items-center rounded-[8px] bg-white px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313] hover:bg-[#e3e3e3]" role="menuitem" onClick={() => selectFormat('excel')}>Excel (.xlsx)</button>
-          <button type="button" className="flex h-[40px] w-full shrink-0 items-center rounded-[8px] bg-white px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313] hover:bg-[#e3e3e3]" role="menuitem" onClick={() => selectFormat('pdf')}>PDF (.pdf)</button>
+          <button
+            type="button"
+            className="flex h-[40px] w-full shrink-0 items-center rounded-[8px] bg-white px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313] hover:bg-[#e3e3e3]"
+            role="menuitem"
+            onClick={() => selectFormat('excel')}
+          >
+            Excel (.xlsx)
+          </button>
+          <button
+            type="button"
+            className="flex h-[40px] w-full shrink-0 items-center rounded-[8px] bg-white px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313] hover:bg-[#e3e3e3]"
+            role="menuitem"
+            onClick={() => selectFormat('pdf')}
+          >
+            PDF (.pdf)
+          </button>
         </div>,
         document.body,
       ) : null}

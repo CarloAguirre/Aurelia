@@ -19,6 +19,8 @@ type ReportFontDefinition = {
   candidates: string[];
 };
 
+const PERIODIC_INSPECTION_REPORT_SUBJECT = 'Informe periódico de inspecciones ambientales';
+
 @Injectable()
 export class ReportPdfService {
   async render(
@@ -38,6 +40,7 @@ export class ReportPdfService {
       },
     });
     this.configureReportFonts(document);
+    this.configureDrawingDefaults(document, options);
 
     const chunks: Buffer[] = [];
     const completed = new Promise<Buffer>((resolve, reject) => {
@@ -55,6 +58,18 @@ export class ReportPdfService {
     }
 
     return completed;
+  }
+
+  private configureDrawingDefaults(document: ReportPdfDocument, options: ReportPdfOptions): void {
+    if (options.subject !== PERIODIC_INSPECTION_REPORT_SUBJECT) return;
+
+    const originalFillAndStroke = document.fillAndStroke.bind(document);
+    const normalizedFillAndStroke = ((...args: unknown[]) => {
+      document.lineWidth(0.75);
+      return Reflect.apply(originalFillAndStroke, document, args) as ReportPdfDocument;
+    }) as ReportPdfDocument['fillAndStroke'];
+
+    (document as unknown as { fillAndStroke: ReportPdfDocument['fillAndStroke'] }).fillAndStroke = normalizedFillAndStroke;
   }
 
   private configureReportFonts(document: ReportPdfDocument): void {
@@ -111,7 +126,7 @@ export class ReportPdfService {
         environment.italic,
         windowsFonts ? join(windowsFonts, 'Inter-Italic.ttf') : '',
         '/usr/share/fonts/truetype/inter/Inter-Italic.ttf',
-        '/usr/share/fonts/opentype/inter/Inter-Italic.otf',
+        '/usr/share/opentype/inter/Inter-Italic.otf',
         '/Library/Fonts/Inter-Italic.ttf',
         '/Library/Fonts/Inter Italic.ttf',
       ],
@@ -119,7 +134,7 @@ export class ReportPdfService {
         environment.boldItalic,
         windowsFonts ? join(windowsFonts, 'Inter-BoldItalic.ttf') : '',
         '/usr/share/fonts/truetype/inter/Inter-BoldItalic.ttf',
-        '/usr/share/fonts/opentype/inter/Inter-BoldItalic.otf',
+        '/usr/share/opentype/inter/Inter-BoldItalic.otf',
         '/Library/Fonts/Inter-BoldItalic.ttf',
         '/Library/Fonts/Inter Bold Italic.ttf',
       ],

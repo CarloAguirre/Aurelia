@@ -61,6 +61,7 @@ export function SprParameterDetailForm({
             value={entry.value}
             disabled={entry.notApplicable}
             onChange={(event) => onValueChange(event.target.value)}
+            onFocus={(event) => event.currentTarget.select()}
             placeholder="0"
             className={`h-[38px] flex-1 rounded-[8px] border-[1.5px] px-[13.5px] font-['Inter:Semi_Bold',sans-serif] text-[13px] font-semibold text-[#131313] outline-none disabled:bg-[#f2f2f2] disabled:text-[#acacac] ${showHistoricalAlert ? 'border-[#e8720c] bg-[#fff7f3] focus:border-[#e8720c]' : 'border-[#d1d1d1] bg-[#e6f3ff] focus:border-[#24588b]'}`}
           />

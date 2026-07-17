@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { SprFooterInfoIcon, SprRejectCrossIcon, SprSubmitIcon } from '../icons/SprIcons';
 import { SPR_AREA_REVIEW } from '../spr.constants';
+import { SprAreaApproveModal, type SprAreaApproveModalSummary } from './SprAreaApproveModal';
 import { SprAreaRejectModal } from './SprAreaRejectModal';
 
 interface SprAreaReviewFooterProps {
@@ -10,11 +11,12 @@ interface SprAreaReviewFooterProps {
   actionErrorMessage: string | null;
   responsibleLabel: string;
   rejectErrorMessage: string | null;
+  approveSummary: SprAreaApproveModalSummary;
   onRejectConfirm: (comments: string) => Promise<void>;
-  onApprove: () => void;
+  onApproveConfirm: () => Promise<void>;
 }
 
-// Footer de acciones del gerente (Figma 1395:12112) + modal rechazo (1399:14886).
+// Footer de acciones del gerente (Figma 1395:12112) + modales rechazo/aprobación.
 export function SprAreaReviewFooter({
   isApproving,
   isRejecting,
@@ -22,10 +24,12 @@ export function SprAreaReviewFooter({
   actionErrorMessage,
   responsibleLabel,
   rejectErrorMessage,
+  approveSummary,
   onRejectConfirm,
-  onApprove,
+  onApproveConfirm,
 }: SprAreaReviewFooterProps) {
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
   const isBusy = isApproving || isRejecting;
   const footerMessage = actionErrorMessage ?? SPR_AREA_REVIEW.footerInfo;
 
@@ -45,6 +49,25 @@ export function SprAreaReviewFooter({
       setRejectModalOpen(false);
     } catch {
       // Mantener el modal abierto; el error se muestra via rejectErrorMessage.
+    }
+  }
+
+  function handleOpenApproveModal() {
+    if (!canAct || isBusy) return;
+    setApproveModalOpen(true);
+  }
+
+  function handleCloseApproveModal() {
+    if (isApproving) return;
+    setApproveModalOpen(false);
+  }
+
+  async function handleConfirmApprove() {
+    try {
+      await onApproveConfirm();
+      setApproveModalOpen(false);
+    } catch {
+      // Mantener el modal abierto; el error se muestra en el footer.
     }
   }
 
@@ -74,7 +97,7 @@ export function SprAreaReviewFooter({
           <button
             type="button"
             data-action="spr-area-approve"
-            onClick={onApprove}
+            onClick={handleOpenApproveModal}
             disabled={!canAct || isBusy}
             className="flex h-[36px] items-center gap-[6px] rounded-[8px] bg-[#c8a064] px-[24px] font-['Inter:Bold',sans-serif] text-[12px] font-bold text-[#001e39] disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -91,6 +114,15 @@ export function SprAreaReviewFooter({
         submitErrorMessage={rejectModalOpen ? rejectErrorMessage : null}
         onClose={handleCloseRejectModal}
         onConfirm={handleConfirmReject}
+      />
+
+      <SprAreaApproveModal
+        open={approveModalOpen}
+        responsibleLabel={responsibleLabel}
+        summary={approveSummary}
+        isSubmitting={isApproving}
+        onClose={handleCloseApproveModal}
+        onConfirm={handleConfirmApprove}
       />
     </>
   );

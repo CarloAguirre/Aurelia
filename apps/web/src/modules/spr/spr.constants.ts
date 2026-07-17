@@ -38,7 +38,7 @@ export const SPR_CORRECTED_STATUS = {
   emittedStepHelper: 'A la espera de la aprobación y firma de tu gerente de área.',
 } as const;
 
-// PLACEHOLDER: estado post-aprobacion del gerente (Figma 1672:10996).
+// PLACEHOLDER: estado post-aprobacion del responsable (Figma 1672:10996).
 export const SPR_APPROVED_STATUS = {
   formStatusLabel: 'Completado ✓',
   formStatusHelper: 'Aprobado por tu Gerente',
@@ -104,6 +104,24 @@ export const SPR_AREA_REJECT_MODAL = {
   submitLabel: 'Enviar rechazo',
 } as const;
 
+// Modal de aprobación/firma del gerente (Figma 1672:10058 overlay + 1672:10110).
+export const SPR_AREA_APPROVE_MODAL = {
+  title: 'Aprobar y firmar formulario',
+  description: (responsibleLabel: string) =>
+    `Al firmar confirmas que revisaste los datos reportados por ${responsibleLabel} y la documentación de respaldo.`,
+  summaryTitle: 'Resumen del formulario',
+  digitalSignatureLabel: 'Firma digital',
+  signCtaLabel: 'Haz clic para firmar digitalmente',
+  signedLabel: 'Firmado digitalmente',
+  roleLabel: 'Gerente de Área',
+  cancelLabel: 'Cancelar',
+  confirmLabel: 'Confirmar aprobación',
+  soxNotice: (soxEvidenceCount: number) =>
+    soxEvidenceCount === 1
+      ? 'Al aprobar, AurelIA generará automáticamente 1 evidencia SOX y notificará al Gerente MA para su firma.'
+      : `Al aprobar, AurelIA generará automáticamente ${soxEvidenceCount} evidencias SOX y notificará al Gerente MA para su firma.`,
+} as const;
+
 // PLACEHOLDER: estado pre-envio del gerente de area (Figma 1672:4446).
 export const SPR_MANAGER_WAITING_STATUS = {
   formStatusLabel: 'A la espera',
@@ -114,7 +132,8 @@ export const SPR_MANAGER_WAITING_STATUS = {
   pendingBadgeLabel: 'Pendiente',
 } as const;
 
-// PLACEHOLDER: gerente esperando correccion del responsable (Figma 1672:5531).
+// PROVISIONAL: Figma 1672:5531 cableado; copy KPI pendiente de confirmar con Alexis (pregunta C1).
+// Espejo gerente de 1672:5810. Layout/timeline razonables; el helper "Pendiente por gerente del área" puede ser incorrecto.
 export const SPR_MANAGER_REJECTED_WAITING_STATUS = {
   formStatusLabel: 'Correcciones pendientes',
   formStatusHelper: 'Pendiente por gerente del área',
@@ -126,7 +145,7 @@ export const SPR_MANAGER_REJECTED_WAITING_STATUS = {
   deliveredStepHelper: 'El responsable de área ha emitido el formulario',
 } as const;
 
-// PLACEHOLDER: gerente re-revision tras reenvio corregido (Figma 1672:8268).
+// Gerente re-revision tras reenvio corregido (Figma 1672:8268; conexion con 1672:8557).
 // PROVISIONAL: implementado sin confirmar con Alexis si esta vista debe navegar a review UI (pregunta G2 pendiente).
 export const SPR_MANAGER_PENDING_RE_REVIEW_STATUS = {
   pendingStepTitle: (cycleLabel: string) => `Formulario SPR ${cycleLabel} con correcciones pendiente de aprobación`,

@@ -3,10 +3,9 @@ import { createRoot, type Root } from 'react-dom/client';
 import { useSessionStore } from '../../../shared/stores/session.store';
 
 type RuntimeAuthUser = {
-  email?: string;
   role?: string;
   roles?: string[];
-  companyName?: string | null;
+  permissions?: string[];
 };
 
 function userRolesOf(user: RuntimeAuthUser | null): string[] {
@@ -15,9 +14,8 @@ function userRolesOf(user: RuntimeAuthUser | null): string[] {
 
 function canReviewExecutedFindings(user: RuntimeAuthUser | null): boolean {
   const roles = userRolesOf(user);
-  const email = user?.email?.trim().toLowerCase() ?? '';
-  const companyName = user?.companyName?.trim().toLowerCase() ?? '';
-  return roles.includes('ADMIN') || email.endsWith('@goldfields.com') || companyName.includes('gold field');
+  const permissions = user?.permissions ?? [];
+  return roles.includes('ADMIN') || permissions.includes('inspections:review');
 }
 
 function WaitingApprovalIcon() {

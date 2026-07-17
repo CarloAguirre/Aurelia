@@ -47,7 +47,8 @@ export class ResourceScopeService {
 
   async canReviewInspectionFindings(user: AccessTokenPayload): Promise<boolean> {
     const scope = await this.getUserScope(user);
-    return scope.isAdmin || scope.isPrincipalCompanyUser;
+    const hasReviewPermission = user.roles.includes('ADMIN') || user.permissions.includes('inspections:review');
+    return hasReviewPermission && (scope.isAdmin || scope.isPrincipalCompanyUser);
   }
 
   async getInspectionAssignmentScope(user: AccessTokenPayload): Promise<InspectionAssignmentScopeResponse> {

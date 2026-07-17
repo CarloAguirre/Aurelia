@@ -4,22 +4,18 @@ import type { Response } from 'express';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
 import { RequirePermissions } from '../auth/require-permissions.decorator';
 import { InspectionPeriodicReportExportService } from './inspection-periodic-report-export.service';
-import { InspectionPeriodicReportService } from './inspection-periodic-report.service';
 
 @RequirePermissions('inspections:read')
 @Controller('reports/inspections/periodic')
 export class InspectionPeriodicReportController {
-  constructor(
-    private readonly reports: InspectionPeriodicReportService,
-    private readonly exports: InspectionPeriodicReportExportService,
-  ) {}
+  constructor(private readonly exports: InspectionPeriodicReportExportService) {}
 
   @Get('data')
   getData(
     @Query() query: InspectionPeriodicReportRequest,
     @Req() request: AuthenticatedRequest,
   ): Promise<InspectionPeriodicReportResponse> {
-    return this.reports.build(query, request.user);
+    return this.exports.buildData(query, request.user);
   }
 
   @Get('pdf')

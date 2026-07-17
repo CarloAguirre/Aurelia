@@ -5,6 +5,7 @@ import type { ReportPdfDocument } from './report-pdf.service';
 export interface PeriodicReportHeaderContext {
   periodTitle: string;
   periodSubtitle: string;
+  compactTitle?: string;
   generatedBy: string;
   generatedAt: string;
 }
@@ -117,10 +118,14 @@ export class ReportPdfBrandingService {
 
   drawCompactHeader(document: ReportPdfDocument, context: PeriodicReportHeaderContext): number {
     const top = MARGIN_TOP;
-    this.drawAureliaWordmark(document, MARGIN_X, top + 2, 9.75);
+    const wordmarkX = MARGIN_X;
+    const wordmarkWidth = this.drawAureliaWordmark(document, wordmarkX, top + 2, 9.75);
+    const dividerX = wordmarkX + wordmarkWidth + 9;
+    const compactTitleX = dividerX + 9;
+
     document
-      .moveTo(MARGIN_X + 43, top)
-      .lineTo(MARGIN_X + 43, top + 15)
+      .moveTo(dividerX, top)
+      .lineTo(dividerX, top + 15)
       .strokeColor(BORDER)
       .lineWidth(0.75)
       .stroke();
@@ -128,8 +133,10 @@ export class ReportPdfBrandingService {
       .font('Helvetica')
       .fontSize(7.5)
       .fillColor(MUTED)
-      .text(`Informe ${context.periodTitle} · ${context.periodSubtitle}`, MARGIN_X + 52, top + 2, {
-        width: 275,
+      .text(context.compactTitle ?? `Informe ${context.periodTitle} · ${context.periodSubtitle}`, compactTitleX, top + 2, {
+        width: 235,
+        height: 11,
+        ellipsis: true,
       });
     document
       .font('Helvetica')
@@ -248,14 +255,15 @@ export class ReportPdfBrandingService {
     x: number,
     y: number,
     fontSize: number,
-  ): void {
+  ): number {
+    document.font('Helvetica-Bold').fontSize(fontSize);
+    const width = document.widthOfString('AURELIA');
     document
-      .font('Helvetica-Bold')
-      .fontSize(fontSize)
       .fillColor(NAVY)
       .text('AUREL', x, y, { continued: true });
     document
       .fillColor(GOLD)
       .text('IA');
+    return width;
   }
 }

@@ -64,7 +64,7 @@ export class UsersService {
 
     if (filters?.role) {
       result = result.filter((u) =>
-        u.userRoles?.some((ur) => ur.role?.code === filters.role),
+        u.userRoles?.some((ur) => ur.role?.isActive && ur.role.code === filters.role),
       );
     }
 
@@ -122,9 +122,9 @@ export class UsersService {
 
   async assignRole(userId: string, dto: AssignUserRoleDto): Promise<UserResponse> {
     const user = await this.findEntity(userId);
-    const role = await this.roles.findOneBy({ id: dto.roleId });
+    const role = await this.roles.findOneBy({ id: dto.roleId, isActive: true });
     if (!role) {
-      throw new NotFoundException(`Role ${dto.roleId} not found`);
+      throw new NotFoundException(`Active role ${dto.roleId} not found`);
     }
 
     const existing = await this.userRoles.findOne({
@@ -199,7 +199,7 @@ export class UsersService {
       areaId: entity.areaId,
       isActive: entity.isActive,
       lastLoginAt: entity.lastLoginAt ? entity.lastLoginAt.toISOString() : null,
-      roles: entity.userRoles?.map((row) => this.toRoleResponse(row.role)) ?? [],
+      roles: entity.userRoles?.filter((row) => row.role.isActive).map((row) => this.toRoleResponse(row.role)) ?? [],
       companies: entity.userCompanies?.map((row) => this.toCompanyResponse(row.company)) ?? [],
       areas: entity.userAreas?.map((row) => this.toAreaResponse(row.area)) ?? [],
       createdAt: entity.createdAt.toISOString(),

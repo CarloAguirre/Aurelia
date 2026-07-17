@@ -70,8 +70,14 @@ export function SprAreaView() {
     return <SprAreaStatusView signDateLabel={signDateLabel} mode="waiting_for_responsible" />;
   }
 
+  // PROVISIONAL: Figma 1672:5531 cableado pendiente de confirmar copy KPI con Alexis (pregunta C1).
+  // Espejo de 1672:5810 del responsable. Solo lectura.
+  if (effectiveDisplayMode === 'rejected_pending_correction') {
+    return <SprAreaStatusView signDateLabel={signDateLabel} mode="rejected_pending_correction" />;
+  }
+
   // PROVISIONAL: implementado sin confirmar con Alexis si esta vista debe navegar a review UI (pregunta G2 pendiente).
-  // Figma 1672:8268 — solo lectura, sin CTA inventado.
+  // Figma 1672:8268 — espejo de 1672:8557 del responsable. Solo lectura, sin CTA inventado.
   if (effectiveDisplayMode === 'pending_review_after_correction') {
     return <SprAreaStatusView signDateLabel={signDateLabel} mode="pending_review_after_correction" />;
   }
@@ -80,5 +86,7 @@ export function SprAreaView() {
     return <SprAreaReviewView />;
   }
 
+  // approved del gerente: placeholder hasta que Alexis confirme el nodo Figma (pregunta G5).
+  // 1672:10661 fue candidato no confirmado y se revirtió deliberadamente.
   return <SprAreaPendingNodePlaceholder displayMode={effectiveDisplayMode} />;
 }

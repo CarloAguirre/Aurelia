@@ -11,11 +11,12 @@ export type SprAreaDisplayMode =
 export type SprAreaProcessStatusVariant =
   | 'manager_waiting'
   | 'manager_pending_review'
+  | 'manager_rejected_waiting_correction'
   | 'manager_pending_re_review';
 
 export type SprAreaStatusViewMode = Extract<
   SprAreaDisplayMode,
-  'waiting_for_responsible' | 'pending_review_after_correction'
+  'waiting_for_responsible' | 'rejected_pending_correction' | 'pending_review_after_correction'
 >;
 
 function filterSprCycleRecords(records: SprMonthlyRecordResponse[] | undefined): SprMonthlyRecordResponse[] {

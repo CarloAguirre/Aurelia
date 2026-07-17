@@ -11,6 +11,7 @@ import {
   SPR_CORRECTED_STATUS,
   SPR_MANAGER_PENDING_REVIEW_STATUS,
   SPR_MANAGER_PENDING_RE_REVIEW_STATUS,
+  SPR_MANAGER_REJECTED_WAITING_STATUS,
   SPR_MANAGER_WAITING_STATUS,
   SPR_REJECTED_STATUS,
   SPR_SUBMITTED_STATUS,
@@ -186,6 +187,28 @@ export function SprProcessStatusSection({
             iconClassName="text-[#2a5c16]"
             title={SPR_MANAGER_PENDING_REVIEW_STATUS.deliveredStepTitle(SPR_ACTIVE_CYCLE.label)}
             helper={SPR_MANAGER_PENDING_REVIEW_STATUS.deliveredStepHelper}
+            badgeLabel="Completado"
+            badgeClassName="bg-[#e0ffd3] text-[#2a5c16]"
+          />
+        </>
+      ) : variant === 'manager_rejected_waiting_correction' ? (
+        <>
+          <ProcessStepRow
+            icon="rejected"
+            iconBgClassName="bg-[#ffd0db]"
+            iconClassName="text-[#570b1d]"
+            title={SPR_MANAGER_REJECTED_WAITING_STATUS.rejectedStepTitle(SPR_ACTIVE_CYCLE.label)}
+            helper={SPR_MANAGER_REJECTED_WAITING_STATUS.rejectedStepHelper}
+            badgeLabel={SPR_MANAGER_REJECTED_WAITING_STATUS.rejectedBadgeLabel}
+            badgeClassName="bg-[#ffeab8] text-[10px] text-[#8e6e3e]"
+            withBottomBorder
+          />
+          <ProcessStepRow
+            icon="document"
+            iconBgClassName="bg-[#e0ffd3]"
+            iconClassName="text-[#2a5c16]"
+            title={SPR_MANAGER_REJECTED_WAITING_STATUS.deliveredStepTitle(SPR_ACTIVE_CYCLE.label)}
+            helper={SPR_MANAGER_REJECTED_WAITING_STATUS.deliveredStepHelper}
             badgeLabel="Completado"
             badgeClassName="bg-[#e0ffd3] text-[#2a5c16]"
           />

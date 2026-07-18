@@ -14,6 +14,7 @@ import { InspectionEvidenceViewerBridge } from './modules/inspections/components
 import { InspectionExecutedReviewRoleBridge } from './modules/inspections/components/InspectionExecutedReviewRoleBridge';
 import { InspectionExportMenuBridge } from './modules/inspections/components/InspectionExportMenuBridge';
 import { InspectionFollowupProgressBridge } from './modules/inspections/components/InspectionFollowupProgressBridge';
+import { InspectionManagementCalendarOverlayBridge } from './modules/inspections/components/InspectionManagementCalendarOverlayBridge';
 import { InspectionManagementSelectMenuBridge } from './modules/inspections/components/InspectionManagementSelectMenuBridge';
 import { InspectionManagementTableBorderBridge } from './modules/inspections/components/InspectionManagementTableBorderBridge';
 import { InspectionPdfDownloadBridge } from './modules/inspections/components/InspectionPdfDownloadBridge';
@@ -44,6 +45,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       <InspectionTableActionMenuBridge />
       <InspectionExportMenuBridge />
       <InspectionManagementSelectMenuBridge />
+      <InspectionManagementCalendarOverlayBridge />
       <InspectionManagementTableBorderBridge />
       <InspectionExecutedReviewRoleBridge />
       <InspectionPdfDownloadBridge />

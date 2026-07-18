@@ -2,6 +2,11 @@ import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { createPortal } from 'react-dom';
 import { downloadInspectionPdf } from '../../../shared/services/inspection-reports.service';
 import { getInspectionManagementTable } from '../../../shared/services/inspections.service';
+import {
+  announceInspectionManagementOverlay,
+  nextInspectionManagementOverlaySourceId,
+  subscribeToInspectionManagementOverlay,
+} from './inspection-management-overlay';
 
 type MenuState = {
   top: number;
@@ -58,15 +63,24 @@ function buildMenuState(menu: HTMLElement): MenuState | null {
   const margin = 8;
   const left = Math.min(Math.max(margin, rect.right - width), window.innerWidth - width - margin);
   const below = rect.bottom + 6;
-  const top = below + height > window.innerHeight - margin ? Math.max(margin, rect.top - height - 6) : below;
+  const top = below + height > window.innerHeight - margin
+    ? Math.max(margin, rect.top - height - 6)
+    : below;
   return { top, left, width, source: menu, trigger };
 }
 
 export function InspectionTableActionMenuBridge(): ReactElement | null {
   const portalRef = useRef<HTMLDivElement | null>(null);
   const hiddenSourceRef = useRef<HTMLElement | null>(null);
+  const menuRef = useRef<MenuState | null>(null);
+  const sourceIdRef = useRef(nextInspectionManagementOverlaySourceId('action'));
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+
+  function updateMenu(next: MenuState | null) {
+    menuRef.current = next;
+    setMenu(next);
+  }
 
   useEffect(() => {
     function restoreHiddenSource() {
@@ -80,26 +94,40 @@ export function InspectionTableActionMenuBridge(): ReactElement | null {
       const source = findMenu();
       if (!source) {
         restoreHiddenSource();
-        setMenu(null);
+        updateMenu(null);
         return;
       }
 
       const next = buildMenuState(source);
       if (!next) {
         restoreHiddenSource();
-        setMenu(null);
+        updateMenu(null);
         return;
       }
 
-      if (hiddenSourceRef.current && hiddenSourceRef.current !== source) restoreHiddenSource();
+      const isNewSource = hiddenSourceRef.current !== source;
+      if (hiddenSourceRef.current && isNewSource) restoreHiddenSource();
+      if (isNewSource) {
+        announceInspectionManagementOverlay({
+          kind: 'action',
+          owner: next.trigger ?? source,
+          sourceId: sourceIdRef.current,
+        });
+      }
+
       source.style.visibility = 'hidden';
       source.style.pointerEvents = 'none';
       hiddenSourceRef.current = source;
-      setMenu((current) => {
-        if (current?.source === source && current.top === next.top && current.left === next.left) return current;
-        return next;
-      });
+      const current = menuRef.current;
+      if (current?.source === source && current.top === next.top && current.left === next.left) return;
+      updateMenu(next);
     }
+
+    const unsubscribeOverlay = subscribeToInspectionManagementOverlay((detail) => {
+      const current = menuRef.current;
+      if (!current || detail.sourceId === sourceIdRef.current) return;
+      current.trigger?.click();
+    });
 
     const observer = new MutationObserver(syncMenu);
     observer.observe(document.body, { childList: true, subtree: true });
@@ -108,6 +136,7 @@ export function InspectionTableActionMenuBridge(): ReactElement | null {
     syncMenu();
 
     return () => {
+      unsubscribeOverlay();
       observer.disconnect();
       window.removeEventListener('resize', syncMenu);
       window.removeEventListener('scroll', syncMenu, true);
@@ -117,29 +146,32 @@ export function InspectionTableActionMenuBridge(): ReactElement | null {
 
   useEffect(() => {
     function handleOutsideClick(event: MouseEvent) {
-      if (!menu) return;
+      const current = menuRef.current;
+      if (!current) return;
       const target = event.target;
       if (!(target instanceof Node)) return;
       if (portalRef.current?.contains(target)) return;
-      if (menu.trigger?.contains(target)) return;
-      menu.trigger?.click();
+      if (current.trigger?.contains(target)) return;
+      current.trigger?.click();
     }
 
     document.addEventListener('mousedown', handleOutsideClick, true);
     return () => document.removeEventListener('mousedown', handleOutsideClick, true);
-  }, [menu]);
+  }, []);
 
   function activateSourceButton(index: number) {
-    if (!menu) return;
-    const buttons = getDirectButtons(menu.source);
+    const current = menuRef.current;
+    if (!current) return;
+    const buttons = getDirectButtons(current.source);
     const button = buttons[index];
     if (button instanceof HTMLButtonElement) button.click();
   }
 
   async function handleDownloadInspectionPdf() {
-    if (!menu || isDownloadingPdf) return;
+    const current = menuRef.current;
+    if (!current || isDownloadingPdf) return;
 
-    const inspectionNumber = inspectionNumberFromMenu(menu.source);
+    const inspectionNumber = inspectionNumberFromMenu(current.source);
     if (!inspectionNumber) {
       window.alert('No fue posible identificar la inspección seleccionada.');
       return;
@@ -160,7 +192,7 @@ export function InspectionTableActionMenuBridge(): ReactElement | null {
       if (!selected) throw new Error('Inspection not found');
 
       await downloadInspectionPdf(selected.inspectionId);
-      menu.trigger?.click();
+      current.trigger?.click();
     } catch {
       window.alert('No fue posible generar el PDF de la inspección. Intenta nuevamente.');
     } finally {
@@ -171,9 +203,30 @@ export function InspectionTableActionMenuBridge(): ReactElement | null {
   if (!menu) return null;
 
   return createPortal(
-    <div ref={portalRef} data-inspection-actions-portal="true" className="fixed z-[10000] flex flex-col items-start rounded-[12px] border border-[#d1d1d1] bg-white p-[8px] shadow-[0px_4px_8px_rgba(19,19,19,0.24)]" style={{ top: `${menu.top}px`, left: `${menu.left}px`, width: `${menu.width}px` }} role="menu">
-      <button type="button" onClick={() => activateSourceButton(0)} className="flex h-[40px] w-full items-center rounded-[8px] bg-white px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313]" role="menuitem">Ver detalles</button>
-      <button type="button" disabled={isDownloadingPdf} onClick={handleDownloadInspectionPdf} className="flex h-[40px] w-full items-center rounded-[8px] px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313] disabled:cursor-wait disabled:opacity-60" role="menuitem">{isDownloadingPdf ? 'Generando PDF…' : 'PDF (.pdf)'}</button>
+    <div
+      ref={portalRef}
+      data-inspection-actions-portal="true"
+      className="fixed z-[11000] flex flex-col items-start rounded-[12px] border border-[#d1d1d1] bg-white p-[8px] shadow-[0px_4px_8px_rgba(19,19,19,0.24)]"
+      style={{ top: `${menu.top}px`, left: `${menu.left}px`, width: `${menu.width}px` }}
+      role="menu"
+    >
+      <button
+        type="button"
+        onClick={() => activateSourceButton(0)}
+        className="flex h-[40px] w-full items-center rounded-[8px] bg-white px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313] transition-colors hover:bg-[#e3e3e3]"
+        role="menuitem"
+      >
+        Ver detalles
+      </button>
+      <button
+        type="button"
+        disabled={isDownloadingPdf}
+        onClick={handleDownloadInspectionPdf}
+        className="flex h-[40px] w-full items-center rounded-[8px] bg-white px-[8px] py-[12px] text-left font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313] transition-colors hover:bg-[#e3e3e3] disabled:cursor-wait disabled:opacity-60 disabled:hover:bg-white"
+        role="menuitem"
+      >
+        {isDownloadingPdf ? 'Generando PDF…' : 'PDF (.pdf)'}
+      </button>
     </div>,
     document.body,
   );

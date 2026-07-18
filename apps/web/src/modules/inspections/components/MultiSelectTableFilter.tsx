@@ -65,6 +65,7 @@ export function MultiSelectTableFilter({ value, onChange, width, allLabel, optio
   const [open, setOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const sourceIdRef = useRef(nextInspectionManagementOverlaySourceId('select'));
   const selectedValues = useMemo(() => parseValue(value), [value]);
   const selectedSet = useMemo(() => new Set(selectedValues), [selectedValues]);
@@ -115,40 +116,47 @@ export function MultiSelectTableFilter({ value, onChange, width, allLabel, optio
       if (trigger) setMenuPosition(buildMenuPosition(trigger, visibleRowCount));
     };
 
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      close();
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown, true);
     window.addEventListener('resize', reposition);
     window.addEventListener('scroll', reposition, true);
     reposition();
     return () => {
+      document.removeEventListener('pointerdown', handlePointerDown, true);
       window.removeEventListener('resize', reposition);
       window.removeEventListener('scroll', reposition, true);
     };
   }, [open, visibleRowCount]);
 
   const menu = open && menuPosition ? createPortal(
-    <>
-      <button className="fixed inset-0 z-[10990] cursor-default bg-transparent" type="button" aria-label="Cerrar selector" onClick={close} />
-      <div
-        className="fixed z-[11000] flex max-h-[360px] flex-col items-start overflow-y-auto rounded-[12px] border border-[#d1d1d1] bg-white p-[8px] shadow-[0_8px_20px_rgba(0,0,0,0.16)]"
-        style={{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px`, width: `${menuPosition.width}px` }}
-        role="listbox"
-        aria-label={allLabel}
-        aria-multiselectable="true"
-      >
-        <button className={`flex w-full items-center gap-[8px] rounded-[8px] px-[8px] py-[12px] text-left transition-colors hover:bg-[#e3e3e3] ${selectedValues.length === 0 ? 'bg-[#e3e3e3]' : 'bg-white'}`} type="button" role="option" aria-selected={selectedValues.length === 0} onClick={() => onChange('')}>
-          <Checkbox checked={selectedValues.length === 0} />
-          <span className="min-w-0 flex-1 font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313]">{allLabel}</span>
-        </button>
-        {options.map((option) => {
-          const checked = selectedSet.has(option.value);
-          return (
-            <button key={option.value} className={`flex w-full items-center gap-[8px] rounded-[8px] px-[8px] py-[12px] text-left transition-colors hover:bg-[#e3e3e3] ${checked ? 'bg-[#e3e3e3]' : 'bg-white'}`} type="button" role="option" aria-selected={checked} onClick={() => toggleOption(option.value)}>
-              <Checkbox checked={checked} />
-              <span className="min-w-0 flex-1 font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313]">{option.label}</span>
-            </button>
-          );
-        })}
-      </div>
-    </>,
+    <div
+      ref={menuRef}
+      className="fixed z-[11000] flex max-h-[360px] flex-col items-start overflow-y-auto rounded-[12px] border border-[#d1d1d1] bg-white p-[8px] shadow-[0_8px_20px_rgba(0,0,0,0.16)]"
+      style={{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px`, width: `${menuPosition.width}px` }}
+      role="listbox"
+      aria-label={allLabel}
+      aria-multiselectable="true"
+    >
+      <button className={`flex w-full items-center gap-[8px] rounded-[8px] px-[8px] py-[12px] text-left transition-colors hover:bg-[#e3e3e3] ${selectedValues.length === 0 ? 'bg-[#e3e3e3]' : 'bg-white'}`} type="button" role="option" aria-selected={selectedValues.length === 0} onClick={() => onChange('')}>
+        <Checkbox checked={selectedValues.length === 0} />
+        <span className="min-w-0 flex-1 font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313]">{allLabel}</span>
+      </button>
+      {options.map((option) => {
+        const checked = selectedSet.has(option.value);
+        return (
+          <button key={option.value} className={`flex w-full items-center gap-[8px] rounded-[8px] px-[8px] py-[12px] text-left transition-colors hover:bg-[#e3e3e3] ${checked ? 'bg-[#e3e3e3]' : 'bg-white'}`} type="button" role="option" aria-selected={checked} onClick={() => toggleOption(option.value)}>
+            <Checkbox checked={checked} />
+            <span className="min-w-0 flex-1 font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313]">{option.label}</span>
+          </button>
+        );
+      })}
+    </div>,
     document.body,
   ) : null;
 

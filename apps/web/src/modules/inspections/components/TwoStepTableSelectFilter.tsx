@@ -92,6 +92,7 @@ export function TwoStepTableSelectFilter({ value, onChange, width, allLabel, opt
   const [activeGroup, setActiveGroup] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const sourceIdRef = useRef(nextInspectionManagementOverlaySourceId('select'));
   const groups = useMemo(() => buildGroups(options), [options]);
   const selectedGroup = groups.find((group) => group.options.some((option) => option.value === value));
@@ -146,50 +147,57 @@ export function TwoStepTableSelectFilter({ value, onChange, width, allLabel, opt
       if (trigger) setMenuPosition(buildMenuPosition(trigger, visibleRowCount));
     };
 
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      close();
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown, true);
     window.addEventListener('resize', reposition);
     window.addEventListener('scroll', reposition, true);
     reposition();
     return () => {
+      document.removeEventListener('pointerdown', handlePointerDown, true);
       window.removeEventListener('resize', reposition);
       window.removeEventListener('scroll', reposition, true);
     };
   }, [open, visibleRowCount]);
 
   const menu = open && menuPosition ? createPortal(
-    <>
-      <button className="fixed inset-0 z-[10990] cursor-default bg-transparent" type="button" aria-label="Cerrar selector" onClick={close} />
-      <div
-        className="fixed z-[11000] flex max-h-[360px] flex-col items-start overflow-y-auto rounded-[12px] border border-[#d1d1d1] bg-white p-[8px] shadow-[0_8px_20px_rgba(0,0,0,0.16)]"
-        style={{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px`, width: `${menuPosition.width}px` }}
-        role="listbox"
-        aria-label={allLabel}
-      >
-        {activeGroup ? (
-          <>
-            <button className="flex w-full items-center gap-[8px] rounded-[8px] bg-white px-[8px] py-[12px] text-left transition-colors hover:bg-[#e3e3e3]" type="button" onClick={() => setActiveGroup(null)}>
-              <BackIcon />
-              <span className="min-w-0 flex-1 font-['Inter:Semi_Bold',sans-serif] text-[14px] font-semibold leading-[22.7px] tracking-[0.28px] text-[#131313]">{detailTitle(activeGroup)}</span>
+    <div
+      ref={menuRef}
+      className="fixed z-[11000] flex max-h-[360px] flex-col items-start overflow-y-auto rounded-[12px] border border-[#d1d1d1] bg-white p-[8px] shadow-[0_8px_20px_rgba(0,0,0,0.16)]"
+      style={{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px`, width: `${menuPosition.width}px` }}
+      role="listbox"
+      aria-label={allLabel}
+    >
+      {activeGroup ? (
+        <>
+          <button className="flex w-full items-center gap-[8px] rounded-[8px] bg-white px-[8px] py-[12px] text-left transition-colors hover:bg-[#e3e3e3]" type="button" onClick={() => setActiveGroup(null)}>
+            <BackIcon />
+            <span className="min-w-0 flex-1 font-['Inter:Semi_Bold',sans-serif] text-[14px] font-semibold leading-[22.7px] tracking-[0.28px] text-[#131313]">{detailTitle(activeGroup)}</span>
+          </button>
+          {activeOptions.map((option) => (
+            <button key={option.value} className={`flex w-full items-center gap-[8px] rounded-[8px] px-[8px] py-[12px] text-left transition-colors hover:bg-[#e3e3e3] ${option.value === value ? 'bg-[#e3e3e3]' : 'bg-white'}`} type="button" role="option" aria-selected={option.value === value} onClick={() => { onChange(option.value); close(); }}>
+              <span className="min-w-0 flex-1 font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313]">{option.label}</span>
             </button>
-            {activeOptions.map((option) => (
-              <button key={option.value} className={`flex w-full items-center gap-[8px] rounded-[8px] px-[8px] py-[12px] text-left transition-colors hover:bg-[#e3e3e3] ${option.value === value ? 'bg-[#e3e3e3]' : 'bg-white'}`} type="button" role="option" aria-selected={option.value === value} onClick={() => { onChange(option.value); close(); }}>
-                <span className="min-w-0 flex-1 font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313]">{option.label}</span>
-              </button>
-            ))}
-          </>
-        ) : (
-          <>
-            <button className={`flex w-full items-center gap-[8px] rounded-[8px] px-[8px] py-[12px] text-left transition-colors hover:bg-[#e3e3e3] ${!value ? 'bg-[#e3e3e3]' : 'bg-white'}`} type="button" role="option" aria-selected={!value} onClick={() => { onChange(''); close(); }}>
-              <span className="min-w-0 flex-1 font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313]">{allLabel}</span>
+          ))}
+        </>
+      ) : (
+        <>
+          <button className={`flex w-full items-center gap-[8px] rounded-[8px] px-[8px] py-[12px] text-left transition-colors hover:bg-[#e3e3e3] ${!value ? 'bg-[#e3e3e3]' : 'bg-white'}`} type="button" role="option" aria-selected={!value} onClick={() => { onChange(''); close(); }}>
+            <span className="min-w-0 flex-1 font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313]">{allLabel}</span>
+          </button>
+          {groups.map((group) => (
+            <button key={group.label} className={`flex w-full items-center gap-[8px] rounded-[8px] px-[8px] py-[12px] text-left transition-colors hover:bg-[#e3e3e3] ${selectedGroup?.label === group.label ? 'bg-[#e3e3e3]' : 'bg-white'}`} type="button" role="option" aria-selected={selectedGroup?.label === group.label} onClick={() => selectGroup(group)}>
+              <span className="min-w-0 flex-1 font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313]">{group.label}</span>
             </button>
-            {groups.map((group) => (
-              <button key={group.label} className={`flex w-full items-center gap-[8px] rounded-[8px] px-[8px] py-[12px] text-left transition-colors hover:bg-[#e3e3e3] ${selectedGroup?.label === group.label ? 'bg-[#e3e3e3]' : 'bg-white'}`} type="button" role="option" aria-selected={selectedGroup?.label === group.label} onClick={() => selectGroup(group)}>
-                <span className="min-w-0 flex-1 font-['Inter:Regular',sans-serif] text-[14px] font-normal leading-[22.7px] tracking-[0.28px] text-[#131313]">{group.label}</span>
-              </button>
-            ))}
-          </>
-        )}
-      </div>
-    </>,
+          ))}
+        </>
+      )}
+    </div>,
     document.body,
   ) : null;
 

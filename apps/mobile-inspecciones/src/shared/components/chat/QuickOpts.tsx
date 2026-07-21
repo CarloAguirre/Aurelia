@@ -10,6 +10,7 @@ interface QuickOptProps {
   label: string;
   icon?: string;
   variant?: QuickOptVariant;
+  fullWidth?: boolean;
   onPress?: () => void;
 }
 
@@ -31,18 +32,18 @@ function iconName(icon: string | undefined, label: string): QuickIcon | null {
   return null;
 }
 
-export function QuickOpt({ label, icon, variant = 'default', onPress }: QuickOptProps) {
+export function QuickOpt({ label, icon, variant = 'default', fullWidth = false, onPress }: QuickOptProps) {
   const name = iconName(icon, label);
 
   return (
     <TouchableOpacity
       onPress={onPress}
       disabled={variant === 'selected' || variant === 'disabled'}
-      style={[styles.opt, optVariantStyle[variant]]}
+      style={[styles.opt, fullWidth && styles.optFullWidth, optVariantStyle[variant]]}
       activeOpacity={0.7}
     >
-      {name ? <FontAwesome5 name={name} size={10} color={getIconColor(variant)} /> : null}
-      <Text style={[styles.label, optTextVariantStyle[variant]]}>{label}</Text>
+      {name ? <FontAwesome5 name={name} size={fullWidth ? 11 : 10} color={getIconColor(variant)} /> : null}
+      <Text style={[styles.label, fullWidth && styles.labelFullWidth, optTextVariantStyle[variant]]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -53,9 +54,16 @@ interface QuickOptsProps {
   onSelect?: (value: string) => void;
 }
 
+function isInspectionTypeSelector(options: QuickOptsProps['options']) {
+  const labels = options.map((option) => option.label.trim().toLowerCase());
+  return labels.includes('hallazgo') && labels.includes('checklist normativo');
+}
+
 export function QuickOpts({ options, selected, onSelect }: QuickOptsProps) {
+  const fullWidth = isInspectionTypeSelector(options);
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, fullWidth && styles.containerFullWidth]}>
       {options.map((opt) => {
         const isSelected = selected === opt.value;
         return (
@@ -64,6 +72,7 @@ export function QuickOpts({ options, selected, onSelect }: QuickOptsProps) {
             label={opt.label}
             icon={opt.icon}
             variant={isSelected ? 'selected' : 'default'}
+            fullWidth={fullWidth}
             onPress={() => onSelect?.(opt.value)}
           />
         );
@@ -92,6 +101,10 @@ const styles = StyleSheet.create({
     gap: spacing.xs + 1,
     alignItems: 'flex-start',
   },
+  containerFullWidth: {
+    marginRight: spacing.md,
+    alignItems: 'stretch',
+  },
   opt: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -101,8 +114,17 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     borderWidth: 1.5,
   },
+  optFullWidth: {
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+    minHeight: 34,
+  },
   label: {
     fontSize: fontSize.md,
     fontWeight: fontWeight.semibold,
+  },
+  labelFullWidth: {
+    fontSize: fontSize.base,
+    fontWeight: fontWeight.bold,
   },
 });

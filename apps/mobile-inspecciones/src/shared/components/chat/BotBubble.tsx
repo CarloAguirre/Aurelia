@@ -2,12 +2,51 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
 import { useMobileInspectionAssignmentScope } from '../../stores/mobileInspectionAssignmentScope.store';
+import { useManualInspectionDraft } from '../../../modules/inspection/manualInspection.store';
 import { SparklesMark } from '../icons/SparklesMark';
 
 interface Props {
   text: string;
   html?: boolean;
   time?: string;
+}
+
+interface AssistantCopyContext {
+  inspectorName: string;
+  areaName: string | null;
+  sectorName: string | null;
+}
+
+function canonicalAssistantText(text: string, context: AssistantCopyContext): string {
+  const normalized = text.trim();
+  const area = context.areaName ?? 'el área';
+  const location = [context.areaName, context.sectorName].filter(Boolean).join(' · ');
+
+  if (normalized === 'Hola, soy AurelIA. ¿En qué área estás hoy?') {
+    return `¡Hola, **${context.inspectorName}**! 👋 Soy AurelIA. Voy a ayudarte a registrar esta inspección de forma rápida. ¿En qué **área** estás hoy?`;
+  }
+
+  if (normalized === 'Selecciona el sector.') {
+    return `Perfecto, **${area}** ✓. Ahora el sector — ¿en cuál específicamente?`;
+  }
+
+  if (normalized === 'Selecciona el tipo de inspección.') {
+    return `**${location || 'Área · sector'} ✓**. ¿Qué tipo de inspección es?`;
+  }
+
+  if (normalized === 'Selecciona la fecha de inspección.') {
+    return 'Selecciona la **fecha de inspección**.';
+  }
+
+  if (normalized === 'Capturemos la ubicación obligatoria.') {
+    return 'Capturemos la **ubicación obligatoria**.';
+  }
+
+  if (normalized === 'Selecciona el tipo de hallazgo.') {
+    return 'Selecciona el **tipo de hallazgo**.';
+  }
+
+  return text;
 }
 
 function FormattedText({ text }: { text: string }) {
@@ -29,11 +68,15 @@ function FormattedText({ text }: { text: string }) {
 
 export function BotBubble({ text, time }: Props) {
   const canSelectCompany = useMobileInspectionAssignmentScope((state) => state.canSelectCompany);
+  const inspectorName = useManualInspectionDraft((state) => state.inspectorName);
+  const areaName = useManualInspectionDraft((state) => state.areaName);
+  const sectorName = useManualInspectionDraft((state) => state.sectorName);
   const hiddenForAssignedCompany = !canSelectCompany && [
     'Te sugiero una empresa responsable para este hallazgo.',
     'Selecciona empresa responsable de los hallazgos.',
     'Selecciona empresa responsable.',
   ].includes(text.trim());
+  const displayText = canonicalAssistantText(text, { inspectorName, areaName, sectorName });
   const now = new Date();
   const timeStr = time ?? `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
 
@@ -45,7 +88,7 @@ export function BotBubble({ text, time }: Props) {
         <SparklesMark size={10} color={colors.navy} />
       </View>
       <View style={styles.bubble}>
-        <FormattedText text={text} />
+        <FormattedText text={displayText} />
         <Text style={styles.time}>{timeStr}</Text>
       </View>
     </View>

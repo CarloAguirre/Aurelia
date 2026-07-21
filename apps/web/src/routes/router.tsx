@@ -16,7 +16,6 @@ import { CriticalControlsPage } from '../modules/critical-controls/CriticalContr
 import { ReportsPage } from '../modules/reports/ReportsPage';
 import { AdminPage } from '../modules/admin/AdminPage';
 import { MigrationsPage } from '../modules/migrations/MigrationsPage';
-import { RequireAdmin } from '../shared/components/RequireAdmin';
 import { RequireAuth } from '../shared/components/RequireAuth';
 
 export const router = createBrowserRouter([
@@ -26,13 +25,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/migrations',
-    element: (
-      <RequireAuth>
-        <RequireAdmin>
-          <MigrationsPage />
-        </RequireAdmin>
-      </RequireAuth>
-    ),
+    element: <MigrationsPage />,
   },
   {
     path: '/',

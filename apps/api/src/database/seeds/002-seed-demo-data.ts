@@ -19,7 +19,22 @@ async function createPasswordHash(secret: string): Promise<string> {
   return `${FORMAT}$${ITERATIONS}$${salt.toString('base64url')}$${key.toString('base64url')}`;
 }
 
-async function assignRoles(queryRunner: QueryRunner, email: string, roleCodes: readonly string[]): Promise<void> {
+async function syncRoles(queryRunner: QueryRunner, email: string, roleCodes: readonly string[]): Promise<void> {
+  await queryRunner.query(
+    `DELETE FROM user_roles ur
+     USING users u
+     WHERE ur.user_id = u.id
+       AND u.email = $1
+       AND NOT EXISTS (
+         SELECT 1
+         FROM roles r
+         WHERE r.id = ur.role_id
+           AND r.code = ANY($2::text[])
+           AND r.is_active = true
+       )`,
+    [email, roleCodes],
+  );
+
   await queryRunner.query(
     `INSERT INTO user_roles (user_id, role_id)
      SELECT u.id, r.id
@@ -28,6 +43,37 @@ async function assignRoles(queryRunner: QueryRunner, email: string, roleCodes: r
      WHERE u.email = $1
      ON CONFLICT DO NOTHING`,
     [email, roleCodes],
+  );
+}
+
+async function syncPrimaryArea(queryRunner: QueryRunner, email: string, areaCode: string): Promise<void> {
+  await queryRunner.query(
+    `UPDATE users u
+     SET area_id = a.id
+     FROM areas a
+     WHERE u.email = $1
+       AND a.code = $2`,
+    [email, areaCode],
+  );
+
+  await queryRunner.query(
+    `DELETE FROM user_areas ua
+     USING users u, areas a
+     WHERE ua.user_id = u.id
+       AND ua.area_id = a.id
+       AND u.email = $1
+       AND a.code <> $2`,
+    [email, areaCode],
+  );
+
+  await queryRunner.query(
+    `INSERT INTO user_areas (user_id, area_id)
+     SELECT u.id, a.id
+     FROM users u, areas a
+     WHERE u.email = $1
+       AND a.code = $2
+     ON CONFLICT DO NOTHING`,
+    [email, areaCode],
   );
 }
 
@@ -51,6 +97,7 @@ export async function runDemoSeed(ds: DataSource): Promise<void> {
       { code: 'AREA-EXPLORACION', name: 'Exploraciones' },
       { code: 'AREA-MANTENCION', name: 'Mantención' },
       { code: 'AREA-SERVICIOS', name: 'Servicios Generales' },
+      { code: 'AREA-SERVICIOS-TECNICOS', name: 'Servicios Técnicos' },
       { code: 'AREA-SUSTAINING', name: 'Sustaining' },
       { code: 'AREA-MAMBIENTE', name: 'Medio Ambiente' },
     ];
@@ -80,6 +127,8 @@ export async function runDemoSeed(ds: DataSource): Promise<void> {
       { areaCode: 'AREA-SERVICIOS', code: 'SECT-SRV-CAMP', name: 'Campamento Antiguo' },
       { areaCode: 'AREA-SERVICIOS', code: 'SECT-SRV-COMED', name: 'Comedor' },
       { areaCode: 'AREA-SERVICIOS', code: 'SECT-SRV-ACCESO', name: 'Acceso faena' },
+      { areaCode: 'AREA-SERVICIOS-TECNICOS', code: 'SECT-ST-INGENIERIA', name: 'Ingeniería' },
+      { areaCode: 'AREA-SERVICIOS-TECNICOS', code: 'SECT-ST-AGUAS', name: 'Aguas' },
       { areaCode: 'AREA-SUSTAINING', code: 'SECT-SUS-SECTOR', name: 'Sector Sustaining' },
       { areaCode: 'AREA-MAMBIENTE', code: 'SECT-MA-PTAS', name: 'PTAS' },
       { areaCode: 'AREA-MAMBIENTE', code: 'SECT-MA-RELAVES', name: 'Depósito relaves' },
@@ -118,14 +167,17 @@ export async function runDemoSeed(ds: DataSource): Promise<void> {
     const gfUsers = [
       {
         email: 'karen.opazo@goldfields.com', first: 'Karen', last: 'Opazo', pos: 'Inspector Medio Ambiente',
+        areaCode: 'AREA-MAMBIENTE',
         roles: ['INSPECTOR', 'INSPECTION_CLOSURE_VERIFIER', 'SPR_RESPONSIBLE', 'INCIDENT_GENERATOR', 'CONTROL_VERIFIER'],
       },
       {
-        email: 'pedro.silva@goldfields.com', first: 'Pedro', last: 'Silva', pos: 'Supervisor Medio Ambiente',
+        email: 'pedro.silva@goldfields.com', first: 'Pedro', last: 'Silva', pos: 'Gerente Servicios Técnicos',
+        areaCode: 'AREA-SERVICIOS-TECNICOS',
         roles: ['INSPECTOR', 'INSPECTION_CLOSURE_VERIFIER', 'SPR_AREA_MANAGER', 'INCIDENT_SUPERINTENDENT', 'CONTROL_SUPERINTENDENT'],
       },
       {
         email: 'carlos.aguirre@goldfields.com', first: 'Carlos', last: 'Aguirre', pos: 'Administrador Sistema',
+        areaCode: 'AREA-MAMBIENTE',
         roles: ['ADMIN'],
       },
     ];
@@ -139,14 +191,18 @@ export async function runDemoSeed(ds: DataSource): Promise<void> {
       );
       await qr.query(
         `UPDATE users
-         SET password_hash = $2,
+         SET first_name = $2,
+             last_name = $3,
+             position = $4,
+             password_hash = $5,
              password_changed_at = NOW(),
              failed_login_attempts = 0,
              locked_until = NULL
          WHERE email = $1`,
-        [user.email, demoPasswordHash],
+        [user.email, user.first, user.last, user.pos, demoPasswordHash],
       );
-      await assignRoles(qr, user.email, user.roles);
+      await syncPrimaryArea(qr, user.email, user.areaCode);
+      await syncRoles(qr, user.email, user.roles);
       await qr.query(
         `INSERT INTO user_companies (user_id, company_id)
          SELECT u.id, c.id FROM users u, companies c
@@ -198,7 +254,7 @@ export async function runDemoSeed(ds: DataSource): Promise<void> {
          WHERE email = $1`,
         [user.email, demoPasswordHash],
       );
-      await assignRoles(qr, user.email, user.roles);
+      await syncRoles(qr, user.email, user.roles);
       await qr.query(
         `INSERT INTO user_companies (user_id, company_id)
          SELECT u.id, c.id FROM users u, companies c
@@ -210,7 +266,7 @@ export async function runDemoSeed(ds: DataSource): Promise<void> {
 
     await qr.commitTransaction();
     console.log('Demo seed completed successfully.');
-    console.log('  → 7 áreas, 18 sectores');
+    console.log('  → 8 áreas, 20 sectores');
     console.log('  → 8 empresas contratistas (EECC)');
     console.log('  → 15 usuarios demo con roles funcionales');
   } catch (error) {

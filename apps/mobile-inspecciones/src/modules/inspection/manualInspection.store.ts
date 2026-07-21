@@ -48,6 +48,7 @@ export interface ManualInspectionDraft {
   sectorId: string | null;
   sectorName: string | null;
   inspectionDate: string;
+  inspectionDateSelected: boolean;
   locationLabel: string;
   locationAccuracyLabel: string;
   locationCaptured: boolean;
@@ -57,6 +58,7 @@ export interface ManualInspectionDraft {
   locationCapturedAt: string | null;
   inspectionType: InspectionType;
   inspectionTypeLabel: string;
+  inspectionTypeSelected: boolean;
   findingTypeId: string | null;
   findingTypeLabel: string | null;
   findingObservations: ManualFindingObservationDraft[];
@@ -72,6 +74,9 @@ export interface ManualInspectionDraft {
   findingResponsibleIds: string[];
   lastSavedResult: ManualSavedInspectionResult | null;
 }
+
+type HydratableManualInspectionDraft = Partial<ManualInspectionDraft> &
+  Pick<ManualInspectionDraft, 'inspectionType' | 'inspectionTypeLabel'>;
 
 interface ManualInspectionLocationInput {
   label: string;
@@ -113,6 +118,7 @@ const initialDraft: ManualInspectionDraft = {
   sectorId: null,
   sectorName: null,
   inspectionDate: new Intl.DateTimeFormat('es-CL').format(new Date()),
+  inspectionDateSelected: false,
   locationLabel: 'Ubicación no capturada',
   locationAccuracyLabel: 'Sin precisión',
   locationCaptured: false,
@@ -122,6 +128,7 @@ const initialDraft: ManualInspectionDraft = {
   locationCapturedAt: null,
   inspectionType: InspectionType.REGULATORY,
   inspectionTypeLabel: 'Checklist normativo',
+  inspectionTypeSelected: false,
   findingTypeId: null,
   findingTypeLabel: null,
   findingObservations: [],
@@ -138,6 +145,32 @@ const initialDraft: ManualInspectionDraft = {
   lastSavedResult: null,
 };
 
+function hasTypedContent(draft: Partial<ManualInspectionDraft>) {
+  return Boolean(
+    draft.findingTypeId ||
+    (draft.findingObservations?.length ?? 0) > 0 ||
+    draft.templateId ||
+    Object.keys(draft.answersByItemId ?? {}).length > 0 ||
+    draft.generalPhoto ||
+    draft.findingCompanyId ||
+    (draft.findingResponsibleIds?.length ?? 0) > 0,
+  );
+}
+
+function normalizeDraft(draft: HydratableManualInspectionDraft): ManualInspectionDraft {
+  const legacyTypedContent = hasTypedContent(draft);
+  return {
+    ...initialDraft,
+    ...draft,
+    inspectionTypeSelected: draft.inspectionTypeSelected ?? legacyTypedContent,
+    inspectionDateSelected: draft.inspectionDateSelected ?? Boolean(draft.locationCaptured || legacyTypedContent),
+    findingObservations: draft.findingObservations ?? [],
+    answersByItemId: draft.answersByItemId ?? {},
+    detailsByItemId: draft.detailsByItemId ?? {},
+    findingResponsibleIds: draft.findingResponsibleIds ?? [],
+  };
+}
+
 function newObservationId() {
   return `finding-observation-${Date.now()}-${Math.round(Math.random() * 10000)}`;
 }
@@ -148,7 +181,7 @@ export const useManualInspectionDraft = create<ManualInspectionState>((set) => (
   setInspectorIdentity: (inspectorName, inspectorCompanyName) => set({ inspectorName, inspectorCompanyName }),
   setArea: (id, name) => set({ areaId: id, areaName: name, sectorId: null, sectorName: null }),
   setSector: (id, name) => set({ sectorId: id, sectorName: name }),
-  setInspectionDate: (inspectionDate) => set({ inspectionDate }),
+  setInspectionDate: (inspectionDate) => set({ inspectionDate, inspectionDateSelected: true }),
   setLocation: ({ label, accuracy, latitude, longitude, altitude }) =>
     set({
       locationLabel: label,
@@ -160,22 +193,64 @@ export const useManualInspectionDraft = create<ManualInspectionState>((set) => (
       locationCapturedAt: new Date().toISOString(),
     }),
   setInspectionType: (inspectionType, inspectionTypeLabel) =>
-    set({ inspectionType, inspectionTypeLabel, findingTypeId: null, findingTypeLabel: null, findingObservations: [], templateId: null, templateName: null, templateCode: null, templateItemsCount: null, answersByItemId: {}, detailsByItemId: {}, generalPhoto: null, findingCompanyId: null, findingCompanyName: null, findingResponsibleIds: [] }),
+    set({
+      inspectionType,
+      inspectionTypeLabel,
+      inspectionTypeSelected: true,
+      findingTypeId: null,
+      findingTypeLabel: null,
+      findingObservations: [],
+      templateId: null,
+      templateName: null,
+      templateCode: null,
+      templateItemsCount: null,
+      answersByItemId: {},
+      detailsByItemId: {},
+      generalPhoto: null,
+      findingCompanyId: null,
+      findingCompanyName: null,
+      findingResponsibleIds: [],
+    }),
   setFindingType: (findingTypeId, findingTypeLabel) => set({ findingTypeId, findingTypeLabel }),
   addFindingObservation: () => {
     const id = newObservationId();
-    set((state) => ({ findingObservations: [...state.findingObservations, { id, detectedCondition: '', correctiveAction: '', evidence: null, severityId: null, severityLabel: null, severityDescription: null, severityClosureTimeLabel: null, probability: null, consequence: null, saved: false }] }));
+    set((state) => ({
+      findingObservations: [
+        ...state.findingObservations,
+        {
+          id,
+          detectedCondition: '',
+          correctiveAction: '',
+          evidence: null,
+          severityId: null,
+          severityLabel: null,
+          severityDescription: null,
+          severityClosureTimeLabel: null,
+          probability: null,
+          consequence: null,
+          saved: false,
+        },
+      ],
+    }));
     return id;
   },
-  updateFindingObservation: (id, patch) => set((state) => ({ findingObservations: state.findingObservations.map((item) => (item.id === id ? { ...item, ...patch } : item)) })),
+  updateFindingObservation: (id, patch) =>
+    set((state) => ({ findingObservations: state.findingObservations.map((item) => (item.id === id ? { ...item, ...patch } : item)) })),
   removeFindingObservation: (id) => set((state) => ({ findingObservations: state.findingObservations.filter((item) => item.id !== id) })),
-  setTemplate: ({ id, name, code, itemsCount }) => set({ templateId: id, templateName: name, templateCode: code, templateItemsCount: itemsCount, answersByItemId: {}, detailsByItemId: {}, generalPhoto: null }),
+  setTemplate: ({ id, name, code, itemsCount }) =>
+    set({ templateId: id, templateName: name, templateCode: code, templateItemsCount: itemsCount, answersByItemId: {}, detailsByItemId: {}, generalPhoto: null }),
   setAnswer: (itemId, value) => set((state) => ({ answersByItemId: { ...state.answersByItemId, [itemId]: value } })),
-  setItemDetail: (itemId, detail) => set((state) => ({ detailsByItemId: { ...state.detailsByItemId, [itemId]: { ...state.detailsByItemId[itemId], ...detail } } } )),
+  setItemDetail: (itemId, detail) =>
+    set((state) => ({ detailsByItemId: { ...state.detailsByItemId, [itemId]: { ...state.detailsByItemId[itemId], ...detail } } })),
   setGeneralPhoto: (generalPhoto) => set({ generalPhoto }),
   setFindingCompany: (findingCompanyId, findingCompanyName) => set({ findingCompanyId, findingCompanyName, findingResponsibleIds: [] }),
   setFindingResponsibles: (findingResponsibleIds) => set({ findingResponsibleIds }),
   setLastSavedResult: (lastSavedResult) => set({ lastSavedResult }),
-  hydrate: (draft) => set((state) => ({ ...draft, inspectorName: state.inspectorName, inspectorCompanyName: state.inspectorCompanyName })),
+  hydrate: (draft) =>
+    set((state) => ({
+      ...normalizeDraft(draft),
+      inspectorName: state.inspectorName,
+      inspectorCompanyName: state.inspectorCompanyName,
+    })),
   reset: () => set((state) => ({ ...initialDraft, inspectorName: state.inspectorName, inspectorCompanyName: state.inspectorCompanyName })),
 }));

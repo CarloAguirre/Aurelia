@@ -75,6 +75,9 @@ export interface ManualInspectionDraft {
   lastSavedResult: ManualSavedInspectionResult | null;
 }
 
+type HydratableManualInspectionDraft = Partial<ManualInspectionDraft> &
+  Pick<ManualInspectionDraft, 'inspectionType' | 'inspectionTypeLabel'>;
+
 interface ManualInspectionLocationInput {
   label: string;
   accuracy: string;
@@ -154,7 +157,7 @@ function hasTypedContent(draft: Partial<ManualInspectionDraft>) {
   );
 }
 
-function normalizeDraft(draft: ManualInspectionDraft): ManualInspectionDraft {
+function normalizeDraft(draft: HydratableManualInspectionDraft): ManualInspectionDraft {
   const legacyTypedContent = hasTypedContent(draft);
   return {
     ...initialDraft,

@@ -4,8 +4,10 @@ import { colors, fontWeight } from '../../theme/tokens';
 import { useMobileInspectionAssignmentScope } from '../../stores/mobileInspectionAssignmentScope.store';
 import type { CompanyResponse } from '../../services/api/organization.api';
 
+type SuggestedCompany = Pick<CompanyResponse, 'id' | 'name'>;
+
 interface CompanySuggestionCardProps {
-  company: CompanyResponse;
+  company: SuggestedCompany;
   reason: string;
   disabled?: boolean;
   onConfirm: () => void;

@@ -127,6 +127,8 @@ export function useSaveManualInspectionOffline() {
   return useMutation({
     mutationFn: async ({ draft, template, items, trySyncNow }: SaveManualInspectionOfflineInput): Promise<ManualSavedInspectionResult> => {
       validateChecklistDraft(draft, items);
+      const generalPhoto = draft.generalPhoto;
+      if (!generalPhoto) throw new Error('La fotografía general del checklist es obligatoria.');
 
       const session = await getOrCreateOfflineDeviceSession();
       const createdBy = user?.id ?? 'local-user';
@@ -149,7 +151,7 @@ export function useSaveManualInspectionOffline() {
         scheduledAt,
         latitude: draft.latitude,
         longitude: draft.longitude,
-        notes: draft.generalPhoto?.name ? `Foto general local: ${draft.generalPhoto.name}` : null,
+        notes: `Foto general local: ${generalPhoto.name}`,
       };
 
       await syncQueue.enqueue({
@@ -167,9 +169,9 @@ export function useSaveManualInspectionOffline() {
         inspectionLocalId: localInspectionId,
         findingLocalId: null,
         localEvidenceId,
-        sourceUri: draft.generalPhoto.uri,
+        sourceUri: generalPhoto.uri,
         remoteFileId: null,
-        fileName: draft.generalPhoto.name,
+        fileName: generalPhoto.name,
         mimeType: 'image/jpeg',
         sizeBytes: 0,
         evidenceType: 'photo',
@@ -186,7 +188,7 @@ export function useSaveManualInspectionOffline() {
         createdBy,
         deviceId: session.deviceId,
         deviceSessionId: session.deviceSessionId,
-        evidences: [{ localEvidenceId, localEntityId: localInspectionId, fileName: draft.generalPhoto.name, mimeType: 'image/jpeg', sizeBytes: 0 }],
+        evidences: [{ localEvidenceId, localEntityId: localInspectionId, fileName: generalPhoto.name, mimeType: 'image/jpeg', sizeBytes: 0 }],
         dependsOnLocalIds: [localInspectionId],
       });
 

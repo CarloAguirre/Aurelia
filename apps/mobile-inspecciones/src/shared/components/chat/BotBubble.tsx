@@ -17,6 +17,7 @@ interface AssistantCopyContext {
   areaName: string | null;
   sectorName: string | null;
   inspectionType: InspectionType;
+  findingCompanyName: string | null;
 }
 
 function canonicalAssistantText(text: string, context: AssistantCopyContext): string {
@@ -52,7 +53,10 @@ function canonicalAssistantText(text: string, context: AssistantCopyContext): st
   if (normalized === 'Te sugiero una empresa responsable para este hallazgo.') {
     return `Basándome en el historial de **${location || area}**, te propongo:`;
   }
-  if (normalized === 'Revisa el resumen antes de guardar.') return '¡Listo! Revisa el resumen antes de guardar:';
+  if (normalized.startsWith('Para ') && normalized.includes('sugiero este personal. Selecciona uno o más:')) {
+    return `Para **${context.findingCompanyName ?? 'la empresa seleccionada'}**, sugiero este personal. Selecciona uno o más:`;
+  }
+  if (normalized === 'Revisa el resumen antes de guardar.') return '¡Listo! Revisa el **resumen** antes de guardar:';
 
   return text;
 }
@@ -76,12 +80,19 @@ export function BotBubble({ text, time }: Props) {
   const areaName = useManualInspectionDraft((state) => state.areaName);
   const sectorName = useManualInspectionDraft((state) => state.sectorName);
   const inspectionType = useManualInspectionDraft((state) => state.inspectionType);
+  const findingCompanyName = useManualInspectionDraft((state) => state.findingCompanyName);
   const hiddenForAssignedCompany = !canSelectCompany && [
     'Te sugiero una empresa responsable para este hallazgo.',
     'Selecciona empresa responsable de los hallazgos.',
     'Selecciona empresa responsable.',
   ].includes(text.trim());
-  const displayText = canonicalAssistantText(text, { inspectorName, areaName, sectorName, inspectionType });
+  const displayText = canonicalAssistantText(text, {
+    inspectorName,
+    areaName,
+    sectorName,
+    inspectionType,
+    findingCompanyName,
+  });
   const now = new Date();
   const timeStr = time ?? `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
 

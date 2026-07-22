@@ -333,3 +333,5 @@ jobs:
           git add apps/mobile-inspecciones/src/modules/inspection/InspectionChatScreenV2.tsx .github/workflows/tmp-mobile-checklist-parity.yml
           git commit -m "Homologa flujo checklist normativo mobile"
           git push origin HEAD:feature/inspecciones/carlo
+
+# trigger workflow after creation

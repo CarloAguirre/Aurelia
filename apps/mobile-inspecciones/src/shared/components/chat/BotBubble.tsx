@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { InspectionType } from '@aurelia/contracts';
-import { colors, fontSize, fontWeight, radius, spacing } from '../../theme/tokens';
+import { colors, fontWeight, radius } from '../../theme/tokens';
 import { useMobileInspectionAssignmentScope } from '../../stores/mobileInspectionAssignmentScope.store';
 import { useManualInspectionDraft } from '../../../modules/inspection/manualInspection.store';
 import { SparklesMark } from '../icons/SparklesMark';

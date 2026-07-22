@@ -1,6 +1,10 @@
 import React from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, fontWeight } from '../../theme/tokens';
+import { useManualInspectionDraft } from '../../../modules/inspection/manualInspection.store';
+
+const OPTIONS = [1, 3, 7, 14];
 
 interface SlaConfirmWidgetProps {
   initialDays: number;
@@ -9,8 +13,20 @@ interface SlaConfirmWidgetProps {
   onSave: (days: number) => void;
 }
 
-export function SlaConfirmWidget({ initialDays, resolved = false, onSave }: SlaConfirmWidgetProps) {
+function parseSlaDays(label: string | null | undefined, fallback: number): number {
+  const value = Number((label ?? '').match(/(\d+)/)?.[1]);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+export function SlaConfirmWidget({
+  initialDays,
+  observationNumber = 1,
+  resolved = false,
+  onSave,
+}: SlaConfirmWidgetProps) {
   const [days, setDays] = React.useState(String(initialDays));
+  const observations = useManualInspectionDraft((state) => state.findingObservations);
+  const removeObservation = useManualInspectionDraft((state) => state.removeFindingObservation);
 
   React.useEffect(() => {
     setDays(String(initialDays));
@@ -18,86 +34,271 @@ export function SlaConfirmWidget({ initialDays, resolved = false, onSave }: SlaC
 
   const numericDays = Number(days);
   const valid = Number.isFinite(numericDays) && numericDays > 0;
+  const savedObservations = observations.filter((item) => item.saved);
+  const savedObservation = savedObservations[observationNumber - 1] ?? null;
+
+  if (resolved && savedObservation) {
+    return (
+      <View style={styles.savedCard}>
+        <View style={styles.savedRow}>
+          <Text style={styles.observationBadge}>Obs. {observationNumber}</Text>
+          <View style={styles.savedCopy}>
+            <Text numberOfLines={1} style={styles.savedCondition}>{savedObservation.detectedCondition}</Text>
+            <View style={styles.savedMetaRow}>
+              <Text style={styles.severityBadge}>
+                {savedObservation.severityLabel ?? 'Manual'} · {parseSlaDays(savedObservation.severityClosureTimeLabel, initialDays)}d
+              </Text>
+              <Text style={styles.manualBadge}>Manual</Text>
+              {savedObservation.evidence ? (
+                <View style={styles.evidenceMark}>
+                  <FontAwesome5 name="camera" size={10} color="#2A7A2E" />
+                  <Text style={styles.evidenceCheck}>✓</Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+          <TouchableOpacity
+            accessibilityLabel="Eliminar observación"
+            activeOpacity={0.7}
+            onPress={() => removeObservation(savedObservation.id)}
+            style={styles.removeButton}
+          >
+            <FontAwesome5 name="trash-alt" size={12} color="#646464" />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.title}>Confirma el SLA</Text>
-      <View style={styles.row}>
-        <TextInput
-          editable={!resolved}
-          keyboardType="number-pad"
-          onChangeText={(value) => setDays(value.replace(/\D/g, '').slice(0, 3))}
-          selectionColor="#24588B"
-          style={styles.input}
-          value={days}
-        />
-        <Text style={styles.daysLabel}>días</Text>
-        <TouchableOpacity
-          activeOpacity={0.75}
-          disabled={resolved || !valid}
-          onPress={() => onSave(numericDays)}
-          style={[styles.saveButton, (resolved || !valid) && styles.saveButtonDisabled]}
-        >
-          <Text style={styles.saveText}>Guardar observación</Text>
-        </TouchableOpacity>
+    <>
+      <View style={styles.card}>
+        <Text style={styles.title}>SLA · DÍAS HÁBILES PARA RESOLVER</Text>
+        <View style={styles.options}>
+          {OPTIONS.map((option) => {
+            const selected = numericDays === option;
+            return (
+              <TouchableOpacity
+                key={option}
+                activeOpacity={0.75}
+                disabled={resolved}
+                onPress={() => setDays(String(option))}
+                style={[styles.option, selected && styles.optionSelected]}
+              >
+                <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
+                  {option} día{option === 1 ? '' : 's'}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <View style={styles.customRow}>
+          <TextInput
+            editable={!resolved}
+            keyboardType="number-pad"
+            onChangeText={(value) => setDays(value.replace(/\D/g, '').slice(0, 3))}
+            selectionColor="#C8A064"
+            style={styles.input}
+            value={days}
+          />
+          <Text style={styles.customText}>días personalizados</Text>
+        </View>
       </View>
-    </View>
+      <TouchableOpacity
+        activeOpacity={0.8}
+        disabled={resolved || !valid}
+        onPress={() => onSave(numericDays)}
+        style={[styles.saveButton, (resolved || !valid) && styles.disabled]}
+      >
+        <FontAwesome5 name="save" size={10} color={colors.white} solid />
+        <Text style={styles.saveText}>Guardar observación {observationNumber}</Text>
+      </TouchableOpacity>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    marginBottom: 10,
+    marginBottom: 8,
     marginLeft: 33,
     marginRight: 12,
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     backgroundColor: colors.white,
     borderColor: '#E3E3E3',
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
   },
   title: {
-    color: '#131313',
-    fontSize: 13,
+    marginBottom: 6,
+    color: '#646464',
+    fontSize: 9,
     fontWeight: fontWeight.bold,
+    letterSpacing: 0.8,
   },
-  row: {
-    marginTop: 8,
+  options: {
+    marginBottom: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 5,
+  },
+  option: {
+    height: 26,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F4F6F9',
+    borderColor: '#D1D1D1',
+    borderRadius: 7,
+    borderWidth: 1,
+  },
+  optionSelected: {
+    backgroundColor: '#C8A064',
+    borderColor: '#C8A064',
+  },
+  optionText: {
+    color: '#646464',
+    fontSize: 11,
+    fontWeight: fontWeight.semibold,
+  },
+  optionTextSelected: {
+    color: '#001E39',
+  },
+  customRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
   input: {
-    width: 90,
-    height: 40,
-    paddingHorizontal: 10,
+    width: 55,
+    height: 30,
+    padding: 0,
     color: '#131313',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: fontWeight.bold,
-    backgroundColor: '#F6FAFF',
+    textAlign: 'center',
+    backgroundColor: colors.white,
     borderColor: '#D1D1D1',
-    borderRadius: 10,
+    borderRadius: 7,
     borderWidth: 1.5,
   },
-  daysLabel: {
+  customText: {
     color: '#646464',
     fontSize: 12,
   },
   saveButton: {
-    height: 40,
-    marginLeft: 'auto',
-    paddingHorizontal: 12,
+    height: 36,
+    marginBottom: 10,
+    marginLeft: 33,
+    paddingHorizontal: 17,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#C8A064',
-    borderRadius: 10,
-  },
-  saveButtonDisabled: {
-    opacity: 0.5,
+    gap: 7,
+    backgroundColor: '#00B398',
+    borderRadius: 999,
+    shadowColor: '#00B398',
+    shadowOpacity: 0.22,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
   },
   saveText: {
     color: colors.white,
     fontSize: 12,
     fontWeight: fontWeight.bold,
+  },
+  disabled: {
+    opacity: 0.5,
+  },
+  savedCard: {
+    width: 'auto',
+    marginBottom: 10,
+    marginHorizontal: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    backgroundColor: colors.white,
+    borderColor: '#E3E3E3',
+    borderRadius: 10,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
+  },
+  savedRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  observationBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    color: '#0D3862',
+    fontSize: 10,
+    fontWeight: fontWeight.bold,
+    lineHeight: 14,
+    backgroundColor: '#E6F3FF',
+    borderRadius: 5,
+  },
+  savedCopy: {
+    minWidth: 0,
+    flex: 1,
+  },
+  savedCondition: {
+    color: '#131313',
+    fontSize: 12,
+    fontWeight: fontWeight.semibold,
+    lineHeight: 17,
+  },
+  savedMetaRow: {
+    marginTop: 3,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 4,
+  },
+  severityBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    color: '#463100',
+    fontSize: 9,
+    fontWeight: fontWeight.bold,
+    lineHeight: 12,
+    backgroundColor: '#FFEAB8',
+    borderRadius: 4,
+  },
+  manualBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    color: '#646464',
+    fontSize: 9,
+    fontWeight: fontWeight.bold,
+    lineHeight: 12,
+    backgroundColor: '#F4F6F9',
+    borderRadius: 4,
+  },
+  evidenceMark: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 1,
+  },
+  evidenceCheck: {
+    color: '#2A7A2E',
+    fontSize: 9,
+    fontWeight: fontWeight.bold,
+  },
+  removeButton: {
+    width: 24,
+    height: 24,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F4F6F9',
+    borderColor: '#E3E3E3',
+    borderRadius: 5,
+    borderWidth: 1,
   },
 });

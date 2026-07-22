@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import {
@@ -285,6 +285,10 @@ export function InspectionChatScreenV2() {
   const checklistRows = useMemo(() => rowsOf(activeTemplate), [activeTemplate]);
 
   const saving = checklistSave.isPending || findingSave.isPending;
+  const activeSummaryMessage = useMemo(
+    () => [...messages].reverse().find((message) => message.t === 'summary') ?? null,
+    [messages],
+  );
 
   function push(type: MsgType, data?: unknown) {
     const message = { id: nextId(), t: type, data };
@@ -1338,9 +1342,6 @@ export function InspectionChatScreenV2() {
             </View>
           </View>
 
-          <TouchableOpacity onPress={() => submitInspection(message.id)} disabled={saving} style={styles.saveButton}>
-            <Text style={styles.saveButtonText}>{saving ? 'Guardando…' : '✓ Guardar hallazgo'}</Text>
-          </TouchableOpacity>
         </View>
       );
     }
@@ -1376,9 +1377,6 @@ export function InspectionChatScreenV2() {
           </View>
         </View>
 
-        <TouchableOpacity onPress={() => submitInspection(message.id)} disabled={saving} style={styles.saveButton}>
-          <Text style={styles.saveButtonText}>{saving ? 'Guardando…' : '✓ Guardar checklist'}</Text>
-        </TouchableOpacity>
       </View>
     );
   }
@@ -1831,10 +1829,39 @@ export function InspectionChatScreenV2() {
           >
             {messages.map(renderMessage)}
           </ScrollView>
-          <ChatInput onSend={sendText} disabled={waiting === null} />
+          {activeSummaryMessage ? (
+            <SummarySaveFooter
+              saving={saving}
+              onSave={() => {
+                void submitInspection(activeSummaryMessage.id);
+              }}
+            />
+          ) : (
+            <ChatInput onSend={sendText} disabled={waiting === null} />
+          )}
         </KeyboardAvoidingView>
       </View>
     </SafeAreaProvider>
+  );
+}
+
+function SummarySaveFooter({ saving, onSave }: { saving: boolean; onSave: () => void }) {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View style={[styles.summaryFooter, { paddingBottom: insets.bottom + spacing.xs }]}>
+      <TouchableOpacity
+        activeOpacity={0.8}
+        disabled={saving}
+        onPress={onSave}
+        style={[styles.summaryFooterButton, saving && styles.summaryFooterButtonDisabled]}
+      >
+        <Text style={styles.summaryFooterText}>{saving ? 'Guardando…' : '✓ Guardar inspección'}</Text>
+      </TouchableOpacity>
+      <View style={styles.summaryFooterHomeIndicatorBar}>
+        <View style={styles.summaryFooterHomeIndicator} />
+      </View>
+    </View>
   );
 }
 
@@ -1953,6 +1980,45 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
+  },
+  summaryFooter: {
+    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.white,
+    borderTopColor: colors.border,
+    borderTopWidth: 1,
+  },
+  summaryFooterButton: {
+    width: '100%',
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#35A137',
+    borderRadius: 12,
+    shadowColor: '#35A137',
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  summaryFooterButtonDisabled: {
+    opacity: 0.7,
+  },
+  summaryFooterText: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: fontWeight.bold,
+  },
+  summaryFooterHomeIndicatorBar: {
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  summaryFooterHomeIndicator: {
+    width: 120,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.borderMid,
   },
   questionCard: {
     backgroundColor: colors.white,

@@ -52,6 +52,8 @@ export function ChipRow({ chips, selected, onSelect, variant = 'gold' }: ChipRow
   const findingCompanyId = useManualInspectionDraft((state) => state.findingCompanyId);
   const findingCompanyName = useManualInspectionDraft((state) => state.findingCompanyName);
   const confirmedRef = React.useRef(false);
+  const chipsRef = React.useRef(chips);
+  chipsRef.current = chips;
   const [showCompanyPicker, setShowCompanyPicker] = React.useState(false);
   const [suggestedCompanyName, setSuggestedCompanyName] = React.useState(chips[0] ?? '');
   const [suggestionReason, setSuggestionReason] = React.useState(
@@ -70,24 +72,26 @@ export function ChipRow({ chips, selected, onSelect, variant = 'gold' }: ChipRow
   const companySelector = unresolvedCompanyStage || resolvedCompanyStage;
   const lockedCompany = !canSelectCompany && Boolean(assignedCompanyName) && companySelector;
   const checklistSuggestionStage = inspectionType === InspectionType.REGULATORY && unresolvedCompanyStage;
+  const companyKey = chips.join('\u0000');
 
   React.useEffect(() => {
-    if (!checklistSuggestionStage || chips.length === 0) return;
+    const availableCompanies = chipsRef.current;
+    if (!checklistSuggestionStage || availableCompanies.length === 0) return;
 
     let cancelled = false;
-    const fallbackCompany = chips[0] ?? '';
+    const fallbackCompany = availableCompanies[0] ?? '';
     setSuggestedCompanyName(fallbackCompany);
     setSuggestionReason('Recomendación basada en el área, sector y empresas disponibles.');
 
     void suggestCompany({
       area: areaName ?? '',
       sector: sectorName ?? '',
-      availableCompanies: chips,
+      availableCompanies,
     })
       .then((response) => {
         if (cancelled) return;
         const normalizedSuggestion = normalizeText(response.suggestion);
-        const match = chips.find((company) => {
+        const match = availableCompanies.find((company) => {
           const normalizedCompany = normalizeText(company);
           return normalizedSuggestion.includes(normalizedCompany) || normalizedCompany.includes(normalizedSuggestion);
         });
@@ -102,7 +106,7 @@ export function ChipRow({ chips, selected, onSelect, variant = 'gold' }: ChipRow
     return () => {
       cancelled = true;
     };
-  }, [areaName, checklistSuggestionStage, chips, sectorName]);
+  }, [areaName, checklistSuggestionStage, companyKey, sectorName]);
 
   React.useEffect(() => {
     if (!lockedCompany || selected === assignedCompanyName || confirmedRef.current || !assignedCompanyName) return;

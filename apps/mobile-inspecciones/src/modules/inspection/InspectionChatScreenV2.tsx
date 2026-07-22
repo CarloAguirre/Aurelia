@@ -967,7 +967,10 @@ export function InspectionChatScreenV2() {
 
   async function acceptAiMeasure(messageId: string, data: AiMeasureData) {
     markResolved(messageId);
-    draft.updateFindingObservation(data.observationId, { correctiveAction: data.suggestion });
+    draft.updateFindingObservation(data.observationId, {
+      correctiveAction: data.suggestion,
+      correctiveActionSource: 'ai',
+    });
     push('user', '✓ Medida aceptada');
     await askFindingCriticality(data.observationId);
   }
@@ -979,7 +982,10 @@ export function InspectionChatScreenV2() {
   }
 
   async function handleFindingMeasure(text: string, observationId: string) {
-    draft.updateFindingObservation(observationId, { correctiveAction: text });
+    draft.updateFindingObservation(observationId, {
+      correctiveAction: text,
+      correctiveActionSource: 'manual',
+    });
     push('user', text);
     await askFindingCriticality(observationId);
   }
@@ -1321,9 +1327,6 @@ export function InspectionChatScreenV2() {
             </View>
             <SummaryRow label="Inspector" value={state.inspectorName} />
             <SummaryRow label="Área · Sector" value={[state.areaName, state.sectorName].filter(Boolean).join(' · ')} />
-            <SummaryRow label="Fecha" value={state.inspectionDate} />
-            <SummaryRow label="Ubicación" value={state.locationLabel} />
-            <SummaryRow label="Tipo hallazgo" value={state.findingTypeLabel ?? '—'} />
             <SummaryRow label="Empresa EECC" value={state.findingCompanyName ?? '—'} />
             <SummaryRow label="Responsables" value={state.findingResponsibleIds.length ? `${state.findingResponsibleIds.length} seleccionados` : '—'} />
           </View>
@@ -1335,8 +1338,15 @@ export function InspectionChatScreenV2() {
             <View style={styles.summaryItems}>
               {observations.map((obs, index) => (
                 <View key={obs.id} style={styles.summaryObservationRow}>
-                  <Text style={styles.summaryObservationTitle}>Obs. {index + 1}</Text>
-                  <Text style={styles.summaryObservationMeta}>{(obs.severityLabel ?? 'Sin criticidad')} · {obs.severityClosureTimeLabel ?? 'SLA pendiente'}</Text>
+                  <View style={styles.summaryObservationTop}>
+                    <Text style={styles.summaryObservationTitle}>Obs. {index + 1}</Text>
+                    <View style={styles.summaryObservationBadges}>
+                      <Text style={styles.summarySeverityBadge}>{obs.severityLabel ?? 'Sin criticidad'}</Text>
+                      <Text style={styles.summarySourceBadge}>{obs.correctiveActionSource === 'ai' ? 'IA' : 'Manual'}</Text>
+                    </View>
+                  </View>
+                  <Text numberOfLines={2} style={styles.summaryObservationCondition}>{obs.detectedCondition}</Text>
+                  <Text style={styles.summaryObservationMeta}>SLA: {parseSlaDays(obs.severityClosureTimeLabel, 7)} días</Text>
                 </View>
               ))}
             </View>
@@ -1883,6 +1893,8 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
   },
   summaryWrap: {
+    marginLeft: 33,
+    marginRight: 12,
     gap: spacing.sm,
   },
   summaryCard: {
@@ -1906,9 +1918,9 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
   },
   summaryPill: {
-    backgroundColor: colors.tealSurf,
+    backgroundColor: '#78D8CC',
     borderRadius: 4,
-    color: colors.tealTxt,
+    color: colors.white,
     fontSize: 9,
     fontWeight: fontWeight.bold,
     paddingHorizontal: 6,
@@ -1931,6 +1943,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: fontSize.sm,
     fontWeight: fontWeight.bold,
+    textAlign: 'right',
   },
   summaryItems: {
     gap: 6,
@@ -1953,18 +1966,56 @@ const styles = StyleSheet.create({
   },
   summaryObservationRow: {
     borderColor: colors.border,
-    borderRadius: radius.sm,
+    borderRadius: 8,
     borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    gap: 2,
+    padding: 10,
+  },
+  summaryObservationTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
   },
   summaryObservationTitle: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    color: '#0D3862',
+    fontSize: 10,
+    fontWeight: fontWeight.bold,
+    backgroundColor: '#E6F3FF',
+    borderRadius: 5,
+  },
+  summaryObservationBadges: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  summarySeverityBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    color: '#463100',
+    fontSize: 9,
+    fontWeight: fontWeight.bold,
+    backgroundColor: '#FFEAB8',
+    borderRadius: 4,
+  },
+  summarySourceBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    color: '#8E6E3E',
+    fontSize: 9,
+    fontWeight: fontWeight.bold,
+    backgroundColor: '#FDF3E3',
+    borderRadius: 4,
+  },
+  summaryObservationCondition: {
+    marginTop: 6,
     color: colors.primary,
     fontSize: fontSize.sm,
-    fontWeight: fontWeight.bold,
+    lineHeight: 17,
   },
   summaryObservationMeta: {
+    marginTop: 4,
     color: colors.muted,
     fontSize: fontSize.xs,
   },

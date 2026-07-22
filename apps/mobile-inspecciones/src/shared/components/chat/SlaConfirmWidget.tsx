@@ -40,7 +40,7 @@ export function SavedObservationCard({ observationId }: SavedObservationCardProp
             <Text style={styles.severityBadge}>
               {observation.severityLabel ?? 'Manual'} · {parseSlaDays(observation.severityClosureTimeLabel, 7)}d
             </Text>
-            <Text style={styles.manualBadge}>Manual</Text>
+            <Text style={styles.manualBadge}>{observation.correctiveActionSource === 'ai' ? 'IA' : 'Manual'}</Text>
             {observation.evidence ? (
               <View style={styles.evidenceMark}>
                 <FontAwesome5 name="camera" size={10} color="#2A7A2E" />

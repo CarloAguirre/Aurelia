@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { FontAwesome5 } from '@expo/vector-icons';
-import { colors, fontSize, fontWeight } from '../../theme/tokens';
+import { colors, fontWeight } from '../../theme/tokens';
 import { PhotoSourceSheet } from '../form/PhotoSourceSheet';
 
 interface Props {

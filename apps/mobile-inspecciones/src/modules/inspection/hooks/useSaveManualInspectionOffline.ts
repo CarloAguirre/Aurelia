@@ -192,6 +192,8 @@ export function useSaveManualInspectionOffline() {
 
       for (const item of items) {
         const answer = draft.answersByItemId[item.id];
+        if (!answer) throw new Error(`Falta responder el ítem ${item.code}.`);
+
         const detail = draft.detailsByItemId[item.id] ?? {};
         const answerPayload: UpsertInspectionAnswerRequest = {
           checklistItemId: item.id,

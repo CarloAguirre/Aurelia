@@ -1,0 +1,127 @@
+name: Temporary mobile summary card fidelity
+
+on:
+  push:
+    branches:
+      - feature/inspecciones/carlo
+    paths:
+      - .github/workflows/tmp-mobile-summary-card-fidelity.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-summary-cards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/inspecciones/carlo
+          fetch-depth: 0
+
+      - name: Patch summary cards and observation source
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected one match, found {count}')
+              return text.replace(old, new, 1)
+
+          store_path = Path('apps/mobile-inspecciones/src/modules/inspection/manualInspection.store.ts')
+          store = store_path.read_text(encoding='utf-8')
+          store = replace_once(
+              store,
+              "  correctiveAction: string;\n  evidence: ManualPickedAsset | null;",
+              "  correctiveAction: string;\n  correctiveActionSource: 'ai' | 'manual' | null;\n  evidence: ManualPickedAsset | null;",
+              'observation source type',
+          )
+          store = replace_once(
+              store,
+              "    findingObservations: draft.findingObservations ?? [],",
+              "    findingObservations: (draft.findingObservations ?? []).map((item) => ({\n      ...item,\n      correctiveActionSource: item.correctiveActionSource ?? null,\n    })),",
+              'legacy observation normalization',
+          )
+          store = replace_once(
+              store,
+              "          correctiveAction: '',\n          evidence: null,",
+              "          correctiveAction: '',\n          correctiveActionSource: null,\n          evidence: null,",
+              'new observation source',
+          )
+          store_path.write_text(store, encoding='utf-8')
+
+          screen_path = Path('apps/mobile-inspecciones/src/modules/inspection/InspectionChatScreenV2.tsx')
+          screen = screen_path.read_text(encoding='utf-8')
+          screen = replace_once(
+              screen,
+              "    draft.updateFindingObservation(data.observationId, { correctiveAction: data.suggestion });",
+              "    draft.updateFindingObservation(data.observationId, {\n      correctiveAction: data.suggestion,\n      correctiveActionSource: 'ai',\n    });",
+              'AI corrective action source',
+          )
+          screen = replace_once(
+              screen,
+              "    draft.updateFindingObservation(observationId, { correctiveAction: text });",
+              "    draft.updateFindingObservation(observationId, {\n      correctiveAction: text,\n      correctiveActionSource: 'manual',\n    });",
+              'manual corrective action source',
+          )
+          screen = replace_once(
+              screen,
+              "            <SummaryRow label=\"Inspector\" value={state.inspectorName} />\n            <SummaryRow label=\"Área · Sector\" value={[state.areaName, state.sectorName].filter(Boolean).join(' · ')} />\n            <SummaryRow label=\"Fecha\" value={state.inspectionDate} />\n            <SummaryRow label=\"Ubicación\" value={state.locationLabel} />\n            <SummaryRow label=\"Tipo hallazgo\" value={state.findingTypeLabel ?? '—'} />\n            <SummaryRow label=\"Empresa EECC\" value={state.findingCompanyName ?? '—'} />\n            <SummaryRow label=\"Responsables\" value={state.findingResponsibleIds.length ? `${state.findingResponsibleIds.length} seleccionados` : '—'} />",
+              "            <SummaryRow label=\"Inspector\" value={state.inspectorName} />\n            <SummaryRow label=\"Área · Sector\" value={[state.areaName, state.sectorName].filter(Boolean).join(' · ')} />\n            <SummaryRow label=\"Empresa EECC\" value={state.findingCompanyName ?? '—'} />\n            <SummaryRow label=\"Responsables\" value={state.findingResponsibleIds.length ? `${state.findingResponsibleIds.length} seleccionados` : '—'} />",
+              'finding general summary rows',
+          )
+          screen = replace_once(
+              screen,
+              "                <View key={obs.id} style={styles.summaryObservationRow}>\n                  <Text style={styles.summaryObservationTitle}>Obs. {index + 1}</Text>\n                  <Text style={styles.summaryObservationMeta}>{(obs.severityLabel ?? 'Sin criticidad')} · {obs.severityClosureTimeLabel ?? 'SLA pendiente'}</Text>\n                </View>",
+              "                <View key={obs.id} style={styles.summaryObservationRow}>\n                  <View style={styles.summaryObservationTop}>\n                    <Text style={styles.summaryObservationTitle}>Obs. {index + 1}</Text>\n                    <View style={styles.summaryObservationBadges}>\n                      <Text style={styles.summarySeverityBadge}>{obs.severityLabel ?? 'Sin criticidad'}</Text>\n                      <Text style={styles.summarySourceBadge}>{obs.correctiveActionSource === 'ai' ? 'IA' : 'Manual'}</Text>\n                    </View>\n                  </View>\n                  <Text numberOfLines={2} style={styles.summaryObservationCondition}>{obs.detectedCondition}</Text>\n                  <Text style={styles.summaryObservationMeta}>SLA: {parseSlaDays(obs.severityClosureTimeLabel, 7)} días</Text>\n                </View>",
+              'finding observation summary card',
+          )
+          screen = replace_once(
+              screen,
+              "  summaryWrap: {\n    gap: spacing.sm,\n  },",
+              "  summaryWrap: {\n    marginLeft: 33,\n    marginRight: 12,\n    gap: spacing.sm,\n  },",
+              'summary alignment',
+          )
+          screen = replace_once(
+              screen,
+              "  summaryPill: {\n    backgroundColor: colors.tealSurf,\n    borderRadius: 4,\n    color: colors.tealTxt,",
+              "  summaryPill: {\n    backgroundColor: '#78D8CC',\n    borderRadius: 4,\n    color: colors.white,",
+              'summary pill',
+          )
+          screen = replace_once(
+              screen,
+              "  summaryValue: {\n    color: colors.primary,\n    flex: 1,\n    fontSize: fontSize.sm,\n    fontWeight: fontWeight.bold,\n  },",
+              "  summaryValue: {\n    color: colors.primary,\n    flex: 1,\n    fontSize: fontSize.sm,\n    fontWeight: fontWeight.bold,\n    textAlign: 'right',\n  },",
+              'summary value alignment',
+          )
+          screen = replace_once(
+              screen,
+              "  summaryObservationRow: {\n    borderColor: colors.border,\n    borderRadius: radius.sm,\n    borderWidth: 1,\n    paddingHorizontal: spacing.md,\n    paddingVertical: spacing.sm,\n    gap: 2,\n  },\n  summaryObservationTitle: {\n    color: colors.primary,\n    fontSize: fontSize.sm,\n    fontWeight: fontWeight.bold,\n  },\n  summaryObservationMeta: {\n    color: colors.muted,\n    fontSize: fontSize.xs,\n  },",
+              "  summaryObservationRow: {\n    borderColor: colors.border,\n    borderRadius: 8,\n    borderWidth: 1,\n    padding: 10,\n  },\n  summaryObservationTop: {\n    flexDirection: 'row',\n    alignItems: 'center',\n    justifyContent: 'space-between',\n    gap: 8,\n  },\n  summaryObservationTitle: {\n    paddingHorizontal: 7,\n    paddingVertical: 2,\n    color: '#0D3862',\n    fontSize: 10,\n    fontWeight: fontWeight.bold,\n    backgroundColor: '#E6F3FF',\n    borderRadius: 5,\n  },\n  summaryObservationBadges: {\n    flexDirection: 'row',\n    alignItems: 'center',\n    gap: 5,\n  },\n  summarySeverityBadge: {\n    paddingHorizontal: 6,\n    paddingVertical: 2,\n    color: '#463100',\n    fontSize: 9,\n    fontWeight: fontWeight.bold,\n    backgroundColor: '#FFEAB8',\n    borderRadius: 4,\n  },\n  summarySourceBadge: {\n    paddingHorizontal: 6,\n    paddingVertical: 2,\n    color: '#8E6E3E',\n    fontSize: 9,\n    fontWeight: fontWeight.bold,\n    backgroundColor: '#FDF3E3',\n    borderRadius: 4,\n  },\n  summaryObservationCondition: {\n    marginTop: 6,\n    color: colors.primary,\n    fontSize: fontSize.sm,\n    lineHeight: 17,\n  },\n  summaryObservationMeta: {\n    marginTop: 4,\n    color: colors.muted,\n    fontSize: fontSize.xs,\n  },",
+              'summary observation styles',
+          )
+          screen_path.write_text(screen, encoding='utf-8')
+
+          sla_path = Path('apps/mobile-inspecciones/src/shared/components/chat/SlaConfirmWidget.tsx')
+          sla = sla_path.read_text(encoding='utf-8')
+          sla = replace_once(
+              sla,
+              "            <Text style={styles.manualBadge}>Manual</Text>",
+              "            <Text style={styles.manualBadge}>{observation.correctiveActionSource === 'ai' ? 'IA' : 'Manual'}</Text>",
+              'saved observation source badge',
+          )
+          sla_path.write_text(sla, encoding='utf-8')
+          PY
+
+      - name: Commit summary card fidelity
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm .github/workflows/tmp-mobile-summary-card-fidelity.yml
+          git add apps/mobile-inspecciones/src/modules/inspection/InspectionChatScreenV2.tsx apps/mobile-inspecciones/src/modules/inspection/manualInspection.store.ts apps/mobile-inspecciones/src/shared/components/chat/SlaConfirmWidget.tsx .github/workflows/tmp-mobile-summary-card-fidelity.yml
+          git commit -m "Fideliza contenido del resumen mobile"
+          git push origin HEAD:feature/inspecciones/carlo

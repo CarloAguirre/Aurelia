@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
+import { ChatDateWidget } from './ChatDateWidget';
 
 export type QuickOptVariant = 'default' | 'selected' | 'teal' | 'disabled';
 type QuickIcon = 'search' | 'clipboard-check' | 'plus' | 'arrow-right' | 'list' | 'check' | 'pen';
@@ -59,7 +60,21 @@ function isInspectionTypeSelector(options: QuickOptsProps['options']) {
   return labels.includes('hallazgo') && labels.includes('checklist normativo');
 }
 
+function isDateSelector(options: QuickOptsProps['options']) {
+  return options.length > 0 && options.every((option) => /^\d{2}-\d{2}-\d{4}$/.test(option.value));
+}
+
 export function QuickOpts({ options, selected, onSelect }: QuickOptsProps) {
+  if (isDateSelector(options)) {
+    return (
+      <ChatDateWidget
+        value={selected ?? options[0]?.value ?? ''}
+        resolved={Boolean(selected)}
+        onSelect={(value) => onSelect?.(value)}
+      />
+    );
+  }
+
   const fullWidth = isInspectionTypeSelector(options);
 
   return (

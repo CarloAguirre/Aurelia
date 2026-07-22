@@ -19,6 +19,7 @@ export interface ManualFindingObservationDraft {
   id: string;
   detectedCondition: string;
   correctiveAction: string;
+  correctiveActionSource: 'ai' | 'manual' | null;
   evidence: ManualPickedAsset | null;
   severityId: string | null;
   severityLabel: string | null;
@@ -164,7 +165,10 @@ function normalizeDraft(draft: HydratableManualInspectionDraft): ManualInspectio
     ...draft,
     inspectionTypeSelected: draft.inspectionTypeSelected ?? legacyTypedContent,
     inspectionDateSelected: draft.inspectionDateSelected ?? Boolean(draft.locationCaptured || legacyTypedContent),
-    findingObservations: draft.findingObservations ?? [],
+    findingObservations: (draft.findingObservations ?? []).map((item) => ({
+      ...item,
+      correctiveActionSource: item.correctiveActionSource ?? null,
+    })),
     answersByItemId: draft.answersByItemId ?? {},
     detailsByItemId: draft.detailsByItemId ?? {},
     findingResponsibleIds: draft.findingResponsibleIds ?? [],
@@ -221,6 +225,7 @@ export const useManualInspectionDraft = create<ManualInspectionState>((set) => (
           id,
           detectedCondition: '',
           correctiveAction: '',
+          correctiveActionSource: null,
           evidence: null,
           severityId: null,
           severityLabel: null,

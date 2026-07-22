@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import {
@@ -285,6 +285,10 @@ export function InspectionChatScreenV2() {
   const checklistRows = useMemo(() => rowsOf(activeTemplate), [activeTemplate]);
 
   const saving = checklistSave.isPending || findingSave.isPending;
+  const activeSummaryMessage = useMemo(
+    () => [...messages].reverse().find((message) => message.t === 'summary') ?? null,
+    [messages],
+  );
 
   function push(type: MsgType, data?: unknown) {
     const message = { id: nextId(), t: type, data };
@@ -963,7 +967,10 @@ export function InspectionChatScreenV2() {
 
   async function acceptAiMeasure(messageId: string, data: AiMeasureData) {
     markResolved(messageId);
-    draft.updateFindingObservation(data.observationId, { correctiveAction: data.suggestion });
+    draft.updateFindingObservation(data.observationId, {
+      correctiveAction: data.suggestion,
+      correctiveActionSource: 'ai',
+    });
     push('user', '✓ Medida aceptada');
     await askFindingCriticality(data.observationId);
   }
@@ -975,7 +982,10 @@ export function InspectionChatScreenV2() {
   }
 
   async function handleFindingMeasure(text: string, observationId: string) {
-    draft.updateFindingObservation(observationId, { correctiveAction: text });
+    draft.updateFindingObservation(observationId, {
+      correctiveAction: text,
+      correctiveActionSource: 'manual',
+    });
     push('user', text);
     await askFindingCriticality(observationId);
   }
@@ -1317,9 +1327,6 @@ export function InspectionChatScreenV2() {
             </View>
             <SummaryRow label="Inspector" value={state.inspectorName} />
             <SummaryRow label="Área · Sector" value={[state.areaName, state.sectorName].filter(Boolean).join(' · ')} />
-            <SummaryRow label="Fecha" value={state.inspectionDate} />
-            <SummaryRow label="Ubicación" value={state.locationLabel} />
-            <SummaryRow label="Tipo hallazgo" value={state.findingTypeLabel ?? '—'} />
             <SummaryRow label="Empresa EECC" value={state.findingCompanyName ?? '—'} />
             <SummaryRow label="Responsables" value={state.findingResponsibleIds.length ? `${state.findingResponsibleIds.length} seleccionados` : '—'} />
           </View>
@@ -1331,16 +1338,20 @@ export function InspectionChatScreenV2() {
             <View style={styles.summaryItems}>
               {observations.map((obs, index) => (
                 <View key={obs.id} style={styles.summaryObservationRow}>
-                  <Text style={styles.summaryObservationTitle}>Obs. {index + 1}</Text>
-                  <Text style={styles.summaryObservationMeta}>{(obs.severityLabel ?? 'Sin criticidad')} · {obs.severityClosureTimeLabel ?? 'SLA pendiente'}</Text>
+                  <View style={styles.summaryObservationTop}>
+                    <Text style={styles.summaryObservationTitle}>Obs. {index + 1}</Text>
+                    <View style={styles.summaryObservationBadges}>
+                      <Text style={styles.summarySeverityBadge}>{obs.severityLabel ?? 'Sin criticidad'}</Text>
+                      <Text style={styles.summarySourceBadge}>{obs.correctiveActionSource === 'ai' ? 'IA' : 'Manual'}</Text>
+                    </View>
+                  </View>
+                  <Text numberOfLines={2} style={styles.summaryObservationCondition}>{obs.detectedCondition}</Text>
+                  <Text style={styles.summaryObservationMeta}>SLA: {parseSlaDays(obs.severityClosureTimeLabel, 7)} días</Text>
                 </View>
               ))}
             </View>
           </View>
 
-          <TouchableOpacity onPress={() => submitInspection(message.id)} disabled={saving} style={styles.saveButton}>
-            <Text style={styles.saveButtonText}>{saving ? 'Guardando…' : '✓ Guardar hallazgo'}</Text>
-          </TouchableOpacity>
         </View>
       );
     }
@@ -1376,9 +1387,6 @@ export function InspectionChatScreenV2() {
           </View>
         </View>
 
-        <TouchableOpacity onPress={() => submitInspection(message.id)} disabled={saving} style={styles.saveButton}>
-          <Text style={styles.saveButtonText}>{saving ? 'Guardando…' : '✓ Guardar checklist'}</Text>
-        </TouchableOpacity>
       </View>
     );
   }
@@ -1831,10 +1839,39 @@ export function InspectionChatScreenV2() {
           >
             {messages.map(renderMessage)}
           </ScrollView>
-          <ChatInput onSend={sendText} disabled={waiting === null} />
+          {activeSummaryMessage ? (
+            <SummarySaveFooter
+              saving={saving}
+              onSave={() => {
+                void submitInspection(activeSummaryMessage.id);
+              }}
+            />
+          ) : (
+            <ChatInput onSend={sendText} disabled={waiting === null} />
+          )}
         </KeyboardAvoidingView>
       </View>
     </SafeAreaProvider>
+  );
+}
+
+function SummarySaveFooter({ saving, onSave }: { saving: boolean; onSave: () => void }) {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View style={[styles.summaryFooter, { paddingBottom: insets.bottom + spacing.xs }]}>
+      <TouchableOpacity
+        activeOpacity={0.8}
+        disabled={saving}
+        onPress={onSave}
+        style={[styles.summaryFooterButton, saving && styles.summaryFooterButtonDisabled]}
+      >
+        <Text style={styles.summaryFooterText}>{saving ? 'Guardando…' : '✓ Guardar inspección'}</Text>
+      </TouchableOpacity>
+      <View style={styles.summaryFooterHomeIndicatorBar}>
+        <View style={styles.summaryFooterHomeIndicator} />
+      </View>
+    </View>
   );
 }
 
@@ -1856,6 +1893,8 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
   },
   summaryWrap: {
+    marginLeft: 33,
+    marginRight: 12,
     gap: spacing.sm,
   },
   summaryCard: {
@@ -1879,9 +1918,9 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
   },
   summaryPill: {
-    backgroundColor: colors.tealSurf,
+    backgroundColor: '#78D8CC',
     borderRadius: 4,
-    color: colors.tealTxt,
+    color: colors.white,
     fontSize: 9,
     fontWeight: fontWeight.bold,
     paddingHorizontal: 6,
@@ -1904,6 +1943,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: fontSize.sm,
     fontWeight: fontWeight.bold,
+    textAlign: 'right',
   },
   summaryItems: {
     gap: 6,
@@ -1926,18 +1966,56 @@ const styles = StyleSheet.create({
   },
   summaryObservationRow: {
     borderColor: colors.border,
-    borderRadius: radius.sm,
+    borderRadius: 8,
     borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    gap: 2,
+    padding: 10,
+  },
+  summaryObservationTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
   },
   summaryObservationTitle: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    color: '#0D3862',
+    fontSize: 10,
+    fontWeight: fontWeight.bold,
+    backgroundColor: '#E6F3FF',
+    borderRadius: 5,
+  },
+  summaryObservationBadges: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  summarySeverityBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    color: '#463100',
+    fontSize: 9,
+    fontWeight: fontWeight.bold,
+    backgroundColor: '#FFEAB8',
+    borderRadius: 4,
+  },
+  summarySourceBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    color: '#8E6E3E',
+    fontSize: 9,
+    fontWeight: fontWeight.bold,
+    backgroundColor: '#FDF3E3',
+    borderRadius: 4,
+  },
+  summaryObservationCondition: {
+    marginTop: 6,
     color: colors.primary,
     fontSize: fontSize.sm,
-    fontWeight: fontWeight.bold,
+    lineHeight: 17,
   },
   summaryObservationMeta: {
+    marginTop: 4,
     color: colors.muted,
     fontSize: fontSize.xs,
   },
@@ -1953,6 +2031,45 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
+  },
+  summaryFooter: {
+    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.white,
+    borderTopColor: colors.border,
+    borderTopWidth: 1,
+  },
+  summaryFooterButton: {
+    width: '100%',
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#35A137',
+    borderRadius: 12,
+    shadowColor: '#35A137',
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  summaryFooterButtonDisabled: {
+    opacity: 0.7,
+  },
+  summaryFooterText: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: fontWeight.bold,
+  },
+  summaryFooterHomeIndicatorBar: {
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  summaryFooterHomeIndicator: {
+    width: 120,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.borderMid,
   },
   questionCard: {
     backgroundColor: colors.white,

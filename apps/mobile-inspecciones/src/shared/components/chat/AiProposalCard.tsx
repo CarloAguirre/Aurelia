@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
-import { colors, spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
+import { colors, fontWeight } from '../../theme/tokens';
 import { SparklesMark } from '../icons/SparklesMark';
 
 interface AiProposalCardProps {
@@ -14,48 +14,31 @@ interface AiProposalCardProps {
 
 export function AiProposalCard({
   suggestion,
-  fallback,
+  fallback = false,
   onAccept,
   onEdit,
   accepted = false,
 }: AiProposalCardProps) {
   return (
-    <View style={[styles.container, styles.marginLeft]}>
+    <View style={styles.container}>
       <View style={styles.header}>
-        <SparklesMark size={11} color={colors.goldDark} />
+        <SparklesMark size={11} color="#8E6E3E" />
         <Text style={styles.headerTitle}>Medida sugerida por AurelIA</Text>
-        {fallback && <Text style={styles.fallbackBadge}>fallback</Text>}
+        {fallback ? <Text style={styles.fallbackBadge}>Base</Text> : null}
       </View>
       <View style={styles.body}>
         <Text style={styles.label}>Medida correctiva</Text>
         <Text style={styles.suggestion}>{suggestion}</Text>
-        <View style={styles.meta}>
-          <FontAwesome5 name="chart-line" size={9} color={colors.teal} />
-          <Text style={styles.metaText}>
-            Basada en historial 2023–2026 · Gold Fields Salares Norte
-          </Text>
-        </View>
+        <Text style={styles.metaText}>↝ Basada en historial 2023–2026 · Gold Fields Salares Norte</Text>
       </View>
       <View style={styles.actions}>
-        <TouchableOpacity
-          onPress={onEdit}
-          disabled={accepted}
-          style={[styles.editBtn, accepted && styles.disabledBtn]}
-        >
-          <View style={styles.btnContent}>
-            <FontAwesome5 name="pen" size={10} color={accepted ? colors.muted : colors.body} />
-            <Text style={[styles.editBtnText, accepted && styles.disabledText]}>Editar</Text>
-          </View>
+        <TouchableOpacity activeOpacity={0.75} disabled={accepted} onPress={onEdit} style={[styles.editBtn, accepted && styles.disabledBtn]}>
+          <FontAwesome5 name="pen" size={10} color={accepted ? '#ACACAC' : '#333333'} />
+          <Text style={[styles.editBtnText, accepted && styles.disabledText]}>Editar</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          onPress={onAccept}
-          disabled={accepted}
-          style={[styles.acceptBtn, accepted && styles.disabledBtn]}
-        >
-          <View style={styles.btnContent}>
-            <FontAwesome5 name="check" size={10} color={colors.white} />
-            <Text style={styles.acceptBtnText}>Aceptar</Text>
-          </View>
+        <TouchableOpacity activeOpacity={0.75} disabled={accepted} onPress={onAccept} style={[styles.acceptBtn, accepted && styles.disabledBtn]}>
+          <FontAwesome5 name="check" size={10} color={colors.white} />
+          <Text style={styles.acceptBtnText}>Aceptar</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -63,94 +46,111 @@ export function AiProposalCard({
 }
 
 const styles = StyleSheet.create({
-  marginLeft: { marginLeft: 33 },
   container: {
-    backgroundColor: colors.white,
-    borderWidth: 1.5,
-    borderColor: colors.gold,
-    borderRadius: radius.md + 2,
+    marginBottom: 10,
+    marginLeft: 33,
+    marginRight: 12,
     overflow: 'hidden',
-    shadowColor: colors.gold,
+    backgroundColor: colors.white,
+    borderColor: '#C8A064',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    shadowColor: '#C8A064',
     shadowOpacity: 0.15,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   header: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm - 2,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: '#FAE8C8',
+    gap: 6,
+    backgroundColor: '#FDF3E3',
+    borderBottomColor: 'rgba(200,160,100,0.20)',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(200,160,100,0.2)',
   },
-  headerTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.goldDark, flex: 1 },
+  headerTitle: {
+    flex: 1,
+    color: '#8E6E3E',
+    fontSize: 11,
+    fontWeight: fontWeight.bold,
+  },
   fallbackBadge: {
-    fontSize: 9,
-    color: colors.muted,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    color: '#8E6E3E',
+    fontSize: 10,
+    fontWeight: fontWeight.bold,
+    backgroundColor: colors.white,
+    borderRadius: 999,
   },
-  body: { paddingHorizontal: spacing.md, paddingTop: spacing.sm + 2, paddingBottom: 0 },
+  body: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
   label: {
+    marginBottom: 4,
+    color: '#646464',
     fontSize: 9,
     fontWeight: fontWeight.bold,
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
-    letterSpacing: 0.06,
-    color: colors.muted,
-    marginBottom: spacing.xs,
   },
   suggestion: {
-    fontSize: fontSize.md,
-    color: colors.primary,
-    lineHeight: fontSize.md * 1.5,
+    color: '#131313',
+    fontSize: 12,
     fontWeight: fontWeight.medium,
+    lineHeight: 18,
   },
-  meta: {
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
+  metaText: {
+    marginTop: 8,
+    paddingTop: 7,
+    color: '#646464',
+    fontSize: 10,
+    lineHeight: 13,
+    borderTopColor: '#E3E3E3',
     borderTopWidth: 1,
-    borderTopColor: colors.border,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
   },
-  metaText: { fontSize: fontSize.xs, color: colors.muted, flex: 1 },
   actions: {
+    paddingHorizontal: 12,
+    paddingBottom: 12,
     flexDirection: 'row',
-    gap: spacing.sm - 2,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-  },
-  btnContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
+    gap: 8,
   },
   editBtn: {
     height: 36,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.sm + 2,
-    borderWidth: 1.5,
-    borderColor: colors.borderMid,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
     backgroundColor: colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: '#D1D1D1',
+    borderRadius: 8,
+    borderWidth: 1.5,
   },
-  editBtnText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.body },
+  editBtnText: {
+    color: '#333333',
+    fontSize: 12,
+    fontWeight: fontWeight.semibold,
+  },
   acceptBtn: {
-    flex: 1,
     height: 36,
-    borderRadius: radius.sm + 2,
-    backgroundColor: colors.teal,
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 5,
+    backgroundColor: '#00B398',
+    borderRadius: 8,
   },
-  acceptBtnText: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.white },
+  acceptBtnText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: fontWeight.bold,
+  },
   disabledBtn: { opacity: 0.5 },
-  disabledText: { color: colors.muted },
+  disabledText: { color: '#ACACAC' },
 });

@@ -42,7 +42,7 @@ export function PersonnelPicker({ users, onConfirm, confirmed = false, suggested
   }
 
   return (
-    <View style={styles.card}>
+    <View style={styles.container}>
       <View style={styles.list}>
         {users.map((user) => {
           const active = selectedIds.includes(user.id);
@@ -78,27 +78,17 @@ export function PersonnelPicker({ users, onConfirm, confirmed = false, suggested
         onPress={() => onConfirm(selectedUsers)}
         style={[styles.confirmButton, (confirmed || selectedUsers.length === 0) && styles.disabled]}
       >
-        <Text style={styles.confirmText}>Confirmar personal</Text>
+        <Text style={styles.confirmText}>→ Confirmar y ver resumen</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
+  container: {
     marginBottom: 10,
     marginLeft: 33,
     marginRight: 12,
-    padding: 12,
-    backgroundColor: colors.white,
-    borderColor: '#E3E3E3',
-    borderRadius: 12,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 1,
   },
   list: {
     gap: 6,
@@ -177,17 +167,18 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
   },
   confirmButton: {
-    width: '100%',
-    height: 42,
-    marginTop: 10,
+    height: 36,
+    marginTop: 4,
+    paddingHorizontal: 18,
+    alignSelf: 'flex-start',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#C8A064',
-    borderRadius: 10,
+    backgroundColor: '#00B398',
+    borderRadius: 999,
   },
   confirmText: {
     color: colors.white,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: fontWeight.bold,
   },
   disabled: {

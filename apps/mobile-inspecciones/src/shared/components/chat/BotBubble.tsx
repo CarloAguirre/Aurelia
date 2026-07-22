@@ -63,6 +63,9 @@ function canonicalAssistantText(text: string, context: AssistantCopyContext): st
     return 'Hay **ítems no conformes**. Debemos asignar empresa y responsables.';
   }
   if (normalized === 'Selecciona empresa responsable de los hallazgos.') {
+    if (context.inspectionType === InspectionType.REGULATORY) {
+      return 'Te sugiero una **empresa responsable** según el área, sector y empresas disponibles.';
+    }
     return 'Selecciona la **empresa responsable de los hallazgos**.';
   }
 

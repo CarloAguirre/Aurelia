@@ -85,12 +85,49 @@ function buildEvidenceTitle(item: ManualTemplateItem, detail: ManualInspectionDr
   return `Foto: ${base}`.slice(0, 180);
 }
 
+function validateChecklistDraft(draft: ManualInspectionDraft, items: ManualTemplateItem[]): void {
+  if (!draft.inspectionDateSelected || !draft.inspectionDate.trim()) {
+    throw new Error('La fecha de inspección debe seleccionarse explícitamente.');
+  }
+  if (!draft.locationCaptured || draft.latitude === null || draft.longitude === null) {
+    throw new Error('La ubicación de la inspección es obligatoria.');
+  }
+  if (!draft.generalPhoto) {
+    throw new Error('La fotografía general del checklist es obligatoria.');
+  }
+
+  const unanswered = items.find((item) => !draft.answersByItemId[item.id]);
+  if (unanswered) {
+    throw new Error(`Falta responder el ítem ${unanswered.code}.`);
+  }
+
+  const nonCompliantItems = items.filter(
+    (item) => draft.answersByItemId[item.id] === InspectionAnswerValue.NOT_COMPLIANT,
+  );
+
+  const incompleteFinding = nonCompliantItems.find((item) => {
+    const detail = draft.detailsByItemId[item.id];
+    return !detail?.detectedCondition?.trim() || !detail.correctiveAction?.trim() || !detail.evidence;
+  });
+  if (incompleteFinding) {
+    throw new Error(
+      `El ítem ${incompleteFinding.code} debe incluir condición, medida correctiva y fotografía.`,
+    );
+  }
+
+  if (nonCompliantItems.length > 0 && (!draft.findingCompanyId || draft.findingResponsibleIds.length === 0)) {
+    throw new Error('Los ítems no conformes requieren empresa y al menos un responsable.');
+  }
+}
+
 export function useSaveManualInspectionOffline() {
   const queryClient = useQueryClient();
   const user = useMobileSession((state) => state.user);
 
   return useMutation({
     mutationFn: async ({ draft, template, items, trySyncNow }: SaveManualInspectionOfflineInput): Promise<ManualSavedInspectionResult> => {
+      validateChecklistDraft(draft, items);
+
       const session = await getOrCreateOfflineDeviceSession();
       const createdBy = user?.id ?? 'local-user';
       const localInspectionId = createId('inspection');
@@ -125,40 +162,37 @@ export function useSaveManualInspectionOffline() {
         deviceSessionId: session.deviceSessionId,
       });
 
-      if (draft.generalPhoto) {
-        const localEvidenceId = createId('evidence');
-        const inspectionAttachmentPayload: UploadAttachmentSyncPayload = {
-          inspectionLocalId: localInspectionId,
-          findingLocalId: null,
-          localEvidenceId,
-          sourceUri: draft.generalPhoto.uri,
-          remoteFileId: null,
-          fileName: draft.generalPhoto.name,
-          mimeType: 'image/jpeg',
-          sizeBytes: 0,
-          evidenceType: 'photo',
-          title: `Foto general: ${title}`.slice(0, 180),
-          capturedAt: new Date().toISOString(),
-          category: 'finding_evidence',
-        };
+      const localEvidenceId = createId('evidence');
+      const inspectionAttachmentPayload: UploadAttachmentSyncPayload = {
+        inspectionLocalId: localInspectionId,
+        findingLocalId: null,
+        localEvidenceId,
+        sourceUri: draft.generalPhoto.uri,
+        remoteFileId: null,
+        fileName: draft.generalPhoto.name,
+        mimeType: 'image/jpeg',
+        sizeBytes: 0,
+        evidenceType: 'photo',
+        title: `Foto general: ${title}`.slice(0, 180),
+        capturedAt: new Date().toISOString(),
+        category: 'finding_evidence',
+      };
 
-        await syncQueue.enqueue({
-          localId: localEvidenceId,
-          operationType: UPLOAD_ATTACHMENT,
-          entityType: 'evidence',
-          payload: inspectionAttachmentPayload,
-          createdBy,
-          deviceId: session.deviceId,
-          deviceSessionId: session.deviceSessionId,
-          evidences: [{ localEvidenceId, localEntityId: localInspectionId, fileName: draft.generalPhoto.name, mimeType: 'image/jpeg', sizeBytes: 0 }],
-          dependsOnLocalIds: [localInspectionId],
-        });
-      }
+      await syncQueue.enqueue({
+        localId: localEvidenceId,
+        operationType: UPLOAD_ATTACHMENT,
+        entityType: 'evidence',
+        payload: inspectionAttachmentPayload,
+        createdBy,
+        deviceId: session.deviceId,
+        deviceSessionId: session.deviceSessionId,
+        evidences: [{ localEvidenceId, localEntityId: localInspectionId, fileName: draft.generalPhoto.name, mimeType: 'image/jpeg', sizeBytes: 0 }],
+        dependsOnLocalIds: [localInspectionId],
+      });
 
       for (const item of items) {
         const answer = draft.answersByItemId[item.id];
         const detail = draft.detailsByItemId[item.id] ?? {};
-        if (!answer) continue;
         const answerPayload: UpsertInspectionAnswerRequest = {
           checklistItemId: item.id,
           answerValue: answer,
@@ -201,11 +235,11 @@ export function useSaveManualInspectionOffline() {
           });
 
           if (detail.evidence) {
-            const localEvidenceId = createId('evidence');
+            const findingEvidenceLocalId = createId('evidence');
             const uploadPayload: UploadAttachmentSyncPayload = {
               inspectionLocalId: localInspectionId,
               findingLocalId,
-              localEvidenceId,
+              localEvidenceId: findingEvidenceLocalId,
               sourceUri: detail.evidence.uri,
               remoteFileId: null,
               fileName: detail.evidence.name,
@@ -218,14 +252,14 @@ export function useSaveManualInspectionOffline() {
             };
 
             await syncQueue.enqueue({
-              localId: localEvidenceId,
+              localId: findingEvidenceLocalId,
               operationType: UPLOAD_ATTACHMENT,
               entityType: 'evidence',
               payload: uploadPayload,
               createdBy,
               deviceId: session.deviceId,
               deviceSessionId: session.deviceSessionId,
-              evidences: [{ localEvidenceId, localEntityId: findingLocalId, fileName: detail.evidence.name, mimeType: 'image/jpeg', sizeBytes: 0 }],
+              evidences: [{ localEvidenceId: findingEvidenceLocalId, localEntityId: findingLocalId, fileName: detail.evidence.name, mimeType: 'image/jpeg', sizeBytes: 0 }],
               dependsOnLocalIds: [localInspectionId, findingLocalId],
             });
           }

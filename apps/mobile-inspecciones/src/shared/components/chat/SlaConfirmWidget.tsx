@@ -13,9 +13,53 @@ interface SlaConfirmWidgetProps {
   onSave: (days: number) => void;
 }
 
+interface SavedObservationCardProps {
+  observationId: string;
+}
+
 function parseSlaDays(label: string | null | undefined, fallback: number): number {
   const value = Number((label ?? '').match(/(\d+)/)?.[1]);
   return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+export function SavedObservationCard({ observationId }: SavedObservationCardProps) {
+  const observations = useManualInspectionDraft((state) => state.findingObservations);
+  const removeObservation = useManualInspectionDraft((state) => state.removeFindingObservation);
+  const observationIndex = observations.findIndex((item) => item.id === observationId);
+  const observation = observationIndex >= 0 ? observations[observationIndex] : null;
+
+  if (!observation?.saved) return null;
+
+  return (
+    <View style={styles.savedCard}>
+      <View style={styles.savedRow}>
+        <Text style={styles.observationBadge}>Obs. {observationIndex + 1}</Text>
+        <View style={styles.savedCopy}>
+          <Text numberOfLines={1} style={styles.savedCondition}>{observation.detectedCondition}</Text>
+          <View style={styles.savedMetaRow}>
+            <Text style={styles.severityBadge}>
+              {observation.severityLabel ?? 'Manual'} · {parseSlaDays(observation.severityClosureTimeLabel, 7)}d
+            </Text>
+            <Text style={styles.manualBadge}>Manual</Text>
+            {observation.evidence ? (
+              <View style={styles.evidenceMark}>
+                <FontAwesome5 name="camera" size={10} color="#2A7A2E" />
+                <Text style={styles.evidenceCheck}>✓</Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+        <TouchableOpacity
+          accessibilityLabel={`Eliminar observación ${observationIndex + 1}`}
+          activeOpacity={0.7}
+          onPress={() => removeObservation(observation.id)}
+          style={styles.removeButton}
+        >
+          <FontAwesome5 name="trash-alt" size={12} color="#646464" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 }
 
 export function SlaConfirmWidget({
@@ -25,8 +69,7 @@ export function SlaConfirmWidget({
   onSave,
 }: SlaConfirmWidgetProps) {
   const [days, setDays] = React.useState(String(initialDays));
-  const observations = useManualInspectionDraft((state) => state.findingObservations);
-  const removeObservation = useManualInspectionDraft((state) => state.removeFindingObservation);
+  const stableObservationNumber = React.useRef(observationNumber);
 
   React.useEffect(() => {
     setDays(String(initialDays));
@@ -34,41 +77,6 @@ export function SlaConfirmWidget({
 
   const numericDays = Number(days);
   const valid = Number.isFinite(numericDays) && numericDays > 0;
-  const savedObservations = observations.filter((item) => item.saved);
-  const savedObservation = savedObservations[observationNumber - 1] ?? null;
-
-  if (resolved && savedObservation) {
-    return (
-      <View style={styles.savedCard}>
-        <View style={styles.savedRow}>
-          <Text style={styles.observationBadge}>Obs. {observationNumber}</Text>
-          <View style={styles.savedCopy}>
-            <Text numberOfLines={1} style={styles.savedCondition}>{savedObservation.detectedCondition}</Text>
-            <View style={styles.savedMetaRow}>
-              <Text style={styles.severityBadge}>
-                {savedObservation.severityLabel ?? 'Manual'} · {parseSlaDays(savedObservation.severityClosureTimeLabel, initialDays)}d
-              </Text>
-              <Text style={styles.manualBadge}>Manual</Text>
-              {savedObservation.evidence ? (
-                <View style={styles.evidenceMark}>
-                  <FontAwesome5 name="camera" size={10} color="#2A7A2E" />
-                  <Text style={styles.evidenceCheck}>✓</Text>
-                </View>
-              ) : null}
-            </View>
-          </View>
-          <TouchableOpacity
-            accessibilityLabel="Eliminar observación"
-            activeOpacity={0.7}
-            onPress={() => removeObservation(savedObservation.id)}
-            style={styles.removeButton}
-          >
-            <FontAwesome5 name="trash-alt" size={12} color="#646464" />
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
 
   return (
     <>
@@ -111,7 +119,7 @@ export function SlaConfirmWidget({
         style={[styles.saveButton, (resolved || !valid) && styles.disabled]}
       >
         <FontAwesome5 name="save" size={10} color={colors.white} solid />
-        <Text style={styles.saveText}>Guardar observación {observationNumber}</Text>
+        <Text style={styles.saveText}>Guardar observación {stableObservationNumber.current}</Text>
       </TouchableOpacity>
     </>
   );

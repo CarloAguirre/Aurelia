@@ -80,7 +80,7 @@ export function QuickOpts({ options, selected, onSelect }: QuickOptsProps) {
   return (
     <View style={[styles.container, fullWidth && styles.containerFullWidth]}>
       {options.map((opt) => {
-        const isSelected = selected === opt.value;
+        const isSelected = selected === opt.value || selected === opt.label;
         return (
           <QuickOpt
             key={opt.value}
@@ -112,19 +112,25 @@ const optTextVariantStyle: Record<QuickOptVariant, object> = {
 
 const styles = StyleSheet.create({
   container: {
+    marginBottom: 10,
     marginLeft: 33,
-    gap: spacing.xs + 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
     alignItems: 'flex-start',
   },
   containerFullWidth: {
     marginRight: spacing.md,
+    flexDirection: 'column',
+    flexWrap: 'nowrap',
     alignItems: 'stretch',
   },
   opt: {
+    minHeight: 32,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm - 2,
-    paddingHorizontal: 14,
+    gap: spacing.sm,
+    paddingHorizontal: 15,
     paddingVertical: 7,
     borderRadius: radius.full,
     borderWidth: 1.5,
@@ -135,11 +141,13 @@ const styles = StyleSheet.create({
     minHeight: 34,
   },
   label: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.semibold,
+    fontSize: fontSize.lg,
+    lineHeight: 18,
+    fontWeight: fontWeight.bold,
   },
   labelFullWidth: {
     fontSize: fontSize.base,
-    fontWeight: fontWeight.bold,
+    lineHeight: 16,
+    fontWeight: fontWeight.semibold,
   },
 });

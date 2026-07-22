@@ -17,12 +17,14 @@ interface AssistantCopyContext {
   areaName: string | null;
   sectorName: string | null;
   inspectionType: InspectionType;
+  findingCompanyName: string | null;
 }
 
 function canonicalAssistantText(text: string, context: AssistantCopyContext): string {
   const normalized = text.trim();
   const area = context.areaName ?? 'el área';
   const location = [context.areaName, context.sectorName].filter(Boolean).join(' · ');
+  const itemCount = normalized.match(/^Responderemos (\d+) ítems\.$/)?.[1];
 
   if (normalized === 'Hola, soy AurelIA. ¿En qué área estás hoy?') {
     return `¡Hola, **${context.inspectorName}**! 👋 Soy AurelIA. Voy a ayudarte a registrar esta inspección de forma rápida. ¿En qué **área** estás hoy?`;
@@ -36,6 +38,25 @@ function canonicalAssistantText(text: string, context: AssistantCopyContext): st
   if (normalized === 'Selecciona la fecha de inspección.') return 'Selecciona la **fecha de inspección**.';
   if (normalized === 'Capturemos la ubicación obligatoria.') return 'Capturemos la **ubicación obligatoria**.';
   if (normalized === 'Selecciona el tipo de hallazgo.') return 'Selecciona el **tipo de hallazgo**.';
+
+  if (normalized === 'Te sugiero esta plantilla normativa.') return 'Te sugiero esta **plantilla normativa**.';
+  if (normalized === 'Elige una plantilla.') return 'Elige una **plantilla normativa**.';
+  if (normalized === 'Adjunta la foto general obligatoria.') return 'Adjunta la **foto general obligatoria**.';
+  if (itemCount) return `Responderemos **${itemCount} ítems**.`;
+  if (normalized === 'Describe la condición detectada.' && context.inspectionType === InspectionType.REGULATORY) {
+    return 'Describe la **condición detectada**.';
+  }
+  if (normalized === 'Indica la medida correctiva propuesta.') return 'Indica la **medida correctiva propuesta**.';
+  if (normalized === 'Adjunta foto para este hallazgo.') return 'Adjunta una **foto para este hallazgo**.';
+  if (normalized === 'Checklist completo sin hallazgos. Se cerrará automáticamente al guardar.') {
+    return 'Checklist completo **sin hallazgos**. Se cerrará automáticamente al guardar.';
+  }
+  if (normalized === 'Hay ítems no conformes. Debemos asignar empresa y responsables.') {
+    return 'Hay **ítems no conformes**. Debemos asignar empresa y responsables.';
+  }
+  if (normalized === 'Selecciona empresa responsable de los hallazgos.') {
+    return 'Selecciona la **empresa responsable de los hallazgos**.';
+  }
 
   if (normalized === 'Describe la condición detectada.' && context.inspectionType === InspectionType.ENVIRONMENTAL) {
     return `Cuéntame la condición subestándar que detectaste en **${location || 'el área inspeccionada'}**.`;
@@ -52,7 +73,10 @@ function canonicalAssistantText(text: string, context: AssistantCopyContext): st
   if (normalized === 'Te sugiero una empresa responsable para este hallazgo.') {
     return `Basándome en el historial de **${location || area}**, te propongo:`;
   }
-  if (normalized === 'Revisa el resumen antes de guardar.') return '¡Listo! Revisa el resumen antes de guardar:';
+  if (normalized.startsWith('Para ') && normalized.includes('sugiero este personal. Selecciona uno o más:')) {
+    return `Para **${context.findingCompanyName ?? 'la empresa seleccionada'}**, sugiero este personal. Selecciona uno o más:`;
+  }
+  if (normalized === 'Revisa el resumen antes de guardar.') return '¡Listo! Revisa el **resumen** antes de guardar:';
 
   return text;
 }
@@ -76,12 +100,19 @@ export function BotBubble({ text, time }: Props) {
   const areaName = useManualInspectionDraft((state) => state.areaName);
   const sectorName = useManualInspectionDraft((state) => state.sectorName);
   const inspectionType = useManualInspectionDraft((state) => state.inspectionType);
+  const findingCompanyName = useManualInspectionDraft((state) => state.findingCompanyName);
   const hiddenForAssignedCompany = !canSelectCompany && [
     'Te sugiero una empresa responsable para este hallazgo.',
     'Selecciona empresa responsable de los hallazgos.',
     'Selecciona empresa responsable.',
   ].includes(text.trim());
-  const displayText = canonicalAssistantText(text, { inspectorName, areaName, sectorName, inspectionType });
+  const displayText = canonicalAssistantText(text, {
+    inspectorName,
+    areaName,
+    sectorName,
+    inspectionType,
+    findingCompanyName,
+  });
   const now = new Date();
   const timeStr = time ?? `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
 

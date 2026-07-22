@@ -1,7 +1,10 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { InspectionAnswerValue, InspectionType } from '@aurelia/contracts';
 import { colors, fontWeight, spacing } from '../../theme/tokens';
 import { useMobileInspectionAssignmentScope } from '../../stores/mobileInspectionAssignmentScope.store';
+import { useManualInspectionDraft } from '../../../modules/inspection/manualInspection.store';
+import { ChatCompanyPicker } from './ChatCompanyPicker';
 
 export type ChipVariant = 'default' | 'selected-gold' | 'selected-navy';
 
@@ -35,8 +38,24 @@ interface ChipRowProps {
 export function ChipRow({ chips, selected, onSelect, variant = 'gold' }: ChipRowProps) {
   const canSelectCompany = useMobileInspectionAssignmentScope((state) => state.canSelectCompany);
   const assignedCompanyName = useMobileInspectionAssignmentScope((state) => state.companyName);
+  const inspectionType = useManualInspectionDraft((state) => state.inspectionType);
+  const findingObservations = useManualInspectionDraft((state) => state.findingObservations);
+  const answersByItemId = useManualInspectionDraft((state) => state.answersByItemId);
+  const findingCompanyId = useManualInspectionDraft((state) => state.findingCompanyId);
+  const findingCompanyName = useManualInspectionDraft((state) => state.findingCompanyName);
   const confirmedRef = React.useRef(false);
   const lockedCompany = !canSelectCompany && Boolean(assignedCompanyName) && chips.length === 1 && chips[0] === assignedCompanyName;
+
+  const hasSavedFinding = findingObservations.some((item) => item.saved);
+  const hasChecklistFinding = Object.values(answersByItemId).some(
+    (answer) => answer === InspectionAnswerValue.NOT_COMPLIANT,
+  );
+  const unresolvedCompanyStage = !selected && !findingCompanyId && (
+    (inspectionType === InspectionType.ENVIRONMENTAL && hasSavedFinding) ||
+    (inspectionType === InspectionType.REGULATORY && hasChecklistFinding)
+  );
+  const resolvedCompanyStage = Boolean(selected && findingCompanyName && selected === findingCompanyName);
+  const companySelector = unresolvedCompanyStage || resolvedCompanyStage;
 
   React.useEffect(() => {
     if (!lockedCompany || selected === assignedCompanyName || confirmedRef.current || !assignedCompanyName) return;
@@ -50,6 +69,16 @@ export function ChipRow({ chips, selected, onSelect, variant = 'gold' }: ChipRow
         <Text style={styles.lockedLabel}>Empresa responsable</Text>
         <View style={styles.lockedField}><Text style={styles.lockedValue}>{assignedCompanyName}</Text></View>
       </View>
+    );
+  }
+
+  if (companySelector) {
+    return (
+      <ChatCompanyPicker
+        companies={chips}
+        selected={selected}
+        onSelect={(companyName) => onSelect?.(companyName)}
+      />
     );
   }
 

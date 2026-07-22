@@ -43,6 +43,7 @@ async function launchGallery(onCapture: (uri: string) => void) {
 }
 
 export function PhotoStepWidget({
+  onSkip,
   onCapture,
   resolved = false,
   resolvedTitle = 'Foto adjunta ✓',
@@ -52,10 +53,10 @@ export function PhotoStepWidget({
 
   if (resolved) {
     return (
-      <View style={styles.resolvedOuter}>
+      <View style={styles.container}>
         <View style={styles.resolvedCard}>
-          <View style={styles.resolvedCheck}>
-            <Text style={styles.resolvedCheckText}>✓</Text>
+          <View style={styles.resolvedIcon}>
+            <FontAwesome5 name="camera" size={16} color={colors.white} />
           </View>
           <View style={styles.resolvedCopy}>
             <Text numberOfLines={1} style={styles.resolvedTitle}>{resolvedTitle}</Text>
@@ -69,14 +70,21 @@ export function PhotoStepWidget({
   return (
     <>
       <View style={styles.container}>
-        <View style={styles.iconBox}>
-          <FontAwesome5 name="camera-retro" size={18} color="#646464" />
-        </View>
-        <Text style={styles.title}>Adjuntar fotografía del hallazgo</Text>
-        <Text style={styles.subtitle}>Fecha, hora y GPS se registran automáticamente</Text>
-        <TouchableOpacity activeOpacity={0.78} onPress={() => setPickerOpen(true)} style={styles.triggerBtn}>
-          <FontAwesome5 name="camera" size={11} color="#333333" />
-          <Text style={styles.triggerText}>Desde galería</Text>
+        <TouchableOpacity
+          activeOpacity={0.78}
+          onPress={() => setPickerOpen(true)}
+          style={styles.uploadArea}
+        >
+          <View style={styles.iconBox}>
+            <FontAwesome5 name="camera" size={16} color="#646464" />
+          </View>
+          <View style={styles.uploadCopy}>
+            <Text style={styles.title}>Tomar foto o galería</Text>
+            <Text style={styles.subtitle}>Fecha, hora y GPS automáticos</Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity activeOpacity={0.75} onPress={onSkip} style={styles.skipButton}>
+          <Text style={styles.skipText}>Omitir</Text>
         </TouchableOpacity>
       </View>
       <PhotoSourceSheet
@@ -100,97 +108,93 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginLeft: 33,
     marginRight: 12,
-    padding: 14,
-    alignItems: 'center',
-    gap: 8,
+    padding: 12,
     backgroundColor: colors.white,
-    borderColor: '#D1D1D1',
+    borderColor: '#E3E3E3',
     borderRadius: 12,
-    borderStyle: 'dashed',
-    borderWidth: 1.5,
+    borderWidth: 1,
   },
-  iconBox: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F4F6F9',
-    borderRadius: 10,
-  },
-  title: {
-    color: '#333333',
-    fontSize: 12,
-    fontWeight: fontWeight.bold,
-    lineHeight: 14,
-  },
-  subtitle: {
-    color: '#ACACAC',
-    fontSize: 10,
-    lineHeight: 12,
-    textAlign: 'center',
-  },
-  triggerBtn: {
-    width: '100%',
-    height: 34,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    backgroundColor: '#F4F6F9',
-    borderColor: '#D1D1D1',
-    borderRadius: 8,
-    borderWidth: 1.5,
-  },
-  triggerText: {
-    color: '#333333',
-    fontSize: 11,
-    fontWeight: fontWeight.semibold,
-  },
-  resolvedOuter: {
-    marginBottom: 10,
-    marginLeft: 33,
-    marginRight: 12,
-    borderColor: '#D1D1D1',
-    borderRadius: 12,
-    borderStyle: 'dashed',
-    borderWidth: 1.5,
-  },
-  resolvedCard: {
-    minHeight: 58,
+  uploadArea: {
+    minHeight: 84,
     paddingHorizontal: 12,
     paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#E0FFD3',
-    borderRadius: 12,
+    backgroundColor: '#F6FAFF',
+    borderColor: '#D1D1D1',
+    borderRadius: 10,
+    borderStyle: 'dashed',
+    borderWidth: 1.5,
   },
-  resolvedCheck: {
-    width: 16,
-    height: 16,
+  iconBox: {
+    width: 42,
+    height: 42,
+    flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2A5C16',
+    backgroundColor: colors.white,
     borderRadius: 8,
   },
-  resolvedCheckText: {
-    color: '#E0FFD3',
+  uploadCopy: {
+    minWidth: 0,
+    marginLeft: 10,
+    flex: 1,
+  },
+  title: {
+    color: '#646464',
+    fontSize: 13,
+    fontWeight: fontWeight.semibold,
+  },
+  subtitle: {
+    marginTop: 2,
+    color: '#B7B7B7',
     fontSize: 11,
+  },
+  skipButton: {
+    height: 34,
+    marginTop: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderColor: '#E3E3E3',
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  skipText: {
+    color: '#646464',
+    fontSize: 12,
     fontWeight: fontWeight.bold,
+  },
+  resolvedCard: {
+    minHeight: 58,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#35A137',
+    borderRadius: 10,
+  },
+  resolvedIcon: {
+    width: 42,
+    height: 42,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.24)',
+    borderRadius: 8,
   },
   resolvedCopy: {
     minWidth: 0,
     flex: 1,
   },
   resolvedTitle: {
-    color: '#2A5C16',
-    fontSize: 12,
+    color: colors.white,
+    fontSize: 13,
     fontWeight: fontWeight.bold,
-    lineHeight: 15,
   },
   resolvedSub: {
-    color: '#2A5C16',
-    fontSize: 10,
-    lineHeight: 13,
+    marginTop: 2,
+    color: 'rgba(255,255,255,0.78)',
+    fontSize: 11,
   },
 });

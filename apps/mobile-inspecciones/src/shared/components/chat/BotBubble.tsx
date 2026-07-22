@@ -24,6 +24,7 @@ function canonicalAssistantText(text: string, context: AssistantCopyContext): st
   const normalized = text.trim();
   const area = context.areaName ?? 'el área';
   const location = [context.areaName, context.sectorName].filter(Boolean).join(' · ');
+  const itemCount = normalized.match(/^Responderemos (\d+) ítems\.$/)?.[1];
 
   if (normalized === 'Hola, soy AurelIA. ¿En qué área estás hoy?') {
     return `¡Hola, **${context.inspectorName}**! 👋 Soy AurelIA. Voy a ayudarte a registrar esta inspección de forma rápida. ¿En qué **área** estás hoy?`;
@@ -37,6 +38,25 @@ function canonicalAssistantText(text: string, context: AssistantCopyContext): st
   if (normalized === 'Selecciona la fecha de inspección.') return 'Selecciona la **fecha de inspección**.';
   if (normalized === 'Capturemos la ubicación obligatoria.') return 'Capturemos la **ubicación obligatoria**.';
   if (normalized === 'Selecciona el tipo de hallazgo.') return 'Selecciona el **tipo de hallazgo**.';
+
+  if (normalized === 'Te sugiero esta plantilla normativa.') return 'Te sugiero esta **plantilla normativa**.';
+  if (normalized === 'Elige una plantilla.') return 'Elige una **plantilla normativa**.';
+  if (normalized === 'Adjunta la foto general obligatoria.') return 'Adjunta la **foto general obligatoria**.';
+  if (itemCount) return `Responderemos **${itemCount} ítems**.`;
+  if (normalized === 'Describe la condición detectada.' && context.inspectionType === InspectionType.REGULATORY) {
+    return 'Describe la **condición detectada**.';
+  }
+  if (normalized === 'Indica la medida correctiva propuesta.') return 'Indica la **medida correctiva propuesta**.';
+  if (normalized === 'Adjunta foto para este hallazgo.') return 'Adjunta una **foto para este hallazgo**.';
+  if (normalized === 'Checklist completo sin hallazgos. Se cerrará automáticamente al guardar.') {
+    return 'Checklist completo **sin hallazgos**. Se cerrará automáticamente al guardar.';
+  }
+  if (normalized === 'Hay ítems no conformes. Debemos asignar empresa y responsables.') {
+    return 'Hay **ítems no conformes**. Debemos asignar empresa y responsables.';
+  }
+  if (normalized === 'Selecciona empresa responsable de los hallazgos.') {
+    return 'Selecciona la **empresa responsable de los hallazgos**.';
+  }
 
   if (normalized === 'Describe la condición detectada.' && context.inspectionType === InspectionType.ENVIRONMENTAL) {
     return `Cuéntame la condición subestándar que detectaste en **${location || 'el área inspeccionada'}**.`;

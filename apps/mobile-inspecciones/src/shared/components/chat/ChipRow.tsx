@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { colors, spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { colors, fontWeight, spacing } from '../../theme/tokens';
 import { useMobileInspectionAssignmentScope } from '../../stores/mobileInspectionAssignmentScope.store';
 
 export type ChipVariant = 'default' | 'selected-gold' | 'selected-navy';
@@ -12,14 +12,13 @@ interface ChipProps {
 }
 
 export function Chip({ label, variant = 'default', onPress }: ChipProps) {
-  const isSelected = variant !== 'default';
-
+  const selected = variant !== 'default';
   return (
     <TouchableOpacity
-      onPress={onPress}
-      disabled={isSelected}
-      style={[styles.chip, chipVariantStyle[variant]]}
       activeOpacity={0.7}
+      disabled={selected}
+      onPress={onPress}
+      style={[styles.chip, chipVariantStyle[variant]]}
     >
       <Text style={[styles.chipText, chipTextVariantStyle[variant]]}>{label}</Text>
     </TouchableOpacity>
@@ -56,93 +55,80 @@ export function ChipRow({ chips, selected, onSelect, variant = 'gold' }: ChipRow
 
   return (
     <View style={styles.container}>
-      <View style={styles.chipWrap}>
-        {chips.map((chip) => {
-          const isSelected = selected === chip;
-          const chipVariant: ChipVariant = isSelected
-            ? variant === 'gold' ? 'selected-gold' : 'selected-navy'
-            : 'default';
-          return (
-            <Chip
-              key={chip}
-              label={chip}
-              variant={chipVariant}
-              onPress={() => onSelect?.(chip)}
-            />
-          );
-        })}
-      </View>
+      {chips.map((chip) => {
+        const isSelected = selected === chip;
+        const chipVariant: ChipVariant = isSelected
+          ? variant === 'gold' ? 'selected-gold' : 'selected-navy'
+          : 'default';
+        return (
+          <Chip key={chip} label={chip} variant={chipVariant} onPress={() => onSelect?.(chip)} />
+        );
+      })}
     </View>
   );
 }
 
 const chipVariantStyle: Record<ChipVariant, object> = {
-  default: {
-    borderColor: colors.borderMid,
-    backgroundColor: colors.white,
-  },
-  'selected-gold': {
-    borderColor: colors.gold,
-    backgroundColor: colors.gold,
-  },
-  'selected-navy': {
-    borderColor: colors.navyDark,
-    backgroundColor: colors.navyDark,
-  },
+  default: { borderColor: '#D1D1D1', backgroundColor: colors.white },
+  'selected-gold': { borderColor: '#C8A064', backgroundColor: '#C8A064' },
+  'selected-navy': { borderColor: '#002659', backgroundColor: '#002659' },
 };
 
 const chipTextVariantStyle: Record<ChipVariant, object> = {
-  default: { color: colors.muted },
-  'selected-gold': { color: colors.navy },
+  default: { color: '#646464' },
+  'selected-gold': { color: '#001E39' },
   'selected-navy': { color: colors.white },
 };
 
 const styles = StyleSheet.create({
   container: {
+    marginBottom: 10,
     marginLeft: 33,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    minHeight: 28,
+    paddingHorizontal: 13.5,
+    paddingVertical: 5,
+    justifyContent: 'center',
+    borderRadius: 999,
+    borderWidth: 1.5,
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: fontWeight.semibold,
+    lineHeight: 16,
   },
   lockedContainer: {
+    marginBottom: 10,
     marginLeft: 33,
-    marginRight: spacing.md,
-    padding: spacing.md,
+    marginRight: 12,
+    padding: 12,
     backgroundColor: colors.white,
-    borderColor: colors.border,
-    borderRadius: radius.md + 2,
+    borderColor: '#E3E3E3',
+    borderRadius: 12,
     borderWidth: 1,
   },
   lockedLabel: {
-    color: colors.primary,
-    fontSize: fontSize.sm,
+    color: '#131313',
+    fontSize: 12,
     fontWeight: fontWeight.bold,
   },
   lockedField: {
     height: 50,
     marginTop: spacing.sm,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: 12,
     justifyContent: 'center',
     backgroundColor: '#F6FAFF',
     borderColor: '#24588B',
-    borderRadius: radius.sm + 2,
+    borderRadius: 10,
     borderWidth: 1.5,
   },
   lockedValue: {
-    color: colors.primary,
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.semibold,
-  },
-  chipWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm - 2,
-  },
-  chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm - 2,
-    borderRadius: radius.full,
-    borderWidth: 1.5,
-  },
-  chipText: {
-    fontSize: fontSize.sm,
+    color: '#131313',
+    fontSize: 13,
     fontWeight: fontWeight.semibold,
   },
 });

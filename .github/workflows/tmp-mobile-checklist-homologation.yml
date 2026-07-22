@@ -1,5 +1,6 @@
 name: Temporary mobile checklist homologation
 
+# Second push activates the workflow after it exists on the branch.
 on:
   push:
     branches:

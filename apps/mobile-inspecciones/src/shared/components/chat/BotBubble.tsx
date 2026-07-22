@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { colors, spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
+import { StyleSheet, Text, View } from 'react-native';
+import { InspectionType } from '@aurelia/contracts';
+import { colors, fontSize, fontWeight, radius, spacing } from '../../theme/tokens';
 import { useMobileInspectionAssignmentScope } from '../../stores/mobileInspectionAssignmentScope.store';
 import { useManualInspectionDraft } from '../../../modules/inspection/manualInspection.store';
 import { SparklesMark } from '../icons/SparklesMark';
@@ -15,6 +16,7 @@ interface AssistantCopyContext {
   inspectorName: string;
   areaName: string | null;
   sectorName: string | null;
+  inspectionType: InspectionType;
 }
 
 function canonicalAssistantText(text: string, context: AssistantCopyContext): string {
@@ -25,26 +27,32 @@ function canonicalAssistantText(text: string, context: AssistantCopyContext): st
   if (normalized === 'Hola, soy AurelIA. ¿En qué área estás hoy?') {
     return `¡Hola, **${context.inspectorName}**! 👋 Soy AurelIA. Voy a ayudarte a registrar esta inspección de forma rápida. ¿En qué **área** estás hoy?`;
   }
-
   if (normalized === 'Selecciona el sector.') {
     return `Perfecto, **${area}** ✓. Ahora el sector — ¿en cuál específicamente?`;
   }
-
   if (normalized === 'Selecciona el tipo de inspección.') {
     return `**${location || 'Área · sector'} ✓**. ¿Qué tipo de inspección es?`;
   }
+  if (normalized === 'Selecciona la fecha de inspección.') return 'Selecciona la **fecha de inspección**.';
+  if (normalized === 'Capturemos la ubicación obligatoria.') return 'Capturemos la **ubicación obligatoria**.';
+  if (normalized === 'Selecciona el tipo de hallazgo.') return 'Selecciona el **tipo de hallazgo**.';
 
-  if (normalized === 'Selecciona la fecha de inspección.') {
-    return 'Selecciona la **fecha de inspección**.';
+  if (normalized === 'Describe la condición detectada.' && context.inspectionType === InspectionType.ENVIRONMENTAL) {
+    return `Cuéntame la condición subestándar que detectaste en **${location || 'el área inspeccionada'}**.`;
   }
-
-  if (normalized === 'Capturemos la ubicación obligatoria.') {
-    return 'Capturemos la **ubicación obligatoria**.';
+  if (normalized === 'Adjunta fotografía del hallazgo.') return 'Entendido. Adjunta una foto del hallazgo:';
+  if (normalized === 'Analicé el contexto del hallazgo. Te propongo una medida correctiva.') {
+    return `Foto recibida ✓. Analicé el historial de **${area}** y te propongo una medida correctiva.`;
   }
-
-  if (normalized === 'Selecciona el tipo de hallazgo.') {
-    return 'Selecciona el **tipo de hallazgo**.';
+  if (normalized === 'Definamos la criticidad del hallazgo.') return 'Definamos la **criticidad del hallazgo**.';
+  if (normalized === 'Confirma el SLA para esta observación.') return 'Confirma el **SLA para esta observación**.';
+  if (normalized === '¿Deseas agregar otra observación o continuar con empresa y personal?') {
+    return '¿Agregar otra observación o continuamos con la empresa?';
   }
+  if (normalized === 'Te sugiero una empresa responsable para este hallazgo.') {
+    return `Basándome en el historial de **${location || area}**, te propongo:`;
+  }
+  if (normalized === 'Revisa el resumen antes de guardar.') return '¡Listo! Revisa el resumen antes de guardar:';
 
   return text;
 }
@@ -56,11 +64,7 @@ function FormattedText({ text }: { text: string }) {
       {parts.map((part, index) => {
         const strong = part.startsWith('**') && part.endsWith('**');
         const value = strong ? part.slice(2, -2) : part;
-        return (
-          <Text key={`${index}-${value}`} style={strong ? styles.strong : undefined}>
-            {value}
-          </Text>
-        );
+        return <Text key={`${index}-${value}`} style={strong ? styles.strong : undefined}>{value}</Text>;
       })}
     </Text>
   );
@@ -71,12 +75,13 @@ export function BotBubble({ text, time }: Props) {
   const inspectorName = useManualInspectionDraft((state) => state.inspectorName);
   const areaName = useManualInspectionDraft((state) => state.areaName);
   const sectorName = useManualInspectionDraft((state) => state.sectorName);
+  const inspectionType = useManualInspectionDraft((state) => state.inspectionType);
   const hiddenForAssignedCompany = !canSelectCompany && [
     'Te sugiero una empresa responsable para este hallazgo.',
     'Selecciona empresa responsable de los hallazgos.',
     'Selecciona empresa responsable.',
   ].includes(text.trim());
-  const displayText = canonicalAssistantText(text, { inspectorName, areaName, sectorName });
+  const displayText = canonicalAssistantText(text, { inspectorName, areaName, sectorName, inspectionType });
   const now = new Date();
   const timeStr = time ?? `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
 
@@ -84,9 +89,7 @@ export function BotBubble({ text, time }: Props) {
 
   return (
     <View style={styles.row}>
-      <View style={styles.avatar}>
-        <SparklesMark size={10} color={colors.navy} />
-      </View>
+      <View style={styles.avatar}><SparklesMark size={10} color={colors.navy} /></View>
       <View style={styles.bubble}>
         <FormattedText text={displayText} />
         <Text style={styles.time}>{timeStr}</Text>
@@ -97,6 +100,7 @@ export function BotBubble({ text, time }: Props) {
 
 const styles = StyleSheet.create({
   row: {
+    marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 7,
@@ -112,31 +116,30 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   bubble: {
-    maxWidth: '85%',
+    maxWidth: 286,
     backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderBottomLeftRadius: 4,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
+    borderColor: '#E3E3E3',
+    borderRadius: 16,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
     shadowColor: '#000',
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.12,
     shadowRadius: 3,
     shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
   },
   text: {
-    fontSize: fontSize.base,
-    color: colors.primary,
-    lineHeight: fontSize.base * 1.5,
+    fontSize: 15,
+    color: '#131313',
+    lineHeight: 22,
     fontWeight: fontWeight.regular,
   },
-  strong: {
-    fontWeight: fontWeight.bold,
-  },
+  strong: { fontWeight: fontWeight.bold },
   time: {
-    fontSize: fontSize.xs,
-    color: colors.placeholder,
-    marginTop: spacing.xs,
+    fontSize: 12,
+    color: '#ACACAC',
+    marginTop: 7,
+    lineHeight: 13,
   },
 });

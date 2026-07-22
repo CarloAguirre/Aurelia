@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { FontAwesome5 } from '@expo/vector-icons';
-import { colors, spacing, radius, fontSize, fontWeight } from '../../theme/tokens';
+import { colors, fontWeight } from '../../theme/tokens';
 import { PhotoSourceSheet } from '../form/PhotoSourceSheet';
 
 interface Props {
@@ -24,9 +24,7 @@ async function launchCamera(onCapture: (uri: string) => void) {
     quality: 0.8,
     allowsEditing: false,
   });
-  if (!result.canceled && result.assets[0]?.uri) {
-    onCapture(result.assets[0].uri);
-  }
+  if (!result.canceled && result.assets[0]?.uri) onCapture(result.assets[0].uri);
 }
 
 async function launchGallery(onCapture: (uri: string) => void) {
@@ -41,13 +39,10 @@ async function launchGallery(onCapture: (uri: string) => void) {
     allowsEditing: false,
     selectionLimit: 1,
   });
-  if (!result.canceled && result.assets[0]?.uri) {
-    onCapture(result.assets[0].uri);
-  }
+  if (!result.canceled && result.assets[0]?.uri) onCapture(result.assets[0].uri);
 }
 
 export function PhotoStepWidget({
-  onSkip,
   onCapture,
   resolved = false,
   resolvedTitle = 'Foto adjunta ✓',
@@ -57,11 +52,15 @@ export function PhotoStepWidget({
 
   if (resolved) {
     return (
-      <View style={[styles.resolvedCard, styles.marginLeft]}>
-        <FontAwesome5 name="check-circle" size={16} color={colors.successTxt} />
-        <View>
-          <Text style={styles.resolvedTitle}>{resolvedTitle}</Text>
-          <Text style={styles.resolvedSub}>{resolvedSub}</Text>
+      <View style={styles.resolvedOuter}>
+        <View style={styles.resolvedCard}>
+          <View style={styles.resolvedCheck}>
+            <Text style={styles.resolvedCheckText}>✓</Text>
+          </View>
+          <View style={styles.resolvedCopy}>
+            <Text numberOfLines={1} style={styles.resolvedTitle}>{resolvedTitle}</Text>
+            <Text numberOfLines={1} style={styles.resolvedSub}>{resolvedSub}</Text>
+          </View>
         </View>
       </View>
     );
@@ -69,20 +68,17 @@ export function PhotoStepWidget({
 
   return (
     <>
-      <TouchableOpacity style={[styles.container, styles.marginLeft]} activeOpacity={0.78} onPress={() => setPickerOpen(true)}>
+      <View style={styles.container}>
         <View style={styles.iconBox}>
-          <FontAwesome5 name="camera-retro" size={18} color={colors.muted} />
+          <FontAwesome5 name="camera-retro" size={18} color="#646464" />
         </View>
         <Text style={styles.title}>Adjuntar fotografía del hallazgo</Text>
         <Text style={styles.subtitle}>Fecha, hora y GPS se registran automáticamente</Text>
-        <View style={styles.triggerBtn}>
-          <FontAwesome5 name="camera" size={11} color={colors.body} />
-          <Text style={styles.triggerText}>Tomar foto o galería</Text>
-        </View>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={onSkip} activeOpacity={0.7} style={[styles.skipBtn, styles.marginLeft]}>
-        <Text style={styles.skipText}>Continuar sin foto</Text>
-      </TouchableOpacity>
+        <TouchableOpacity activeOpacity={0.78} onPress={() => setPickerOpen(true)} style={styles.triggerBtn}>
+          <FontAwesome5 name="camera" size={11} color="#333333" />
+          <Text style={styles.triggerText}>Desde galería</Text>
+        </TouchableOpacity>
+      </View>
       <PhotoSourceSheet
         visible={pickerOpen}
         onClose={() => setPickerOpen(false)}
@@ -100,68 +96,101 @@ export function PhotoStepWidget({
 }
 
 const styles = StyleSheet.create({
-  marginLeft: { marginLeft: 33 },
   container: {
-    backgroundColor: colors.white,
-    borderWidth: 1.5,
-    borderColor: colors.borderMid,
-    borderStyle: 'dashed',
-    borderRadius: radius.md + 2,
+    marginBottom: 10,
+    marginLeft: 33,
+    marginRight: 12,
     padding: 14,
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: 8,
+    backgroundColor: colors.white,
+    borderColor: '#D1D1D1',
+    borderRadius: 12,
+    borderStyle: 'dashed',
+    borderWidth: 1.5,
   },
   iconBox: {
     width: 40,
     height: 40,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#F4F6F9',
+    borderRadius: 10,
   },
-  title: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.body },
-  subtitle: { fontSize: fontSize.xs, color: colors.placeholder, textAlign: 'center' },
+  title: {
+    color: '#333333',
+    fontSize: 12,
+    fontWeight: fontWeight.bold,
+    lineHeight: 14,
+  },
+  subtitle: {
+    color: '#ACACAC',
+    fontSize: 10,
+    lineHeight: 12,
+    textAlign: 'center',
+  },
   triggerBtn: {
     width: '100%',
-    height: 36,
-    borderRadius: radius.sm + 2,
-    borderWidth: 1.5,
-    borderColor: colors.borderMid,
-    backgroundColor: colors.surface,
+    height: 34,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
+    backgroundColor: '#F4F6F9',
+    borderColor: '#D1D1D1',
+    borderRadius: 8,
+    borderWidth: 1.5,
   },
   triggerText: {
-    fontSize: fontSize.sm,
+    color: '#333333',
+    fontSize: 11,
     fontWeight: fontWeight.semibold,
-    color: colors.body,
   },
-  skipBtn: {
-    alignSelf: 'flex-start',
-    paddingVertical: spacing.xs,
-  },
-  skipText: {
-    fontSize: fontSize.sm,
-    color: colors.placeholder,
+  resolvedOuter: {
+    marginBottom: 10,
+    marginLeft: 33,
+    marginRight: 12,
+    borderColor: '#D1D1D1',
+    borderRadius: 12,
+    borderStyle: 'dashed',
+    borderWidth: 1.5,
   },
   resolvedCard: {
-    backgroundColor: colors.successSurf,
-    borderRadius: radius.md + 2,
-    padding: spacing.md,
+    minHeight: 58,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: 8,
+    backgroundColor: '#E0FFD3',
+    borderRadius: 12,
+  },
+  resolvedCheck: {
+    width: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2A5C16',
+    borderRadius: 8,
+  },
+  resolvedCheckText: {
+    color: '#E0FFD3',
+    fontSize: 11,
+    fontWeight: fontWeight.bold,
+  },
+  resolvedCopy: {
+    minWidth: 0,
+    flex: 1,
   },
   resolvedTitle: {
-    fontSize: fontSize.md,
+    color: '#2A5C16',
+    fontSize: 12,
     fontWeight: fontWeight.bold,
-    color: colors.successTxt,
+    lineHeight: 15,
   },
   resolvedSub: {
-    fontSize: fontSize.xs,
-    color: colors.successTxt,
-    marginTop: 1,
+    color: '#2A5C16',
+    fontSize: 10,
+    lineHeight: 13,
   },
 });

@@ -1,134 +1,103 @@
-import React, { Fragment, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
-import { colors, fontSize, fontWeight, radius, spacing } from '../../theme/tokens';
-
-const OPTIONS = [1, 3, 7, 14];
+import React from 'react';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { colors, fontWeight } from '../../theme/tokens';
 
 interface SlaConfirmWidgetProps {
   initialDays: number;
-  observationNumber: number;
+  observationNumber?: number;
   resolved?: boolean;
   onSave: (days: number) => void;
 }
 
-export function SlaConfirmWidget({ initialDays, observationNumber, resolved = false, onSave }: SlaConfirmWidgetProps) {
-  const [days, setDays] = useState(initialDays);
+export function SlaConfirmWidget({ initialDays, resolved = false, onSave }: SlaConfirmWidgetProps) {
+  const [days, setDays] = React.useState(String(initialDays));
+
+  React.useEffect(() => {
+    setDays(String(initialDays));
+  }, [initialDays]);
+
+  const numericDays = Number(days);
+  const valid = Number.isFinite(numericDays) && numericDays > 0;
 
   return (
-    <Fragment>
-      <View style={styles.card}>
-        <Text style={styles.title}>SLA · DÍAS HÁBILES PARA RESOLVER</Text>
-        <View style={styles.options}>
-          {OPTIONS.map((option) => {
-            const selected = days === option;
-            return (
-              <TouchableOpacity key={option} disabled={resolved} activeOpacity={0.75} onPress={() => setDays(option)} style={[styles.option, selected && styles.optionSelected]}>
-                <Text style={[styles.optionText, selected && styles.optionTextSelected]}>{option} día{option === 1 ? '' : 's'}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        <View style={styles.customRow}>
-          <View style={styles.inputBox}><Text style={styles.inputText}>{days}</Text></View>
-          <Text style={styles.customText}>días personalizados</Text>
-        </View>
+    <View style={styles.card}>
+      <Text style={styles.title}>Confirma el SLA</Text>
+      <View style={styles.row}>
+        <TextInput
+          editable={!resolved}
+          keyboardType="number-pad"
+          onChangeText={(value) => setDays(value.replace(/\D/g, '').slice(0, 3))}
+          selectionColor="#24588B"
+          style={styles.input}
+          value={days}
+        />
+        <Text style={styles.daysLabel}>días</Text>
+        <TouchableOpacity
+          activeOpacity={0.75}
+          disabled={resolved || !valid}
+          onPress={() => onSave(numericDays)}
+          style={[styles.saveButton, (resolved || !valid) && styles.saveButtonDisabled]}
+        >
+          <Text style={styles.saveText}>Guardar observación</Text>
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity disabled={resolved} activeOpacity={0.8} onPress={() => onSave(days)} style={[styles.saveButton, resolved && styles.saveButtonResolved]}>
-        <FontAwesome5 name={resolved ? 'lock' : 'save'} size={10} color={colors.white} solid />
-        <Text style={styles.saveText}>Guardar observación {observationNumber}</Text>
-      </TouchableOpacity>
-    </Fragment>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
+    marginBottom: 10,
     marginLeft: 33,
-    marginRight: spacing.md,
+    marginRight: 12,
+    padding: 12,
     backgroundColor: colors.white,
-    borderColor: colors.border,
-    borderRadius: radius.md,
+    borderColor: '#E3E3E3',
+    borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
   },
   title: {
-    color: colors.muted,
-    fontSize: 9,
+    color: '#131313',
+    fontSize: 13,
     fontWeight: fontWeight.bold,
-    letterSpacing: 0.5,
-    marginBottom: 6,
-    textTransform: 'uppercase',
   },
-  options: {
+  row: {
+    marginTop: 8,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 5,
-    marginBottom: spacing.sm,
+    alignItems: 'center',
+    gap: 8,
   },
-  option: {
-    backgroundColor: colors.surface,
-    borderColor: colors.borderMid,
-    borderRadius: radius.sm,
-    borderWidth: 1,
+  input: {
+    width: 90,
+    height: 40,
     paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  optionSelected: {
-    backgroundColor: colors.gold,
-    borderColor: colors.gold,
-  },
-  optionText: {
-    color: colors.muted,
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.semibold,
-  },
-  optionTextSelected: {
-    color: colors.navy,
-  },
-  customRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  inputBox: {
-    alignItems: 'center',
-    backgroundColor: colors.white,
-    borderColor: colors.borderMid,
-    borderRadius: radius.sm + 1,
-    borderWidth: 1.5,
-    height: 30,
-    justifyContent: 'center',
-    width: 55,
-  },
-  inputText: {
-    color: colors.primary,
-    fontSize: fontSize.base,
+    color: '#131313',
+    fontSize: 13,
     fontWeight: fontWeight.bold,
+    backgroundColor: '#F6FAFF',
+    borderColor: '#D1D1D1',
+    borderRadius: 10,
+    borderWidth: 1.5,
   },
-  customText: {
-    color: colors.muted,
-    fontSize: fontSize.sm,
+  daysLabel: {
+    color: '#646464',
+    fontSize: 12,
   },
   saveButton: {
+    height: 40,
+    marginLeft: 'auto',
+    paddingHorizontal: 12,
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: colors.teal,
-    borderRadius: radius.full,
-    marginLeft: 33,
-    marginTop: 8,
-    height: 36,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
-    gap: 6,
+    justifyContent: 'center',
+    backgroundColor: '#C8A064',
+    borderRadius: 10,
   },
-  saveButtonResolved: {
-    opacity: 0.45,
+  saveButtonDisabled: {
+    opacity: 0.5,
   },
   saveText: {
     color: colors.white,
-    fontSize: fontSize.xs + 1,
+    fontSize: 12,
     fontWeight: fontWeight.bold,
   },
 });

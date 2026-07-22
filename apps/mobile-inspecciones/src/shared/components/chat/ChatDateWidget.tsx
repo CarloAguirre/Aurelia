@@ -52,7 +52,7 @@ function parseDateLabel(value: string): Date | null {
 }
 
 function displayDate(value: string): string {
-  return value ? value.replaceAll('-', '/') : '';
+  return value ? value.replace(/-/g, '/') : '';
 }
 
 function formatDateInput(value: string): string {
@@ -103,12 +103,14 @@ function ChatDateCalendarSheet({ visible, value, onClose, onSelect }: ChatDateCa
     () => new Date(initialDate.getFullYear(), initialDate.getMonth(), 1),
   );
   const [dateText, setDateText] = React.useState(() => displayDate(value));
+  const [calendarValue, setCalendarValue] = React.useState(value);
 
   React.useEffect(() => {
     if (!visible) return;
     const selected = parseDateLabel(value) ?? new Date();
     setViewDate(new Date(selected.getFullYear(), selected.getMonth(), 1));
     setDateText(displayDate(value));
+    setCalendarValue(value);
   }, [value, visible]);
 
   const days = React.useMemo(() => calendarDays(viewDate), [viewDate]);
@@ -117,6 +119,7 @@ function ChatDateCalendarSheet({ visible, value, onClose, onSelect }: ChatDateCa
   function selectDate(date: Date) {
     const formatted = formatDate(date);
     setDateText(displayDate(formatted));
+    setCalendarValue(formatted);
     onSelect(formatted);
     onClose();
   }
@@ -132,17 +135,20 @@ function ChatDateCalendarSheet({ visible, value, onClose, onSelect }: ChatDateCa
     if (parsedDate) {
       setViewDate(new Date(parsedDate.getFullYear(), parsedDate.getMonth(), 1));
     }
+    setCalendarValue(parsedValue);
     onSelect(parsedValue);
     onClose();
   }
 
   function blurDateText() {
+    if (!dateText) return;
     if (parseDateInput(dateText)) return;
-    setDateText(displayDate(value));
+    setDateText(displayDate(calendarValue || value));
   }
 
   function clearDateText() {
     setDateText('');
+    setCalendarValue('');
   }
 
   return (
@@ -215,7 +221,7 @@ function ChatDateCalendarSheet({ visible, value, onClose, onSelect }: ChatDateCa
             <View style={styles.daysGrid}>
               {days.map((date) => {
                 const formatted = formatDate(date);
-                const selected = Boolean(value) && formatted === value;
+                const selected = Boolean(calendarValue) && formatted === calendarValue;
                 const currentMonth = date.getMonth() === viewDate.getMonth();
 
                 return (

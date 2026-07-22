@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors, fontSize, fontWeight, spacing } from '../../theme/tokens';
+import { colors, fontWeight } from '../../theme/tokens';
 
 interface ChatLocationWidgetProps {
   captured: boolean;

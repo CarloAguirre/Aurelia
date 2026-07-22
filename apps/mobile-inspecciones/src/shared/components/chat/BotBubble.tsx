@@ -5,6 +5,7 @@ import { colors, fontWeight, radius } from '../../theme/tokens';
 import { useMobileInspectionAssignmentScope } from '../../stores/mobileInspectionAssignmentScope.store';
 import { useManualInspectionDraft } from '../../../modules/inspection/manualInspection.store';
 import { SparklesMark } from '../icons/SparklesMark';
+import { SavedObservationCard } from './SlaConfirmWidget';
 
 interface Props {
   text: string;
@@ -19,6 +20,13 @@ interface AssistantCopyContext {
   inspectionType: InspectionType;
   findingCompanyName: string | null;
 }
+
+interface FindingDecisionSnapshot {
+  observationId: string;
+  savedCount: number;
+}
+
+const findingDecisionPrompt = '¿Deseas agregar otra observación o continuar con empresa y personal?';
 
 function canonicalAssistantText(text: string, context: AssistantCopyContext): string {
   const normalized = text.trim();
@@ -67,7 +75,7 @@ function canonicalAssistantText(text: string, context: AssistantCopyContext): st
   }
   if (normalized === 'Definamos la criticidad del hallazgo.') return 'Definamos la **criticidad del hallazgo**.';
   if (normalized === 'Confirma el SLA para esta observación.') return 'Confirma el **SLA para esta observación**.';
-  if (normalized === '¿Deseas agregar otra observación o continuar con empresa y personal?') {
+  if (normalized === findingDecisionPrompt) {
     return '¿Agregar otra observación o continuamos con la empresa?';
   }
   if (normalized === 'Te sugiero una empresa responsable para este hallazgo.') {
@@ -94,6 +102,18 @@ function FormattedText({ text }: { text: string }) {
   );
 }
 
+function AssistantBubble({ text, time }: { text: string; time: string }) {
+  return (
+    <View style={styles.row}>
+      <View style={styles.avatar}><SparklesMark size={10} color={colors.navy} /></View>
+      <View style={styles.bubble}>
+        <FormattedText text={text} />
+        <Text style={styles.time}>{time}</Text>
+      </View>
+    </View>
+  );
+}
+
 export function BotBubble({ text, time }: Props) {
   const canSelectCompany = useMobileInspectionAssignmentScope((state) => state.canSelectCompany);
   const inspectorName = useManualInspectionDraft((state) => state.inspectorName);
@@ -101,11 +121,15 @@ export function BotBubble({ text, time }: Props) {
   const sectorName = useManualInspectionDraft((state) => state.sectorName);
   const inspectionType = useManualInspectionDraft((state) => state.inspectionType);
   const findingCompanyName = useManualInspectionDraft((state) => state.findingCompanyName);
+  const findingObservations = useManualInspectionDraft((state) => state.findingObservations);
+  const decisionSnapshot = React.useRef<FindingDecisionSnapshot | null>(null);
+  const normalized = text.trim();
+  const isFindingDecision = normalized === findingDecisionPrompt;
   const hiddenForAssignedCompany = !canSelectCompany && [
     'Te sugiero una empresa responsable para este hallazgo.',
     'Selecciona empresa responsable de los hallazgos.',
     'Selecciona empresa responsable.',
-  ].includes(text.trim());
+  ].includes(normalized);
   const displayText = canonicalAssistantText(text, {
     inspectorName,
     areaName,
@@ -116,17 +140,35 @@ export function BotBubble({ text, time }: Props) {
   const now = new Date();
   const timeStr = time ?? `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
 
+  if (isFindingDecision && !decisionSnapshot.current) {
+    const savedObservations = findingObservations.filter((item) => item.saved);
+    const latest = savedObservations[savedObservations.length - 1];
+    if (latest) {
+      decisionSnapshot.current = {
+        observationId: latest.id,
+        savedCount: savedObservations.length,
+      };
+    }
+  }
+
   if (hiddenForAssignedCompany) return null;
 
-  return (
-    <View style={styles.row}>
-      <View style={styles.avatar}><SparklesMark size={10} color={colors.navy} /></View>
-      <View style={styles.bubble}>
-        <FormattedText text={displayText} />
-        <Text style={styles.time}>{timeStr}</Text>
-      </View>
-    </View>
-  );
+  if (isFindingDecision && decisionSnapshot.current) {
+    const { observationId, savedCount } = decisionSnapshot.current;
+    const countLabel = savedCount === 1 ? 'observación' : 'observaciones';
+    return (
+      <>
+        <AssistantBubble
+          text={`Llevas **${savedCount} ${countLabel}**. Revisa antes de continuar:`}
+          time={timeStr}
+        />
+        <SavedObservationCard observationId={observationId} />
+        <AssistantBubble text={displayText} time={timeStr} />
+      </>
+    );
+  }
+
+  return <AssistantBubble text={displayText} time={timeStr} />;
 }
 
 const styles = StyleSheet.create({

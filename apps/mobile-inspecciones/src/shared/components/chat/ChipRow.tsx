@@ -70,7 +70,6 @@ export function ChipRow({ chips, selected, onSelect, variant = 'gold' }: ChipRow
   const companySelector = unresolvedCompanyStage || resolvedCompanyStage;
   const lockedCompany = !canSelectCompany && Boolean(assignedCompanyName) && companySelector;
   const checklistSuggestionStage = inspectionType === InspectionType.REGULATORY && unresolvedCompanyStage;
-  const companyKey = chips.join('|');
 
   React.useEffect(() => {
     if (!checklistSuggestionStage || chips.length === 0) return;
@@ -103,7 +102,7 @@ export function ChipRow({ chips, selected, onSelect, variant = 'gold' }: ChipRow
     return () => {
       cancelled = true;
     };
-  }, [areaName, checklistSuggestionStage, companyKey, sectorName]);
+  }, [areaName, checklistSuggestionStage, chips, sectorName]);
 
   React.useEffect(() => {
     if (!lockedCompany || selected === assignedCompanyName || confirmedRef.current || !assignedCompanyName) return;

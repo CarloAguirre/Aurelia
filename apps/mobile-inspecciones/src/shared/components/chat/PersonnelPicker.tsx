@@ -42,33 +42,35 @@ export function PersonnelPicker({ users, onConfirm, confirmed = false, suggested
   }
 
   return (
-    <View style={styles.container}>
-      {users.map((user) => {
-        const active = selectedIds.includes(user.id);
-        const suggested = user.id === effectiveSuggestedUserId;
+    <View style={styles.card}>
+      <View style={styles.list}>
+        {users.map((user) => {
+          const active = selectedIds.includes(user.id);
+          const suggested = user.id === effectiveSuggestedUserId;
 
-        return (
-          <TouchableOpacity
-            key={user.id}
-            activeOpacity={0.7}
-            disabled={confirmed}
-            onPress={() => toggle(user.id)}
-            style={[styles.personButton, active && styles.personButtonActive, confirmed && styles.disabled]}
-          >
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initials(user.fullName)}</Text>
-            </View>
-            <View style={styles.personCopy}>
-              <Text numberOfLines={1} style={styles.name}>{user.fullName}</Text>
-              <Text numberOfLines={1} style={styles.position}>{user.position ?? 'Responsable'}</Text>
-            </View>
-            {suggested ? <Text style={styles.suggestedBadge}>✦ Sugerido</Text> : null}
-            <View style={[styles.check, active && styles.checkActive]}>
-              {active ? <Text style={styles.checkText}>✓</Text> : null}
-            </View>
-          </TouchableOpacity>
-        );
-      })}
+          return (
+            <TouchableOpacity
+              key={user.id}
+              activeOpacity={0.7}
+              disabled={confirmed}
+              onPress={() => toggle(user.id)}
+              style={[styles.personButton, active && styles.personButtonActive, confirmed && styles.disabled]}
+            >
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{initials(user.fullName)}</Text>
+              </View>
+              <View style={styles.personCopy}>
+                <Text numberOfLines={1} style={styles.name}>{user.fullName}</Text>
+                <Text numberOfLines={1} style={styles.position}>{user.position ?? 'Responsable'}</Text>
+              </View>
+              {suggested ? <Text style={styles.suggestedBadge}>✦ Sugerido</Text> : null}
+              <View style={[styles.check, active && styles.checkActive]}>
+                {active ? <Text style={styles.checkText}>✓</Text> : null}
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
 
       <TouchableOpacity
         activeOpacity={0.8}
@@ -76,20 +78,33 @@ export function PersonnelPicker({ users, onConfirm, confirmed = false, suggested
         onPress={() => onConfirm(selectedUsers)}
         style={[styles.confirmButton, (confirmed || selectedUsers.length === 0) && styles.disabled]}
       >
-        <Text style={styles.confirmText}>→ Confirmar y ver resumen</Text>
+        <Text style={styles.confirmText}>Confirmar personal</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  card: {
     marginBottom: 10,
     marginLeft: 33,
     marginRight: 12,
+    padding: 12,
+    backgroundColor: colors.white,
+    borderColor: '#E3E3E3',
+    borderRadius: 12,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
+  },
+  list: {
     gap: 6,
   },
   personButton: {
+    width: '100%',
     minHeight: 48,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -162,19 +177,17 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
   },
   confirmButton: {
-    width: 'auto',
-    height: 36,
-    marginTop: 4,
-    paddingHorizontal: 18,
-    alignSelf: 'flex-start',
+    width: '100%',
+    height: 42,
+    marginTop: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#00B398',
-    borderRadius: 999,
+    backgroundColor: '#C8A064',
+    borderRadius: 10,
   },
   confirmText: {
     color: colors.white,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: fontWeight.bold,
   },
   disabled: {

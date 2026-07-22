@@ -1,6 +1,5 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
 import { colors, fontWeight } from '../../theme/tokens';
 import { SparklesMark } from '../icons/SparklesMark';
 
@@ -14,7 +13,6 @@ interface AiProposalCardProps {
 
 export function AiProposalCard({
   suggestion,
-  fallback = false,
   onAccept,
   onEdit,
   accepted = false,
@@ -23,22 +21,27 @@ export function AiProposalCard({
     <View style={styles.container}>
       <View style={styles.header}>
         <SparklesMark size={11} color="#8E6E3E" />
-        <Text style={styles.headerTitle}>Medida sugerida por AurelIA</Text>
-        {fallback ? <Text style={styles.fallbackBadge}>Base</Text> : null}
+        <Text style={styles.headerTitle}>Medida correctiva sugerida</Text>
       </View>
-      <View style={styles.body}>
-        <Text style={styles.label}>Medida correctiva</Text>
-        <Text style={styles.suggestion}>{suggestion}</Text>
-        <Text style={styles.metaText}>↝ Basada en historial 2023–2026 · Gold Fields Salares Norte</Text>
-      </View>
+
+      <Text style={styles.suggestion}>{suggestion}</Text>
+
       <View style={styles.actions}>
-        <TouchableOpacity activeOpacity={0.75} disabled={accepted} onPress={onEdit} style={[styles.editBtn, accepted && styles.disabledBtn]}>
-          <FontAwesome5 name="pen" size={10} color={accepted ? '#ACACAC' : '#333333'} />
-          <Text style={[styles.editBtnText, accepted && styles.disabledText]}>Editar</Text>
+        <TouchableOpacity
+          activeOpacity={0.75}
+          disabled={accepted}
+          onPress={onAccept}
+          style={[styles.acceptButton, accepted && styles.disabled]}
+        >
+          <Text style={styles.acceptText}>Aceptar medida</Text>
         </TouchableOpacity>
-        <TouchableOpacity activeOpacity={0.75} disabled={accepted} onPress={onAccept} style={[styles.acceptBtn, accepted && styles.disabledBtn]}>
-          <FontAwesome5 name="check" size={10} color={colors.white} />
-          <Text style={styles.acceptBtnText}>Aceptar</Text>
+        <TouchableOpacity
+          activeOpacity={0.75}
+          disabled={accepted}
+          onPress={onEdit}
+          style={[styles.editButton, accepted && styles.disabled]}
+        >
+          <Text style={styles.editText}>Editar</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -63,94 +66,65 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 9,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#FDF3E3',
-    borderBottomColor: 'rgba(200,160,100,0.20)',
+    backgroundColor: '#FAE8C8',
+    borderBottomColor: 'rgba(200,160,100,0.25)',
     borderBottomWidth: 1,
   },
   headerTitle: {
-    flex: 1,
     color: '#8E6E3E',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: fontWeight.bold,
-  },
-  fallbackBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    color: '#8E6E3E',
-    fontSize: 10,
-    fontWeight: fontWeight.bold,
-    backgroundColor: colors.white,
-    borderRadius: 999,
-  },
-  body: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  label: {
-    marginBottom: 4,
-    color: '#646464',
-    fontSize: 9,
-    fontWeight: fontWeight.bold,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
   },
   suggestion: {
+    paddingHorizontal: 12,
+    paddingTop: 12,
     color: '#131313',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: fontWeight.medium,
     lineHeight: 18,
   },
-  metaText: {
-    marginTop: 8,
-    paddingTop: 7,
-    color: '#646464',
-    fontSize: 10,
-    lineHeight: 13,
-    borderTopColor: '#E3E3E3',
-    borderTopWidth: 1,
-  },
   actions: {
     paddingHorizontal: 12,
+    paddingTop: 10,
     paddingBottom: 12,
     flexDirection: 'row',
     gap: 8,
   },
-  editBtn: {
-    height: 36,
-    paddingHorizontal: 14,
-    flexDirection: 'row',
+  acceptButton: {
+    height: 38,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
-    backgroundColor: colors.white,
-    borderColor: '#D1D1D1',
-    borderRadius: 8,
+    backgroundColor: '#00B398',
+    borderColor: '#00B398',
+    borderRadius: 10,
     borderWidth: 1.5,
   },
-  editBtnText: {
-    color: '#333333',
-    fontSize: 12,
-    fontWeight: fontWeight.semibold,
-  },
-  acceptBtn: {
-    height: 36,
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    backgroundColor: '#00B398',
-    borderRadius: 8,
-  },
-  acceptBtnText: {
+  acceptText: {
     color: colors.white,
     fontSize: 12,
     fontWeight: fontWeight.bold,
   },
-  disabledBtn: { opacity: 0.5 },
-  disabledText: { color: '#ACACAC' },
+  editButton: {
+    height: 38,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.white,
+    borderColor: '#C8A064',
+    borderRadius: 10,
+    borderWidth: 1.5,
+  },
+  editText: {
+    color: '#8E6E3E',
+    fontSize: 12,
+    fontWeight: fontWeight.bold,
+  },
+  disabled: {
+    opacity: 0.55,
+  },
 });

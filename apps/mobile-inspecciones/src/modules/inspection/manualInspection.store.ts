@@ -118,7 +118,7 @@ const initialDraft: ManualInspectionDraft = {
   areaName: null,
   sectorId: null,
   sectorName: null,
-  inspectionDate: new Intl.DateTimeFormat('es-CL').format(new Date()),
+  inspectionDate: '',
   inspectionDateSelected: false,
   locationLabel: 'Ubicación no capturada',
   locationAccuracyLabel: 'Sin precisión',
@@ -158,19 +158,48 @@ function hasTypedContent(draft: Partial<ManualInspectionDraft>) {
   );
 }
 
+function normalizeChecklistAnswers(
+  answers: ManualChecklistAnswers,
+  details: Record<string, ManualChecklistItemDetail>,
+): ManualChecklistAnswers {
+  const normalized = { ...answers };
+
+  Object.entries(normalized).forEach(([itemId, answer]) => {
+    if (answer !== InspectionAnswerValue.NOT_COMPLIANT) return;
+    const detail = details[itemId];
+    const complete = Boolean(
+      detail?.detectedCondition?.trim() &&
+      detail.correctiveAction?.trim() &&
+      detail.evidence,
+    );
+
+    // El flujo conversacional siempre debe retomar un NO incompleto antes de avanzar.
+    // Al dejarlo pendiente, la misma tarjeta SÍ / NO / N/A vuelve a conducir al detalle requerido.
+    if (!complete) delete normalized[itemId];
+  });
+
+  return normalized;
+}
+
 function normalizeDraft(draft: HydratableManualInspectionDraft): ManualInspectionDraft {
   const legacyTypedContent = hasTypedContent(draft);
+  const inspectionTypeSelected = draft.inspectionTypeSelected ?? legacyTypedContent;
+  const inspectionDateSelected = draft.inspectionDateSelected ?? Boolean(draft.locationCaptured || legacyTypedContent);
+  const detailsByItemId = draft.detailsByItemId ?? {};
+  const answersByItemId = normalizeChecklistAnswers(draft.answersByItemId ?? {}, detailsByItemId);
+
   return {
     ...initialDraft,
     ...draft,
-    inspectionTypeSelected: draft.inspectionTypeSelected ?? legacyTypedContent,
-    inspectionDateSelected: draft.inspectionDateSelected ?? Boolean(draft.locationCaptured || legacyTypedContent),
+    inspectionTypeSelected,
+    inspectionDateSelected,
+    inspectionDate: inspectionDateSelected ? (draft.inspectionDate ?? '') : '',
     findingObservations: (draft.findingObservations ?? []).map((item) => ({
       ...item,
       correctiveActionSource: item.correctiveActionSource ?? null,
     })),
-    answersByItemId: draft.answersByItemId ?? {},
-    detailsByItemId: draft.detailsByItemId ?? {},
+    answersByItemId,
+    detailsByItemId,
     findingResponsibleIds: draft.findingResponsibleIds ?? [],
   };
 }

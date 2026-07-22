@@ -12,6 +12,10 @@ interface CompanySuggestionCardProps {
   onChooseOther: () => void;
 }
 
+function normalizeText(value: string) {
+  return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 export function CompanySuggestionCard(props: CompanySuggestionCardProps) {
   const canSelectCompany = useMobileInspectionAssignmentScope((state) => state.canSelectCompany);
   const assignedCompanyId = useMobileInspectionAssignmentScope((state) => state.companyId);
@@ -19,7 +23,7 @@ export function CompanySuggestionCard(props: CompanySuggestionCardProps) {
   const confirmedRef = React.useRef(false);
   const disabled = props.disabled ?? false;
   const locked = !canSelectCompany && Boolean(assignedCompanyId);
-  const fallback = props.reason === 'Recomendación basada en historial operativo de la faena.';
+  const showSuggestion = Boolean(props.reason) && normalizeText(props.reason) !== normalizeText(props.company.name);
 
   React.useEffect(() => {
     if (!locked || disabled || confirmedRef.current || props.company.id !== assignedCompanyId) return;
@@ -42,31 +46,30 @@ export function CompanySuggestionCard(props: CompanySuggestionCardProps) {
     <View style={styles.card}>
       <View style={styles.header}>
         <Text style={styles.sparkle}>✦</Text>
-        <Text style={styles.headerText}>Empresa sugerida por AurelIA</Text>
-        {fallback ? <Text style={styles.fallbackBadge}>Base</Text> : null}
+        <Text style={styles.headerText}>Empresa responsable sugerida</Text>
       </View>
 
       <View style={styles.body}>
-        <Text style={styles.label}>Empresa responsable</Text>
         <Text style={styles.companyName}>{props.company.name}</Text>
+        {showSuggestion ? <Text style={styles.suggestion}>Sugerencia IA: {props.reason}</Text> : null}
       </View>
 
       <View style={styles.actions}>
         <TouchableOpacity
           activeOpacity={0.75}
           disabled={disabled}
-          onPress={props.onChooseOther}
-          style={[styles.secondaryButton, disabled && styles.disabled]}
+          onPress={props.onConfirm}
+          style={[styles.primaryButton, disabled && styles.disabled]}
         >
-          <Text style={styles.secondaryText}>☷ Elegir otra</Text>
+          <Text style={styles.primaryText}>Confirmar empresa</Text>
         </TouchableOpacity>
         <TouchableOpacity
           activeOpacity={0.75}
           disabled={disabled}
-          onPress={props.onConfirm}
-          style={[styles.primaryButton, disabled && styles.disabled]}
+          onPress={props.onChooseOther}
+          style={[styles.secondaryButton, disabled && styles.disabled]}
         >
-          <Text style={styles.primaryText}>✓ Confirmar</Text>
+          <Text style={styles.secondaryText}>Elegir otra</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -83,6 +86,11 @@ const styles = StyleSheet.create({
     borderColor: '#C8A064',
     borderRadius: 12,
     borderWidth: 1.5,
+    shadowColor: '#C8A064',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   lockedCard: {
     marginBottom: 10,
@@ -116,11 +124,13 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 9,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     backgroundColor: '#FAE8C8',
+    borderBottomColor: 'rgba(200,160,100,0.25)',
+    borderBottomWidth: 1,
   },
   sparkle: {
     color: '#8E6E3E',
@@ -128,72 +138,64 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
   },
   headerText: {
-    flex: 1,
     color: '#8E6E3E',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: fontWeight.bold,
-  },
-  fallbackBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    color: '#8E6E3E',
-    fontSize: 10,
-    fontWeight: fontWeight.bold,
-    backgroundColor: colors.white,
-    borderRadius: 999,
   },
   body: {
     paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  label: {
-    color: '#646464',
-    fontSize: 9,
-    fontWeight: fontWeight.bold,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
+    paddingTop: 12,
   },
   companyName: {
-    marginTop: 4,
     color: '#131313',
     fontSize: 16,
     fontWeight: fontWeight.bold,
+    lineHeight: 20,
+  },
+  suggestion: {
+    marginTop: 5,
+    color: '#646464',
+    fontSize: 11,
+    lineHeight: 16,
   },
   actions: {
     paddingHorizontal: 12,
+    paddingTop: 10,
     paddingBottom: 12,
     flexDirection: 'row',
     gap: 8,
   },
-  secondaryButton: {
-    height: 36,
-    paddingHorizontal: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.white,
-    borderColor: '#D1D1D1',
-    borderRadius: 8,
-    borderWidth: 1.5,
-  },
-  secondaryText: {
-    color: '#333333',
-    fontSize: 12,
-    fontWeight: fontWeight.semibold,
-  },
   primaryButton: {
-    height: 36,
+    height: 38,
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#00B398',
-    borderRadius: 8,
+    borderColor: '#00B398',
+    borderRadius: 10,
+    borderWidth: 1.5,
   },
   primaryText: {
     color: colors.white,
     fontSize: 12,
     fontWeight: fontWeight.bold,
   },
+  secondaryButton: {
+    height: 38,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.white,
+    borderColor: '#C8A064',
+    borderRadius: 10,
+    borderWidth: 1.5,
+  },
+  secondaryText: {
+    color: '#8E6E3E',
+    fontSize: 12,
+    fontWeight: fontWeight.bold,
+  },
   disabled: {
-    opacity: 0.5,
+    opacity: 0.55,
   },
 });

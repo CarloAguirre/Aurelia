@@ -76,8 +76,10 @@ function normalizeDateInput() {
   if (!input) return;
   if (input.placeholder !== 'dd-mm-aa') input.placeholder = 'dd-mm-aa';
   const match = input.value.match(/^(\d{2}-\d{2})-(\d{4})$/);
-  if (!match) return;
-  const normalized = `${match[1]}-${match[2].slice(-2)}`;
+  const prefix = match?.[1];
+  const year = match?.[2];
+  if (!prefix || !year) return;
+  const normalized = `${prefix}-${year.slice(-2)}`;
   if (normalized === input.value) return;
   input.value = normalized;
   input.dispatchEvent(new Event('input', { bubbles: true }));

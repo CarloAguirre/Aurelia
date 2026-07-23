@@ -1,3 +1,3 @@
-import { InspectionsHomeFigmaScreen } from '../../src/modules/inspection/InspectionsHomeFigmaScreen';
+import { MobileInspectionManagementScreen } from '../../src/modules/inspection/MobileInspectionManagementScreen';
 
-export default InspectionsHomeFigmaScreen;
+export default MobileInspectionManagementScreen;

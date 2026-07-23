@@ -31,8 +31,15 @@ export class ResourceScopeService {
   ) {}
 
   async assertCanAccess(user: AccessTokenPayload, resource: ScopedResource): Promise<void> {
-    const allowed = await this.canAccess(user, resource);
-    if (!allowed) throw new Error('Forbidden resource scope');
+    if (!(await this.canAccess(user, resource))) {
+      throw new ForbiddenException('Resource is outside the user scope');
+    }
+  }
+
+  async assertCanAccessInspection(user: AccessTokenPayload, resource: ScopedResource): Promise<void> {
+    if (!(await this.canAccessInspection(user, resource))) {
+      throw new ForbiddenException('Inspection is outside the user scope');
+    }
   }
 
   async canAccess(user: AccessTokenPayload, resource: ScopedResource): Promise<boolean> {
@@ -64,6 +71,9 @@ export class ResourceScopeService {
     const scope = await this.getUserScope(user);
     if (scope.isAdmin || scope.isPrincipalCompanyUser) return requestedCompanyId ?? null;
     if (!scope.primaryCompany) throw new ForbiddenException('The user has no company assigned for inspection findings');
+    if (requestedCompanyId && !scope.companyIds.has(requestedCompanyId)) {
+      throw new ForbiddenException('The requested company is outside the user scope');
+    }
     return scope.primaryCompany.id;
   }
 
@@ -79,8 +89,24 @@ export class ResourceScopeService {
 
   private isAllowed(scope: UserScope, resource: ScopedResource, options: AccessOptions = {}): boolean {
     if (scope.isAdmin) return true;
-    if (!options.ignoreCompanyScope && resource.companyId && scope.companyIds.size > 0 && !scope.companyIds.has(resource.companyId)) return false;
-    if (resource.areaId && scope.areaIds.size > 0 && !scope.areaIds.has(resource.areaId)) return false;
+
+    const hasCompanyReference = Boolean(resource.companyId);
+    const hasAreaReference = Boolean(resource.areaId);
+
+    if (!options.ignoreCompanyScope && hasCompanyReference) {
+      if (scope.companyIds.size === 0 || !scope.companyIds.has(resource.companyId as string)) return false;
+    }
+
+    if (hasAreaReference && scope.areaIds.size > 0 && !scope.areaIds.has(resource.areaId as string)) return false;
+
+    if (!options.ignoreCompanyScope && !hasCompanyReference && !hasAreaReference) {
+      return false;
+    }
+
+    if (!options.ignoreCompanyScope && !hasCompanyReference && hasAreaReference && scope.areaIds.size === 0) {
+      return false;
+    }
+
     return true;
   }
 
@@ -98,6 +124,10 @@ export class ResourceScopeService {
         },
       },
     });
+
+    if (!row && !isAdmin) {
+      throw new ForbiddenException('The authenticated user is not active');
+    }
 
     const companyIds = new Set<string>();
     const areaIds = new Set<string>();

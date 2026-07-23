@@ -39,6 +39,7 @@ function findMenu() {
     document.querySelectorAll<HTMLButtonElement>('button[aria-haspopup="menu"][aria-expanded="true"]'),
   );
   for (const trigger of triggers) {
+    if (!trigger.closest('table')) continue;
     const candidate = trigger.nextElementSibling;
     if (!(candidate instanceof HTMLElement)) continue;
     if (candidate.closest('[data-inspection-actions-portal="true"]')) continue;

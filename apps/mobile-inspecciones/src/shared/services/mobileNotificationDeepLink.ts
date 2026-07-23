@@ -1,0 +1,29 @@
+import type { NotificationDeepLinkResponse } from '@aurelia/contracts';
+import { localStorageDriver } from '../storage/local-storage';
+import { httpGet } from './http-client';
+
+const PENDING_NOTIFICATION_ROUTE_KEY = 'mobile-inspecciones:pending-notification-route:v1';
+
+export function resolveMobileNotificationDeepLink(token: string): Promise<NotificationDeepLinkResponse> {
+  return httpGet<NotificationDeepLinkResponse>(`/notifications/deep-link/${encodeURIComponent(token)}`);
+}
+
+export async function savePendingMobileNotificationRoute(route: string): Promise<void> {
+  await localStorageDriver.set(PENDING_NOTIFICATION_ROUTE_KEY, route);
+}
+
+export async function consumePendingMobileNotificationRoute(): Promise<string | null> {
+  const route = await localStorageDriver.get<string>(PENDING_NOTIFICATION_ROUTE_KEY);
+  if (route) await localStorageDriver.remove(PENDING_NOTIFICATION_ROUTE_KEY);
+  return route ?? null;
+}
+
+export function toMobileNotificationRoute(result: NotificationDeepLinkResponse): string {
+  const inspectionId = result.entityType === 'inspection' ? result.entityId : null;
+  const findingId = result.entityType === 'inspection_finding' ? result.entityId : null;
+  const params = new URLSearchParams();
+  if (inspectionId) params.set('inspectionId', inspectionId);
+  if (findingId) params.set('findingId', findingId);
+  const query = params.toString();
+  return query ? `/inspection/dashboard?${query}` : '/inspection/dashboard';
+}

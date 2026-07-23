@@ -1,0 +1,56 @@
+name: Temporary dashboard row fidelity
+
+on:
+  push:
+    branches:
+      - feature/inspecciones/carlo
+    paths:
+      - .github/workflows/tmp-dashboard-row-fidelity.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/inspecciones/carlo
+          fetch-depth: 0
+
+      - name: Patch dashboard observation rows
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/mobile-inspecciones/src/modules/inspection/InspectionsHomeFigmaScreen.tsx')
+          text = path.read_text(encoding='utf-8')
+
+          old = "    <View style={[styles.cardRow, { backgroundColor: palette.bg }]}> "
+          new = "    <View style={styles.cardRow}>"
+          if text.count(old) != 1:
+              raise SystemExit(f'Expected one CardRow match, found {text.count(old)}')
+          text = text.replace(old, new, 1)
+
+          old_style = "  cardRow: { minHeight: 23, borderRadius: 7, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 5 },"
+          new_style = "  cardRow: { minHeight: 23, borderRadius: 7, backgroundColor: '#f7f7f7', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 5 },"
+          if text.count(old_style) != 1:
+              raise SystemExit(f'Expected one cardRow style match, found {text.count(old_style)}')
+          text = text.replace(old_style, new_style, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/mobile-inspecciones/src/modules/inspection/InspectionsHomeFigmaScreen.tsx
+          git commit -m "Homologa fondos de observaciones del dashboard"
+
+      - name: Remove temporary workflow
+        shell: bash
+        run: |
+          git rm .github/workflows/tmp-dashboard-row-fidelity.yml
+          git commit -m "Retira workflow temporal de filas dashboard"
+          git push origin HEAD:feature/inspecciones/carlo

@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { InspectionDetailModalRecord } from './InspectionDetailModal';
-import { InspectionDetailModalDataBridge } from './InspectionDetailModalDataBridge';
+import { InspectionNotificationContextModal } from './InspectionNotificationContextModal';
 
 function normalizeInspectionNumber(value: string | null) {
   if (!value) return '#—';
@@ -46,5 +46,13 @@ export function InspectionNotificationDeepLinkModal() {
   }
 
   if (!inspectionId) return null;
-  return <InspectionDetailModalDataBridge open inspectionId={inspectionId} record={buildFallbackRecord(params)} onClose={closeModal} />;
+  return (
+    <InspectionNotificationContextModal
+      inspectionId={inspectionId}
+      findingId={params.get('findingId')}
+      requestedGroup={params.get('group')}
+      fallbackRecord={buildFallbackRecord(params)}
+      onClose={closeModal}
+    />
+  );
 }

@@ -1,0 +1,143 @@
+name: Temporary mobile dashboard fidelity
+
+on:
+  push:
+    branches:
+      - feature/inspecciones/carlo
+    paths:
+      - .github/workflows/tmp-mobile-dashboard-fidelity.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/inspecciones/carlo
+          fetch-depth: 0
+
+      - name: Apply dashboard fidelity
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/mobile-inspecciones/src/modules/inspection/InspectionsHomeFigmaScreen.tsx')
+          text = path.read_text(encoding='utf-8')
+
+          def replace_once(old: str, new: str) -> None:
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected one match, found {count}: {old[:100]!r}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              "import { InspectionFindingSeverity, InspectionFindingStatus, InspectionStatus } from '@aurelia/contracts';",
+              "import { InspectionFindingSeverity, InspectionFindingStatus, InspectionStatus, InspectionType } from '@aurelia/contracts';",
+          )
+
+          replace_once(
+              "function FooterGradient() {\n",
+              "function HeaderGradient() {\n  return (\n    <Svg style={StyleSheet.absoluteFill} width=\"100%\" height=\"100%\" preserveAspectRatio=\"none\">\n      <Defs>\n        <LinearGradient id=\"headerGradient\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">\n          <Stop offset=\"0%\" stopColor=\"#012659\" />\n          <Stop offset=\"100%\" stopColor=\"#002659\" />\n        </LinearGradient>\n      </Defs>\n      <Rect width=\"100%\" height=\"100%\" fill=\"url(#headerGradient)\" />\n    </Svg>\n  );\n}\n\nfunction FooterGradient() {\n",
+          )
+
+          replace_once(
+              "function StatusChip({ status }: { status: InspectionStatus }) {\n  const tone = getInspectionTone(status);\n  const palette = tonePalette[tone];\n  return (\n    <View style={[styles.statusChip, { backgroundColor: palette.bg }]}> \n      <StatusGlyph icon={status === InspectionStatus.CLOSED ? 'closed' : 'open'} tone={tone} />\n      <Text style={[styles.statusChipText, { color: palette.fg }]}>{inspectionStatusLabel[status]}</Text>\n    </View>\n  );\n}\n",
+              "type SummaryStatusPresentation = {\n  label: string;\n  tone: Tone;\n  icon: CardRowProps['icon'];\n};\n\nfunction summaryStatusPresentation(inspection: InspectionResponse, summary: FindingSummary | null): SummaryStatusPresentation {\n  if (summary?.executed.count) {\n    const severity = summary.executed.topSeverity;\n    return {\n      label: ['Ejecutada', severityLabel(severity)].filter(Boolean).join(' · '),\n      tone: toneForSeverity(severity, 'orange'),\n      icon: 'executed',\n    };\n  }\n  if (summary?.open.count) {\n    const severity = summary.open.topSeverity;\n    return {\n      label: ['Abierta', severityLabel(severity)].filter(Boolean).join(' · '),\n      tone: toneForSeverity(severity, 'gold'),\n      icon: 'open',\n    };\n  }\n  if (summary?.rejected.count) {\n    const severity = summary.rejected.topSeverity;\n    return {\n      label: ['Rechazada', severityLabel(severity)].filter(Boolean).join(' · '),\n      tone: toneForSeverity(severity, 'gray'),\n      icon: 'rejected',\n    };\n  }\n  if (summary?.closed.count) return { label: 'Cerrada', tone: 'green', icon: 'closed' };\n\n  const tone = getInspectionTone(inspection.status);\n  return {\n    label: inspectionStatusLabel[inspection.status],\n    tone,\n    icon: inspection.status === InspectionStatus.CLOSED ? 'closed' : 'open',\n  };\n}\n\nfunction StatusChip({ presentation }: { presentation: SummaryStatusPresentation }) {\n  const palette = tonePalette[presentation.tone];\n  return (\n    <View style={[styles.statusChip, { backgroundColor: palette.bg }]}>\n      <StatusGlyph icon={presentation.icon} tone={presentation.tone} />\n      <Text style={[styles.statusChipText, { color: palette.fg }]}>{presentation.label}</Text>\n    </View>\n  );\n}\n",
+          )
+
+          replace_once(
+              "function InspectionCard({ inspection, index, findingSummary }: { inspection: InspectionResponse; index: number; findingSummary: FindingSummary | null }) {\n  const tone = getInspectionTone(inspection.status);\n  const displayId = `#${String(index + 1).padStart(3, '0')}`;\n  const locationMeta = inspection.scheduledAt ? `Programada · ${formatDate(inspection.scheduledAt)}` : 'Sin fecha programada';\n  const rows = buildCardRows(inspection, findingSummary);\n\n  return (\n    <View style={styles.card}>\n      <View style={[styles.topLine, { backgroundColor: tonePalette[tone].line }]} />\n      <View style={styles.cardInner}>\n        <View style={styles.cardTop}>\n          <Text style={styles.id}>{displayId}</Text>\n          <View style={styles.pills}>\n            <TypeChip label={inspection.templateId ? 'Checklist' : 'Hallazgo'} />\n            <StatusChip status={inspection.status} />\n          </View>\n        </View>\n        <Text style={styles.cardTitle}>{inspection.title}</Text>\n        <View style={styles.meta}>\n          <FontAwesome5 name=\"map-marker-alt\" size={10} color=\"#aaa\" />\n          <Text style={styles.metaText}>{locationMeta}</Text>\n        </View>\n        {rows.map((row) => (\n          <CardRow key={`${inspection.id}-${row.label}-${row.icon}`} label={row.label} tag={row.tag} tone={row.tone} icon={row.icon} />\n        ))}\n      </View>\n    </View>\n  );\n}\n",
+              "function InspectionCard({ inspection, index, findingSummary }: { inspection: InspectionResponse; index: number; findingSummary: FindingSummary | null }) {\n  const presentation = summaryStatusPresentation(inspection, findingSummary);\n  const displayId = inspectionDisplayId(inspection, index);\n  const eventDate = inspection.startedAt ?? inspection.scheduledAt ?? inspection.createdAt;\n  const locationMeta = eventDate ? formatInspectionAge(eventDate) : 'Sin fecha registrada';\n  const rows = buildCardRows(inspection, findingSummary);\n\n  return (\n    <View style={styles.card}>\n      <View style={[styles.topLine, { backgroundColor: tonePalette[presentation.tone].line }]} />\n      <View style={styles.cardInner}>\n        <View style={styles.cardTop}>\n          <Text style={styles.id}>{displayId}</Text>\n          <View style={styles.pills}>\n            <TypeChip label={inspection.templateId ? 'Checklist' : 'Hallazgo'} />\n            <StatusChip presentation={presentation} />\n          </View>\n        </View>\n        <Text style={styles.cardTitle}>{inspection.title}</Text>\n        <View style={styles.meta}>\n          <FontAwesome5 name=\"map-marker-alt\" size={10} color=\"#aaa\" />\n          <Text style={styles.metaText}>{locationMeta}</Text>\n        </View>\n        <View style={styles.cardRows}>\n          {rows.map((row) => (\n            <CardRow key={`${inspection.id}-${row.label}-${row.icon}`} label={row.label} tag={row.tag} tone={row.tone} icon={row.icon} />\n          ))}\n        </View>\n      </View>\n    </View>\n  );\n}\n",
+          )
+
+          replace_once(
+              "          <View style={styles.header}>\n            <View style={styles.brandRow}>",
+              "          <View style={styles.header}>\n            <HeaderGradient />\n            <View style={styles.brandRow}>",
+          )
+
+          replace_once(
+              "  const roleLabel = normalizeRoleLabel(user?.roles?.[0] ?? 'Inspector');\n  const orgLabel = buildOrgLabel(user?.companyName ?? null, user?.areaName ?? null);\n  const profileBadge = orgLabel ? `${roleLabel} · ${orgLabel}` : roleLabel;",
+              "  const profileBadge = buildProfileBadge(user?.roles ?? [], user?.companyName ?? null, user?.areaName ?? null);",
+          )
+
+          replace_once(
+              "            {drafts.map((draftRecord) => <DraftBox key={draftRecord.draftId} title={`${draftRecord.draft.findingTypeLabel ?? draftRecord.draft.inspectionTypeLabel} · ${draftRecord.draft.areaName ?? 'Sin área'}`} detail={[draftRecord.draft.areaName, draftRecord.draft.sectorName, draftRecord.draft.findingCompanyName].filter(Boolean).join(' · ') || draftRecord.updatedAt} progress={draftRecord.progressPercentage} currentStep={draftRecord.currentStep} onPress={() => { void resumeDraft(draftRecord.draftId); }} />)}",
+              "            {drafts.map((draftRecord) => (\n              <DraftBox\n                key={draftRecord.draftId}\n                title={draftDisplayTitle(draftRecord)}\n                detail={draftDisplayDetail(draftRecord)}\n                progress={draftRecord.progressPercentage}\n                currentStep={draftRecord.currentStep}\n                onPress={() => { void resumeDraft(draftRecord.draftId); }}\n              />\n            ))}",
+          )
+
+          replace_once(
+              "function normalizeRoleLabel(value: string): string {\n  return value.replace(/_/g, ' ').trim().toUpperCase();\n}\n",
+              "function normalizeRoleLabel(value: string): string {\n  return value\n    .replace(/_/g, ' ')\n    .trim()\n    .toLowerCase()\n    .replace(/(^|\\s)\\p{L}/gu, (letter) => letter.toUpperCase());\n}\n\nfunction buildProfileBadge(roles: string[], companyName: string | null, areaName: string | null): string {\n  const normalizedRoles = roles.map(normalizeRoleLabel).filter(Boolean);\n  const primaryRole = normalizedRoles.find((role) => role.toLowerCase().includes('inspector'))\n    ?? normalizedRoles[0]\n    ?? 'Inspector';\n  const adminRole = normalizedRoles.find((role) => role.toLowerCase().includes('admin'));\n  const orgLabel = buildOrgLabel(companyName, areaName);\n  const context = [adminRole, orgLabel].filter(Boolean).join(' ');\n  return context ? `${primaryRole} · ${context}` : primaryRole;\n}\n",
+          )
+
+          replace_once(
+              "function severityOrder(severity: InspectionFindingSeverity | null): number {",
+              "function draftDisplayTitle(record: import('./manualInspectionDrafts.storage').PersistedManualInspectionDraft): string {\n  const typeLabel = record.inspectionType === InspectionType.ENVIRONMENTAL ? 'Hallazgo' : 'Checklist';\n  return `${typeLabel} · ${record.draft.areaName ?? 'Sin área'}`;\n}\n\nfunction draftDisplayDetail(record: import('./manualInspectionDrafts.storage').PersistedManualInspectionDraft): string {\n  const detail = [record.draft.sectorName, record.draft.findingCompanyName, formatRelativeTime(record.updatedAt)]\n    .filter(Boolean)\n    .join(' · ');\n  return detail || formatRelativeTime(record.updatedAt);\n}\n\nfunction formatRelativeTime(value: string): string {\n  const date = new Date(value);\n  if (Number.isNaN(date.getTime())) return value;\n  const now = new Date();\n  const elapsed = now.getTime() - date.getTime();\n  const day = 24 * 60 * 60 * 1000;\n  const time = new Intl.DateTimeFormat('es-CL', { hour: '2-digit', minute: '2-digit' }).format(date);\n  if (elapsed >= 0 && elapsed < day && now.getDate() === date.getDate()) return `Hoy ${time}`;\n  if (elapsed >= 0 && elapsed < day * 2) return `Ayer ${time}`;\n  return new Intl.DateTimeFormat('es-CL', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(date);\n}\n\nfunction inspectionDisplayId(inspection: InspectionResponse, index: number): string {\n  const numericSuffix = inspection.id.match(/(?:^|\\D)(\\d{1,6})$/)?.[1];\n  return `#${numericSuffix ?? String(index + 1).padStart(3, '0')}`;\n}\n\nfunction formatInspectionAge(value: string): string {\n  const date = new Date(value);\n  if (Number.isNaN(date.getTime())) return 'Fecha no disponible';\n  const days = Math.max(0, Math.floor((Date.now() - date.getTime()) / (24 * 60 * 60 * 1000)));\n  if (days === 0) return 'Hoy';\n  return `${days} ${days === 1 ? 'día' : 'días'}`;\n}\n\nfunction severityOrder(severity: InspectionFindingSeverity | null): number {",
+          )
+
+          replace_once(
+              "  if (severity === InspectionFindingSeverity.HIGH) return 'Alto';\n  if (severity === InspectionFindingSeverity.MEDIUM) return 'Medio';\n  if (severity === InspectionFindingSeverity.LOW) return 'Bajo';",
+              "  if (severity === InspectionFindingSeverity.HIGH) return 'Grave';\n  if (severity === InspectionFindingSeverity.MEDIUM) return 'Moderado';\n  if (severity === InspectionFindingSeverity.LOW) return 'Menor';",
+          )
+
+          replace_once(
+              "  if (severity === InspectionFindingSeverity.CRITICAL) return 'red';\n  if (severity === InspectionFindingSeverity.HIGH || severity === InspectionFindingSeverity.MEDIUM) return 'gold';\n  if (severity === InspectionFindingSeverity.LOW) return 'green';",
+              "  if (severity === InspectionFindingSeverity.CRITICAL || severity === InspectionFindingSeverity.HIGH) return 'red';\n  if (severity === InspectionFindingSeverity.MEDIUM) return fallback === 'orange' ? 'orange' : 'gold';\n  if (severity === InspectionFindingSeverity.LOW) return 'green';",
+          )
+
+          replace_once("tag: inspection.openFindingsCount > 0 ? 'Alto' : undefined,", "tag: inspection.openFindingsCount > 0 ? 'Grave' : undefined,")
+
+          style_replacements = {
+              "  header: { backgroundColor: colors.navyDark, paddingHorizontal: 20, paddingTop: 26, paddingBottom: 20 },": "  header: { position: 'relative', overflow: 'hidden', backgroundColor: colors.navyDark, paddingHorizontal: 20, paddingTop: 6, paddingBottom: 20 },",
+              "  redDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#c4365a' },": "  redDot: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#c4365a' },",
+              "  draftBody: { borderTopWidth: 1, borderTopColor: colors.border, flexDirection: 'row', alignItems: 'center', minHeight: 76, paddingHorizontal: 12, gap: 10 },": "  draftBody: { borderTopWidth: 1.5, borderTopColor: colors.border, flexDirection: 'row', alignItems: 'center', minHeight: 88, paddingHorizontal: 14, paddingVertical: 14, gap: 12 },",
+              "  draftIcon: { width: 46, height: 46, borderRadius: 10, backgroundColor: '#ffeab8', alignItems: 'center', justifyContent: 'center' },": "  draftIcon: { width: 44, height: 44, borderRadius: 10, backgroundColor: '#ffeab8', alignItems: 'center', justifyContent: 'center' },",
+              "  progressRail: { flex: 1, height: 5, borderRadius: 5, backgroundColor: colors.border },": "  progressRail: { flex: 1, height: 4, borderRadius: 2, backgroundColor: colors.border },",
+              "  progressFill: { height: 5, borderRadius: 5, backgroundColor: colors.gold },": "  progressFill: { height: 4, borderRadius: 2, backgroundColor: colors.gold },",
+              "  step: { position: 'absolute', top: 8, right: 10, borderRadius: 9, backgroundColor: '#f7f7f7', paddingHorizontal: 6, paddingVertical: 2 },": "  step: { position: 'absolute', top: 10, right: 14, borderRadius: 6, borderWidth: 1, borderColor: '#e8c86a', backgroundColor: '#ffeab8', paddingHorizontal: 7, paddingVertical: 2 },",
+              "  stepText: { color: colors.muted, fontSize: 9, fontWeight: fontWeight.bold },": "  stepText: { color: '#463100', fontSize: 10, fontWeight: fontWeight.bold },",
+              "  card: { borderRadius: 12, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },": "  card: { borderRadius: 12, backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.border, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 1 },",
+              "  topLine: { height: 4 },": "  topLine: { height: 3 },",
+              "  cardInner: { padding: 12 },": "  cardInner: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 14 },",
+              "  id: { color: colors.muted, fontSize: 11, fontWeight: fontWeight.bold },": "  id: { color: '#24588b', fontSize: 12, fontWeight: fontWeight.bold },",
+              "  pills: { flexDirection: 'row', gap: 5 },": "  pills: { flexDirection: 'row', gap: 8, flexShrink: 1 },",
+              "  typeChip: { height: 21, borderRadius: 7, flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6 },": "  typeChip: { minHeight: 18, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 2 },",
+              "  typeChipTeal: { backgroundColor: '#d6fff8' },": "  typeChipTeal: { backgroundColor: '#c5fff6' },",
+              "  typeChipText: { fontSize: 9, fontWeight: fontWeight.bold },": "  typeChipText: { fontSize: 10, fontWeight: fontWeight.bold },",
+              "  statusChip: { height: 21, borderRadius: 7, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 6 },": "  statusChip: { minHeight: 18, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, flexShrink: 1 },",
+              "  statusChipText: { fontSize: 9, fontWeight: fontWeight.bold },": "  statusChipText: { fontSize: 10, fontWeight: fontWeight.bold },",
+              "  cardTitle: { marginTop: 8, color: colors.primary, fontSize: 13, fontWeight: fontWeight.bold },": "  cardTitle: { marginTop: 6, color: colors.primary, fontSize: 13, lineHeight: 16, fontWeight: fontWeight.bold },",
+              "  meta: { marginTop: 5, flexDirection: 'row', alignItems: 'center', gap: 5 },": "  meta: { marginTop: 3, flexDirection: 'row', alignItems: 'center', gap: 5 },",
+              "  cardRow: { marginTop: 7, minHeight: 26, borderRadius: 7, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8 },": "  cardRows: { marginTop: 10, gap: 5 },\n  cardRow: { minHeight: 23, borderRadius: 7, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 5 },",
+              "  severityBadge: { height: 18, borderRadius: 6, justifyContent: 'center', paddingHorizontal: 6 },": "  severityBadge: { minHeight: 13, borderRadius: 4, justifyContent: 'center', paddingHorizontal: 6 },",
+              "  tabCount: { minWidth: 22, height: 22, borderRadius: 11, backgroundColor: '#c4365a', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },": "  tabCount: { minWidth: 16, height: 16, borderRadius: 8, backgroundColor: '#c4365a', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },",
+              "  tabCountText: { color: colors.white, fontSize: 11, fontWeight: fontWeight.bold },": "  tabCountText: { color: colors.white, fontSize: 9, fontWeight: fontWeight.bold },",
+              "  tabActiveText: { marginTop: 4, color: colors.teal, fontSize: 13, fontWeight: fontWeight.bold },": "  tabActiveText: { marginTop: 7, color: colors.teal, fontSize: 13, fontWeight: fontWeight.semibold },",
+          }
+          for old, new in style_replacements.items():
+              replace_once(old, new)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit dashboard file
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/mobile-inspecciones/src/modules/inspection/InspectionsHomeFigmaScreen.tsx
+          git commit -m "Fideliza dashboard mobile con diseño actualizado"
+          git push origin HEAD:feature/inspecciones/carlo
+
+      - name: Remove temporary workflow
+        shell: bash
+        run: |
+          git pull --ff-only origin feature/inspecciones/carlo
+          git rm .github/workflows/tmp-mobile-dashboard-fidelity.yml
+          git commit -m "Retira workflow temporal de fidelización dashboard"
+          git push origin HEAD:feature/inspecciones/carlo

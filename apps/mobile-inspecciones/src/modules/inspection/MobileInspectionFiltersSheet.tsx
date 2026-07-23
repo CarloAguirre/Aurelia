@@ -5,7 +5,7 @@ import type { InspectionManagementTableFilterOptionsResponse } from '@aurelia/co
 import type { MobileInspectionManagementFilters, MobileInspectionManagementMode } from '../../shared/services/inspections.api';
 import { colors, fontWeight } from '../../shared/theme/tokens';
 
-type FilterKey = 'area' | 'company' | 'type' | 'urgency' | 'obs';
+type FilterKey = 'inspector' | 'area' | 'company' | 'type' | 'urgency' | 'obs';
 
 type Props = {
   visible: boolean;
@@ -63,7 +63,7 @@ function OptionGroup({
 }
 
 export function countMobileInspectionFilters(filters: MobileInspectionManagementFilters): number {
-  return ['id', 'area', 'company', 'type', 'urgency', 'obs'].reduce((total, key) => {
+  return ['id', 'inspector', 'area', 'company', 'type', 'urgency', 'obs'].reduce((total, key) => {
     const value = filters[key as keyof MobileInspectionManagementFilters];
     return total + (typeof value === 'string' && value.trim() ? 1 : 0);
   }, 0);
@@ -77,6 +77,7 @@ export function MobileInspectionFiltersSheet({ visible, mode, value, options, on
   }, [value, visible]);
 
   const normalizedOptions = useMemo(() => ({
+    inspectors: unique(options.inspectors),
     areas: unique(options.areas),
     companies: unique(options.companies),
     types: unique(options.types),
@@ -121,6 +122,12 @@ export function MobileInspectionFiltersSheet({ visible, mode, value, options, on
               />
             </View>
 
+            <OptionGroup
+              label="Inspector"
+              selected={draft.inspector ?? ''}
+              options={[{ value: '', label: 'Todos' }, ...normalizedOptions.inspectors.map((item) => ({ value: item, label: item }))]}
+              onSelect={(next) => update('inspector', next)}
+            />
             <OptionGroup
               label="Tipo"
               selected={draft.type ?? ''}

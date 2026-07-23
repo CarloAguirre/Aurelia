@@ -1,1 +1,2 @@
 Trigger temporal para aplicar las mejoras de homologación del checklist mobile.
+Reintento 2.

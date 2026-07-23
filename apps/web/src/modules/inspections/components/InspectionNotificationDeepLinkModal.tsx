@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { InspectionDetailModalRecord } from './InspectionDetailModal';
+import { InspectionDetailModalDataBridge } from './InspectionDetailModalDataBridge';
 import { InspectionNotificationContextModal } from './InspectionNotificationContextModal';
 
 function normalizeInspectionNumber(value: string | null) {
@@ -40,18 +41,24 @@ export function InspectionNotificationDeepLinkModal() {
   const params = new URLSearchParams(location.search);
   const notificationSource = params.get('notification') === '1';
   const inspectionId = notificationSource ? params.get('inspectionId') : null;
+  const findingId = params.get('findingId');
+  const requestedGroup = params.get('group');
+  const fallbackRecord = buildFallbackRecord(params);
 
   function closeModal() {
     navigate({ pathname: location.pathname, search: removeDeepLinkParams(location.search) }, { replace: true });
   }
 
   if (!inspectionId) return null;
+  if (!findingId && !requestedGroup) {
+    return <InspectionDetailModalDataBridge open inspectionId={inspectionId} record={fallbackRecord} onClose={closeModal} />;
+  }
   return (
     <InspectionNotificationContextModal
       inspectionId={inspectionId}
-      findingId={params.get('findingId')}
-      requestedGroup={params.get('group')}
-      fallbackRecord={buildFallbackRecord(params)}
+      findingId={findingId}
+      requestedGroup={requestedGroup}
+      fallbackRecord={fallbackRecord}
       onClose={closeModal}
     />
   );

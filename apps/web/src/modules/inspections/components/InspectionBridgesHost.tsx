@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { ApproveCloseConfirmBridge } from './ApproveCloseConfirmBridge';
-import { ChecklistResultBridge } from './ChecklistResultBridge';
 import { DraftProgressBridge } from './DraftProgressBridge';
 import { IncompleteInspectionDraftBridge } from './IncompleteInspectionDraftBridge';
 import { InspectionAreaSectorFilterBridge } from './InspectionAreaSectorFilterBridge';
@@ -18,16 +17,16 @@ import { InspectionTableActionMenuBridge } from './InspectionTableActionMenuBrid
 import { ManualExecutionCancelConfirmBridge } from './ManualExecutionCancelConfirmBridge';
 
 const locationEvent = 'aurelia:location-change';
-const historyPatchKey = '__aureliaInspectionHistoryPatched__';
+type PatchedWindow = Window & { __aureliaInspectionHistoryPatched__?: boolean };
 
 function currentPath() {
   return window.location.pathname;
 }
 
 function ensureHistoryEvents() {
-  const scopedWindow = window as Window & { [historyPatchKey]?: boolean };
-  if (scopedWindow[historyPatchKey]) return;
-  scopedWindow[historyPatchKey] = true;
+  const scopedWindow = window as PatchedWindow;
+  if (scopedWindow.__aureliaInspectionHistoryPatched__) return;
+  scopedWindow.__aureliaInspectionHistoryPatched__ = true;
   const pushState = window.history.pushState.bind(window.history);
   const replaceState = window.history.replaceState.bind(window.history);
   window.history.pushState = (...args) => {
@@ -64,7 +63,6 @@ export function InspectionBridgesHost() {
       <ApproveCloseConfirmBridge />
       <InspectionFollowupProgressBridge />
       <InspectionClosedReassignLockBridge />
-      <ChecklistResultBridge />
       <InspectionEvidenceImageSourceBridge />
       <InspectionEvidenceViewerBridge />
       <ManualExecutionCancelConfirmBridge />

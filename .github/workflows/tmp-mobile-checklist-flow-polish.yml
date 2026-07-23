@@ -1,0 +1,339 @@
+name: Temporary mobile checklist flow polish
+
+on:
+  push:
+    branches:
+      - feature/inspecciones/carlo
+    paths:
+      - .github/workflows/tmp-mobile-checklist-flow-polish.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-checklist-flow:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/inspecciones/carlo
+          fetch-depth: 0
+
+      - name: Apply checklist flow improvements
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('apps/mobile-inspecciones/src/modules/inspection/InspectionChatScreenV2.tsx')
+          text = path.read_text(encoding='utf-8')
+
+          def replace_once(old: str, new: str, label: str) -> None:
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected one match, found {count}')
+              text = text.replace(old, new, 1)
+
+          def replace_regex(pattern: str, replacement: str, label: str) -> None:
+              global text
+              text, count = re.subn(pattern, replacement, text, count=1, flags=re.S)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected one match, found {count}')
+
+          replace_once(
+              "    if (!state.inspectionDate) {\n",
+              "    if (!state.inspectionDateSelected) {\n",
+              'explicit date resume',
+          )
+
+          replace_regex(
+              r"  async function continueChecklistFromDraft\(\) \{.*?\n  \}\n\n  async function continueFindingFromDraft\(\)",
+              """  async function continueChecklistFromDraft() {
+    const state = useManualInspectionDraft.getState();
+    setStep(1);
+
+    if (!state.templateId) {
+      await askChecklistTemplate();
+      return;
+    }
+
+    let template = templates.find((item) => item.id === state.templateId) ?? null;
+    if (!template) {
+      try {
+        const bootstrap = await getMobileBootstrapLocalFirst();
+        template = bootstrap.catalogs.inspectionTemplates.find((item) => item.id === state.templateId) ?? null;
+      } catch {
+        template = null;
+      }
+    }
+
+    if (!template) {
+      pushError('No pude recuperar la plantilla guardada. Selecciona una nuevamente.');
+      await askChecklistTemplate();
+      return;
+    }
+
+    const rows = rowsOf(template);
+
+    if (!state.generalPhoto) {
+      push('bot', 'Adjunta la foto general obligatoria.');
+      push('generalPhoto');
+      return;
+    }
+
+    const pendingNo = rows.find((row) => {
+      if (state.answersByItemId[row.id] !== InspectionAnswerValue.NOT_COMPLIANT) return false;
+      const detail = state.detailsByItemId[row.id] ?? {};
+      return !detail.detectedCondition?.trim() || !detail.correctiveAction?.trim() || !detail.evidence;
+    });
+
+    if (pendingNo) {
+      const detail = state.detailsByItemId[pendingNo.id] ?? {};
+      if (!detail.detectedCondition?.trim()) {
+        push('bot', 'Retomemos el ítem pendiente. Describe la condición detectada.');
+        setWaiting(`check-cond:${pendingNo.id}`);
+        return;
+      }
+      if (!detail.correctiveAction?.trim()) {
+        push('bot', 'Retomemos el ítem pendiente. Indica la medida correctiva propuesta.');
+        setWaiting(`check-measure:${pendingNo.id}`);
+        return;
+      }
+      push('bot', 'Retomemos el ítem pendiente. Adjunta foto para este hallazgo.');
+      push('itemPhoto', pendingNo);
+      return;
+    }
+
+    const next = rows.find((row) => !state.answersByItemId[row.id]);
+    if (next) {
+      push('bot', `Retomemos: responderemos ${rows.length} ítems.`);
+      push('question', next);
+      return;
+    }
+
+    await finishChecklistItems(rows);
+  }
+
+  async function continueFindingFromDraft()""",
+              'checklist resume flow',
+          )
+
+          replace_regex(
+              r"  async function finishChecklistItems\(rows: Row\[\]\) \{.*?\n  \}\n\n  async function askCompanyForChecklist\(\)",
+              """  async function finishChecklistItems(rows: Row[]) {
+    const state = useManualInspectionDraft.getState();
+    const hasFindings = rows.some((row) => state.answersByItemId[row.id] === InspectionAnswerValue.NOT_COMPLIANT);
+
+    if (!hasFindings) {
+      setStep(5);
+      push('bot', 'Checklist completo sin hallazgos. Se cerrará automáticamente al guardar.');
+      await showSummary();
+      return;
+    }
+
+    setStep(4);
+    if (state.findingCompanyId) {
+      if (state.findingResponsibleIds.length === 0) {
+        await askResponsiblePeople(state.findingCompanyId);
+        return;
+      }
+      await showSummary();
+      return;
+    }
+
+    push('bot', 'Hay ítems no conformes. Debemos asignar empresa y responsables.');
+    await askCompanyForChecklist();
+  }
+
+  async function askCompanyForChecklist()""",
+              'checklist completion flow',
+          )
+
+          replace_regex(
+              r"  async function askCompanyForChecklist\(\) \{.*?\n  \}\n\n  async function askFindingType\(\)",
+              """  async function askCompanyForChecklist() {
+    push('typing');
+    try {
+      const companies = await queryClient.fetchQuery({
+        queryKey: ['responsible-companies-checklist'],
+        queryFn: fetchResponsibleCompaniesLocalFirst,
+        staleTime: 300000,
+      });
+      clearTyping();
+
+      if (!companies.length) {
+        pushError('No hay empresas contratistas disponibles en catálogos.');
+        return;
+      }
+
+      const state = useManualInspectionDraft.getState();
+      const normalizeCompany = (value: string) => value
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\\u0300-\\u036f]/g, '');
+      let reason = 'Recomendación basada en el área, sector y empresas disponibles.';
+      let suggestedCompany = companies[0];
+
+      try {
+        const ai = await suggestCompany({
+          area: state.areaName ?? '',
+          sector: state.sectorName ?? '',
+          availableCompanies: companies.map((item) => item.name),
+        });
+        reason = ai.suggestion;
+        const normalizedSuggestion = normalizeCompany(ai.suggestion);
+        const match = companies.find((item) => {
+          const normalizedName = normalizeCompany(item.name);
+          return normalizedSuggestion.includes(normalizedName) || normalizedName.includes(normalizedSuggestion);
+        });
+        if (match) suggestedCompany = match;
+      } catch {
+        // Keep the deterministic local-first fallback when AI is unavailable.
+      }
+
+      setStep(4);
+      push('bot', 'Te sugiero una empresa responsable según el área, sector y empresas disponibles.');
+      push('companyPick', { companies, company: suggestedCompany, reason } as CompanyPickData);
+    } catch {
+      clearTyping();
+      pushError('No pude cargar empresas responsables.', () => {
+        void askCompanyForChecklist();
+      });
+    }
+  }
+
+  async function askFindingType()""",
+              'checklist company suggestion',
+          )
+
+          replace_once(
+              "    push('bot', 'Revisa el resumen antes de guardar.');\n",
+              "    push('bot', '¡Listo! Revisa el resumen antes de guardar:');\n",
+              'summary copy',
+          )
+
+          replace_once(
+              """  function renderSummary(message: Msg) {
+    const state = useManualInspectionDraft.getState();
+
+    if (state.inspectionType === InspectionType.ENVIRONMENTAL) {""",
+              """  function renderSummary(message: Msg) {
+    const state = useManualInspectionDraft.getState();
+    const responsibleNames = (loadedUsersByCompany.current.get(state.findingCompanyId ?? '') ?? [])
+      .filter((user) => state.findingResponsibleIds.includes(user.id))
+      .map((user) => user.fullName)
+      .join(', ');
+    const responsibleValue = responsibleNames || (
+      state.findingResponsibleIds.length ? `${state.findingResponsibleIds.length} seleccionados` : '—'
+    );
+
+    if (state.inspectionType === InspectionType.ENVIRONMENTAL) {""",
+              'summary responsible names',
+          )
+
+          replace_once(
+              """            <SummaryRow label=\"Responsables\" value={state.findingResponsibleIds.length ? `${state.findingResponsibleIds.length} seleccionados` : '—'} />""",
+              """            <SummaryRow label=\"Responsables\" value={responsibleValue} />""",
+              'finding summary responsibles',
+          )
+
+          replace_once(
+              """          <SummaryRow label=\"Fecha\" value={state.inspectionDate} />
+          <SummaryRow label=\"Ubicación\" value={state.locationLabel} />
+          <SummaryRow label=\"Plantilla\" value={state.templateName ?? '—'} />
+          <SummaryRow label=\"Empresa EECC\" value={state.findingCompanyName ?? (noCount ? 'Pendiente' : 'No aplica')} />""",
+              """          <SummaryRow label=\"Fecha\" value={state.inspectionDate} />
+          <SummaryRow label=\"Ubicación\" value={state.locationLabel} />
+          <SummaryRow label=\"Registro\" value={state.templateName ?? '—'} />
+          <SummaryRow label=\"Empresa EECC\" value={state.findingCompanyName ?? (noCount ? 'Pendiente' : 'No aplica')} />
+          <SummaryRow label=\"Responsables\" value={noCount ? responsibleValue : 'No aplica'} />""",
+              'checklist summary rows',
+          )
+
+          replace_once(
+              """    const template = templates.find((item) => item.id === state.templateId) ?? null;
+    if (!template) {
+      pushError('Falta plantilla de checklist.');
+      return;
+    }
+
+    push('typing');""",
+              """    const template = templates.find((item) => item.id === state.templateId) ?? null;
+    if (!template) {
+      pushError('Falta plantilla de checklist.');
+      return;
+    }
+
+    const checklistItems = rowsOf(template);
+    if (!state.generalPhoto) {
+      pushError('La fotografía general es obligatoria.');
+      return;
+    }
+
+    const unanswered = checklistItems.find((item) => !state.answersByItemId[item.id]);
+    if (unanswered) {
+      pushError(`Falta responder el ítem ${unanswered.code}.`);
+      return;
+    }
+
+    const incompleteNo = checklistItems.find((item) => {
+      if (state.answersByItemId[item.id] !== InspectionAnswerValue.NOT_COMPLIANT) return false;
+      const detail = state.detailsByItemId[item.id] ?? {};
+      return !detail.detectedCondition?.trim() || !detail.correctiveAction?.trim() || !detail.evidence;
+    });
+    if (incompleteNo) {
+      pushError(`El ítem ${incompleteNo.code} debe incluir condición, medida correctiva y fotografía.`);
+      return;
+    }
+
+    const hasChecklistFindings = checklistItems.some(
+      (item) => state.answersByItemId[item.id] === InspectionAnswerValue.NOT_COMPLIANT,
+    );
+    if (hasChecklistFindings && (!state.findingCompanyId || state.findingResponsibleIds.length === 0)) {
+      pushError('Debes definir empresa y responsables para los ítems no conformes.');
+      return;
+    }
+
+    push('typing');""",
+              'checklist submit validation',
+          )
+
+          replace_once(
+              """    } catch {
+      clearTyping();
+      pushError('Error al guardar checklist.', () => {
+        void submitInspection(messageId);
+      });
+    }""",
+              """    } catch (error) {
+      clearTyping();
+      const message = error instanceof Error ? error.message : 'Error al guardar checklist.';
+      pushError(message, () => {
+        void submitInspection(messageId);
+      });
+    }""",
+              'checklist save error detail',
+          )
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit checklist flow file
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/mobile-inspecciones/src/modules/inspection/InspectionChatScreenV2.tsx
+          git commit -m "Homologa flujo checklist normativo mobile"
+          git push origin HEAD:feature/inspecciones/carlo
+
+      - name: Remove temporary workflow
+        shell: bash
+        run: |
+          rm .github/workflows/tmp-mobile-checklist-flow-polish.yml
+          git add .github/workflows/tmp-mobile-checklist-flow-polish.yml
+          git commit -m "Retira workflow temporal de mejoras checklist"
+          git push origin HEAD:feature/inspecciones/carlo

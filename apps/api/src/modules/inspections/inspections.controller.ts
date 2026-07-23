@@ -138,9 +138,7 @@ export class InspectionsController {
     @Req() request: AuthenticatedRequest,
   ): Promise<InspectionResponse> {
     const inspection = await this.inspectionAccess.assertInspection(request.user, id);
-    if (inspection.openFindingsCount > 0) {
-      throw new BadRequestException('Inspection has open findings');
-    }
+    if (inspection.openFindingsCount > 0) throw new BadRequestException('Inspection has open findings');
     const closedAt = new Date().toISOString();
     return this.inspectionsService.update(
       id,
@@ -186,13 +184,9 @@ export class InspectionsController {
     @Req() request: AuthenticatedRequest,
   ): Promise<InspectionResponse> {
     const previousEntity = await this.inspectionAccess.assertInspection(request.user, id);
-    if (dto.status === InspectionStatus.CLOSED) {
-      this.assertCapability(request, INSPECTION_CAPABILITIES.review);
-    } else if (dto.status === InspectionStatus.CANCELLED) {
-      this.assertCapability(request, INSPECTION_CAPABILITIES.admin);
-    } else {
-      this.assertCapability(request, INSPECTION_CAPABILITIES.execute);
-    }
+    if (dto.status === InspectionStatus.CLOSED) this.assertCapability(request, INSPECTION_CAPABILITIES.review);
+    else if (dto.status === InspectionStatus.CANCELLED) this.assertCapability(request, INSPECTION_CAPABILITIES.admin);
+    else this.assertCapability(request, INSPECTION_CAPABILITIES.execute);
 
     const previous = await this.inspectionsService.findOne(previousEntity.id);
     if (dto.status !== InspectionStatus.CLOSED) {
@@ -226,7 +220,10 @@ export class InspectionsController {
     @Req() request: AuthenticatedRequest,
   ): Promise<InspectionResponse> {
     const previous = await this.inspectionAccess.assertInspection(request.user, id);
-    const changesScope = dto.companyId !== undefined || dto.areaId !== undefined || dto.sectorId !== undefined || dto.locationId !== undefined;
+    const changesScope = dto.companyId !== undefined
+      || dto.areaId !== undefined
+      || dto.sectorId !== undefined
+      || dto.locationId !== undefined;
     if (changesScope) {
       this.assertCapability(request, INSPECTION_CAPABILITIES.reassign);
       const companyId = dto.companyId === undefined ? previous.companyId : dto.companyId;
@@ -234,17 +231,11 @@ export class InspectionsController {
       await this.resourceScopeService.assertCanAccessInspection(request.user, { companyId, areaId });
     }
 
-    if (dto.status === InspectionStatus.CLOSED) {
-      this.assertCapability(request, INSPECTION_CAPABILITIES.review);
-    } else if (dto.status === InspectionStatus.CANCELLED) {
-      this.assertCapability(request, INSPECTION_CAPABILITIES.admin);
-    } else if (dto.status !== undefined) {
-      this.assertCapability(request, INSPECTION_CAPABILITIES.execute);
-    }
+    if (dto.status === InspectionStatus.CLOSED) this.assertCapability(request, INSPECTION_CAPABILITIES.review);
+    else if (dto.status === InspectionStatus.CANCELLED) this.assertCapability(request, INSPECTION_CAPABILITIES.admin);
+    else if (dto.status !== undefined) this.assertCapability(request, INSPECTION_CAPABILITIES.execute);
 
-    if (this.hasInspectionOperationalChanges(dto)) {
-      this.assertCapability(request, INSPECTION_CAPABILITIES.execute);
-    }
+    if (this.hasInspectionOperationalChanges(dto)) this.assertCapability(request, INSPECTION_CAPABILITIES.execute);
 
     const updated = await this.inspectionsService.update(id, dto, request.user.sub);
     await this.notifyIfInspectionActivated(previous.status, updated);
@@ -266,6 +257,7 @@ export class InspectionsController {
     INSPECTION_CAPABILITIES.execute,
     INSPECTION_CAPABILITIES.review,
     INSPECTION_CAPABILITIES.reassign,
+    INSPECTION_CAPABILITIES.admin,
   )
   @Patch('findings/:findingId')
   async updateFinding(
@@ -274,12 +266,16 @@ export class InspectionsController {
     @Req() request: AuthenticatedRequest,
   ): Promise<InspectionFindingResponse> {
     await this.inspectionAccess.assertFinding(request.user, findingId);
+    const isCancellation = dto.status === InspectionFindingStatus.CANCELLED;
     const isReviewAction = dto.status === InspectionFindingStatus.CLOSED
       || dto.status === InspectionFindingStatus.REJECTED
       || dto.closedAt !== undefined
       || dto.rejectedAt !== undefined
       || dto.rejectionReason !== undefined;
-    if (isReviewAction) {
+
+    if (isCancellation) {
+      this.assertCapability(request, INSPECTION_CAPABILITIES.admin);
+    } else if (isReviewAction) {
       this.assertCapability(request, INSPECTION_CAPABILITIES.review);
       if (!(await this.resourceScopeService.canReviewInspectionFindings(request.user))) {
         throw new ForbiddenException('Only authorized Gold Fields users can approve or reject findings');
@@ -289,11 +285,9 @@ export class InspectionsController {
     const changesAssignment = dto.ownerUserId !== undefined
       || dto.responsibleUserIds !== undefined
       || dto.dueAt !== undefined;
-    if (changesAssignment) {
-      this.assertCapability(request, INSPECTION_CAPABILITIES.reassign);
-    }
+    if (changesAssignment) this.assertCapability(request, INSPECTION_CAPABILITIES.reassign);
 
-    if (this.hasFindingOperationalChanges(dto, isReviewAction)) {
+    if (this.hasFindingOperationalChanges(dto, isReviewAction, isCancellation)) {
       this.assertCapability(request, INSPECTION_CAPABILITIES.execute);
     }
 
@@ -327,10 +321,15 @@ export class InspectionsController {
       || dto.notes !== undefined;
   }
 
-  private hasFindingOperationalChanges(dto: UpdateInspectionFindingDto, isReviewAction: boolean): boolean {
+  private hasFindingOperationalChanges(
+    dto: UpdateInspectionFindingDto,
+    isReviewAction: boolean,
+    isCancellation: boolean,
+  ): boolean {
     const operationalStatus = dto.status !== undefined
       && dto.status !== InspectionFindingStatus.CLOSED
-      && dto.status !== InspectionFindingStatus.REJECTED;
+      && dto.status !== InspectionFindingStatus.REJECTED
+      && dto.status !== InspectionFindingStatus.CANCELLED;
     return operationalStatus
       || dto.title !== undefined
       || dto.description !== undefined
@@ -339,11 +338,12 @@ export class InspectionsController {
       || dto.executedActionDescription !== undefined
       || dto.severity !== undefined
       || dto.executedAt !== undefined
-      || (!isReviewAction && dto.reason !== undefined);
+      || (!isReviewAction && !isCancellation && dto.reason !== undefined);
   }
 
   private assertAnyCapability(request: AuthenticatedRequest, capabilities: InspectionCapability[]): void {
     if (request.user.roles.includes('ADMIN')) return;
+    if (request.user.permissions.includes(INSPECTION_CAPABILITIES.admin)) return;
     if (capabilities.some((capability) => request.user.permissions.includes(capability))) return;
     throw new ForbiddenException('Insufficient inspection capability');
   }

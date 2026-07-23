@@ -1,4 +1,3 @@
-import { INSPECTION_CAPABILITIES } from '@aurelia/contracts';
 import { create } from 'zustand';
 import type { AuthUser } from '../../shared/services/api/auth.api';
 import { localStorageDriver } from '../../shared/storage/local-storage';
@@ -19,25 +18,16 @@ interface MobileSessionState {
   hydrateMobileSession: () => Promise<void>;
 }
 
-function normalizeMobileUser(user: AuthUser): AuthUser {
-  const permissions = new Set(user.permissions ?? []);
-  if (permissions.has(INSPECTION_CAPABILITIES.create)) {
-    permissions.add('inspections:write');
-  }
-  return { ...user, permissions: Array.from(permissions) };
-}
-
 export const useMobileSession = create<MobileSessionState>((set) => ({
   accessToken: null,
   user: null,
   hydrated: false,
   setMobileSession: (accessToken, user) => {
-    const normalizedUser = normalizeMobileUser(user);
     void localStorageDriver.set<PersistedMobileSession>(MOBILE_SESSION_KEY, {
       accessToken,
-      user: normalizedUser,
+      user,
     });
-    set({ accessToken, user: normalizedUser, hydrated: true });
+    set({ accessToken, user, hydrated: true });
   },
   clearMobileSession: () => {
     void localStorageDriver.remove(MOBILE_SESSION_KEY);
@@ -47,7 +37,7 @@ export const useMobileSession = create<MobileSessionState>((set) => ({
     const session = await localStorageDriver.get<PersistedMobileSession>(MOBILE_SESSION_KEY);
     set({
       accessToken: session?.accessToken ?? null,
-      user: session?.user ? normalizeMobileUser(session.user) : null,
+      user: session?.user ?? null,
       hydrated: true,
     });
   },

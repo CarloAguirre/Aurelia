@@ -48,18 +48,27 @@ type Props = {
 type GroupConfig = {
   key: InspectionDetailFindingGroupKey;
   label: string;
+  singular: string;
   color: string;
   background: string;
   icon: 'check-circle' | 'clock' | 'times-circle';
 };
 
 const groups: GroupConfig[] = [
-  { key: 'executed', label: 'Ejecutadas', color: '#570b1d', background: '#ffd0db', icon: 'check-circle' },
-  { key: 'open', label: 'Abiertas', color: '#463100', background: '#ffeab8', icon: 'clock' },
-  { key: 'closed', label: 'Cerradas', color: '#2a5c16', background: '#e0ffd3', icon: 'check-circle' },
-  { key: 'rejected', label: 'Rechazadas', color: '#646464', background: '#f1f1f1', icon: 'times-circle' },
+  { key: 'executed', label: 'Ejecutadas', singular: 'Ejecutada', color: '#570b1d', background: '#ffd0db', icon: 'check-circle' },
+  { key: 'open', label: 'Abiertas', singular: 'Abierta', color: '#463100', background: '#ffeab8', icon: 'clock' },
+  { key: 'closed', label: 'Cerradas', singular: 'Cerrada', color: '#2a5c16', background: '#e0ffd3', icon: 'check-circle' },
+  { key: 'rejected', label: 'Rechazadas', singular: 'Rechazada', color: '#646464', background: '#f1f1f1', icon: 'times-circle' },
 ];
 
+const fallbackGroup: GroupConfig = groups[1] ?? {
+  key: 'open',
+  label: 'Abiertas',
+  singular: 'Abierta',
+  color: '#463100',
+  background: '#ffeab8',
+  icon: 'clock',
+};
 const apiOrigin = API_URL.replace(/\/api\/?$/, '');
 
 function validGroup(value: string | null | undefined): InspectionDetailFindingGroupKey | null {
@@ -74,7 +83,11 @@ function formatDate(value: string | null | undefined): string {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  return new Intl.DateTimeFormat('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);
+  return new Intl.DateTimeFormat('es-CL', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date);
 }
 
 function daysLabel(value: string | null | undefined): string {
@@ -115,15 +128,23 @@ function EvidenceBox({ title, evidence }: { title: string; evidence?: Inspection
     <View style={styles.evidenceBox}>
       <View style={styles.evidenceHeader}><Text style={styles.evidenceTitle}>{title}</Text></View>
       {uri ? (
-        <Image source={{ uri, headers: token ? { Authorization: `Bearer ${token}` } : undefined }} style={styles.evidenceImage} resizeMode="cover" />
+        <Image
+          source={{ uri, headers: token ? { Authorization: `Bearer ${token}` } : undefined }}
+          style={styles.evidenceImage}
+          resizeMode="cover"
+        />
       ) : (
-        <View style={styles.evidenceEmpty}><FontAwesome5 name="image" size={16} color={colors.placeholder} /><Text style={styles.evidenceEmptyText}>Sin evidencia</Text></View>
+        <View style={styles.evidenceEmpty}>
+          <FontAwesome5 name="image" size={16} color={colors.placeholder} />
+          <Text style={styles.evidenceEmptyText}>Sin evidencia</Text>
+        </View>
       )}
     </View>
   );
 }
 
 function FindingCard({
+  inspectionId,
   item,
   index,
   readOnly,
@@ -131,6 +152,7 @@ function FindingCard({
   onExecute,
   onReject,
 }: {
+  inspectionId: string;
   item: InspectionDetailFindingItemResponse;
   index: number;
   readOnly: boolean;
@@ -139,17 +161,21 @@ function FindingCard({
   onReject: (item: InspectionDetailFindingItemResponse) => void;
 }) {
   const severity = severityColors(item.severityLabel);
-  const group = groups.find((config) => config.key === item.statusGroup) ?? groups[1];
-  const canExecute = !readOnly && actions.canExecute && (item.statusGroup === 'open' || item.statusGroup === 'rejected');
+  const group = groups.find((config) => config.key === item.statusGroup) ?? fallbackGroup;
+  const canExecute = !readOnly
+    && actions.canExecute
+    && (item.statusGroup === 'open' || item.statusGroup === 'rejected');
   const canReview = !readOnly && actions.canReview && item.statusGroup === 'executed';
 
-  async function approve() {
+  function approve() {
     Alert.alert('Aprobar cierre', '¿Confirmas el cierre de esta observación?', [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Aprobar',
         onPress: () => {
-          void actions.approve('', item.findingId).catch((error: Error) => Alert.alert('No se pudo aprobar', error.message));
+          void actions.approve(inspectionId, item.findingId).catch((error: Error) => {
+            Alert.alert('No se pudo aprobar', error.message);
+          });
         },
       },
     ]);
@@ -160,11 +186,13 @@ function FindingCard({
       <View style={styles.findingTop}>
         <View style={styles.pillRow}>
           <View style={styles.indexPill}><Text style={styles.indexPillText}>Obs. {index + 1}</Text></View>
-          <View style={[styles.severityPill, { backgroundColor: severity.background }]}><Text style={[styles.severityPillText, { color: severity.color }]}>{item.severityLabel}</Text></View>
+          <View style={[styles.severityPill, { backgroundColor: severity.background }]}>
+            <Text style={[styles.severityPillText, { color: severity.color }]}>{item.severityLabel}</Text>
+          </View>
         </View>
         <View style={[styles.statusPill, { backgroundColor: group.background }]}>
           <FontAwesome5 name={group.icon} size={9} color={group.color} solid />
-          <Text style={[styles.statusPillText, { color: group.color }]}>{group.label.slice(0, -1)}</Text>
+          <Text style={[styles.statusPillText, { color: group.color }]}>{group.singular}</Text>
         </View>
       </View>
 
@@ -200,22 +228,38 @@ function FindingCard({
       </View>
 
       {canExecute ? (
-        <TouchableOpacity style={styles.primaryAction} disabled={actions.isPending} onPress={() => onExecute(item)}>
-          <Text style={styles.primaryActionText}>{item.statusGroup === 'rejected' ? 'Reenviar evidencia' : 'Ejecutar observación'}</Text>
+        <TouchableOpacity
+          style={styles.primaryAction}
+          disabled={actions.isPending}
+          onPress={() => onExecute(item)}
+        >
+          <Text style={styles.primaryActionText}>
+            {item.statusGroup === 'rejected' ? 'Reenviar evidencia' : 'Ejecutar observación'}
+          </Text>
         </TouchableOpacity>
       ) : null}
       {canReview ? (
         <View style={styles.reviewActions}>
-          <TouchableOpacity style={styles.rejectAction} disabled={actions.isPending} onPress={() => onReject(item)}>
+          <TouchableOpacity
+            style={styles.rejectAction}
+            disabled={actions.isPending}
+            onPress={() => onReject(item)}
+          >
             <Text style={styles.rejectActionText}>Rechazar</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.approveAction} disabled={actions.isPending} onPress={() => { void approve(); }}>
+          <TouchableOpacity
+            style={styles.approveAction}
+            disabled={actions.isPending}
+            onPress={approve}
+          >
             <Text style={styles.approveActionText}>Aprobar cierre</Text>
           </TouchableOpacity>
         </View>
       ) : null}
       {!readOnly && item.statusGroup === 'executed' && !actions.canReview ? (
-        <View style={styles.waitingReview}><Text style={styles.waitingReviewText}>En espera de revisión Gold Fields</Text></View>
+        <View style={styles.waitingReview}>
+          <Text style={styles.waitingReviewText}>En espera de revisión Gold Fields</Text>
+        </View>
       ) : null}
     </View>
   );
@@ -272,8 +316,16 @@ function ActionDialog({
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.dialogOverlay}>
         <View style={styles.dialog}>
-          <Text style={styles.dialogTitle}>{isExecute ? (item.statusGroup === 'rejected' ? 'Reenviar evidencia' : 'Ejecutar observación') : 'Rechazar ejecución'}</Text>
-          <Text style={styles.dialogSubtitle}>{isExecute ? 'Describe la acción realizada y adjunta una fotografía posterior.' : 'Registra un motivo claro para devolver la observación.'}</Text>
+          <Text style={styles.dialogTitle}>
+            {isExecute
+              ? item.statusGroup === 'rejected' ? 'Reenviar evidencia' : 'Ejecutar observación'
+              : 'Rechazar ejecución'}
+          </Text>
+          <Text style={styles.dialogSubtitle}>
+            {isExecute
+              ? 'Describe la acción realizada y adjunta una fotografía posterior.'
+              : 'Registra un motivo claro para devolver la observación.'}
+          </Text>
           <TextInput
             value={description}
             onChangeText={setDescription}
@@ -283,19 +335,42 @@ function ActionDialog({
             style={styles.dialogInput}
           />
           {isExecute ? (
-            <TouchableOpacity style={[styles.photoButton, evidence && styles.photoButtonReady]} onPress={() => setPhotoSheet(true)}>
-              <FontAwesome5 name={evidence ? 'check-circle' : 'camera'} size={16} color={evidence ? '#2a5c16' : '#24588b'} solid={Boolean(evidence)} />
-              <Text style={[styles.photoButtonText, evidence && styles.photoButtonTextReady]}>{evidence ? evidence.filename : 'Adjuntar fotografía después'}</Text>
+            <TouchableOpacity
+              style={[styles.photoButton, evidence && styles.photoButtonReady]}
+              onPress={() => setPhotoSheet(true)}
+            >
+              <FontAwesome5
+                name={evidence ? 'check-circle' : 'camera'}
+                size={16}
+                color={evidence ? '#2a5c16' : '#24588b'}
+                solid={Boolean(evidence)}
+              />
+              <Text style={[styles.photoButtonText, evidence && styles.photoButtonTextReady]}>
+                {evidence ? evidence.filename : 'Adjuntar fotografía después'}
+              </Text>
             </TouchableOpacity>
           ) : null}
           <View style={styles.dialogActions}>
-            <TouchableOpacity style={styles.dialogCancel} onPress={onClose} disabled={pending}><Text style={styles.dialogCancelText}>Cancelar</Text></TouchableOpacity>
-            <TouchableOpacity style={[styles.dialogConfirm, !valid && styles.dialogConfirmDisabled]} onPress={() => onSubmit(description.trim(), evidence)} disabled={!valid || pending}>
-              {pending ? <ActivityIndicator size="small" color={colors.white} /> : <Text style={styles.dialogConfirmText}>Confirmar</Text>}
+            <TouchableOpacity style={styles.dialogCancel} onPress={onClose} disabled={pending}>
+              <Text style={styles.dialogCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.dialogConfirm, !valid && styles.dialogConfirmDisabled]}
+              onPress={() => onSubmit(description.trim(), evidence)}
+              disabled={!valid || pending}
+            >
+              {pending
+                ? <ActivityIndicator size="small" color={colors.white} />
+                : <Text style={styles.dialogConfirmText}>Confirmar</Text>}
             </TouchableOpacity>
           </View>
         </View>
-        <PhotoSourceSheet visible={photoSheet} onClose={() => setPhotoSheet(false)} onCamera={() => { void pick('camera'); }} onGallery={() => { void pick('gallery'); }} />
+        <PhotoSourceSheet
+          visible={photoSheet}
+          onClose={() => setPhotoSheet(false)}
+          onCamera={() => { void pick('camera'); }}
+          onGallery={() => { void pick('gallery'); }}
+        />
       </View>
     </Modal>
   );
@@ -317,7 +392,11 @@ function ResponsibleSelector({
   const companyId = allFindings(detail).find((item) => item.responsibleCompanyId)?.responsibleCompanyId
     ?? detail.general.responsibles.find((item) => item.companyId)?.companyId
     ?? null;
-  const currentIds = detail.general.responsibles.map((item) => item.userId);
+  const currentIds = useMemo(
+    () => detail.general.responsibles.map((item) => item.userId),
+    [detail.general.responsibles],
+  );
+  const currentIdsKey = currentIds.join('|');
   const [selected, setSelected] = useState<string[]>(currentIds);
   const query = useQuery({
     queryKey: ['mobile-inspecciones', 'responsible-users', companyId],
@@ -328,7 +407,7 @@ function ResponsibleSelector({
 
   useEffect(() => {
     if (visible) setSelected(currentIds);
-  }, [visible, currentIds.join('|')]);
+  }, [currentIds, currentIdsKey, visible]);
 
   const options = useMemo<InspectionDetailResponsibleResponse[]>(() => {
     const users = query.data ?? [];
@@ -341,7 +420,7 @@ function ResponsibleSelector({
       companyName: user.companies?.find((company) => company.id === user.companyId)?.name ?? null,
       currentUser: currentIds.includes(user.id),
     }));
-  }, [query.data, detail.general.responsibles, currentIds.join('|')]);
+  }, [currentIds, detail.general.responsibles, query.data]);
 
   if (!visible) return null;
   return (
@@ -357,17 +436,39 @@ function ResponsibleSelector({
             {options.map((option) => {
               const active = selected.includes(option.userId);
               return (
-                <TouchableOpacity key={option.userId} style={styles.responsibleOption} onPress={() => setSelected((current) => active ? current.filter((id) => id !== option.userId) : [...current, option.userId])}>
+                <TouchableOpacity
+                  key={option.userId}
+                  style={styles.responsibleOption}
+                  onPress={() => setSelected((current) => (
+                    active
+                      ? current.filter((id) => id !== option.userId)
+                      : [...current, option.userId]
+                  ))}
+                >
                   <View style={styles.avatar}><Text style={styles.avatarText}>{initials(option.fullName)}</Text></View>
-                  <View style={styles.responsibleCopy}><Text style={styles.responsibleName}>{option.fullName}</Text><Text style={styles.responsibleRole}>{option.position ?? 'Sin cargo'}</Text></View>
-                  <FontAwesome5 name={active ? 'check-circle' : 'circle'} size={20} color={active ? colors.teal : colors.borderMid} solid={active} />
+                  <View style={styles.responsibleCopy}>
+                    <Text style={styles.responsibleName}>{option.fullName}</Text>
+                    <Text style={styles.responsibleRole}>{option.position ?? 'Sin cargo'}</Text>
+                  </View>
+                  <FontAwesome5
+                    name={active ? 'check-circle' : 'circle'}
+                    size={20}
+                    color={active ? colors.teal : colors.borderMid}
+                    solid={active}
+                  />
                 </TouchableOpacity>
               );
             })}
           </ScrollView>
           <View style={styles.dialogActions}>
-            <TouchableOpacity style={styles.dialogCancel} onPress={onClose}><Text style={styles.dialogCancelText}>Cancelar</Text></TouchableOpacity>
-            <TouchableOpacity style={[styles.dialogConfirm, selected.length === 0 && styles.dialogConfirmDisabled]} disabled={selected.length === 0 || pending} onPress={() => onConfirm(selected)}>
+            <TouchableOpacity style={styles.dialogCancel} onPress={onClose}>
+              <Text style={styles.dialogCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.dialogConfirm, selected.length === 0 && styles.dialogConfirmDisabled]}
+              disabled={selected.length === 0 || pending}
+              onPress={() => onConfirm(selected)}
+            >
               <Text style={styles.dialogConfirmText}>Reasignar</Text>
             </TouchableOpacity>
           </View>
@@ -401,19 +502,39 @@ function ObservationsPanel({
         const open = expanded === group.key;
         return (
           <View key={group.key}>
-            <TouchableOpacity style={styles.groupRow} onPress={() => onExpanded(open ? null : group.key)}>
+            <TouchableOpacity
+              style={styles.groupRow}
+              onPress={() => onExpanded(open ? null : group.key)}
+            >
               <View style={styles.groupCopy}>
                 <FontAwesome5 name={group.icon} size={16} color={group.color} solid />
                 <Text style={[styles.groupLabel, { color: group.color }]}>{group.label.toUpperCase()}</Text>
-                <View style={[styles.groupCount, { backgroundColor: group.background }]}><Text style={[styles.groupCountText, { color: group.color }]}>{items.length}</Text></View>
+                <View style={[styles.groupCount, { backgroundColor: group.background }]}>
+                  <Text style={[styles.groupCountText, { color: group.color }]}>{items.length}</Text>
+                </View>
               </View>
-              <FontAwesome5 name={open ? 'chevron-up' : 'chevron-down'} size={13} color={colors.muted} />
+              <FontAwesome5
+                name={open ? 'chevron-up' : 'chevron-down'}
+                size={13}
+                color={colors.muted}
+              />
             </TouchableOpacity>
             {open ? (
               <View style={styles.groupBody}>
-                {items.length === 0 ? <Text style={styles.emptyGroup}>No hay observaciones en este estado.</Text> : null}
+                {items.length === 0
+                  ? <Text style={styles.emptyGroup}>No hay observaciones en este estado.</Text>
+                  : null}
                 {items.map((item, index) => (
-                  <FindingCard key={item.findingId} item={item} index={index} readOnly={readOnly} actions={actions} onExecute={onExecute} onReject={onReject} />
+                  <FindingCard
+                    key={item.findingId}
+                    inspectionId={detail.header.inspectionId}
+                    item={item}
+                    index={index}
+                    readOnly={readOnly}
+                    actions={actions}
+                    onExecute={onExecute}
+                    onReject={onReject}
+                  />
                 ))}
               </View>
             ) : null}
@@ -434,12 +555,34 @@ function FollowupsPanel({ detail }: { detail: InspectionDetailResponse }) {
     }));
     const findingEvents = allFindings(detail).flatMap((item, index) => {
       const rows: Array<{ id: string; title: string; description: string; date: string | null }> = [];
-      if (item.executedAt) rows.push({ id: `executed-${item.findingId}`, title: `Obs. ${index + 1} ejecutada`, description: item.executedActionDescription ?? 'Ejecución registrada', date: item.executedAt });
-      if (item.rejectedAt) rows.push({ id: `rejected-${item.findingId}`, title: `Obs. ${index + 1} rechazada`, description: item.rejectionReason ?? 'Ejecución rechazada', date: item.rejectedAt });
-      if (item.closedAt) rows.push({ id: `closed-${item.findingId}`, title: `Obs. ${index + 1} cerrada`, description: 'Cierre aprobado', date: item.closedAt });
+      if (item.executedAt) {
+        rows.push({
+          id: `executed-${item.findingId}`,
+          title: `Obs. ${index + 1} ejecutada`,
+          description: item.executedActionDescription ?? 'Ejecución registrada',
+          date: item.executedAt,
+        });
+      }
+      if (item.rejectedAt) {
+        rows.push({
+          id: `rejected-${item.findingId}`,
+          title: `Obs. ${index + 1} rechazada`,
+          description: item.rejectionReason ?? 'Ejecución rechazada',
+          date: item.rejectedAt,
+        });
+      }
+      if (item.closedAt) {
+        rows.push({
+          id: `closed-${item.findingId}`,
+          title: `Obs. ${index + 1} cerrada`,
+          description: 'Cierre aprobado',
+          date: item.closedAt,
+        });
+      }
       return rows;
     });
-    return [...direct, ...findingEvents].sort((left, right) => Date.parse(right.date ?? '') - Date.parse(left.date ?? ''));
+    return [...direct, ...findingEvents]
+      .sort((left, right) => Date.parse(right.date ?? '') - Date.parse(left.date ?? ''));
   }, [detail]);
 
   return (
@@ -448,43 +591,85 @@ function FollowupsPanel({ detail }: { detail: InspectionDetailResponse }) {
       {events.map((event, index) => (
         <View key={event.id} style={styles.timelineRow}>
           <View style={styles.timelineMarker}><Text style={styles.timelineMarkerText}>{index + 1}</Text></View>
-          <View style={styles.timelineCopy}><Text style={styles.timelineTitle}>{event.title}</Text><Text style={styles.timelineDate}>{formatDate(event.date)}</Text><Text style={styles.timelineDescription}>{event.description}</Text></View>
+          <View style={styles.timelineCopy}>
+            <Text style={styles.timelineTitle}>{event.title}</Text>
+            <Text style={styles.timelineDate}>{formatDate(event.date)}</Text>
+            <Text style={styles.timelineDescription}>{event.description}</Text>
+          </View>
         </View>
       ))}
     </View>
   );
 }
 
-function GeneralPanel({ detail, readOnly, canReassign, onReassign }: { detail: InspectionDetailResponse; readOnly: boolean; canReassign: boolean; onReassign: () => void }) {
+function GeneralPanel({
+  detail,
+  readOnly,
+  canReassign,
+  onReassign,
+}: {
+  detail: InspectionDetailResponse;
+  readOnly: boolean;
+  canReassign: boolean;
+  onReassign: () => void;
+}) {
   const general = detail.general;
   return (
     <View style={styles.tabContent}>
       <View style={styles.generalSection}>
         <Text style={styles.generalTitle}>Quién realizó la inspección</Text>
-        <Text style={styles.generalLabel}>Nombre</Text><Text style={styles.generalValue}>{general.inspectorName ?? '—'}</Text>
-        <Text style={styles.generalLabel}>Empresa</Text><Text style={styles.generalValue}>{general.inspectorCompanyName ?? general.companyName ?? '—'}</Text>
+        <Text style={styles.generalLabel}>Nombre</Text>
+        <Text style={styles.generalValue}>{general.inspectorName ?? '—'}</Text>
+        <Text style={styles.generalLabel}>Empresa</Text>
+        <Text style={styles.generalValue}>{general.inspectorCompanyName ?? general.companyName ?? '—'}</Text>
       </View>
       <View style={styles.generalSection}>
         <Text style={styles.generalTitle}>Dónde y cuándo</Text>
-        <Text style={styles.generalLabel}>Área · Sector</Text><Text style={styles.generalValue}>{[general.areaName, general.sectorName].filter(Boolean).join(' · ') || '—'}</Text>
-        <Text style={styles.generalLabel}>Fecha</Text><Text style={styles.generalValue}>{formatDate(general.scheduledAt)}</Text>
-        <Text style={styles.generalLabel}>Ubicación</Text><Text style={styles.generalValue}>{general.latitude && general.longitude ? `${general.latitude} · ${general.longitude}` : general.locationLabel ?? '—'}</Text>
+        <Text style={styles.generalLabel}>Área · Sector</Text>
+        <Text style={styles.generalValue}>
+          {[general.areaName, general.sectorName].filter(Boolean).join(' · ') || '—'}
+        </Text>
+        <Text style={styles.generalLabel}>Fecha</Text>
+        <Text style={styles.generalValue}>{formatDate(general.scheduledAt)}</Text>
+        <Text style={styles.generalLabel}>Ubicación</Text>
+        <Text style={styles.generalValue}>
+          {general.latitude && general.longitude
+            ? `${general.latitude} · ${general.longitude}`
+            : general.locationLabel ?? '—'}
+        </Text>
       </View>
       <View style={styles.generalSection}>
         <Text style={styles.generalTitle}>Responsables</Text>
         {general.responsibles.map((responsible) => (
           <View key={responsible.userId} style={styles.generalResponsible}>
             <View style={styles.avatar}><Text style={styles.avatarText}>{initials(responsible.fullName)}</Text></View>
-            <View style={styles.responsibleCopy}><Text style={styles.responsibleName}>{responsible.fullName}</Text><Text style={styles.responsibleRole}>{responsible.position ?? responsible.companyName ?? 'Sin cargo'}</Text></View>
+            <View style={styles.responsibleCopy}>
+              <Text style={styles.responsibleName}>{responsible.fullName}</Text>
+              <Text style={styles.responsibleRole}>
+                {responsible.position ?? responsible.companyName ?? 'Sin cargo'}
+              </Text>
+            </View>
           </View>
         ))}
-        {!readOnly && canReassign ? <TouchableOpacity style={styles.reassignButton} onPress={onReassign}><FontAwesome5 name="user-edit" size={13} color="#24588b" /><Text style={styles.reassignText}>Reasignar responsables</Text></TouchableOpacity> : null}
+        {!readOnly && canReassign ? (
+          <TouchableOpacity style={styles.reassignButton} onPress={onReassign}>
+            <FontAwesome5 name="user-edit" size={13} color="#24588b" />
+            <Text style={styles.reassignText}>Reasignar responsables</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
     </View>
   );
 }
 
-export function MobileInspectionDetailModal({ visible, inspectionId, requestedFindingId, requestedGroup, forceReadOnly = false, onClose }: Props) {
+export function MobileInspectionDetailModal({
+  visible,
+  inspectionId,
+  requestedFindingId,
+  requestedGroup,
+  forceReadOnly = false,
+  onClose,
+}: Props) {
   const detailQuery = useMobileInspectionDetail(inspectionId, visible);
   const actions = useMobileInspectionFindingActions();
   const [activeTab, setActiveTab] = useState<DetailTab>('observations');
@@ -534,14 +719,21 @@ export function MobileInspectionDetailModal({ visible, inspectionId, requestedFi
       setActionMode(null);
       setActionTarget(null);
     } catch (error) {
-      Alert.alert('No se pudo completar la acción', error instanceof Error ? error.message : 'Intenta nuevamente.');
+      Alert.alert(
+        'No se pudo completar la acción',
+        error instanceof Error ? error.message : 'Intenta nuevamente.',
+      );
     }
   }
 
   async function confirmReassign(ids: string[]) {
     if (!detail) return;
     try {
-      await actions.reassignResponsibles(detail.header.inspectionId, allFindings(detail).map((item) => item.findingId), ids);
+      await actions.reassignResponsibles(
+        detail.header.inspectionId,
+        allFindings(detail).map((item) => item.findingId),
+        ids,
+      );
       setReassignVisible(false);
     } catch (error) {
       Alert.alert('No se pudo reasignar', error instanceof Error ? error.message : 'Intenta nuevamente.');
@@ -549,48 +741,159 @@ export function MobileInspectionDetailModal({ visible, inspectionId, requestedFi
   }
 
   const tabs: Array<{ key: DetailTab; label: string }> = detail?.header.kind === 'checklist'
-    ? [{ key: 'observations', label: 'Ítems No' }, { key: 'result', label: 'Resultado' }, { key: 'followups', label: 'Seguimientos' }, { key: 'general', label: 'Datos' }]
-    : [{ key: 'observations', label: 'Observaciones' }, { key: 'followups', label: 'Seguimientos' }, { key: 'general', label: 'Datos' }];
+    ? [
+        { key: 'observations', label: 'Ítems No' },
+        { key: 'result', label: 'Resultado' },
+        { key: 'followups', label: 'Seguimientos' },
+        { key: 'general', label: 'Datos' },
+      ]
+    : [
+        { key: 'observations', label: 'Observaciones' },
+        { key: 'followups', label: 'Seguimientos' },
+        { key: 'general', label: 'Datos' },
+      ];
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
       <View style={styles.screen}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.back} onPress={onClose}><FontAwesome5 name="arrow-left" size={17} color={colors.white} /></TouchableOpacity>
+          <TouchableOpacity style={styles.back} onPress={onClose}>
+            <FontAwesome5 name="arrow-left" size={17} color={colors.white} />
+          </TouchableOpacity>
           <View style={styles.headerCopy}>
-            <Text style={styles.headerEyebrow}>{detail ? `#${detail.header.inspectionNumber.replace(/^#/, '')}` : 'DETALLE'}</Text>
-            <Text style={styles.headerTitle} numberOfLines={2}>{detail?.header.title ?? 'Cargando inspección'}</Text>
+            <Text style={styles.headerEyebrow}>
+              {detail ? `#${detail.header.inspectionNumber.replace(/^#/, '')}` : 'DETALLE'}
+            </Text>
+            <Text style={styles.headerTitle} numberOfLines={2}>
+              {detail?.header.title ?? 'Cargando inspección'}
+            </Text>
           </View>
-          {readOnly ? <View style={styles.readOnlyPill}><FontAwesome5 name="eye" size={9} color="#24588b" /><Text style={styles.readOnlyText}>Solo lectura</Text></View> : null}
+          {readOnly ? (
+            <View style={styles.readOnlyPill}>
+              <FontAwesome5 name="eye" size={9} color="#24588b" />
+              <Text style={styles.readOnlyText}>Solo lectura</Text>
+            </View>
+          ) : null}
         </View>
 
         {detail ? (
           <View style={styles.progressPanel}>
-            <View style={styles.progressTop}><Text style={styles.progressLabel}>Progreso de observaciones</Text><Text style={styles.progressValue}>{detail.header.progressPercent}%</Text></View>
-            <View style={styles.progressRail}><View style={[styles.progressFill, { width: `${Math.max(0, Math.min(100, detail.header.progressPercent))}%` }]} /></View>
-            <View style={styles.counterRow}>{groups.map((group) => <View key={group.key} style={[styles.counter, { backgroundColor: group.background }]}><Text style={[styles.counterText, { color: group.color }]}>{detail.header.counts[group.key]} {group.label}</Text></View>)}</View>
+            <View style={styles.progressTop}>
+              <Text style={styles.progressLabel}>Progreso de observaciones</Text>
+              <Text style={styles.progressValue}>{detail.header.progressPercent}%</Text>
+            </View>
+            <View style={styles.progressRail}>
+              <View
+                style={[
+                  styles.progressFill,
+                  { width: `${Math.max(0, Math.min(100, detail.header.progressPercent))}%` },
+                ]}
+              />
+            </View>
+            <View style={styles.counterRow}>
+              {groups.map((group) => (
+                <View key={group.key} style={[styles.counter, { backgroundColor: group.background }]}>
+                  <Text style={[styles.counterText, { color: group.color }]}>
+                    {detail.header.counts[group.key]} {group.label}
+                  </Text>
+                </View>
+              ))}
+            </View>
           </View>
         ) : null}
 
         {detail ? (
-          <View style={styles.tabs}>{tabs.map((tab) => <TouchableOpacity key={tab.key} style={[styles.tab, activeTab === tab.key && styles.tabActive]} onPress={() => setActiveTab(tab.key)}><Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>{tab.label}</Text></TouchableOpacity>)}</View>
+          <View style={styles.tabs}>
+            {tabs.map((tab) => (
+              <TouchableOpacity
+                key={tab.key}
+                style={[styles.tab, activeTab === tab.key && styles.tabActive]}
+                onPress={() => setActiveTab(tab.key)}
+              >
+                <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         ) : null}
 
-        {detailQuery.isLoading ? <View style={styles.loading}><ActivityIndicator color={colors.gold} /><Text style={styles.loadingText}>Cargando detalle real…</Text></View> : null}
-        {detailQuery.isError ? <View style={styles.loading}><Text style={styles.errorTitle}>No fue posible cargar el detalle</Text><Text style={styles.loadingText}>Verifica tu conexión y permisos.</Text><TouchableOpacity style={styles.retryButton} onPress={() => { void detailQuery.refetch(); }}><Text style={styles.retryText}>Reintentar</Text></TouchableOpacity></View> : null}
+        {detailQuery.isLoading ? (
+          <View style={styles.loading}>
+            <ActivityIndicator color={colors.gold} />
+            <Text style={styles.loadingText}>Cargando detalle real…</Text>
+          </View>
+        ) : null}
+        {detailQuery.isError ? (
+          <View style={styles.loading}>
+            <Text style={styles.errorTitle}>No fue posible cargar el detalle</Text>
+            <Text style={styles.loadingText}>Verifica tu conexión y permisos.</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => { void detailQuery.refetch(); }}>
+              <Text style={styles.retryText}>Reintentar</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         {detail ? (
-          <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator={false}>
-            {activeTab === 'observations' ? <ObservationsPanel detail={detail} expanded={expandedGroup} onExpanded={setExpandedGroup} readOnly={readOnly} actions={actions} onExecute={(item) => openAction('execute', item)} onReject={(item) => openAction('reject', item)} /> : null}
-            {activeTab === 'result' ? <View style={styles.tabContent}><View style={styles.generalSection}><Text style={styles.generalTitle}>Resultado completo</Text><Text style={styles.resultText}>La API actual expone el resumen y los ítems no conformes. El resultado completo permanece disponible como reporte de inspección.</Text></View></View> : null}
+          <ScrollView
+            style={styles.body}
+            contentContainerStyle={styles.bodyContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {activeTab === 'observations' ? (
+              <ObservationsPanel
+                detail={detail}
+                expanded={expandedGroup}
+                onExpanded={setExpandedGroup}
+                readOnly={readOnly}
+                actions={actions}
+                onExecute={(item) => openAction('execute', item)}
+                onReject={(item) => openAction('reject', item)}
+              />
+            ) : null}
+            {activeTab === 'result' ? (
+              <View style={styles.tabContent}>
+                <View style={styles.generalSection}>
+                  <Text style={styles.generalTitle}>Resultado completo</Text>
+                  <Text style={styles.resultText}>
+                    La API de detalle actual expone el resumen y los ítems no conformes. El reporte completo
+                    continúa disponible en la exportación de la inspección.
+                  </Text>
+                </View>
+              </View>
+            ) : null}
             {activeTab === 'followups' ? <FollowupsPanel detail={detail} /> : null}
-            {activeTab === 'general' ? <GeneralPanel detail={detail} readOnly={readOnly} canReassign={actions.canReassign} onReassign={() => setReassignVisible(true)} /> : null}
+            {activeTab === 'general' ? (
+              <GeneralPanel
+                detail={detail}
+                readOnly={readOnly}
+                canReassign={actions.canReassign}
+                onReassign={() => setReassignVisible(true)}
+              />
+            ) : null}
           </ScrollView>
         ) : null}
       </View>
 
-      <ActionDialog mode={actionMode} item={actionTarget} pending={actions.isPending} onClose={() => { setActionMode(null); setActionTarget(null); }} onSubmit={(description, evidence) => { void submitAction(description, evidence); }} />
-      {detail ? <ResponsibleSelector visible={reassignVisible} detail={detail} pending={actions.isPending} onClose={() => setReassignVisible(false)} onConfirm={(ids) => { void confirmReassign(ids); }} /> : null}
+      <ActionDialog
+        mode={actionMode}
+        item={actionTarget}
+        pending={actions.isPending}
+        onClose={() => {
+          setActionMode(null);
+          setActionTarget(null);
+        }}
+        onSubmit={(description, evidence) => { void submitAction(description, evidence); }}
+      />
+      {detail ? (
+        <ResponsibleSelector
+          visible={reassignVisible}
+          detail={detail}
+          pending={actions.isPending}
+          onClose={() => setReassignVisible(false)}
+          onConfirm={(ids) => { void confirmReassign(ids); }}
+        />
+      ) : null}
     </Modal>
   );
 }

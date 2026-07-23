@@ -11,6 +11,7 @@ import {
   UpsertInspectionSlaPolicyRequest,
 } from '@aurelia/contracts';
 import {
+  ArrayMinSize,
   ArrayUnique,
   IsArray,
   IsBoolean,
@@ -86,6 +87,7 @@ export class ResubmitInspectionEvidenceDto implements ResubmitInspectionEvidence
   reason: string;
 
   @IsArray()
+  @ArrayMinSize(1)
   @ArrayUnique()
   @IsUUID('4', { each: true })
   evidenceIds: string[];
@@ -156,7 +158,11 @@ export class InspectionAiPreValidationDto implements InspectionAiPreValidationRe
 }
 
 export class RecordInspectionAiDecisionDto implements RecordInspectionAiDecisionRequest {
-  @IsEnum(InspectionAiDecision)
+  @IsIn([
+    InspectionAiDecision.ACCEPTED,
+    InspectionAiDecision.OVERRIDDEN,
+    InspectionAiDecision.REJECTED,
+  ])
   decision: Exclude<InspectionAiDecision, InspectionAiDecision.PENDING>;
 
   @IsString()

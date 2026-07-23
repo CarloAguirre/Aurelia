@@ -68,6 +68,9 @@ function canonicalAssistantText(text: string, context: AssistantCopyContext): st
     }
     return 'Selecciona la **empresa responsable de los hallazgos**.';
   }
+  if (normalized === 'Te sugiero una empresa responsable según el área, sector y empresas disponibles.') {
+    return 'Te sugiero una **empresa responsable** según el área, sector y empresas disponibles.';
+  }
 
   if (normalized === 'Describe la condición detectada.' && context.inspectionType === InspectionType.ENVIRONMENTAL) {
     return `Cuéntame la condición subestándar que detectaste en **${location || 'el área inspeccionada'}**.`;
@@ -88,6 +91,7 @@ function canonicalAssistantText(text: string, context: AssistantCopyContext): st
     return `Para **${context.findingCompanyName ?? 'la empresa seleccionada'}**, sugiero este personal. Selecciona uno o más:`;
   }
   if (normalized === 'Revisa el resumen antes de guardar.') return '¡Listo! Revisa el **resumen** antes de guardar:';
+  if (normalized === '¡Listo! Revisa el resumen antes de guardar:') return '¡Listo! Revisa el **resumen** antes de guardar:';
 
   return text;
 }
@@ -130,6 +134,7 @@ export function BotBubble({ text, time }: Props) {
   const isFindingDecision = normalized === findingDecisionPrompt;
   const hiddenForAssignedCompany = !canSelectCompany && [
     'Te sugiero una empresa responsable para este hallazgo.',
+    'Te sugiero una empresa responsable según el área, sector y empresas disponibles.',
     'Selecciona empresa responsable de los hallazgos.',
     'Selecciona empresa responsable.',
   ].includes(normalized);
@@ -197,6 +202,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E3E3E3',
     borderRadius: 16,
+    borderTopLeftRadius: 0,
     paddingHorizontal: 13,
     paddingVertical: 11,
     shadowColor: '#000',

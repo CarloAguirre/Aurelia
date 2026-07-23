@@ -147,8 +147,11 @@ export class InspectionAssignmentEmailService {
     findingIds: string[];
   }): Promise<TrackedAssignmentLink> {
     const fallbackUrl = this.buildInspectionUrl(input.inspection.id, input.inspectionReference);
+    const eventKey = `inspection.assigned:${input.inspection.id}:${input.user.id}`;
     try {
-      const notification = await this.notifications.createInspectionEvent({
+      const existingNotifications = await this.notifications.findForUser(input.user.id);
+      const existing = existingNotifications.find((notification) => notification.metadata?.eventKey === eventKey);
+      const notification = existing ?? await this.notifications.create({
         title: `Inspección asignada · ${input.inspectionReference}`,
         body: `Tienes ${input.findingIds.length} observación${input.findingIds.length === 1 ? '' : 'es'} pendiente${input.findingIds.length === 1 ? '' : 's'} de gestión.`,
         category: 'inspection.assigned',
@@ -158,7 +161,7 @@ export class InspectionAssignmentEmailService {
         recipientUserIds: [input.user.id],
         metadata: {
           event: 'inspection.assigned',
-          eventKey: `inspection.assigned:${input.inspection.id}:${input.user.id}`,
+          eventKey,
           inspectionId: input.inspection.id,
           inspectionNumber: input.inspectionReference,
           findingIds: input.findingIds,

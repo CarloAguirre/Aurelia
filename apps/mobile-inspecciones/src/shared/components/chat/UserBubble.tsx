@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, fontSize, fontWeight, radius, spacing } from '../../theme/tokens';
+import { colors, fontSize, fontWeight, radius } from '../../theme/tokens';
 
 interface Props {
   text: string;
@@ -42,9 +42,9 @@ const styles = StyleSheet.create({
     maxWidth: '78%',
     backgroundColor: colors.navyDark,
     borderRadius: radius.lg,
-    borderTopRightRadius: 0,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
+    borderBottomRightRadius: 4,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 3,
@@ -61,6 +61,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
     color: 'rgba(255,255,255,0.55)',
     fontSize: fontSize.xs + 1,
-    lineHeight: 12,
+    lineHeight: 11,
   },
 });

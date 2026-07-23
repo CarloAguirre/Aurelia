@@ -13,9 +13,11 @@ import {
   RecordInspectionAiDecisionRequest,
   ResubmitInspectionEvidenceRequest,
 } from '@aurelia/contracts';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { AuditService } from '../audit/audit.service';
-import { EvidencesService } from '../evidences/evidences.service';
+import { EntityReferenceTypeEntity } from '../evidences/entities/entity-reference-type.entity';
+import { EvidenceLinkEntity } from '../evidences/entities/evidence-link.entity';
+import { EvidenceEntity } from '../evidences/entities/evidence.entity';
 import { InspectionAiAssessmentEntity } from './entities/inspection-ai-assessment.entity';
 import { InspectionFindingEntity } from './entities/inspection-finding.entity';
 import { InspectionProcessRequestEntity } from './entities/inspection-process-request.entity';
@@ -32,7 +34,7 @@ export class InspectionProcessService {
     private readonly processRequests: Repository<InspectionProcessRequestEntity>,
     @InjectRepository(InspectionAiAssessmentEntity)
     private readonly aiAssessments: Repository<InspectionAiAssessmentEntity>,
-    private readonly evidences: EvidencesService,
+    private readonly dataSource: DataSource,
     private readonly audit: AuditService,
   ) {}
 
@@ -41,75 +43,110 @@ export class InspectionProcessService {
     dto: ResubmitInspectionEvidenceRequest,
     actorUserId: string,
   ): Promise<InspectionProcessRequestResponse> {
-    const finding = await this.getFindingOrThrow(findingId);
-    if (finding.status !== InspectionFindingStatus.REJECTED) {
-      throw new BadRequestException('Only rejected findings can resubmit evidence');
-    }
     if (dto.evidenceIds.length === 0) {
       throw new BadRequestException('At least one evidence is required');
     }
 
-    for (const evidenceId of dto.evidenceIds) {
-      await this.evidences.link(evidenceId, {
-        entityType: 'inspection_finding',
-        entityId: finding.id,
-        relationType: InspectionEvidenceRelationType.AFTER_PHOTO,
+    const result = await this.dataSource.transaction(async (manager) => {
+      const findingRepository = manager.getRepository(InspectionFindingEntity);
+      const requestRepository = manager.getRepository(InspectionProcessRequestEntity);
+      const evidenceRepository = manager.getRepository(EvidenceEntity);
+      const evidenceLinkRepository = manager.getRepository(EvidenceLinkEntity);
+      const referenceTypeRepository = manager.getRepository(EntityReferenceTypeEntity);
+      const finding = await findingRepository.findOne({
+        where: { id: findingId },
+        lock: { mode: 'pessimistic_write' },
       });
-    }
+      if (!finding) throw new NotFoundException(`Inspection finding ${findingId} not found`);
+      if (finding.status !== InspectionFindingStatus.REJECTED) {
+        throw new BadRequestException('Only rejected findings can resubmit evidence');
+      }
 
-    const previousIterations = await this.processRequests.count({
-      where: {
+      const referenceType = await referenceTypeRepository.findOneBy({ code: 'inspection_finding' });
+      if (!referenceType) {
+        throw new NotFoundException("Entity type 'inspection_finding' not registered");
+      }
+
+      for (const evidenceId of dto.evidenceIds) {
+        const evidence = await evidenceRepository.findOneBy({ id: evidenceId });
+        if (!evidence) throw new NotFoundException(`Evidence ${evidenceId} not found`);
+        const relationType = InspectionEvidenceRelationType.AFTER_PHOTO;
+        const existingLink = await evidenceLinkRepository.findOne({
+          where: {
+            evidenceId,
+            entityType: referenceType.code,
+            entityId: finding.id,
+            relationType,
+          },
+        });
+        if (!existingLink) {
+          await evidenceLinkRepository.save(evidenceLinkRepository.create({
+            evidenceId,
+            entityType: referenceType.code,
+            entityId: finding.id,
+            relationType,
+          }));
+        }
+      }
+
+      const previousIterations = await requestRepository.count({
+        where: {
+          findingId,
+          type: InspectionProcessRequestType.EVIDENCE_RESUBMISSION,
+        },
+      });
+      const now = new Date();
+      const processRequest = requestRepository.create({
         findingId,
         type: InspectionProcessRequestType.EVIDENCE_RESUBMISSION,
-      },
-    });
-    const now = new Date();
-    const processRequest = this.processRequests.create({
-      findingId,
-      type: InspectionProcessRequestType.EVIDENCE_RESUBMISSION,
-      status: InspectionProcessRequestStatus.COMPLETED,
-      reason: dto.reason,
-      requestedDueAt: null,
-      resolvedDueAt: null,
-      iteration: previousIterations + 1,
-      requestedByUserId: actorUserId,
-      resolvedByUserId: actorUserId,
-      resolutionReason: 'Evidence resubmitted for human review',
-      metadata: {
-        evidenceIds: dto.evidenceIds,
-        executedActionDescription: dto.executedActionDescription ?? null,
-      },
-      resolvedAt: now,
-    });
+        status: InspectionProcessRequestStatus.COMPLETED,
+        reason: dto.reason,
+        requestedDueAt: null,
+        resolvedDueAt: null,
+        iteration: previousIterations + 1,
+        requestedByUserId: actorUserId,
+        resolvedByUserId: actorUserId,
+        resolutionReason: 'Evidence resubmitted for human review',
+        metadata: {
+          evidenceIds: dto.evidenceIds,
+          executedActionDescription: dto.executedActionDescription ?? null,
+        },
+        resolvedAt: now,
+      });
 
-    const previousStatus = finding.status;
-    finding.status = InspectionFindingStatus.IN_PROGRESS;
-    finding.executedActionDescription = dto.executedActionDescription ?? finding.executedActionDescription;
-    finding.executedAt = now;
-    finding.executedByUserId = actorUserId;
-    finding.closedAt = null;
-    finding.closedByUserId = null;
+      const previousStatus = finding.status;
+      finding.status = InspectionFindingStatus.IN_PROGRESS;
+      finding.executedActionDescription = dto.executedActionDescription ?? finding.executedActionDescription;
+      finding.executedAt = now;
+      finding.executedByUserId = actorUserId;
+      finding.closedAt = null;
+      finding.closedByUserId = null;
+      finding.rejectedAt = null;
+      finding.rejectedByUserId = null;
 
-    const [savedRequest] = await Promise.all([
-      this.processRequests.save(processRequest),
-      this.findings.save(finding),
-    ]);
+      const savedRequest = await requestRepository.save(processRequest);
+      await findingRepository.save(finding);
+      return { savedRequest, finding, previousStatus };
+    });
 
     await this.audit.logSafe({
       entityType: 'inspection_finding',
-      entityId: finding.id,
+      entityId: result.finding.id,
       actorUserId,
       action: 'inspection.finding.evidence_resubmitted',
-      oldValue: { status: previousStatus },
+      oldValue: { status: result.previousStatus },
       newValue: {
-        status: finding.status,
-        iteration: savedRequest.iteration,
+        status: result.finding.status,
+        iteration: result.savedRequest.iteration,
         evidenceIds: dto.evidenceIds,
       },
-      metadata: { processRequestId: savedRequest.id, inspectionId: finding.inspectionId },
+      metadata: {
+        processRequestId: result.savedRequest.id,
+        inspectionId: result.finding.inspectionId,
+      },
     });
 
-    return this.toProcessRequestResponse(savedRequest);
+    return this.toProcessRequestResponse(result.savedRequest);
   }
 
   async preValidate(
@@ -150,11 +187,17 @@ export class InspectionProcessService {
     const duplicateScore = duplicate?.score ?? 0;
     const isPotentialDuplicate = duplicateScore >= 0.65;
     const completeness = (5 - missingFields.length) / 5;
-    const confidence = Number(Math.min(0.99, Math.max(0.5, isPotentialDuplicate ? duplicateScore : 0.5 + completeness * 0.45)).toFixed(4));
+    const confidence = Number(
+      Math.min(0.99, Math.max(0.5, isPotentialDuplicate ? duplicateScore : 0.5 + completeness * 0.45)).toFixed(4),
+    );
     const explanation = [
       ...missingFields.map((field) => `Falta completar ${field}`),
-      ...(isPotentialDuplicate ? [`Coincidencia de ${(duplicateScore * 100).toFixed(0)}% con un hallazgo existente`] : []),
-      ...(!isPotentialDuplicate && missingFields.length === 0 ? ['Campos mínimos completos para revisión humana'] : []),
+      ...(isPotentialDuplicate
+        ? [`Coincidencia de ${(duplicateScore * 100).toFixed(0)}% con un hallazgo existente`]
+        : []),
+      ...(!isPotentialDuplicate && missingFields.length === 0
+        ? ['Campos mínimos completos para revisión humana']
+        : []),
     ];
     const recommendation = isPotentialDuplicate
       ? 'possible_duplicate'
@@ -165,7 +208,9 @@ export class InspectionProcessService {
     const assessment = this.aiAssessments.create({
       inspectionId,
       findingId: dto.findingId ?? null,
-      kind: isPotentialDuplicate ? InspectionAiAssessmentKind.DUPLICATE : InspectionAiAssessmentKind.PRE_VALIDATION,
+      kind: isPotentialDuplicate
+        ? InspectionAiAssessmentKind.DUPLICATE
+        : InspectionAiAssessmentKind.PRE_VALIDATION,
       confidence: confidence.toFixed(4),
       recommendation,
       explanation,

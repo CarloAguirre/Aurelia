@@ -14,7 +14,7 @@ Esta fase homologa en `apps/mobile-inspecciones` el flujo operativo existente en
 | KPIs de gestión | `InspectionsManagementView.tsx` | `MobileInspectionManagementScreen.tsx` consume `management-kpis` | **Cumple** | Mismos KPIs de total, abiertas, pendientes de aprobación y cierre de observaciones. |
 | Listado y priorización | `InspectionsManagementView.tsx` | `MobileInspectionManagementScreen.tsx` consume `management-table` y conserva el orden del backend | **Cumple** | La API sigue siendo la fuente de priorización y scope. |
 | Contadores por estado | Tabla y `InspectionDetailRealDataModal.tsx` | Tarjetas y detalle muestran ejecutadas, abiertas, cerradas y rechazadas | **Cumple** | Se utilizan counters reales de API, sin inferir permisos ni datos. |
-| Filtros principales | Filtros de tabla Web | `MobileInspectionFiltersSheet.tsx` | **Cumple** | Número, tipo, estado/urgencia, grupo de observaciones, área y empresa. Los filtros especializados de escritorio permanecen en Web. |
+| Filtros principales | Filtros de tabla Web | `MobileInspectionFiltersSheet.tsx` | **Cumple** | Número, inspector, tipo, estado/urgencia, grupo de observaciones, área y empresa. Los filtros especializados de escritorio permanecen en Web. |
 | Paginación y refresco | Tabla Web | Paginación de API y pull-to-refresh | **Cumple** | No se filtra ni pagina solo en memoria. |
 | Apertura de detalle | `InspectionDetailModalDataBridge.tsx` | `MobileInspectionDetailModal.tsx` full-screen | **Cumple** | Modal full-screen recomendado para conservar el contexto del dashboard. |
 | Observaciones / Ítems No | `InspectionDetailRealDataModal.tsx` | Acordeones por ejecutadas, abiertas, cerradas y rechazadas | **Cumple** | Hallazgo y checklist comparten el contrato de detalle. |
@@ -28,7 +28,7 @@ Esta fase homologa en `apps/mobile-inspecciones` el flujo operativo existente en
 | Historial | `InspectionsHistoryView.tsx` | Pestaña Historial con KPIs, tabla y detalle read-only | **Cumple** | Consume endpoints de historial; ninguna acción de mutación se muestra. |
 | Deep link / notificación | `InspectionNotificationDeepLinkModal.tsx` | Ruta Expo con `inspectionId`, `findingId` y `group` | **Cumple** | Abre la inspección y expande el grupo real del hallazgo. |
 | Read-only por permisos | `inspection-capabilities.ts` | `mobileInspectionCapabilities.ts` + modal | **Cumple** | `read` permite consultar; `execute`, `review` y `reassign` habilitan solo su acción. |
-| Levantamiento existente | Flujo mobile homologado | Borradores y botón Nueva inspección permanecen conectados | **Cumple** | Se reutilizan stores/rutas existentes y `inspections:create`; no se reescribe el levantamiento. |
+| Levantamiento existente | Flujo mobile homologado | Borradores, nueva inspección y sincronización offline permanecen conectados | **Cumple** | Se reutilizan stores/rutas existentes, `inspections:create` y `useAutoSyncPendingOperations`; no se reescribe el levantamiento. |
 
 ## Mapping de componentes
 
@@ -89,7 +89,7 @@ No se reconoce `inspections:write` ni se deriva `execute` desde `create`.
 - `apps/mobile-inspecciones/src/shared/services/mobileNotificationDeepLink.ts`
   - Preserva contexto de inspección/hallazgo/grupo.
 - `apps/mobile-inspecciones/app/inspection/dashboard.tsx`
-  - Activa el nuevo flujo como entrada del dashboard.
+  - Activa el nuevo flujo y mantiene la sincronización automática offline.
 
 ## Validación obligatoria
 

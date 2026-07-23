@@ -1,0 +1,68 @@
+name: Validate inspection detail and freeze fix
+
+on:
+  push:
+    branches:
+      - feature/inspecciones/carlo
+    paths:
+      - .github/workflows/validate-inspection-detail-freeze.yml
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/inspecciones/carlo
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run validation gates and write evidence
+        shell: bash
+        run: |
+          set +e
+          mkdir -p .validation-logs docs/inspections
+          report="docs/inspections/inspection-detail-freeze-validation-2026-07-23.md"
+          printf '# Validación · InspectionDetailResponse y freeze de Gestión\n\n' > "$report"
+          printf 'Fecha CI: %s UTC  \n' "$(date -u '+%Y-%m-%d %H:%M:%S')" >> "$report"
+          printf 'Commit validado: `%s`\n\n' "$(git rev-parse HEAD)" >> "$report"
+          overall=0
+          run_gate() {
+            name="$1"; shift; log=".validation-logs/${name}.log"
+            "$@" >"$log" 2>&1; status=$?
+            if [ "$status" -eq 0 ]; then result='✅ Verde'; else result="❌ Falló (exit $status)"; overall=1; fi
+            printf '## `%s`\n\n%s\n\n' "$*" "$result" >> "$report"
+            if [ "$status" -ne 0 ]; then printf '```text\n' >> "$report"; tail -n 120 "$log" >> "$report"; printf '\n```\n\n' >> "$report"; fi
+          }
+          run_gate contracts-build pnpm --filter @aurelia/contracts build
+          run_gate api-build pnpm --filter api build
+          run_gate api-lint pnpm --filter api lint
+          run_gate web-typecheck pnpm --filter web typecheck
+          run_gate web-lint pnpm --filter web lint
+          run_gate mobile-typecheck pnpm --filter mobile-inspecciones typecheck
+          run_gate mobile-lint pnpm --filter mobile-inspecciones lint
+          run_gate mobile-smoke pnpm --filter mobile-inspecciones test:smoke
+          printf '## Resultado global\n\n%s\n' "$([ "$overall" -eq 0 ] && echo '✅ Todos los gates ejecutados en verde.' || echo '❌ Existen gates fallidos; revisar evidencia anterior.')" >> "$report"
+          echo "OVERALL=$overall" >> "$GITHUB_ENV"
+      - name: Commit validation evidence
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/inspections/inspection-detail-freeze-validation-2026-07-23.md
+          git commit -m "docs(inspections): refresh detail and freeze validation"
+      - name: Remove temporary workflow
+        run: |
+          git rm .github/workflows/validate-inspection-detail-freeze.yml
+          git commit -m "chore: remove inspection detail validation workflow"
+      - run: git push origin HEAD:feature/inspecciones/carlo
+      - if: env.OVERALL != '0'
+        run: exit 1

@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsInt,
   IsObject,
   IsOptional,
@@ -38,6 +39,7 @@ export class NotificationDeliveryFailureDto {
   reason: string;
 
   @IsOptional()
+  @IsBoolean()
   bounced?: boolean;
 
   @IsOptional()

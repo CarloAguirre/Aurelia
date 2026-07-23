@@ -32,6 +32,7 @@ import { UpsertInspectionAnswerDto } from './dto/upsert-inspection-answer.dto';
 import { InspectionAccessService } from './inspection-access.service';
 import { InspectionAssignmentEmailService } from './inspection-assignment-email.service';
 import { InspectionDetailService } from './inspection-detail.service';
+import { InspectionTransitionPolicyService } from './inspection-transition-policy.service';
 import { InspectionsService } from './inspections.service';
 
 @RequirePermissions(INSPECTION_CAPABILITIES.read)
@@ -46,6 +47,7 @@ export class InspectionsController {
     private readonly inspectionDetailService: InspectionDetailService,
     private readonly resourceScopeService: ResourceScopeService,
     private readonly assignmentEmails: InspectionAssignmentEmailService,
+    private readonly transitions: InspectionTransitionPolicyService,
   ) {}
 
   @Get('types')
@@ -138,6 +140,7 @@ export class InspectionsController {
     @Req() request: AuthenticatedRequest,
   ): Promise<InspectionResponse> {
     const inspection = await this.inspectionAccess.assertInspection(request.user, id);
+    this.transitions.assertInspectionTransition(inspection.status, InspectionStatus.CLOSED);
     if (inspection.openFindingsCount > 0) throw new BadRequestException('Inspection has open findings');
     const closedAt = new Date().toISOString();
     return this.inspectionsService.update(
@@ -184,6 +187,7 @@ export class InspectionsController {
     @Req() request: AuthenticatedRequest,
   ): Promise<InspectionResponse> {
     const previousEntity = await this.inspectionAccess.assertInspection(request.user, id);
+    this.transitions.assertInspectionTransition(previousEntity.status, dto.status);
     if (dto.status === InspectionStatus.CLOSED) this.assertCapability(request, INSPECTION_CAPABILITIES.review);
     else if (dto.status === InspectionStatus.CANCELLED) this.assertCapability(request, INSPECTION_CAPABILITIES.admin);
     else this.assertCapability(request, INSPECTION_CAPABILITIES.execute);
@@ -231,9 +235,12 @@ export class InspectionsController {
       await this.resourceScopeService.assertCanAccessInspection(request.user, { companyId, areaId });
     }
 
-    if (dto.status === InspectionStatus.CLOSED) this.assertCapability(request, INSPECTION_CAPABILITIES.review);
-    else if (dto.status === InspectionStatus.CANCELLED) this.assertCapability(request, INSPECTION_CAPABILITIES.admin);
-    else if (dto.status !== undefined) this.assertCapability(request, INSPECTION_CAPABILITIES.execute);
+    if (dto.status !== undefined) {
+      this.transitions.assertInspectionTransition(previous.status, dto.status);
+      if (dto.status === InspectionStatus.CLOSED) this.assertCapability(request, INSPECTION_CAPABILITIES.review);
+      else if (dto.status === InspectionStatus.CANCELLED) this.assertCapability(request, INSPECTION_CAPABILITIES.admin);
+      else this.assertCapability(request, INSPECTION_CAPABILITIES.execute);
+    }
 
     if (this.hasInspectionOperationalChanges(dto)) this.assertCapability(request, INSPECTION_CAPABILITIES.execute);
 
@@ -265,7 +272,10 @@ export class InspectionsController {
     @Body() dto: UpdateInspectionFindingDto,
     @Req() request: AuthenticatedRequest,
   ): Promise<InspectionFindingResponse> {
-    await this.inspectionAccess.assertFinding(request.user, findingId);
+    const currentFinding = await this.inspectionAccess.assertFinding(request.user, findingId);
+    if (dto.status !== undefined) {
+      this.transitions.assertFindingTransition(currentFinding.status, dto.status);
+    }
     const isCancellation = dto.status === InspectionFindingStatus.CANCELLED;
     const isReviewAction = dto.status === InspectionFindingStatus.CLOSED
       || dto.status === InspectionFindingStatus.REJECTED
@@ -373,6 +383,7 @@ export class InspectionsController {
     const activeFindings = findings.filter((finding) => finding.status !== InspectionFindingStatus.CANCELLED);
     if (activeFindings.length === 0) return;
     if (activeFindings.some((finding) => finding.status !== InspectionFindingStatus.CLOSED)) return;
+    this.transitions.assertInspectionTransition(inspection.status, InspectionStatus.CLOSED);
     const closedAt = new Date().toISOString();
     await this.inspectionsService.update(
       inspectionId,

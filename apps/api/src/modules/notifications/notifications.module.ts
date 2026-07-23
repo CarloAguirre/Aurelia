@@ -13,6 +13,7 @@ import { NotificationDeliveryEntity } from './entities/notification-delivery.ent
 import { NotificationRecipientEntity } from './entities/notification-recipient.entity';
 import { NotificationEntity } from './entities/notification.entity';
 import { NotificationDeliveryService } from './notification-delivery.service';
+import { NotificationDeliverySubscriber } from './notification-delivery.subscriber';
 import { NotificationRecipientStateService } from './notification-recipient-state.service';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
@@ -39,6 +40,7 @@ import { NotificationsService } from './notifications.service';
     NotificationsService,
     NotificationRecipientStateService,
     NotificationDeliveryService,
+    NotificationDeliverySubscriber,
   ],
   exports: [NotificationsService, NotificationDeliveryService],
 })

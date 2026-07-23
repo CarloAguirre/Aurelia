@@ -74,7 +74,7 @@ export function NotificationDeepLinkPage() {
           <button
             type="button"
             className="mt-6 h-11 rounded-xl bg-[#c8a064] px-6 text-sm font-bold text-white"
-            onClick={() => navigate(sessionToken ? '/notifications' : '/login', { replace: true })}
+            onClick={() => navigate(sessionToken ? '/' : '/login', { replace: true })}
           >
             Continuar
           </button>

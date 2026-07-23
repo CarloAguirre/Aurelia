@@ -148,7 +148,7 @@ export class InspectionAssignmentEmailService {
   }): Promise<TrackedAssignmentLink> {
     const fallbackUrl = this.buildInspectionUrl(input.inspection.id, input.inspectionReference);
     try {
-      const notification = await this.notifications.create({
+      const notification = await this.notifications.createInspectionEvent({
         title: `Inspección asignada · ${input.inspectionReference}`,
         body: `Tienes ${input.findingIds.length} observación${input.findingIds.length === 1 ? '' : 'es'} pendiente${input.findingIds.length === 1 ? '' : 's'} de gestión.`,
         category: 'inspection.assigned',

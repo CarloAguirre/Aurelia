@@ -94,8 +94,11 @@ export function useMobileInspectionFindingActions() {
   const queryClient = useQueryClient();
 
   async function invalidate(inspectionId: string) {
+    const detailKey = inspectionId
+      ? ['mobile-inspecciones', 'inspection-detail', inspectionId]
+      : ['mobile-inspecciones', 'inspection-detail'];
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['mobile-inspecciones', 'inspection-detail', inspectionId] }),
+      queryClient.invalidateQueries({ queryKey: detailKey }),
       queryClient.invalidateQueries({ queryKey: ['mobile-inspecciones', 'management-table'] }),
       queryClient.invalidateQueries({ queryKey: ['mobile-inspecciones', 'management-kpis'] }),
       queryClient.invalidateQueries({ queryKey: ['mobile-inspecciones', 'history-kpis'] }),

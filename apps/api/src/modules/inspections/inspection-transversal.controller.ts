@@ -22,7 +22,7 @@ export class InspectionTransversalController {
     private readonly inspectionAccess: InspectionAccessService,
   ) {}
 
-  @RequirePermissions('evidences:read')
+  @RequirePermissions(INSPECTION_CAPABILITIES.read, 'evidences:read')
   @Get(':id/evidences')
   async findEvidences(
     @Param('id', ParseUUIDPipe) id: string,
@@ -44,7 +44,7 @@ export class InspectionTransversalController {
     return this.inspectionTransversalService.linkEvidence(id, evidenceId, dto, request.user.sub);
   }
 
-  @RequirePermissions('comments:read')
+  @RequirePermissions(INSPECTION_CAPABILITIES.read, 'comments:read')
   @Get(':id/comments')
   async findComments(
     @Param('id', ParseUUIDPipe) id: string,

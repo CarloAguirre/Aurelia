@@ -4,6 +4,7 @@ import {
   InspectionDashboardSummaryResponse,
   InspectionFindingSeverity,
   InspectionFindingStatus,
+  InspectionHistoryKpisResponse,
   InspectionResponse,
   InspectionStatus,
 } from '@aurelia/contracts';
@@ -58,20 +59,14 @@ export class InspectionAccessService {
   }
 
   async getDashboardSummary(user: AccessTokenPayload): Promise<InspectionDashboardSummaryResponse> {
-    const allInspections = await this.inspections.find();
-    const scopedInspections = await this.resourceScope.filterAllowedInspections(user, allInspections);
-    const inspectionIds = scopedInspections.map((inspection) => inspection.id);
-    const findings = inspectionIds.length === 0
-      ? []
-      : await this.findings.find({ where: { inspectionId: In(inspectionIds) } });
-
+    const { inspections, findings } = await this.getScopedData(user);
     const byStatus = this.inspectionStatusCounter();
     const findingsByStatus = this.findingStatusCounter();
     const findingsBySeverity = this.findingSeverityCounter();
     const now = new Date();
     const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-    for (const inspection of scopedInspections) byStatus[inspection.status] += 1;
+    for (const inspection of inspections) byStatus[inspection.status] += 1;
     for (const finding of findings) {
       findingsByStatus[finding.status] += 1;
       findingsBySeverity[finding.severity] += 1;
@@ -84,14 +79,14 @@ export class InspectionAccessService {
     const dueSoonNext7Days = openFindings.filter(
       (finding) => finding.dueAt && finding.dueAt >= now && finding.dueAt <= sevenDaysFromNow,
     ).length;
-    const withOpenFindings = scopedInspections.filter((inspection) => inspection.openFindingsCount > 0).length;
-    const closedRate = scopedInspections.length === 0
+    const withOpenFindings = inspections.filter((inspection) => inspection.openFindingsCount > 0).length;
+    const closedRate = inspections.length === 0
       ? 0
-      : Number(((byStatus[InspectionStatus.CLOSED] / scopedInspections.length) * 100).toFixed(2));
+      : Number(((byStatus[InspectionStatus.CLOSED] / inspections.length) * 100).toFixed(2));
 
     return {
       inspections: {
-        total: scopedInspections.length,
+        total: inspections.length,
         byStatus,
         withOpenFindings,
         closedRate,
@@ -105,6 +100,76 @@ export class InspectionAccessService {
         dueSoonNext7Days,
       },
     };
+  }
+
+  async getHistoryKpis(user: AccessTokenPayload): Promise<InspectionHistoryKpisResponse> {
+    const { inspections, findings } = await this.getScopedData(user);
+    const findingsByInspection = new Map<string, InspectionFindingEntity[]>();
+    for (const finding of findings) {
+      if (finding.status === InspectionFindingStatus.CANCELLED) continue;
+      const current = findingsByInspection.get(finding.inspectionId) ?? [];
+      current.push(finding);
+      findingsByInspection.set(finding.inspectionId, current);
+    }
+
+    const year = new Date().getFullYear();
+    const closedInspections = inspections.filter((inspection) => {
+      const inspectionFindings = findingsByInspection.get(inspection.id) ?? [];
+      if (!this.isEffectivelyClosed(inspection, inspectionFindings)) return false;
+      const closeDate = this.resolveCloseDate(inspection, inspectionFindings);
+      return closeDate?.getFullYear() === year;
+    });
+    const closedInspectionIds = new Set(closedInspections.map((inspection) => inspection.id));
+    const currentFindings = findings.filter(
+      (finding) => closedInspectionIds.has(finding.inspectionId) && finding.status !== InspectionFindingStatus.CANCELLED,
+    );
+    const closedFindings = currentFindings.filter((finding) => finding.status === InspectionFindingStatus.CLOSED).length;
+    const closureDays = closedInspections.map((inspection) => {
+      const inspectionFindings = findingsByInspection.get(inspection.id) ?? [];
+      const start = inspection.startedAt ?? inspection.scheduledAt ?? inspection.createdAt;
+      const end = this.resolveCloseDate(inspection, inspectionFindings) ?? start;
+      return Math.max(0, Math.ceil((end.getTime() - start.getTime()) / 86_400_000));
+    });
+    const averageClosureDays = closureDays.length === 0
+      ? 0
+      : Number((closureDays.reduce((sum, value) => sum + value, 0) / closureDays.length).toFixed(1));
+    const contractorCompanies = new Set(
+      closedInspections.map((inspection) => inspection.companyId).filter((value): value is string => Boolean(value)),
+    ).size;
+
+    return {
+      year,
+      closedInspections: closedInspections.length,
+      averageClosureDays,
+      closedFindingsRate: currentFindings.length === 0
+        ? 0
+        : Number(((closedFindings / currentFindings.length) * 100).toFixed(2)),
+      contractorCompanies,
+    };
+  }
+
+  private async getScopedData(user: AccessTokenPayload): Promise<{ inspections: InspectionEntity[]; findings: InspectionFindingEntity[] }> {
+    const allInspections = await this.inspections.find();
+    const inspections = await this.resourceScope.filterAllowedInspections(user, allInspections);
+    const inspectionIds = inspections.map((inspection) => inspection.id);
+    const findings = inspectionIds.length === 0
+      ? []
+      : await this.findings.find({ where: { inspectionId: In(inspectionIds) } });
+    return { inspections, findings };
+  }
+
+  private isEffectivelyClosed(inspection: InspectionEntity, findings: InspectionFindingEntity[]): boolean {
+    if (inspection.status === InspectionStatus.CANCELLED) return false;
+    if (inspection.status === InspectionStatus.CLOSED) return true;
+    return findings.length > 0 && findings.every((finding) => finding.status === InspectionFindingStatus.CLOSED);
+  }
+
+  private resolveCloseDate(inspection: InspectionEntity, findings: InspectionFindingEntity[]): Date | null {
+    const latestFindingClose = findings.reduce<Date | null>((latest, finding) => {
+      if (!finding.closedAt) return latest;
+      return !latest || finding.closedAt > latest ? finding.closedAt : latest;
+    }, null);
+    return inspection.closedAt ?? inspection.completedAt ?? latestFindingClose ?? inspection.updatedAt ?? null;
   }
 
   private inspectionStatusCounter(): Record<InspectionStatus, number> {

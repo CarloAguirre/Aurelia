@@ -17,6 +17,7 @@ import {
 } from '@aurelia/contracts';
 import { ResourceScopeService } from '../access-control/resource-scope.service';
 import type { AuthenticatedRequest } from '../auth/authenticated-request';
+import { RequireAnyPermissions } from '../auth/require-any-permissions.decorator';
 import { RequirePermissions } from '../auth/require-permissions.decorator';
 import { UsersService } from '../users/users.service';
 import { CloseInspectionDto } from './dto/close-inspection.dto';
@@ -173,7 +174,11 @@ export class InspectionsController {
     return this.inspectionsService.findOne(id);
   }
 
-  @RequirePermissions(INSPECTION_CAPABILITIES.execute)
+  @RequireAnyPermissions(
+    INSPECTION_CAPABILITIES.execute,
+    INSPECTION_CAPABILITIES.review,
+    INSPECTION_CAPABILITIES.admin,
+  )
   @Patch(':id/status')
   async updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
@@ -183,9 +188,10 @@ export class InspectionsController {
     const previousEntity = await this.inspectionAccess.assertInspection(request.user, id);
     if (dto.status === InspectionStatus.CLOSED) {
       this.assertCapability(request, INSPECTION_CAPABILITIES.review);
-    }
-    if (dto.status === InspectionStatus.CANCELLED) {
+    } else if (dto.status === InspectionStatus.CANCELLED) {
       this.assertCapability(request, INSPECTION_CAPABILITIES.admin);
+    } else {
+      this.assertCapability(request, INSPECTION_CAPABILITIES.execute);
     }
 
     const previous = await this.inspectionsService.findOne(previousEntity.id);
@@ -207,7 +213,12 @@ export class InspectionsController {
     );
   }
 
-  @RequirePermissions(INSPECTION_CAPABILITIES.execute)
+  @RequireAnyPermissions(
+    INSPECTION_CAPABILITIES.execute,
+    INSPECTION_CAPABILITIES.review,
+    INSPECTION_CAPABILITIES.reassign,
+    INSPECTION_CAPABILITIES.admin,
+  )
   @Patch(':id')
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -222,8 +233,18 @@ export class InspectionsController {
       const areaId = dto.areaId === undefined ? previous.areaId : dto.areaId;
       await this.resourceScopeService.assertCanAccessInspection(request.user, { companyId, areaId });
     }
-    if (dto.status === InspectionStatus.CLOSED) this.assertCapability(request, INSPECTION_CAPABILITIES.review);
-    if (dto.status === InspectionStatus.CANCELLED) this.assertCapability(request, INSPECTION_CAPABILITIES.admin);
+
+    if (dto.status === InspectionStatus.CLOSED) {
+      this.assertCapability(request, INSPECTION_CAPABILITIES.review);
+    } else if (dto.status === InspectionStatus.CANCELLED) {
+      this.assertCapability(request, INSPECTION_CAPABILITIES.admin);
+    } else if (dto.status !== undefined) {
+      this.assertCapability(request, INSPECTION_CAPABILITIES.execute);
+    }
+
+    if (this.hasInspectionOperationalChanges(dto)) {
+      this.assertCapability(request, INSPECTION_CAPABILITIES.execute);
+    }
 
     const updated = await this.inspectionsService.update(id, dto, request.user.sub);
     await this.notifyIfInspectionActivated(previous.status, updated);
@@ -241,7 +262,11 @@ export class InspectionsController {
     return this.inspectionsService.createFollowup(findingId, dto, request.user.sub);
   }
 
-  @RequirePermissions(INSPECTION_CAPABILITIES.execute)
+  @RequireAnyPermissions(
+    INSPECTION_CAPABILITIES.execute,
+    INSPECTION_CAPABILITIES.review,
+    INSPECTION_CAPABILITIES.reassign,
+  )
   @Patch('findings/:findingId')
   async updateFinding(
     @Param('findingId', ParseUUIDPipe) findingId: string,
@@ -249,15 +274,27 @@ export class InspectionsController {
     @Req() request: AuthenticatedRequest,
   ): Promise<InspectionFindingResponse> {
     await this.inspectionAccess.assertFinding(request.user, findingId);
-    const isReviewAction = dto.status === InspectionFindingStatus.CLOSED || dto.status === InspectionFindingStatus.REJECTED;
+    const isReviewAction = dto.status === InspectionFindingStatus.CLOSED
+      || dto.status === InspectionFindingStatus.REJECTED
+      || dto.closedAt !== undefined
+      || dto.rejectedAt !== undefined
+      || dto.rejectionReason !== undefined;
     if (isReviewAction) {
       this.assertCapability(request, INSPECTION_CAPABILITIES.review);
       if (!(await this.resourceScopeService.canReviewInspectionFindings(request.user))) {
         throw new ForbiddenException('Only authorized Gold Fields users can approve or reject findings');
       }
     }
-    if (dto.ownerUserId !== undefined || dto.responsibleUserIds !== undefined || dto.dueAt !== undefined) {
+
+    const changesAssignment = dto.ownerUserId !== undefined
+      || dto.responsibleUserIds !== undefined
+      || dto.dueAt !== undefined;
+    if (changesAssignment) {
       this.assertCapability(request, INSPECTION_CAPABILITIES.reassign);
+    }
+
+    if (this.hasFindingOperationalChanges(dto, isReviewAction)) {
+      this.assertCapability(request, INSPECTION_CAPABILITIES.execute);
     }
 
     const finding = await this.inspectionsService.updateFinding(findingId, dto, request.user.sub);
@@ -274,6 +311,35 @@ export class InspectionsController {
   ): Promise<InspectionFollowupResponse> {
     await this.inspectionAccess.assertFollowup(request.user, followupId);
     return this.inspectionsService.updateFollowup(followupId, dto);
+  }
+
+  private hasInspectionOperationalChanges(dto: UpdateInspectionDto): boolean {
+    return dto.inspectionTypeId !== undefined
+      || dto.templateId !== undefined
+      || dto.title !== undefined
+      || dto.description !== undefined
+      || dto.scheduledAt !== undefined
+      || dto.startedAt !== undefined
+      || dto.completedAt !== undefined
+      || dto.latitude !== undefined
+      || dto.longitude !== undefined
+      || dto.score !== undefined
+      || dto.notes !== undefined;
+  }
+
+  private hasFindingOperationalChanges(dto: UpdateInspectionFindingDto, isReviewAction: boolean): boolean {
+    const operationalStatus = dto.status !== undefined
+      && dto.status !== InspectionFindingStatus.CLOSED
+      && dto.status !== InspectionFindingStatus.REJECTED;
+    return operationalStatus
+      || dto.title !== undefined
+      || dto.description !== undefined
+      || dto.detectedCondition !== undefined
+      || dto.proposedCorrectiveAction !== undefined
+      || dto.executedActionDescription !== undefined
+      || dto.severity !== undefined
+      || dto.executedAt !== undefined
+      || (!isReviewAction && dto.reason !== undefined);
   }
 
   private assertAnyCapability(request: AuthenticatedRequest, capabilities: InspectionCapability[]): void {

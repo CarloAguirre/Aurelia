@@ -12,6 +12,7 @@ import { CreateNotificationDto } from './dto/create-notification.dto';
 import {
   CreateNotificationDeepLinkDto,
   NotificationDeliveryFailureDto,
+  RegisterNotificationEmailDeliveryDto,
 } from './dto/notification-delivery.dto';
 import { NotificationDeliveryService } from './notification-delivery.service';
 import { NotificationRecipientStateService } from './notification-recipient-state.service';
@@ -53,6 +54,19 @@ export class NotificationsController {
   @Get('deep-link/:token')
   resolveDeepLink(@Param('token') token: string): NotificationDeepLinkResponse {
     return this.notificationDeliveries.resolveDeepLink(token);
+  }
+
+  @RequirePermissions('notifications:write')
+  @Post(':id/deliveries/email')
+  registerEmailDelivery(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RegisterNotificationEmailDeliveryDto,
+  ): Promise<NotificationDeliveryResponse> {
+    return this.notificationDeliveries.registerEmailAttempt({
+      notificationId: id,
+      destination: dto.destination,
+      metadata: dto.metadata,
+    });
   }
 
   @RequirePermissions('notifications:write')

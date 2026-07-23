@@ -4,6 +4,7 @@ import { AccessControlModule } from '../access-control/access-control.module';
 import { AuditModule } from '../audit/audit.module';
 import { CommentsModule } from '../comments/comments.module';
 import { EvidencesModule } from '../evidences/evidences.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { AreaEntity } from '../organization/entities/area.entity';
 import { CompanyEntity } from '../organization/entities/company.entity';
 import { SectorEntity } from '../organization/entities/sector.entity';
@@ -50,6 +51,7 @@ import { InspectionsService } from './inspections.service';
     AuditModule,
     CommentsModule,
     EvidencesModule,
+    NotificationsModule,
     ReportsModule,
     UsersModule,
     TypeOrmModule.forFeature([

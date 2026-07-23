@@ -4,9 +4,7 @@ import { InspectionAnswerValue, InspectionType } from '@aurelia/contracts';
 import { colors, fontWeight, spacing } from '../../theme/tokens';
 import { useMobileInspectionAssignmentScope } from '../../stores/mobileInspectionAssignmentScope.store';
 import { useManualInspectionDraft } from '../../../modules/inspection/manualInspection.store';
-import { suggestCompany } from '../../services/api/ai.api';
 import { ChatCompanyPicker } from './ChatCompanyPicker';
-import { CompanySuggestionCard } from './CompanySuggestionCard';
 
 export type ChipVariant = 'default' | 'selected-gold' | 'selected-navy';
 
@@ -14,10 +12,6 @@ interface ChipProps {
   label: string;
   variant?: ChipVariant;
   onPress?: () => void;
-}
-
-function normalizeText(value: string) {
-  return value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
 export function Chip({ label, variant = 'default', onPress }: ChipProps) {
@@ -45,20 +39,11 @@ export function ChipRow({ chips, selected, onSelect, variant = 'gold' }: ChipRow
   const canSelectCompany = useMobileInspectionAssignmentScope((state) => state.canSelectCompany);
   const assignedCompanyName = useMobileInspectionAssignmentScope((state) => state.companyName);
   const inspectionType = useManualInspectionDraft((state) => state.inspectionType);
-  const areaName = useManualInspectionDraft((state) => state.areaName);
-  const sectorName = useManualInspectionDraft((state) => state.sectorName);
   const findingObservations = useManualInspectionDraft((state) => state.findingObservations);
   const answersByItemId = useManualInspectionDraft((state) => state.answersByItemId);
   const findingCompanyId = useManualInspectionDraft((state) => state.findingCompanyId);
   const findingCompanyName = useManualInspectionDraft((state) => state.findingCompanyName);
   const confirmedRef = React.useRef(false);
-  const chipsRef = React.useRef(chips);
-  chipsRef.current = chips;
-  const [showCompanyPicker, setShowCompanyPicker] = React.useState(false);
-  const [suggestedCompanyName, setSuggestedCompanyName] = React.useState(chips[0] ?? '');
-  const [suggestionReason, setSuggestionReason] = React.useState(
-    'Recomendación basada en el área, sector y empresas disponibles.',
-  );
 
   const hasSavedFinding = findingObservations.some((item) => item.saved);
   const hasChecklistFinding = Object.values(answersByItemId).some(
@@ -71,42 +56,6 @@ export function ChipRow({ chips, selected, onSelect, variant = 'gold' }: ChipRow
   const resolvedCompanyStage = Boolean(selected && findingCompanyName && selected === findingCompanyName);
   const companySelector = unresolvedCompanyStage || resolvedCompanyStage;
   const lockedCompany = !canSelectCompany && Boolean(assignedCompanyName) && companySelector;
-  const checklistSuggestionStage = inspectionType === InspectionType.REGULATORY && unresolvedCompanyStage;
-  const companyKey = chips.join('\u0000');
-
-  React.useEffect(() => {
-    const availableCompanies = chipsRef.current;
-    if (!checklistSuggestionStage || availableCompanies.length === 0) return;
-
-    let cancelled = false;
-    const fallbackCompany = availableCompanies[0] ?? '';
-    setSuggestedCompanyName(fallbackCompany);
-    setSuggestionReason('Recomendación basada en el área, sector y empresas disponibles.');
-
-    void suggestCompany({
-      area: areaName ?? '',
-      sector: sectorName ?? '',
-      availableCompanies,
-    })
-      .then((response) => {
-        if (cancelled) return;
-        const normalizedSuggestion = normalizeText(response.suggestion);
-        const match = availableCompanies.find((company) => {
-          const normalizedCompany = normalizeText(company);
-          return normalizedSuggestion.includes(normalizedCompany) || normalizedCompany.includes(normalizedSuggestion);
-        });
-        setSuggestedCompanyName(match ?? fallbackCompany);
-        setSuggestionReason(response.suggestion);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setSuggestedCompanyName(fallbackCompany);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [areaName, checklistSuggestionStage, companyKey, sectorName]);
 
   React.useEffect(() => {
     if (!lockedCompany || selected === assignedCompanyName || confirmedRef.current || !assignedCompanyName) return;
@@ -120,17 +69,6 @@ export function ChipRow({ chips, selected, onSelect, variant = 'gold' }: ChipRow
         <Text style={styles.lockedLabel}>Empresa responsable</Text>
         <View style={styles.lockedField}><Text style={styles.lockedValue}>{assignedCompanyName}</Text></View>
       </View>
-    );
-  }
-
-  if (checklistSuggestionStage && !showCompanyPicker && suggestedCompanyName) {
-    return (
-      <CompanySuggestionCard
-        company={{ id: suggestedCompanyName, name: suggestedCompanyName }}
-        reason={suggestionReason}
-        onConfirm={() => onSelect?.(suggestedCompanyName)}
-        onChooseOther={() => setShowCompanyPicker(true)}
-      />
     );
   }
 

@@ -44,7 +44,6 @@ export function ChipRow({ chips, selected, onSelect, variant = 'gold' }: ChipRow
   const findingCompanyId = useManualInspectionDraft((state) => state.findingCompanyId);
   const findingCompanyName = useManualInspectionDraft((state) => state.findingCompanyName);
   const confirmedRef = React.useRef(false);
-  const lockedCompany = !canSelectCompany && Boolean(assignedCompanyName) && chips.length === 1 && chips[0] === assignedCompanyName;
 
   const hasSavedFinding = findingObservations.some((item) => item.saved);
   const hasChecklistFinding = Object.values(answersByItemId).some(
@@ -56,6 +55,7 @@ export function ChipRow({ chips, selected, onSelect, variant = 'gold' }: ChipRow
   );
   const resolvedCompanyStage = Boolean(selected && findingCompanyName && selected === findingCompanyName);
   const companySelector = unresolvedCompanyStage || resolvedCompanyStage;
+  const lockedCompany = !canSelectCompany && Boolean(assignedCompanyName) && companySelector;
 
   React.useEffect(() => {
     if (!lockedCompany || selected === assignedCompanyName || confirmedRef.current || !assignedCompanyName) return;

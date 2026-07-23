@@ -42,6 +42,7 @@ const styles = StyleSheet.create({
     maxWidth: '78%',
     backgroundColor: colors.navyDark,
     borderRadius: radius.lg,
+    borderTopRightRadius: 0,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + 2,
     shadowColor: '#000',

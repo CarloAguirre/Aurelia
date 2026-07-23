@@ -453,7 +453,7 @@ export function InspectionChatScreenV2() {
       return;
     }
 
-    if (!state.inspectionDate) {
+    if (!state.inspectionDateSelected) {
       setStep(0);
       push('bot', 'Selecciona la fecha de inspección.');
       push('dates', dates());
@@ -477,12 +477,30 @@ export function InspectionChatScreenV2() {
 
   async function continueChecklistFromDraft() {
     const state = useManualInspectionDraft.getState();
-    setStep(5);
+    setStep(1);
 
     if (!state.templateId) {
       await askChecklistTemplate();
       return;
     }
+
+    let template = templates.find((item) => item.id === state.templateId) ?? null;
+    if (!template) {
+      try {
+        const bootstrap = await getMobileBootstrapLocalFirst();
+        template = bootstrap.catalogs.inspectionTemplates.find((item) => item.id === state.templateId) ?? null;
+      } catch {
+        template = null;
+      }
+    }
+
+    if (!template) {
+      pushError('No pude recuperar la plantilla guardada. Selecciona una nuevamente.');
+      await askChecklistTemplate();
+      return;
+    }
+
+    const rows = rowsOf(template);
 
     if (!state.generalPhoto) {
       push('bot', 'Adjunta la foto general obligatoria.');
@@ -490,8 +508,29 @@ export function InspectionChatScreenV2() {
       return;
     }
 
-    const template = templates.find((item) => item.id === state.templateId) ?? null;
-    const rows = rowsOf(template);
+    const pendingNo = rows.find((row) => {
+      if (state.answersByItemId[row.id] !== InspectionAnswerValue.NOT_COMPLIANT) return false;
+      const detail = state.detailsByItemId[row.id] ?? {};
+      return !detail.detectedCondition?.trim() || !detail.correctiveAction?.trim() || !detail.evidence;
+    });
+
+    if (pendingNo) {
+      const detail = state.detailsByItemId[pendingNo.id] ?? {};
+      if (!detail.detectedCondition?.trim()) {
+        push('bot', 'Retomemos el ítem pendiente. Describe la condición detectada.');
+        setWaiting(`check-cond:${pendingNo.id}`);
+        return;
+      }
+      if (!detail.correctiveAction?.trim()) {
+        push('bot', 'Retomemos el ítem pendiente. Indica la medida correctiva propuesta.');
+        setWaiting(`check-measure:${pendingNo.id}`);
+        return;
+      }
+      push('bot', 'Retomemos el ítem pendiente. Adjunta foto para este hallazgo.');
+      push('itemPhoto', pendingNo);
+      return;
+    }
+
     const next = rows.find((row) => !state.answersByItemId[row.id]);
     if (next) {
       push('bot', `Retomemos: responderemos ${rows.length} ítems.`);
@@ -842,6 +881,16 @@ export function InspectionChatScreenV2() {
       return;
     }
 
+    setStep(4);
+    if (state.findingCompanyId) {
+      if (state.findingResponsibleIds.length === 0) {
+        await askResponsiblePeople(state.findingCompanyId);
+        return;
+      }
+      await showSummary();
+      return;
+    }
+
     push('bot', 'Hay ítems no conformes. Debemos asignar empresa y responsables.');
     await askCompanyForChecklist();
   }
@@ -861,11 +910,38 @@ export function InspectionChatScreenV2() {
         return;
       }
 
-      push('bot', 'Selecciona empresa responsable de los hallazgos.');
-      push('companies', companies);
+      const state = useManualInspectionDraft.getState();
+      const normalizeCompany = (value: string) => value
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+      let reason = 'Recomendación basada en el área, sector y empresas disponibles.';
+      let suggestedCompany = companies[0];
+
+      try {
+        const ai = await suggestCompany({
+          area: state.areaName ?? '',
+          sector: state.sectorName ?? '',
+          availableCompanies: companies.map((item) => item.name),
+        });
+        reason = ai.suggestion;
+        const normalizedSuggestion = normalizeCompany(ai.suggestion);
+        const match = companies.find((item) => {
+          const normalizedName = normalizeCompany(item.name);
+          return normalizedSuggestion.includes(normalizedName) || normalizedName.includes(normalizedSuggestion);
+        });
+        if (match) suggestedCompany = match;
+      } catch {
+        // Keep the deterministic local-first fallback when AI is unavailable.
+      }
+
+      setStep(4);
+      push('bot', 'Te sugiero una empresa responsable según el área, sector y empresas disponibles.');
+      push('companyPick', { companies, company: suggestedCompany, reason } as CompanyPickData);
     } catch {
       clearTyping();
-      pushError('No pude cargar empresas.', () => {
+      pushError('No pude cargar empresas responsables.', () => {
         void askCompanyForChecklist();
       });
     }
@@ -1171,7 +1247,7 @@ export function InspectionChatScreenV2() {
   async function showSummary() {
     setStep(5);
     await sleep(200);
-    push('bot', 'Revisa el resumen antes de guardar.');
+    push('bot', '¡Listo! Revisa el resumen antes de guardar:');
     push('summary');
   }
 
@@ -1244,6 +1320,36 @@ export function InspectionChatScreenV2() {
       return;
     }
 
+    const checklistItems = rowsOf(template);
+    if (!state.generalPhoto) {
+      pushError('La fotografía general es obligatoria.');
+      return;
+    }
+
+    const unanswered = checklistItems.find((item) => !state.answersByItemId[item.id]);
+    if (unanswered) {
+      pushError(`Falta responder el ítem ${unanswered.code}.`);
+      return;
+    }
+
+    const incompleteNo = checklistItems.find((item) => {
+      if (state.answersByItemId[item.id] !== InspectionAnswerValue.NOT_COMPLIANT) return false;
+      const detail = state.detailsByItemId[item.id] ?? {};
+      return !detail.detectedCondition?.trim() || !detail.correctiveAction?.trim() || !detail.evidence;
+    });
+    if (incompleteNo) {
+      pushError(`El ítem ${incompleteNo.code} debe incluir condición, medida correctiva y fotografía.`);
+      return;
+    }
+
+    const hasChecklistFindings = checklistItems.some(
+      (item) => state.answersByItemId[item.id] === InspectionAnswerValue.NOT_COMPLIANT,
+    );
+    if (hasChecklistFindings && (!state.findingCompanyId || state.findingResponsibleIds.length === 0)) {
+      pushError('Debes definir empresa y responsables para los ítems no conformes.');
+      return;
+    }
+
     push('typing');
     try {
       const result = await checklistSave.mutateAsync({
@@ -1274,9 +1380,10 @@ export function InspectionChatScreenV2() {
           criticalCount: '0',
         },
       });
-    } catch {
+    } catch (error) {
       clearTyping();
-      pushError('Error al guardar checklist.', () => {
+      const message = error instanceof Error ? error.message : 'Error al guardar checklist.';
+      pushError(message, () => {
         void submitInspection(messageId);
       });
     }
@@ -1315,6 +1422,13 @@ export function InspectionChatScreenV2() {
 
   function renderSummary(message: Msg) {
     const state = useManualInspectionDraft.getState();
+    const responsibleNames = (loadedUsersByCompany.current.get(state.findingCompanyId ?? '') ?? [])
+      .filter((user) => state.findingResponsibleIds.includes(user.id))
+      .map((user) => user.fullName)
+      .join(', ');
+    const responsibleValue = responsibleNames || (
+      state.findingResponsibleIds.length ? `${state.findingResponsibleIds.length} seleccionados` : '—'
+    );
 
     if (state.inspectionType === InspectionType.ENVIRONMENTAL) {
       const observations = state.findingObservations.filter((item) => item.saved);
@@ -1328,7 +1442,7 @@ export function InspectionChatScreenV2() {
             <SummaryRow label="Inspector" value={state.inspectorName} />
             <SummaryRow label="Área · Sector" value={[state.areaName, state.sectorName].filter(Boolean).join(' · ')} />
             <SummaryRow label="Empresa EECC" value={state.findingCompanyName ?? '—'} />
-            <SummaryRow label="Responsables" value={state.findingResponsibleIds.length ? `${state.findingResponsibleIds.length} seleccionados` : '—'} />
+            <SummaryRow label="Responsables" value={responsibleValue} />
           </View>
 
           <View style={styles.summaryCard}>
@@ -1369,8 +1483,9 @@ export function InspectionChatScreenV2() {
           <SummaryRow label="Área · Sector" value={[state.areaName, state.sectorName].filter(Boolean).join(' · ')} />
           <SummaryRow label="Fecha" value={state.inspectionDate} />
           <SummaryRow label="Ubicación" value={state.locationLabel} />
-          <SummaryRow label="Plantilla" value={state.templateName ?? '—'} />
+          <SummaryRow label="Registro" value={state.templateName ?? '—'} />
           <SummaryRow label="Empresa EECC" value={state.findingCompanyName ?? (noCount ? 'Pendiente' : 'No aplica')} />
+          <SummaryRow label="Responsables" value={noCount ? responsibleValue : 'No aplica'} />
         </View>
 
         <View style={styles.summaryCard}>

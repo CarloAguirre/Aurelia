@@ -1,17 +1,17 @@
 name: Temporary mobile checklist flow polish
 
 on:
-  push:
+  pull_request:
     branches:
       - feature/inspecciones/carlo
-    paths:
-      - .github/workflows/tmp-mobile-checklist-flow-polish.yml
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
 
 jobs:
   patch-checklist-flow:
+    if: github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.head_ref, 'automation/mobile-checklist-flow-polish-')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

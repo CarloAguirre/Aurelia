@@ -19,11 +19,14 @@ export async function consumePendingMobileNotificationRoute(): Promise<string | 
 }
 
 export function toMobileNotificationRoute(result: NotificationDeepLinkResponse): string {
-  const inspectionId = result.entityType === 'inspection' ? result.entityId : null;
-  const findingId = result.entityType === 'inspection_finding' ? result.entityId : null;
-  const params = new URLSearchParams();
-  if (inspectionId) params.set('inspectionId', inspectionId);
-  if (findingId) params.set('findingId', findingId);
-  const query = params.toString();
-  return query ? `/inspection/dashboard?${query}` : '/inspection/dashboard';
+  const params: string[] = [];
+  if (result.entityType === 'inspection' && result.entityId) {
+    params.push(`inspectionId=${encodeURIComponent(result.entityId)}`);
+  }
+  if (result.entityType === 'inspection_finding' && result.entityId) {
+    params.push(`findingId=${encodeURIComponent(result.entityId)}`);
+  }
+  return params.length > 0
+    ? `/inspection/dashboard?${params.join('&')}`
+    : '/inspection/dashboard';
 }

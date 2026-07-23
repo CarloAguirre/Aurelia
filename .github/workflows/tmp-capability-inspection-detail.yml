@@ -1,0 +1,110 @@
+name: Temporary inspection detail capabilities
+
+on:
+  push:
+    branches:
+      - feature/inspecciones/carlo
+    paths:
+      - .github/workflows/tmp-capability-inspection-detail.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/inspecciones/carlo
+          fetch-depth: 0
+      - name: Apply capability presentation
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('apps/web/src/modules/inspections/components/InspectionDetailRealDataModal.tsx')
+          text = path.read_text()
+
+          def replace_once(old: str, new: str):
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'Expected one match, found {count}: {old[:140]}')
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              '<button type="button" className="flex h-[40px] items-center justify-center rounded-[8px] border-[1.5px] border-[#d1d1d1] bg-white px-[15.5px] py-[1.5px] text-[13px] font-semibold text-[#333] disabled:opacity-50" disabled={actionDisabled} onClick={() => setSlaSheetOpen(true)}>Reasignar SLA</button>',
+              '{actions.canReassign ? <button type="button" className="flex h-[40px] items-center justify-center rounded-[8px] border-[1.5px] border-[#d1d1d1] bg-white px-[15.5px] py-[1.5px] text-[13px] font-semibold text-[#333] disabled:opacity-50" disabled={actionDisabled} onClick={() => setSlaSheetOpen(true)}>Reasignar SLA</button> : null}',
+          )
+          replace_once(
+              '<div className="flex items-center gap-[8px] rounded-[8px] bg-white px-[12px] py-[9px]"><button type="button" className="flex h-[40px] items-center justify-center gap-[5px] rounded-[9px] border-2 border-[#c4365a] bg-white px-[16px] py-[2px] text-[12px] font-bold text-[#570b1d] disabled:opacity-50" disabled={actionDisabled} onClick={() => onRequestReject(item)}><InspectionDetailRejectIcon />Rechazar</button><button type="button" className="flex h-[40px] min-w-0 flex-1 items-center justify-center gap-[5px] rounded-[9px] bg-[#3a9b3a] px-[12px] text-[12px] font-bold text-white disabled:opacity-50" disabled={actionDisabled} onClick={approve}><InspectionDetailApproveIcon />Aprobar cierre</button></div>',
+              '{actions.canReview ? <div className="flex items-center gap-[8px] rounded-[8px] bg-white px-[12px] py-[9px]"><button type="button" className="flex h-[40px] items-center justify-center gap-[5px] rounded-[9px] border-2 border-[#c4365a] bg-white px-[16px] py-[2px] text-[12px] font-bold text-[#570b1d] disabled:opacity-50" disabled={actionDisabled} onClick={() => onRequestReject(item)}><InspectionDetailRejectIcon />Rechazar</button><button type="button" className="flex h-[40px] min-w-0 flex-1 items-center justify-center gap-[5px] rounded-[9px] bg-[#3a9b3a] px-[12px] text-[12px] font-bold text-white disabled:opacity-50" disabled={actionDisabled} onClick={approve}><InspectionDetailApproveIcon />Aprobar cierre</button></div> : <div className="rounded-[8px] bg-white px-[12px] py-[10px]"><p className="text-center text-[11px] font-semibold text-[#646464]">En espera de revisión Gold Fields</p></div>}',
+          )
+          replace_once(
+              '<button type="button" className="flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#c8a064] px-[12px] text-[15px] font-bold text-white shadow-[0px_2px_5px_rgba(200,160,100,0.3)] disabled:opacity-50" disabled={actionDisabled} onClick={() => onRequestExecutionMode(item, index)}>Ejecutar observación rechazada</button>',
+              '{actions.canExecute ? <button type="button" className="flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#c8a064] px-[12px] text-[15px] font-bold text-white shadow-[0px_2px_5px_rgba(200,160,100,0.3)] disabled:opacity-50" disabled={actionDisabled} onClick={() => onRequestExecutionMode(item, index)}>Ejecutar observación rechazada</button> : null}',
+          )
+          replace_once(
+              "{status === 'open' ? <button type=\"button\" className=\"flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#c8a064] px-[12px] text-[15px] font-bold text-white shadow-[0px_2px_5px_rgba(200,160,100,0.3)] disabled:opacity-50\" disabled={actionDisabled} onClick={() => onRequestExecutionMode(item, index)}>Ejecutar observación</button> : null}",
+              "{status === 'open' && actions.canExecute ? <button type=\"button\" className=\"flex h-[52px] w-full items-center justify-center rounded-[14px] bg-[#c8a064] px-[12px] text-[15px] font-bold text-white shadow-[0px_2px_rgba(200,160,100,0.3)] disabled:opacity-50\" disabled={actionDisabled} onClick={() => onRequestExecutionMode(item, index)}>Ejecutar observación</button> : null}",
+          )
+          replace_once(
+              'function GeneralResponsiblesSection({ detail, onReassignClick }: { detail: InspectionDetailResponse; onReassignClick: () => void }) {',
+              'function GeneralResponsiblesSection({ detail, onReassignClick, canReassign }: { detail: InspectionDetailResponse; onReassignClick: () => void; canReassign: boolean }) {',
+          )
+          replace_once(
+              '<div className="border-t border-[#e3e3e3] px-[12px] py-[9px]"><button type="button" onClick={onReassignClick} className="flex h-[42px] w-full items-center justify-center gap-[6px] rounded-[8px] border-[1.5px] border-dashed border-[#d1d1d1] bg-[#f7f7f7] px-[2px] text-[12px] font-semibold leading-none text-[#24588b]"><InspectionDetailAssignIcon />Reasignar a otro compañero {companyName}</button></div>',
+              '{canReassign ? <div className="border-t border-[#e3e3e3] px-[12px] py-[9px]"><button type="button" onClick={onReassignClick} className="flex h-[42px] w-full items-center justify-center gap-[6px] rounded-[8px] border-[1.5px] border-dashed border-[#d1d1d1] bg-[#f7f7f7] px-[2px] text-[12px] font-semibold leading-none text-[#24588b]"><InspectionDetailAssignIcon />Reasignar a otro compañero {companyName}</button></div> : null}',
+          )
+          replace_once(
+              'function GeneralPanel({ detail, onOpenReassign }: { detail: InspectionDetailResponse; onOpenReassign: () => void }) {',
+              'function GeneralPanel({ detail, onOpenReassign, canReassign }: { detail: InspectionDetailResponse; onOpenReassign: () => void; canReassign: boolean }) {',
+          )
+          replace_once(
+              '<GeneralResponsiblesSection detail={detail} onReassignClick={onOpenReassign} />',
+              '<GeneralResponsiblesSection detail={detail} onReassignClick={onOpenReassign} canReassign={canReassign} />',
+          )
+          replace_once(
+              "if (activeTab === 'general') return <GeneralPanel detail={detail} onOpenReassign={onOpenReassign} />;",
+              "if (activeTab === 'general') return <GeneralPanel detail={detail} onOpenReassign={onOpenReassign} canReassign={actions.canReassign} />;",
+          )
+          replace_once(
+              '  const openReassignPrompt = () => {\n    setSelectedReassignIds(currentResponsibleIds);',
+              '  const openReassignPrompt = () => {\n    if (!actions.canReassign) return;\n    setSelectedReassignIds(currentResponsibleIds);',
+          )
+          replace_once(
+              '  const openExecutionMode = (item: InspectionDetailFindingItemResponse, index: number) => setExecutionTarget({ item, index });',
+              '  const openExecutionMode = (item: InspectionDetailFindingItemResponse, index: number) => { if (actions.canExecute) setExecutionTarget({ item, index }); };',
+          )
+          replace_once(
+              '  const openRejectPrompt = (item: InspectionDetailFindingItemResponse) => setRejectTarget(item);',
+              '  const openRejectPrompt = (item: InspectionDetailFindingItemResponse) => { if (actions.canReview) setRejectTarget(item); };',
+          )
+          replace_once(
+              '<ReassignPrompt open={reassignOpen}',
+              '<ReassignPrompt open={reassignOpen && actions.canReassign}',
+          )
+          replace_once(
+              '<FindingRejectDialog open={Boolean(rejectTarget)}',
+              '<FindingRejectDialog open={Boolean(rejectTarget) && actions.canReview}',
+          )
+          replace_once(
+              '{executionTarget ? <FindingExecutionModeView',
+              '{executionTarget && actions.canExecute ? <FindingExecutionModeView',
+          )
+
+          path.write_text(text)
+      - name: Commit capability presentation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/src/modules/inspections/components/InspectionDetailRealDataModal.tsx
+          git commit -m "Aplica capacidades declarativas al detalle de inspección"
+          git push origin HEAD:feature/inspecciones/carlo
+      - name: Remove temporary workflow
+        run: |
+          git pull --ff-only origin feature/inspecciones/carlo
+          git rm .github/workflows/tmp-capability-inspection-detail.yml
+          git commit -m "Retira workflow temporal de capacidades del detalle"
+          git push origin HEAD:feature/inspecciones/carlo

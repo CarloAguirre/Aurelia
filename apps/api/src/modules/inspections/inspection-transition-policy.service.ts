@@ -33,6 +33,7 @@ const INSPECTION_TRANSITIONS: Record<InspectionStatus, ReadonlySet<InspectionSta
     InspectionStatus.IN_PROGRESS,
     InspectionStatus.SUBMITTED,
     InspectionStatus.UNDER_REVIEW,
+    InspectionStatus.CLOSED,
     InspectionStatus.CANCELLED,
   ]),
   [InspectionStatus.CLOSED]: new Set(),

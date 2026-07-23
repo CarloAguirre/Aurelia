@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { InspectionEvidenceRelationType, InspectionFindingStatus, type UpdateInspectionFindingRequest } from '@aurelia/contracts';
+import { useInspectionCapabilities } from '../auth/inspection-capabilities';
 import { updateInspectionFinding } from '../services/inspection-detail.service';
 import { createEvidence, linkEvidence, uploadFile } from '../services/inspections.service';
 
@@ -29,8 +30,13 @@ function normalizeCoordinate(value: number | string | null | undefined) {
   return Number.isFinite(coordinate) ? coordinate : undefined;
 }
 
+function deniedCapability(capability: string): Error {
+  return new Error(`No tienes la capacidad requerida para ${capability}`);
+}
+
 export function useInspectionFindingActions() {
   const queryClient = useQueryClient();
+  const capabilities = useInspectionCapabilities();
   const invalidateInspectionQueries = async (inspectionId: string) => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['inspections', 'detail', inspectionId] }),
@@ -79,41 +85,55 @@ export function useInspectionFindingActions() {
   });
 
   return {
+    canExecute: capabilities.execute,
+    canReview: capabilities.review,
+    canReassign: capabilities.reassign,
     isPending: mutation.isPending || executionMutation.isPending,
-    executeFinding: (inspectionId: string, findingId: string, executedActionDescription: string | null) => mutation.mutate({
-      inspectionId,
-      findingId,
-      payload: {
-        status: InspectionFindingStatus.IN_PROGRESS,
-        executedAt: nowIso(),
-        executedActionDescription,
-      },
-    }),
-    executeFindingWithAfterEvidence: (input: ExecuteFindingWithAfterEvidenceInput) => executionMutation.mutateAsync(input),
-    approveFinding: (inspectionId: string, findingId: string) => mutation.mutate({
-      inspectionId,
-      findingId,
-      payload: {
-        status: InspectionFindingStatus.CLOSED,
-        closedAt: nowIso(),
-      },
-    }),
-    rejectFinding: (inspectionId: string, findingId: string, rejectionReason: string | null) => mutation.mutate({
-      inspectionId,
-      findingId,
-      payload: buildRejectPayload(rejectionReason),
-    }),
-    rejectFindingAsync: (inspectionId: string, findingId: string, rejectionReason: string | null) => mutation.mutateAsync({
-      inspectionId,
-      findingId,
-      payload: buildRejectPayload(rejectionReason),
-    }),
-    rescheduleFinding: (inspectionId: string, findingId: string, dueAt: string) => mutation.mutate({
-      inspectionId,
-      findingId,
-      payload: { dueAt },
-    }),
+    executeFinding: (inspectionId: string, findingId: string, executedActionDescription: string | null) => {
+      if (!capabilities.execute) return;
+      mutation.mutate({
+        inspectionId,
+        findingId,
+        payload: {
+          status: InspectionFindingStatus.IN_PROGRESS,
+          executedAt: nowIso(),
+          executedActionDescription,
+        },
+      });
+    },
+    executeFindingWithAfterEvidence: (input: ExecuteFindingWithAfterEvidenceInput) => {
+      if (!capabilities.execute) return Promise.reject(deniedCapability('ejecutar hallazgos'));
+      return executionMutation.mutateAsync(input);
+    },
+    approveFinding: (inspectionId: string, findingId: string) => {
+      if (!capabilities.review) return;
+      mutation.mutate({
+        inspectionId,
+        findingId,
+        payload: {
+          status: InspectionFindingStatus.CLOSED,
+          closedAt: nowIso(),
+        },
+      });
+    },
+    rejectFinding: (inspectionId: string, findingId: string, rejectionReason: string | null) => {
+      if (!capabilities.review) return;
+      mutation.mutate({ inspectionId, findingId, payload: buildRejectPayload(rejectionReason) });
+    },
+    rejectFindingAsync: (inspectionId: string, findingId: string, rejectionReason: string | null) => {
+      if (!capabilities.review) return Promise.reject(deniedCapability('revisar hallazgos'));
+      return mutation.mutateAsync({
+        inspectionId,
+        findingId,
+        payload: buildRejectPayload(rejectionReason),
+      });
+    },
+    rescheduleFinding: (inspectionId: string, findingId: string, dueAt: string) => {
+      if (!capabilities.reassign) return;
+      mutation.mutate({ inspectionId, findingId, payload: { dueAt } });
+    },
     reassignResponsibleUsers: async (inspectionId: string, findingIds: string[], responsibleUserIds: string[]) => {
+      if (!capabilities.reassign) throw deniedCapability('reasignar responsables');
       for (const findingId of findingIds) {
         await mutation.mutateAsync({
           inspectionId,

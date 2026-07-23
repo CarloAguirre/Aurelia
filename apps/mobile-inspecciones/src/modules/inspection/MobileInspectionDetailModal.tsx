@@ -25,6 +25,7 @@ import type {
 import { API_URL } from '../../shared/services/http-client';
 import { fetchInspectionResponsibleUsers } from '../../shared/services/inspections.api';
 import { PhotoSourceSheet } from '../../shared/components/form/PhotoSourceSheet';
+import { MobileInspectionChecklistResultPanel } from './MobileInspectionChecklistResultPanel';
 import { colors, fontWeight } from '../../shared/theme/tokens';
 import { useMobileSession } from '../auth/mobileSession.store';
 import {
@@ -852,15 +853,7 @@ export function MobileInspectionDetailModal({
               />
             ) : null}
             {activeTab === 'result' ? (
-              <View style={styles.tabContent}>
-                <View style={styles.generalSection}>
-                  <Text style={styles.generalTitle}>Resultado completo</Text>
-                  <Text style={styles.resultText}>
-                    La API de detalle actual expone el resumen y los ítems no conformes. El reporte completo
-                    continúa disponible en la exportación de la inspección.
-                  </Text>
-                </View>
-              </View>
+              <MobileInspectionChecklistResultPanel result={detail.checklistResult} />
             ) : null}
             {activeTab === 'followups' ? <FollowupsPanel detail={detail} /> : null}
             {activeTab === 'general' ? (

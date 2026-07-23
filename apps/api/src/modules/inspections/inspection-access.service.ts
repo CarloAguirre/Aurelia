@@ -51,6 +51,12 @@ export class InspectionAccessService {
     return this.resourceScope.filterAllowedInspections(user, inspections);
   }
 
+  async getScopedInspectionIds(user: AccessTokenPayload): Promise<string[]> {
+    const inspections = await this.inspections.find({ select: { id: true, companyId: true, areaId: true } });
+    const scopedInspections = await this.resourceScope.filterAllowedInspections(user, inspections);
+    return scopedInspections.map((inspection) => inspection.id);
+  }
+
   async getDashboardSummary(user: AccessTokenPayload): Promise<InspectionDashboardSummaryResponse> {
     const allInspections = await this.inspections.find();
     const scopedInspections = await this.resourceScope.filterAllowedInspections(user, allInspections);

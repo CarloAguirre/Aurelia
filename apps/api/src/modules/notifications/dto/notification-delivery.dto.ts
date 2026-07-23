@@ -1,5 +1,6 @@
 import {
   IsBoolean,
+  IsEmail,
   IsInt,
   IsObject,
   IsOptional,
@@ -26,6 +27,16 @@ export class CreateNotificationDeliveryDto {
   @Min(1)
   @Max(10)
   maxAttempts?: number;
+
+  @IsOptional()
+  @IsObject()
+  metadata?: Record<string, unknown>;
+}
+
+export class RegisterNotificationEmailDeliveryDto {
+  @IsEmail()
+  @MaxLength(320)
+  destination: string;
 
   @IsOptional()
   @IsObject()

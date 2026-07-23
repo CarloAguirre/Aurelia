@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { InspectionFindingStatus, InspectionStatus } from '@aurelia/contracts';
+import {
+  InspectionFindingStatus,
+  InspectionStatus,
+  NotificationDeliveryStatus,
+} from '@aurelia/contracts';
 import { In, Repository } from 'typeorm';
 import { MessagingService } from '../messaging/messaging.service';
 import { NotificationDeliveryService } from '../notifications/notification-delivery.service';
@@ -15,6 +19,7 @@ import { InspectionEntity } from './entities/inspection.entity';
 type TrackedAssignmentLink = {
   platformUrl: string;
   deliveryId: string | null;
+  skipEmail: boolean;
 };
 
 @Injectable()
@@ -103,6 +108,10 @@ export class InspectionAssignmentEmailService {
         user,
         findingIds: Array.from(assignedFindingIds),
       });
+      if (trackedLink.skipEmail) {
+        this.logger.log(`Inspection assignment email skipped as duplicate inspection=${inspection.id} user=${user.id}`);
+        continue;
+      }
 
       try {
         const delivery = await this.messaging.sendInspectionFindingAssigned({
@@ -169,6 +178,21 @@ export class InspectionAssignmentEmailService {
           occurredAt: new Date().toISOString(),
         },
       });
+      const existingDeliveries = await this.notificationDeliveries.findByNotification(notification.id);
+      const duplicateDelivery = existingDeliveries.find((delivery) =>
+        delivery.channel === 'email'
+        && delivery.destination?.toLowerCase() === input.user.email.toLowerCase()
+        && delivery.status !== NotificationDeliveryStatus.FAILED
+        && delivery.status !== NotificationDeliveryStatus.BOUNCED,
+      );
+      if (duplicateDelivery) {
+        return {
+          platformUrl: fallbackUrl,
+          deliveryId: duplicateDelivery.id,
+          skipEmail: true,
+        };
+      }
+
       const deepLink = await this.notificationDeliveries.createDeepLink(notification.id, input.user.id, {});
       if (!deepLink.token) throw new Error('Notification deep link token was not generated');
       const delivery = await this.notificationDeliveries.registerEmailAttempt({
@@ -183,13 +207,14 @@ export class InspectionAssignmentEmailService {
       return {
         platformUrl: this.buildNotificationDeepLinkUrl(deepLink.token),
         deliveryId: delivery.id,
+        skipEmail: false,
       };
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
       this.logger.warn(
         `Unable to create tracked assignment link inspection=${input.inspection.id} user=${input.user.id}: ${detail}`,
       );
-      return { platformUrl: fallbackUrl, deliveryId: null };
+      return { platformUrl: fallbackUrl, deliveryId: null, skipEmail: false };
     }
   }
 

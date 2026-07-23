@@ -8,7 +8,6 @@ import { InspectionClosedReassignLockBridge } from './InspectionClosedReassignLo
 import { InspectionEvidenceImageSourceBridge } from './InspectionEvidenceImageSourceBridge';
 import { InspectionEvidenceViewerBridge } from './InspectionEvidenceViewerBridge';
 import { InspectionExportMenuBridge } from './InspectionExportMenuBridge';
-import { InspectionFollowupProgressBridge } from './InspectionFollowupProgressBridge';
 import { InspectionManagementCalendarOverlayBridge } from './InspectionManagementCalendarOverlayBridge';
 import { InspectionManagementSelectMenuBridge } from './InspectionManagementSelectMenuBridge';
 import { InspectionManagementTableBorderBridge } from './InspectionManagementTableBorderBridge';
@@ -61,7 +60,6 @@ export function InspectionBridgesHost() {
       <IncompleteInspectionDraftBridge />
       <DraftProgressBridge />
       <ApproveCloseConfirmBridge />
-      <InspectionFollowupProgressBridge />
       <InspectionClosedReassignLockBridge />
       <InspectionEvidenceImageSourceBridge />
       <InspectionEvidenceViewerBridge />

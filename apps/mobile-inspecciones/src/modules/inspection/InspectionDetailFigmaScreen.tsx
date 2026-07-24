@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,17 +11,22 @@ import {
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type {
-  InspectionDetailEvidenceResponse,
-  InspectionDetailFindingGroupKey,
-  InspectionDetailFindingItemResponse,
-  InspectionDetailResponse,
+import {
+  InspectionFindingStatus,
+  type InspectionDetailEvidenceResponse,
+  type InspectionDetailFindingGroupKey,
+  type InspectionDetailFindingItemResponse,
+  type InspectionDetailResponse,
+  type UpdateInspectionFindingRequest,
 } from '@aurelia/contracts';
-import { fetchInspectionDetail } from '../../shared/services/inspections.api';
+import { fetchInspectionDetail, updateInspectionFinding } from '../../shared/services/inspections.api';
+import { API_URL } from '../../shared/services/http-client';
+import { useMobileSession } from '../auth/mobileSession.store';
 
 const GROUP_ORDER: InspectionDetailFindingGroupKey[] = ['executed', 'open', 'closed', 'rejected'];
+const API_ORIGIN = API_URL.replace(/\/api\/?$/, '');
 
 type DetailTab = 'observations' | 'result' | 'followups' | 'general';
 
@@ -34,6 +40,14 @@ const groupUi: Record<InspectionDetailFindingGroupKey, { label: string; chip: st
   closed: { label: 'Cerradas', chip: 'Cerrado', fg: '#2A5C16', bg: '#E0FFD3', border: '#6CC24A', icon: 'check-circle' },
   rejected: { label: 'Rechazadas', chip: 'Rechazado', fg: '#646464', bg: '#F1F1F1', border: '#ACACAC', icon: 'times-circle' },
 };
+
+function severityPalette(label: string) {
+  const normalized = label.toLowerCase();
+  if (normalized.includes('crít') || normalized.includes('crit')) return { backgroundColor: '#FFD0DB', borderColor: '#E87894', color: '#570B1D' };
+  if (normalized.includes('alto')) return { backgroundColor: '#FFE1CD', borderColor: '#D98853', color: '#532A0E' };
+  if (normalized.includes('medio') || normalized.includes('moder')) return { backgroundColor: '#FFEAB8', borderColor: '#E1AF3D', color: '#463100' };
+  return { backgroundColor: '#E0FFD3', borderColor: '#6CC24A', color: '#2A5C16' };
+}
 
 function formatDate(value: string | null | undefined): string {
   if (!value) return '—';
@@ -92,13 +106,15 @@ function earliestDueAt(detail: InspectionDetailResponse): string | null {
 
 function Header({ detail }: { detail: InspectionDetailResponse }) {
   const metadata = [detail.header.metadataLine1, detail.header.metadataLine2].filter(Boolean).join('  ·  ');
+  const severity = highestSeverity(detail);
+  const severityUi = severityPalette(severity);
   return (
     <View style={styles.header}>
       <View style={styles.headerCopy}>
         <Text style={styles.inspectionNumber}>{detail.header.inspectionNumber.startsWith('#') ? detail.header.inspectionNumber : `#${detail.header.inspectionNumber}`}</Text>
         <Text style={styles.title}>{detail.header.title}</Text>
         <View style={styles.metadataRow}>
-          <View style={styles.criticalChip}><Text style={styles.criticalChipText}>{highestSeverity(detail)}</Text></View>
+          <View style={[styles.criticalChip, { backgroundColor: severityUi.backgroundColor, borderColor: severityUi.borderColor }]}><Text style={[styles.criticalChipText, { color: severityUi.color }]}>{severity}</Text></View>
           <Text style={styles.metadata} numberOfLines={2}>{metadata}</Text>
         </View>
       </View>
@@ -150,9 +166,10 @@ function CriticalityCard({ detail }: { detail: InspectionDetailResponse }) {
   const severity = highestSeverity(detail);
   const dueAt = earliestDueAt(detail);
   const critical = severity.toLowerCase().includes('crít') || severity.toLowerCase().includes('crit');
+  const severityUi = severityPalette(severity);
   return (
-    <View style={[styles.criticalityCard, critical ? styles.criticalityCritical : styles.criticalityMedium]}>
-      <FontAwesome5 name={critical ? 'exclamation-triangle' : 'shield-alt'} size={18} color={critical ? '#570B1D' : '#463100'} />
+    <View style={[styles.criticalityCard, { backgroundColor: severityUi.backgroundColor, borderColor: severityUi.borderColor }]}>
+      <FontAwesome5 name={critical ? 'exclamation-triangle' : 'shield-alt'} size={18} color={severityUi.color} />
       <View>
         <Text style={styles.criticalityEyebrow}>CRITICIDAD</Text>
         <Text style={styles.criticalityValue}>{severity}</Text>
@@ -162,18 +179,69 @@ function CriticalityCard({ detail }: { detail: InspectionDetailResponse }) {
   );
 }
 
+function resolveEvidenceUri(evidence: InspectionDetailEvidenceResponse | undefined): string | null {
+  if (!evidence) return null;
+  if (evidence.fileId) return `${API_ORIGIN}/api/files/${encodeURIComponent(evidence.fileId)}/content`;
+  if (!evidence.url) return null;
+  if (evidence.url.startsWith('http')) return evidence.url;
+  if (evidence.url.startsWith('/api/')) return `${API_ORIGIN}${evidence.url}`;
+  return evidence.url;
+}
+
 function EvidenceBox({ title, evidence, waiting }: { title: string; evidence?: InspectionDetailEvidenceResponse; waiting?: boolean }) {
+  const accessToken = useMobileSession((state) => state.accessToken);
+  const uri = resolveEvidenceUri(evidence);
   return (
     <View style={styles.evidenceBox}>
       <View style={styles.evidenceHeader}><Text style={styles.evidenceHeaderText}>{title}</Text></View>
-      <View style={[styles.evidenceBody, waiting && styles.evidenceWaiting]}>
-        {evidence ? <FontAwesome5 name="image" size={18} color={title === 'DESPUÉS' ? '#2A5C16' : '#24588B'} /> : <Text style={styles.evidenceWaitingText}>{waiting ? 'Esperando evidencia' : 'Sin evidencia'}</Text>}
+      <View style={[styles.evidenceBody, waiting && !uri && styles.evidenceWaiting]}>
+        {uri ? <Image source={{ uri, headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined }} style={styles.evidenceImage} resizeMode="cover" /> : <Text style={styles.evidenceWaitingText}>{waiting ? 'Esperando evidencia' : 'Sin evidencia'}</Text>}
       </View>
     </View>
   );
 }
 
-function FindingCard({ finding, index }: { finding: InspectionDetailFindingItemResponse; index: number }) {
+function ReviewActions({ inspectionId, findingId }: { inspectionId: string; findingId: string }) {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: (payload: UpdateInspectionFindingRequest) => updateInspectionFinding(findingId, payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['mobile-inspecciones'] });
+    },
+    onError: () => {
+      Alert.alert('No fue posible actualizar', 'La acción requiere permisos de revisión de hallazgos. Revisa tu perfil o vuelve a intentar.');
+    },
+  });
+
+  function approve() {
+    Alert.alert('Aprobar corrección', 'El hallazgo quedará cerrado.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Aprobar', onPress: () => mutation.mutate({ status: InspectionFindingStatus.CLOSED, closedAt: new Date().toISOString() }) },
+    ]);
+  }
+
+  function reject() {
+    Alert.alert('Rechazar corrección', 'El hallazgo volverá al flujo de corrección.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Rechazar', style: 'destructive', onPress: () => mutation.mutate({ status: InspectionFindingStatus.REJECTED, rejectedAt: new Date().toISOString(), rejectionReason: null }) },
+    ]);
+  }
+
+  return (
+    <View style={styles.reviewActions}>
+      <TouchableOpacity style={[styles.rejectButton, mutation.isPending && styles.actionButtonDisabled]} disabled={mutation.isPending} onPress={reject}>
+        <FontAwesome5 name="times" size={10} color="#570B1D" />
+        <Text style={styles.rejectButtonText}>Rechazar</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={[styles.approveButton, mutation.isPending && styles.actionButtonDisabled]} disabled={mutation.isPending} onPress={approve}>
+        {mutation.isPending ? <ActivityIndicator size="small" color="#FFFFFF" /> : <FontAwesome5 name="check" size={10} color="#FFFFFF" />}
+        <Text style={styles.approveButtonText}>Aprobar corrección</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function FindingCard({ finding, index, inspectionId }: { finding: InspectionDetailFindingItemResponse; index: number; inspectionId: string }) {
   const ui = groupUi[finding.statusGroup];
   const responsible = finding.responsibleUsers[0];
   return (
@@ -202,6 +270,7 @@ function FindingCard({ finding, index }: { finding: InspectionDetailFindingItemR
         <View style={styles.waitingRow}><FontAwesome5 name="clock" size={9} color="#463100" solid /><Text style={styles.waitingText}>Esperando evidencia de la EECC</Text></View>
       ) : null}
       {finding.dueAt ? <Text style={styles.dueText}>Fecha compromiso: {formatDate(finding.dueAt)} · {remainingDays(finding.dueAt)}</Text> : null}
+      {finding.statusGroup === 'executed' ? <ReviewActions inspectionId={inspectionId} findingId={finding.findingId} /> : null}
     </View>
   );
 }
@@ -224,7 +293,7 @@ function ObservationsPanel({ detail }: { detail: InspectionDetailResponse }) {
         <FontAwesome5 name="list-ul" size={11} color="#24588B" />
         <Text style={styles.sectionHeadingText}>{findings.length} {detail.header.kind === 'checklist' ? 'ÍTEMS MARCADOS COMO NO' : 'OBSERVACIONES'} · {detail.header.counts.closed} CERRADAS</Text>
       </View>
-      {findings.length ? findings.map((finding, index) => <FindingCard key={finding.findingId} finding={finding} index={index} />) : <EmptyState text="No hay observaciones registradas para esta inspección." />}
+      {findings.length ? findings.map((finding, index) => <FindingCard key={finding.findingId} finding={finding} index={index} inspectionId={detail.header.inspectionId} />) : <EmptyState text="No hay observaciones registradas para esta inspección." />}
     </View>
   );
 }
@@ -423,7 +492,7 @@ const styles = StyleSheet.create({
   inspectionNumber: { fontSize: 13, lineHeight: 16, fontWeight: '700', color: '#001E39' },
   title: { marginTop: 2, fontSize: 17, lineHeight: 21, fontWeight: '700', color: '#2A2A2A' },
   metadataRow: { marginTop: 6, flexDirection: 'row', alignItems: 'center', gap: 7 },
-  criticalChip: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: '#FFD0DB' },
+  criticalChip: { borderWidth: 1, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: '#FFD0DB' },
   criticalChipText: { fontSize: 9, lineHeight: 11, fontWeight: '700', color: '#570B1D' },
   metadata: { flex: 1, fontSize: 10, lineHeight: 14, color: '#001E39' },
   closeButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
@@ -469,11 +538,18 @@ const styles = StyleSheet.create({
   evidenceHeader: { height: 20, paddingHorizontal: 8, justifyContent: 'center', backgroundColor: '#001E39' },
   evidenceHeaderText: { fontSize: 8, lineHeight: 10, fontWeight: '700', color: '#FFFFFF' },
   evidenceBody: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#DDF3FC' },
+  evidenceImage: { width: '100%', height: '100%' },
   evidenceWaiting: { backgroundColor: '#F7F7F7' },
   evidenceWaitingText: { fontSize: 9, lineHeight: 12, fontStyle: 'italic', color: '#777777' },
   waitingRow: { marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 6 },
   waitingText: { fontSize: 9, color: '#777777' },
   dueText: { marginTop: 7, fontSize: 9, color: '#777777' },
+  reviewActions: { marginTop: 10, flexDirection: 'row', gap: 6 },
+  rejectButton: { minHeight: 36, minWidth: 105, borderWidth: 1.5, borderColor: '#BD3B5B', borderRadius: 7, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: '#FFFFFF' },
+  rejectButtonText: { fontSize: 10, fontWeight: '700', color: '#570B1D' },
+  approveButton: { flex: 1, minHeight: 36, borderRadius: 7, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: '#00B398' },
+  approveButtonText: { fontSize: 10, fontWeight: '700', color: '#FFFFFF' },
+  actionButtonDisabled: { opacity: 0.55 },
   resultCard: { borderWidth: 1, borderColor: '#E3E3E3', borderRadius: 8, padding: 12, backgroundColor: '#F7F7F7' },
   resultProgress: { height: 5, borderRadius: 3, overflow: 'hidden', backgroundColor: '#E3E3E3' },
   resultProgressFill: { height: 5, backgroundColor: '#34A853' },

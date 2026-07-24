@@ -22,5 +22,9 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter mobile-inspecciones typecheck
-      - run: pnpm --filter mobile-inspecciones lint
+      - name: Typecheck mobile
+        shell: bash
+        run: set -o pipefail; pnpm --filter mobile-inspecciones typecheck 2>&1 | tail -n 80
+      - name: Lint mobile
+        shell: bash
+        run: set -o pipefail; pnpm --filter mobile-inspecciones lint 2>&1 | tail -n 80

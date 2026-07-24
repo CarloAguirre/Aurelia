@@ -318,7 +318,7 @@ function GeneralPanel({ detail }: { detail: InspectionDetailResponse }) {
     ['Sector', detail.general.sectorName ?? '—'],
     ['Empresa EECC', detail.general.companyName ?? '—'],
     ['Responsable EECC', responsible?.fullName ?? '—'],
-    ['Ubicación', detail.general.locationLabel ?? [detail.general.latitude, detail.general.longitude].filter(Boolean).join(' ') || '—'],
+    ['Ubicación', detail.general.locationLabel ?? ([detail.general.latitude, detail.general.longitude].filter(Boolean).join(' ') || '—')],
   ];
   return (
     <View style={styles.panel}>

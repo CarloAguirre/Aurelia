@@ -243,12 +243,13 @@ function SlaReassignSheet({
           <View style={styles.slaSheetHandle} />
           <Text style={styles.slaSheetTitle}>Reasignar SLA</Text>
 
-          <View style={styles.slaSummary}>
+          <View style={styles.slaContent}>
+            <View style={styles.slaSummary}>
             <View style={styles.slaSummaryRow}>
               <Text style={styles.slaSummaryLabel}>SLA calculado</Text>
               <Text style={styles.slaSummaryValue}>{slaCalculatedLabel(item.dueAt)}</Text>
             </View>
-            <View style={styles.slaSummaryRow}>
+            <View style={[styles.slaSummaryRow, styles.slaSummaryLastRow]}>
               <Text style={styles.slaSummaryLabel}>Criticidad</Text>
               <View style={[styles.slaSeverity, { backgroundColor: severity.background }]}>
                 <Text style={[styles.slaSeverityText, { color: severity.color }]}>{item.severityLabel}</Text>
@@ -269,7 +270,8 @@ function SlaReassignSheet({
                 <FontAwesome5 name="plus" size={14} color={colors.muted} />
               </TouchableOpacity>
             </View>
-            <Text style={styles.slaEditorHint}>Este será el SLA final para esta observación</Text>
+              <Text style={styles.slaEditorHint}>Este será el SLA final para esta observación</Text>
+            </View>
           </View>
 
           <View style={styles.slaActions}>
@@ -1188,8 +1190,10 @@ const styles = StyleSheet.create({
   slaSheetPanel: { borderTopLeftRadius: 16, borderTopRightRadius: 16, backgroundColor: colors.white, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 24, gap: 24 },
   slaSheetHandle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: colors.borderMid, marginTop: 10 },
   slaSheetTitle: { color: colors.primary, fontSize: 14, lineHeight: 17, fontWeight: fontWeight.bold },
-  slaSummary: { gap: 8, paddingVertical: 9 },
+  slaContent: { gap: 8 },
+  slaSummary: { paddingVertical: 9 },
   slaSummaryRow: { minHeight: 41, borderTopWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 },
+  slaSummaryLastRow: { borderBottomWidth: 1 },
   slaSummaryLabel: { color: colors.muted, fontSize: 12, lineHeight: 15, fontWeight: fontWeight.medium },
   slaSummaryValue: { color: colors.primary, fontSize: 12, lineHeight: 15, fontWeight: fontWeight.bold },
   slaSeverity: { minHeight: 20, borderRadius: 8, justifyContent: 'center', paddingHorizontal: 9, paddingVertical: 5 },

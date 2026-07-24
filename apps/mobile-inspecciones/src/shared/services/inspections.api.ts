@@ -5,9 +5,10 @@ import type {
   InspectionDetailResponse,
   InspectionFindingResponse,
   InspectionResponse,
+  UpdateInspectionFindingRequest,
   UpsertInspectionAnswerRequest,
 } from '@aurelia/contracts';
-import { httpGet, httpPost } from './http-client';
+import { httpGet, httpPatch, httpPost } from './http-client';
 
 export function fetchInspections(): Promise<InspectionResponse[]> {
   return httpGet<InspectionResponse[]>('/inspections');
@@ -15,6 +16,10 @@ export function fetchInspections(): Promise<InspectionResponse[]> {
 
 export function fetchInspectionDetail(inspectionId: string): Promise<InspectionDetailResponse> {
   return httpGet<InspectionDetailResponse>(`/inspections/${inspectionId}/detail`);
+}
+
+export function updateInspectionFinding(findingId: string, payload: UpdateInspectionFindingRequest): Promise<InspectionFindingResponse> {
+  return httpPatch<UpdateInspectionFindingRequest, InspectionFindingResponse>(`/inspections/findings/${findingId}`, payload);
 }
 
 export function submitInspection(payload: CreateInspectionRequest): Promise<InspectionResponse> {

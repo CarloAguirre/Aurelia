@@ -22,9 +22,28 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Typecheck mobile
+      - name: Capture typecheck
         shell: bash
-        run: set -o pipefail; pnpm --filter mobile-inspecciones typecheck 2>&1 | tail -n 80
-      - name: Lint mobile
+        run: |
+          set +e
+          pnpm --filter mobile-inspecciones typecheck > typecheck.log 2>&1
+          echo $? > typecheck.exit
+      - name: Capture lint
         shell: bash
-        run: set -o pipefail; pnpm --filter mobile-inspecciones lint 2>&1 | tail -n 80
+        run: |
+          set +e
+          pnpm --filter mobile-inspecciones lint > lint.log 2>&1
+          echo $? > lint.exit
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mobile-quality-logs
+          path: |
+            typecheck.log
+            typecheck.exit
+            lint.log
+            lint.exit
+      - name: Enforce quality gates
+        shell: bash
+        run: |
+          test "$(cat typecheck.exit)" = "0"
+          test "$(cat lint.exit)" = "0"

@@ -18,92 +18,32 @@ jobs:
         with:
           ref: feat/mobile-inspection-detail-fidelity
           fetch-depth: 0
-      - name: Apply visual and review actions polish
+      - name: Invalidate affected inspection queries
         run: |
           python - <<'PY'
           from pathlib import Path
 
           path = Path('apps/mobile-inspecciones/src/modules/inspection/InspectionDetailFigmaScreen.tsx')
           text = path.read_text()
-
-          replacements = [
-            (
-              "  Alert,\n  ScrollView,",
-              "  Alert,\n  Image,\n  ScrollView,",
-            ),
-            (
-              "import { useQuery } from '@tanstack/react-query';",
-              "import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';",
-            ),
-            (
-              "import type {\n  InspectionDetailEvidenceResponse,\n  InspectionDetailFindingGroupKey,\n  InspectionDetailFindingItemResponse,\n  InspectionDetailResponse,\n} from '@aurelia/contracts';",
-              "import {\n  InspectionFindingStatus,\n  type InspectionDetailEvidenceResponse,\n  type InspectionDetailFindingGroupKey,\n  type InspectionDetailFindingItemResponse,\n  type InspectionDetailResponse,\n  type UpdateInspectionFindingRequest,\n} from '@aurelia/contracts';",
-            ),
-            (
-              "import { fetchInspectionDetail } from '../../shared/services/inspections.api';",
-              "import { fetchInspectionDetail, updateInspectionFinding } from '../../shared/services/inspections.api';\nimport { API_URL } from '../../shared/services/http-client';\nimport { useMobileSession } from '../auth/mobileSession.store';",
-            ),
-            (
-              "const GROUP_ORDER: InspectionDetailFindingGroupKey[] = ['executed', 'open', 'closed', 'rejected'];",
-              "const GROUP_ORDER: InspectionDetailFindingGroupKey[] = ['executed', 'open', 'closed', 'rejected'];\nconst API_ORIGIN = API_URL.replace(/\\/api\\/?$/, '');",
-            ),
-            (
-              "function formatDate(value: string | null | undefined): string {",
-              "function severityPalette(label: string) {\n  const normalized = label.toLowerCase();\n  if (normalized.includes('crít') || normalized.includes('crit')) return { backgroundColor: '#FFD0DB', borderColor: '#E87894', color: '#570B1D' };\n  if (normalized.includes('alto')) return { backgroundColor: '#FFE1CD', borderColor: '#D98853', color: '#532A0E' };\n  if (normalized.includes('medio') || normalized.includes('moder')) return { backgroundColor: '#FFEAB8', borderColor: '#E1AF3D', color: '#463100' };\n  return { backgroundColor: '#E0FFD3', borderColor: '#6CC24A', color: '#2A5C16' };\n}\n\nfunction formatDate(value: string | null | undefined): string {",
-            ),
-            (
-              "function Header({ detail }: { detail: InspectionDetailResponse }) {\n  const metadata = [detail.header.metadataLine1, detail.header.metadataLine2].filter(Boolean).join('  ·  ');",
-              "function Header({ detail }: { detail: InspectionDetailResponse }) {\n  const metadata = [detail.header.metadataLine1, detail.header.metadataLine2].filter(Boolean).join('  ·  ');\n  const severity = highestSeverity(detail);\n  const severityUi = severityPalette(severity);",
-            ),
-            (
-              "          <View style={styles.criticalChip}><Text style={styles.criticalChipText}>{highestSeverity(detail)}</Text></View>",
-              "          <View style={[styles.criticalChip, { backgroundColor: severityUi.backgroundColor, borderColor: severityUi.borderColor }]}><Text style={[styles.criticalChipText, { color: severityUi.color }]}>{severity}</Text></View>",
-            ),
-            (
-              "  const critical = severity.toLowerCase().includes('crít') || severity.toLowerCase().includes('crit');\n  return (\n    <View style={[styles.criticalityCard, critical ? styles.criticalityCritical : styles.criticalityMedium]}>\n      <FontAwesome5 name={critical ? 'exclamation-triangle' : 'shield-alt'} size={18} color={critical ? '#570B1D' : '#463100'} />",
-              "  const critical = severity.toLowerCase().includes('crít') || severity.toLowerCase().includes('crit');\n  const severityUi = severityPalette(severity);\n  return (\n    <View style={[styles.criticalityCard, { backgroundColor: severityUi.backgroundColor, borderColor: severityUi.borderColor }]}>\n      <FontAwesome5 name={critical ? 'exclamation-triangle' : 'shield-alt'} size={18} color={severityUi.color} />",
-            ),
-            (
-              "function EvidenceBox({ title, evidence, waiting }: { title: string; evidence?: InspectionDetailEvidenceResponse; waiting?: boolean }) {\n  return (\n    <View style={styles.evidenceBox}>\n      <View style={styles.evidenceHeader}><Text style={styles.evidenceHeaderText}>{title}</Text></View>\n      <View style={[styles.evidenceBody, waiting && styles.evidenceWaiting]}>\n        {evidence ? <FontAwesome5 name=\"image\" size={18} color={title === 'DESPUÉS' ? '#2A5C16' : '#24588B'} /> : <Text style={styles.evidenceWaitingText}>{waiting ? 'Esperando evidencia' : 'Sin evidencia'}</Text>}\n      </View>\n    </View>\n  );\n}",
-              "function resolveEvidenceUri(evidence: InspectionDetailEvidenceResponse | undefined): string | null {\n  if (!evidence) return null;\n  if (evidence.fileId) return `${API_ORIGIN}/api/files/${encodeURIComponent(evidence.fileId)}/content`;\n  if (!evidence.url) return null;\n  if (evidence.url.startsWith('http')) return evidence.url;\n  if (evidence.url.startsWith('/api/')) return `${API_ORIGIN}${evidence.url}`;\n  return evidence.url;\n}\n\nfunction EvidenceBox({ title, evidence, waiting }: { title: string; evidence?: InspectionDetailEvidenceResponse; waiting?: boolean }) {\n  const accessToken = useMobileSession((state) => state.accessToken);\n  const uri = resolveEvidenceUri(evidence);\n  return (\n    <View style={styles.evidenceBox}>\n      <View style={styles.evidenceHeader}><Text style={styles.evidenceHeaderText}>{title}</Text></View>\n      <View style={[styles.evidenceBody, waiting && !uri && styles.evidenceWaiting]}>\n        {uri ? <Image source={{ uri, headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined }} style={styles.evidenceImage} resizeMode=\"cover\" /> : <Text style={styles.evidenceWaitingText}>{waiting ? 'Esperando evidencia' : 'Sin evidencia'}</Text>}\n      </View>\n    </View>\n  );\n}",
-            ),
-            (
-              "function FindingCard({ finding, index }: { finding: InspectionDetailFindingItemResponse; index: number }) {",
-              "function ReviewActions({ inspectionId, findingId }: { inspectionId: string; findingId: string }) {\n  const queryClient = useQueryClient();\n  const mutation = useMutation({\n    mutationFn: (payload: UpdateInspectionFindingRequest) => updateInspectionFinding(findingId, payload),\n    onSuccess: async () => {\n      await queryClient.invalidateQueries({ queryKey: ['mobile-inspecciones'] });\n    },\n    onError: () => {\n      Alert.alert('No fue posible actualizar', 'La acción requiere permisos de revisión de hallazgos. Revisa tu perfil o vuelve a intentar.');\n    },\n  });\n\n  function approve() {\n    Alert.alert('Aprobar corrección', 'El hallazgo quedará cerrado.', [\n      { text: 'Cancelar', style: 'cancel' },\n      { text: 'Aprobar', onPress: () => mutation.mutate({ status: InspectionFindingStatus.CLOSED, closedAt: new Date().toISOString() }) },\n    ]);\n  }\n\n  function reject() {\n    Alert.alert('Rechazar corrección', 'El hallazgo volverá al flujo de corrección.', [\n      { text: 'Cancelar', style: 'cancel' },\n      { text: 'Rechazar', style: 'destructive', onPress: () => mutation.mutate({ status: InspectionFindingStatus.REJECTED, rejectedAt: new Date().toISOString(), rejectionReason: null }) },\n    ]);\n  }\n\n  return (\n    <View style={styles.reviewActions}>\n      <TouchableOpacity style={[styles.rejectButton, mutation.isPending && styles.actionButtonDisabled]} disabled={mutation.isPending} onPress={reject}>\n        <FontAwesome5 name=\"times\" size={10} color=\"#570B1D\" />\n        <Text style={styles.rejectButtonText}>Rechazar</Text>\n      </TouchableOpacity>\n      <TouchableOpacity style={[styles.approveButton, mutation.isPending && styles.actionButtonDisabled]} disabled={mutation.isPending} onPress={approve}>\n        {mutation.isPending ? <ActivityIndicator size=\"small\" color=\"#FFFFFF\" /> : <FontAwesome5 name=\"check\" size={10} color=\"#FFFFFF\" />}\n        <Text style={styles.approveButtonText}>Aprobar corrección</Text>\n      </TouchableOpacity>\n    </View>\n  );\n}\n\nfunction FindingCard({ finding, index, inspectionId }: { finding: InspectionDetailFindingItemResponse; index: number; inspectionId: string }) {",
-            ),
-            (
-              "      {finding.dueAt ? <Text style={styles.dueText}>Fecha compromiso: {formatDate(finding.dueAt)} · {remainingDays(finding.dueAt)}</Text> : null}\n    </View>",
-              "      {finding.dueAt ? <Text style={styles.dueText}>Fecha compromiso: {formatDate(finding.dueAt)} · {remainingDays(finding.dueAt)}</Text> : null}\n      {finding.statusGroup === 'executed' ? <ReviewActions inspectionId={inspectionId} findingId={finding.findingId} /> : null}\n    </View>",
-            ),
-            (
-              "{findings.length ? findings.map((finding, index) => <FindingCard key={finding.findingId} finding={finding} index={index} />) : <EmptyState",
-              "{findings.length ? findings.map((finding, index) => <FindingCard key={finding.findingId} finding={finding} index={index} inspectionId={detail.header.inspectionId} />) : <EmptyState",
-            ),
-            (
-              "  criticalChip: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: '#FFD0DB' },",
-              "  criticalChip: { borderWidth: 1, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, backgroundColor: '#FFD0DB' },",
-            ),
-            (
-              "  evidenceBody: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#DDF3FC' },\n  evidenceWaiting:",
-              "  evidenceBody: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#DDF3FC' },\n  evidenceImage: { width: '100%', height: '100%' },\n  evidenceWaiting:",
-            ),
-            (
-              "  dueText: { marginTop: 7, fontSize: 9, color: '#777777' },\n  resultCard:",
-              "  dueText: { marginTop: 7, fontSize: 9, color: '#777777' },\n  reviewActions: { marginTop: 10, flexDirection: 'row', gap: 6 },\n  rejectButton: { minHeight: 36, minWidth: 105, borderWidth: 1.5, borderColor: '#BD3B5B', borderRadius: 7, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: '#FFFFFF' },\n  rejectButtonText: { fontSize: 10, fontWeight: '700', color: '#570B1D' },\n  approveButton: { flex: 1, minHeight: 36, borderRadius: 7, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: '#00B398' },\n  approveButtonText: { fontSize: 10, fontWeight: '700', color: '#FFFFFF' },\n  actionButtonDisabled: { opacity: 0.55 },\n  resultCard:",
-            ),
-          ]
-
-          for old, new in replacements:
-            if old not in text:
-              raise SystemExit(f'Expected source fragment not found: {old[:140]}')
-            text = text.replace(old, new, 1)
-
-          path.write_text(text)
+          old = """    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['mobile-inspecciones'] });
+    },"""
+          new = """    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['mobile-inspecciones', 'inspection-detail', inspectionId] }),
+        queryClient.invalidateQueries({ queryKey: ['mobile-inspecciones', 'inspection-findings', inspectionId] }),
+        queryClient.invalidateQueries({ queryKey: ['mobile-inspecciones', 'inspections'] }),
+        queryClient.invalidateQueries({ queryKey: ['mobile-inspecciones', 'inspection-home-summary'] }),
+      ]);
+    },"""
+          if old not in text:
+              raise SystemExit('Expected invalidation block was not found')
+          path.write_text(text.replace(old, new, 1))
           PY
-      - name: Commit visual polish
+      - name: Commit query invalidation
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add apps/mobile-inspecciones/src/modules/inspection/InspectionDetailFigmaScreen.tsx
-          git commit -m "Feat: completa evidencias y revisión en detalle mobile"
+          git commit -m "Fix: refresca detalle tras revisión mobile"
           git push origin HEAD:feat/mobile-inspection-detail-fidelity

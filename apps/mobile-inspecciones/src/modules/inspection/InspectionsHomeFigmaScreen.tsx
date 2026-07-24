@@ -117,14 +117,14 @@ function StatusChip({ status }: { status: InspectionStatus }) {
   );
 }
 
-function InspectionCard({ inspection, index, findingSummary }: { inspection: InspectionResponse; index: number; findingSummary: FindingSummary | null }) {
+function InspectionCard({ inspection, index, findingSummary, onPress }: { inspection: InspectionResponse; index: number; findingSummary: FindingSummary | null; onPress: () => void }) {
   const tone = getInspectionTone(inspection.status);
   const displayId = `#${String(index + 1).padStart(3, '0')}`;
   const locationMeta = inspection.scheduledAt ? `Programada · ${formatDate(inspection.scheduledAt)}` : 'Sin fecha programada';
   const rows = buildCardRows(inspection, findingSummary);
 
   return (
-    <View style={styles.card}>
+    <TouchableOpacity style={styles.card} activeOpacity={0.88} onPress={onPress} accessibilityRole="button" accessibilityLabel={`Abrir detalle de ${inspection.title}`}>
       <View style={[styles.topLine, { backgroundColor: tonePalette[tone].line }]} />
       <View style={styles.cardInner}>
         <View style={styles.cardTop}>
@@ -143,7 +143,7 @@ function InspectionCard({ inspection, index, findingSummary }: { inspection: Ins
           <CardRow key={`${inspection.id}-${row.label}-${row.icon}`} label={row.label} tag={row.tag} tone={row.tone} icon={row.icon} />
         ))}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -335,7 +335,7 @@ export function InspectionsHomeFigmaScreen() {
             ) : prioritizedInspections.length === 0 ? (
               <StateCard title="Sin inspecciones registradas" detail="Cuando se creen inspecciones desde terreno aparecerán en esta lista." action="Nueva inspección" onPress={openNewInspection} />
             ) : (
-              prioritizedInspections.slice(0, 8).map((inspection, index) => <InspectionCard key={inspection.id} inspection={inspection} index={index} findingSummary={inspectionsById.get(inspection.id) ?? null} />)
+              prioritizedInspections.slice(0, 8).map((inspection, index) => <InspectionCard key={inspection.id} inspection={inspection} index={index} findingSummary={inspectionsById.get(inspection.id) ?? null} onPress={() => router.push({ pathname: '/inspection/detail/[id]', params: { id: inspection.id } })} />)
             )}
           </ScrollView>
           <View style={styles.tabs}>

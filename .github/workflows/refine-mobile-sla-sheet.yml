@@ -1,0 +1,82 @@
+name: Refine mobile SLA sheet spacing
+
+on:
+  push:
+    branches:
+      - feature/inspecciones/carlo
+    paths:
+      - .github/workflows/refine-mobile-sla-sheet.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/inspecciones/carlo
+          fetch-depth: 0
+
+      - name: Refine Figma spacing
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/mobile-inspecciones/src/modules/inspection/MobileInspectionDetailModal.tsx')
+          content = path.read_text()
+
+          old = """          <View style={styles.slaSummary}>\n"""
+          new = """          <View style={styles.slaContent}>\n            <View style={styles.slaSummary}>\n"""
+          if old not in content:
+              raise SystemExit('SLA summary start not found')
+          content = content.replace(old, new, 1)
+
+          old = """            <View style={styles.slaSummaryRow}>\n              <Text style={styles.slaSummaryLabel}>Criticidad</Text>\n"""
+          new = """            <View style={[styles.slaSummaryRow, styles.slaSummaryLastRow]}>\n              <Text style={styles.slaSummaryLabel}>Criticidad</Text>\n"""
+          if old not in content:
+              raise SystemExit('SLA severity row not found')
+          content = content.replace(old, new, 1)
+
+          old = """            <Text style={styles.slaEditorHint}>Este será el SLA final para esta observación</Text>\n          </View>\n\n          <View style={styles.slaActions}>\n"""
+          new = """              <Text style={styles.slaEditorHint}>Este será el SLA final para esta observación</Text>\n            </View>\n          </View>\n\n          <View style={styles.slaActions}>\n"""
+          if old not in content:
+              raise SystemExit('SLA editor end not found')
+          content = content.replace(old, new, 1)
+
+          old = """  slaSummary: { gap: 8, paddingVertical: 9 },\n  slaSummaryRow: { minHeight: 41, borderTopWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 },\n"""
+          new = """  slaContent: { gap: 8 },\n  slaSummary: { paddingVertical: 9 },\n  slaSummaryRow: { minHeight: 41, borderTopWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 },\n  slaSummaryLastRow: { borderBottomWidth: 1 },\n"""
+          if old not in content:
+              raise SystemExit('SLA summary styles not found')
+          content = content.replace(old, new, 1)
+
+          path.write_text(content)
+          PY
+
+      - name: Install dependencies
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - name: Validate mobile app
+        run: |
+          pnpm --filter @aurelia/contracts build
+          pnpm --filter mobile-inspecciones typecheck
+          pnpm --filter mobile-inspecciones lint
+          pnpm --filter mobile-inspecciones test:smoke
+
+      - name: Commit refinement
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add apps/mobile-inspecciones/src/modules/inspection/MobileInspectionDetailModal.tsx
+          git commit -m "fix(mobile): refine SLA sheet Figma spacing"
+
+          git rm .github/workflows/refine-mobile-sla-sheet.yml
+          git commit -m "chore(ci): remove SLA sheet refinement workflow"
+
+          git push origin HEAD:feature/inspecciones/carlo

@@ -1,0 +1,60 @@
+name: Mobile inspection detail patch
+
+on:
+  push:
+    branches:
+      - feat/mobile-inspection-detail-fidelity
+    paths:
+      - .github/workflows/mobile-inspection-detail-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-navigation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/mobile-inspection-detail-fidelity
+          fetch-depth: 0
+      - name: Connect inspection cards to detail route
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('apps/mobile-inspecciones/src/modules/inspection/InspectionsHomeFigmaScreen.tsx')
+          text = path.read_text()
+          replacements = [
+              (
+                  "function InspectionCard({ inspection, index, findingSummary }: { inspection: InspectionResponse; index: number; findingSummary: FindingSummary | null }) {",
+                  "function InspectionCard({ inspection, index, findingSummary, onPress }: { inspection: InspectionResponse; index: number; findingSummary: FindingSummary | null; onPress: () => void }) {",
+              ),
+              (
+                  "    <View style={styles.card}>\n      <View style={[styles.topLine, { backgroundColor: tonePalette[tone].line }]} />",
+                  "    <TouchableOpacity style={styles.card} activeOpacity={0.88} onPress={onPress} accessibilityRole=\"button\" accessibilityLabel={`Abrir detalle de ${inspection.title}`}>\n      <View style={[styles.topLine, { backgroundColor: tonePalette[tone].line }]} />",
+              ),
+              (
+                  "      </View>\n    </View>\n  );\n}\n\nfunction DraftBox",
+                  "      </View>\n    </TouchableOpacity>\n  );\n}\n\nfunction DraftBox",
+              ),
+              (
+                  "prioritizedInspections.slice(0, 8).map((inspection, index) => <InspectionCard key={inspection.id} inspection={inspection} index={index} findingSummary={inspectionsById.get(inspection.id) ?? null} />)",
+                  "prioritizedInspections.slice(0, 8).map((inspection, index) => <InspectionCard key={inspection.id} inspection={inspection} index={index} findingSummary={inspectionsById.get(inspection.id) ?? null} onPress={() => router.push({ pathname: '/inspection/detail/[id]', params: { id: inspection.id } })} />)",
+              ),
+          ]
+
+          for old, new in replacements:
+              if old not in text:
+                  raise SystemExit(f'Expected source fragment not found: {old[:100]}')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+      - name: Commit navigation patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/mobile-inspecciones/src/modules/inspection/InspectionsHomeFigmaScreen.tsx
+          git commit -m "Feat: navega desde tarjetas al detalle mobile"
+          git push origin HEAD:feat/mobile-inspection-detail-fidelity

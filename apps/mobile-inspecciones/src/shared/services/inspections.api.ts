@@ -2,6 +2,7 @@ import type {
   CreateInspectionFindingRequest,
   CreateInspectionRequest,
   InspectionChecklistAnswerResponse,
+  InspectionDetailResponse,
   InspectionFindingResponse,
   InspectionResponse,
   UpsertInspectionAnswerRequest,
@@ -10,6 +11,10 @@ import { httpGet, httpPost } from './http-client';
 
 export function fetchInspections(): Promise<InspectionResponse[]> {
   return httpGet<InspectionResponse[]>('/inspections');
+}
+
+export function fetchInspectionDetail(inspectionId: string): Promise<InspectionDetailResponse> {
+  return httpGet<InspectionDetailResponse>(`/inspections/${inspectionId}/detail`);
 }
 
 export function submitInspection(payload: CreateInspectionRequest): Promise<InspectionResponse> {

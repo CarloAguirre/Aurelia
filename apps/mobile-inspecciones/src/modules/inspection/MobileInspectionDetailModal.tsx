@@ -38,6 +38,7 @@ import {
 type DetailTab = 'observations' | 'result' | 'followups' | 'general';
 type ActionMode = 'execute' | 'reject' | null;
 type ItemLabel = 'Obs.' | 'Ítem';
+type FontAwesomeName = React.ComponentProps<typeof FontAwesome5>['name'];
 
 type Props = {
   visible: boolean;
@@ -143,19 +144,6 @@ function severityColors(label: string): { background: string; color: string; bor
     return { background: colors.warnSurf, color: colors.warnTxt, border: '#e8c45f' };
   }
   return { background: colors.successSurf, color: colors.successTxt, border: '#9bd98a' };
-}
-
-function highestSeverity(detail: InspectionDetailResponse): string | null {
-  const rank = (value: string) => {
-    const normalized = value.toLowerCase();
-    if (normalized.includes('crít') || normalized.includes('crit')) return 4;
-    if (normalized.includes('alto') || normalized.includes('grave')) return 3;
-    if (normalized.includes('moder')) return 2;
-    return 1;
-  };
-  return allFindings(detail)
-    .map((item) => item.severityLabel)
-    .sort((left, right) => rank(right) - rank(left))[0] ?? null;
 }
 
 function responsibleLabel(item: InspectionDetailFindingItemResponse): string {
@@ -654,15 +642,74 @@ function GeneralRow({ label, value, mono = false }: { label: string; value: stri
   );
 }
 
-function GeneralSectionCard({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
+function GeneralSectionCard({ icon, title, children }: { icon: FontAwesomeName; title: string; children: React.ReactNode }) {
   return (
     <View style={styles.generalSectionCard}>
       <View style={styles.generalSectionHeader}>
-        <FontAwesome5 name={icon} size={11} color={colors.blueLink} />
+        <FontAwesome5 name={icon} size={11} color={colors.muted} />
         <Text style={styles.generalSectionTitle}>{title}</Text>
       </View>
       <View>{children}</View>
     </View>
+  );
+}
+
+function GeneralPhotoCard({ detail }: { detail: InspectionDetailResponse }) {
+  const token = useMobileSession((state) => state.accessToken);
+  const evidence = detail.general.generalEvidence[0];
+  const uri = evidenceUrl(evidence);
+  return (
+    <GeneralSectionCard icon="camera" title="FOTOGRAFÍA GENERAL DE LA INSPECCIÓN">
+      <View style={styles.generalPhotoFrame}>
+        {uri ? (
+          <Image
+            source={{ uri, headers: token ? { Authorization: `Bearer ${token}` } : undefined }}
+            style={styles.generalPhoto}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.generalPhotoEmpty}>
+            <FontAwesome5 name="image" size={18} color="rgba(255,255,255,0.7)" />
+            <Text style={styles.generalPhotoEmptyText}>Sin fotografía general</Text>
+          </View>
+        )}
+        <View style={styles.generalPhotoLabel}>
+          <Text style={styles.generalPhotoLabelText}>FOTO GENERAL</Text>
+        </View>
+        <View style={styles.generalPhotoDate}>
+          <Text style={styles.generalPhotoDateText}>{formatDate(evidence?.capturedAt)}</Text>
+        </View>
+      </View>
+    </GeneralSectionCard>
+  );
+}
+
+function GeneralObservationsCard({ detail }: { detail: InspectionDetailResponse }) {
+  const findings = allFindings(detail);
+  const itemLabel: ItemLabel = detail.header.kind === 'checklist' ? 'Ítem' : 'Obs.';
+  return (
+    <GeneralSectionCard icon="list-ul" title={`${detail.header.kind === 'checklist' ? 'ÍTEMS NO' : 'OBSERVACIONES'} (${findings.length})`}>
+      {findings.length ? findings.map((item, index) => {
+        const severity = severityColors(item.severityLabel);
+        return (
+          <View key={item.findingId} style={[styles.generalObservation, index < findings.length - 1 && styles.generalObservationBorder]}>
+            <View style={styles.generalObservationChips}>
+              <View style={styles.indexPill}>
+                <Text style={styles.indexPillText}>{itemLabel} {index + 1}</Text>
+              </View>
+              <View style={[styles.severityPill, { backgroundColor: severity.background }]}> 
+                <Text style={[styles.severityPillText, { color: severity.color }]}>{item.severityLabel}</Text>
+              </View>
+            </View>
+            <Text style={styles.generalObservationText}>{item.condition || item.title || '—'}</Text>
+            <View style={styles.generalObservationSla}>
+              <Text style={styles.generalObservationSlaLabel}>SLA calculado</Text>
+              <Text style={styles.generalObservationSlaValue}>{daysLabel(item.dueAt, 'Sin plazo')}</Text>
+            </View>
+          </View>
+        );
+      }) : <Text style={styles.generalEmptyText}>No hay observaciones registradas.</Text>}
+    </GeneralSectionCard>
   );
 }
 
@@ -696,8 +743,12 @@ function GeneralPanel({
         <GeneralRow label="Ubicación UTM" value={coordinates(detail)} mono />
       </GeneralSectionCard>
 
+      <GeneralPhotoCard detail={detail} />
+      <GeneralObservationsCard detail={detail} />
+
       {general.responsibles.length > 0 ? (
         <GeneralSectionCard icon="user-friends" title="RESPONSABLES">
+          <GeneralRow label="EECC" value={general.companyName ?? '—'} />
           {general.responsibles.map((responsible, index) => (
             <View key={responsible.userId} style={[styles.generalResponsible, index < general.responsibles.length - 1 && styles.generalResponsibleBorder]}>
               <View style={styles.avatar}><Text style={styles.avatarText}>{initials(responsible.fullName)}</Text></View>
@@ -710,8 +761,8 @@ function GeneralPanel({
           ))}
           {!readOnly && canReassign ? (
             <TouchableOpacity style={styles.reassignButton} onPress={onReassign}>
-              <FontAwesome5 name="user-edit" size={13} color={colors.blueLink} />
-              <Text style={styles.reassignText}>Reasignar responsables</Text>
+              <FontAwesome5 name="user-plus" size={13} color={colors.blueLink} />
+              <Text style={styles.reassignText}>Reasignar a otro compañero</Text>
             </TouchableOpacity>
           ) : null}
         </GeneralSectionCard>
@@ -807,8 +858,6 @@ export function MobileInspectionDetailModal({
         { key: 'followups', label: 'Seguimientos' },
         { key: 'general', label: 'Datos generales' },
       ];
-  const severityLabel = detail ? highestSeverity(detail) : null;
-  const severity = severityLabel ? severityColors(severityLabel) : null;
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
@@ -819,19 +868,14 @@ export function MobileInspectionDetailModal({
             <Text style={styles.headerTitle} numberOfLines={2}>{detail?.header.title ?? 'Cargando inspección'}</Text>
             {detail ? (
               <View style={styles.headerMetadata}>
-                {severity && severityLabel ? (
-                  <View style={[styles.headerSeverity, { backgroundColor: severity.background, borderColor: severity.border }]}> 
-                    <Text style={[styles.headerSeverityText, { color: severity.color }]}>{severityLabel}</Text>
-                  </View>
-                ) : null}
-                {detail.general.templateName ? <Text style={styles.headerMetaText}>· {detail.general.templateName}</Text> : null}
-                <Text style={styles.headerMetaText}>· {formatDate(detail.general.scheduledAt)}</Text>
-                {readOnly ? <Text style={styles.headerReadOnly}>· Solo lectura</Text> : null}
+                <Text style={styles.headerMetaText}>{detail.header.metadataLine1}</Text>
+                {detail.header.metadataLine2 ? <Text style={styles.headerMetaText}>{detail.header.metadataLine2}</Text> : null}
+                {readOnly ? <Text style={styles.headerReadOnly}>Solo lectura</Text> : null}
               </View>
             ) : null}
           </View>
           <TouchableOpacity style={styles.closeButton} onPress={onClose} accessibilityLabel="Cerrar detalle">
-            <FontAwesome5 name="times" size={16} color={colors.primary} />
+            <FontAwesome5 name="times" size={20} color={colors.primary} />
           </TouchableOpacity>
         </View>
 
@@ -937,13 +981,11 @@ export function MobileInspectionDetailModal({
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.white, borderTopLeftRadius: 16, borderTopRightRadius: 16, overflow: 'hidden' },
-  header: { minHeight: 88, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  header: { minHeight: 110, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: colors.white, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   headerCopy: { flex: 1, paddingRight: 12 },
   headerEyebrow: { color: colors.navy, fontSize: 13, lineHeight: 16, fontWeight: fontWeight.bold },
   headerTitle: { marginTop: 2, color: colors.body, fontSize: 16, lineHeight: 22, fontWeight: fontWeight.bold },
-  headerMetadata: { minHeight: 20, marginTop: 5, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5 },
-  headerSeverity: { minHeight: 18, borderRadius: 6, borderWidth: 1, justifyContent: 'center', paddingHorizontal: 9, paddingVertical: 2 },
-  headerSeverityText: { fontSize: 10, lineHeight: 12, fontWeight: fontWeight.bold },
+  headerMetadata: { marginTop: 4, alignItems: 'flex-start', gap: 2 },
   headerMetaText: { color: colors.muted, fontSize: 11, lineHeight: 14 },
   headerReadOnly: { color: colors.blueLink, fontSize: 10, lineHeight: 13, fontWeight: fontWeight.semibold },
   closeButton: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
@@ -1044,7 +1086,7 @@ const styles = StyleSheet.create({
   responsibleCopy: { flex: 1 },
   responsibleName: { color: colors.primary, fontSize: 12, fontWeight: fontWeight.bold },
   responsibleRole: { marginTop: 3, color: colors.muted, fontSize: 10 },
-  tabContent: { flexGrow: 1, backgroundColor: colors.white, paddingHorizontal: 14, paddingVertical: 20, gap: 12 },
+  tabContent: { flexGrow: 1, backgroundColor: colors.white, paddingHorizontal: 14, paddingVertical: 16, gap: 12 },
   sectionHeading: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   sectionHeadingText: { color: colors.muted, fontSize: 11, lineHeight: 13, letterSpacing: 0.55, fontWeight: fontWeight.bold },
   timeline: { marginTop: 10 },
@@ -1067,11 +1109,27 @@ const styles = StyleSheet.create({
   generalRowLabel: { color: colors.muted, fontSize: 12, lineHeight: 15, fontWeight: fontWeight.medium },
   generalRowValue: { flex: 1, color: colors.primary, fontSize: 12, lineHeight: 15, fontWeight: fontWeight.semibold, textAlign: 'right' },
   generalRowMono: { fontSize: 10, letterSpacing: 0.3 },
+  generalPhotoFrame: { height: 112, margin: 12, borderRadius: 8, overflow: 'hidden', backgroundColor: '#142d50' },
+  generalPhoto: { width: '100%', height: '100%' },
+  generalPhotoEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#142d50' },
+  generalPhotoEmptyText: { color: 'rgba(255,255,255,0.7)', fontSize: 10 },
+  generalPhotoLabel: { position: 'absolute', top: 8, left: 8, borderRadius: 3, backgroundColor: colors.navy, paddingHorizontal: 7, paddingVertical: 3 },
+  generalPhotoLabelText: { color: colors.white, fontSize: 8, lineHeight: 10, letterSpacing: 1.1, fontWeight: fontWeight.bold },
+  generalPhotoDate: { position: 'absolute', right: 8, bottom: 7, borderRadius: 3, backgroundColor: 'rgba(0,30,57,0.78)', paddingHorizontal: 6, paddingVertical: 3 },
+  generalPhotoDateText: { color: 'rgba(255,255,255,0.8)', fontSize: 8, lineHeight: 10 },
+  generalObservation: { paddingHorizontal: 12, paddingVertical: 11 },
+  generalObservationBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
+  generalObservationChips: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  generalObservationText: { marginTop: 8, color: colors.body, fontSize: 12, lineHeight: 17 },
+  generalObservationSla: { marginTop: 10, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 9, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  generalObservationSlaLabel: { color: colors.muted, fontSize: 11, lineHeight: 14 },
+  generalObservationSlaValue: { color: colors.body, fontSize: 11, lineHeight: 14, fontWeight: fontWeight.bold },
+  generalEmptyText: { paddingHorizontal: 12, paddingVertical: 20, color: colors.muted, fontSize: 11, textAlign: 'center' },
   generalResponsible: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 9 },
   generalResponsibleBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
   youPill: { minHeight: 16, borderRadius: 5, backgroundColor: colors.tealSurf, justifyContent: 'center', paddingHorizontal: 7 },
   youPillText: { color: colors.teal, fontSize: 10, fontWeight: fontWeight.bold },
-  reassignButton: { minHeight: 42, margin: 12, borderRadius: 8, borderWidth: 1.5, borderStyle: 'dashed', borderColor: colors.borderMid, backgroundColor: '#f7f7f7', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+  reassignButton: { minHeight: 42, margin: 12, borderRadius: 8, borderWidth: 1.5, borderStyle: 'dashed', borderColor: colors.borderMid, backgroundColor: colors.white, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
   reassignText: { color: colors.blueLink, fontSize: 12, fontWeight: fontWeight.semibold },
   footer: { minHeight: 70, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.white, justifyContent: 'center', paddingHorizontal: 20, paddingTop: 15, paddingBottom: 14 },
   pdfButton: { height: 40, borderRadius: 8, borderWidth: 1.5, borderColor: colors.borderMid, backgroundColor: colors.white, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },

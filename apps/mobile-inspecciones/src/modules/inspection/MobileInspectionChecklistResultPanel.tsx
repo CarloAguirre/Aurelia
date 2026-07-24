@@ -26,6 +26,10 @@ function answerTone(value: string | null | undefined) {
   return { backgroundColor: colors.border, color: colors.placeholder };
 }
 
+function percentage(value: number): `${number}%` {
+  return `${Math.max(0, Math.min(100, value))}%`;
+}
+
 function SummaryMetric({
   value,
   label,
@@ -38,7 +42,7 @@ function SummaryMetric({
   color: string;
 }) {
   return (
-    <View style={[styles.metric, { backgroundColor }]}>
+    <View style={[styles.metric, { backgroundColor }]}> 
       <Text style={[styles.metricValue, { color }]}>{value}</Text>
       <Text style={[styles.metricLabel, { color }]}>{label}</Text>
     </View>
@@ -58,7 +62,7 @@ function ResultItem({ item, index }: { item: InspectionDetailChecklistItemRespon
         <Text style={[styles.question, isNo && styles.questionNo]}>{item.question}</Text>
         {comment.trim() ? <Text style={[styles.comment, isNo && styles.commentNo]}>Comentario: {comment}</Text> : null}
       </View>
-      <View style={[styles.answer, { backgroundColor: tone.backgroundColor }]}>
+      <View style={[styles.answer, { backgroundColor: tone.backgroundColor }]}> 
         <Text style={[styles.answerText, { color: tone.color }]}>{answerLabel(value)}</Text>
       </View>
     </View>
@@ -75,9 +79,9 @@ export function MobileInspectionChecklistResultPanel({ result }: { result: Inspe
   const neutralLabel = result.summary.partial > 0 ? 'N/A · Parcial' : 'N/A · No aplica';
   const neutralValue = neutral + result.summary.partial;
   const total = Math.max(result.summary.total, 1);
-  const compliantWidth = `${Math.min(100, (result.summary.compliant / total) * 100)}%`;
-  const notCompliantWidth = `${Math.min(100, (result.summary.notCompliant / total) * 100)}%`;
-  const neutralWidth = `${Math.min(100, (neutralValue / total) * 100)}%`;
+  const compliantWidth = percentage((result.summary.compliant / total) * 100);
+  const notCompliantWidth = percentage((result.summary.notCompliant / total) * 100);
+  const neutralWidth = percentage((neutralValue / total) * 100);
 
   return (
     <View style={styles.container}>

@@ -42,7 +42,7 @@ function SummaryMetric({
   color: string;
 }) {
   return (
-    <View style={[styles.metric, { backgroundColor }]}> 
+    <View style={[styles.metric, { backgroundColor }]}>
       <Text style={[styles.metricValue, { color }]}>{value}</Text>
       <Text style={[styles.metricLabel, { color }]}>{label}</Text>
     </View>
@@ -62,7 +62,7 @@ function ResultItem({ item, index }: { item: InspectionDetailChecklistItemRespon
         <Text style={[styles.question, isNo && styles.questionNo]}>{item.question}</Text>
         {comment.trim() ? <Text style={[styles.comment, isNo && styles.commentNo]}>Comentario: {comment}</Text> : null}
       </View>
-      <View style={[styles.answer, { backgroundColor: tone.backgroundColor }]}> 
+      <View style={[styles.answer, { backgroundColor: tone.backgroundColor }]}>
         <Text style={[styles.answerText, { color: tone.color }]}>{answerLabel(value)}</Text>
       </View>
     </View>
